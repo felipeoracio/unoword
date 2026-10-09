@@ -12,6 +12,7 @@ load_dotenv(ROOT_DIR / ".env")
 from routers.ai import router as ai_router
 from routers.auth import router as auth_router
 from routers.documents import router as documents_router
+from routers.admin import router as admin_router
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -22,6 +23,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(ai_router)
 api_router.include_router(documents_router)
 api_router.include_router(auth_router)
+api_router.include_router(admin_router)
 
 
 @api_router.get("/")
