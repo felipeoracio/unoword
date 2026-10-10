@@ -1,0 +1,25 @@
+{
+  "summary": "Backend-only verification of UnoWord (1) persistent-auth cookies and refresh flow, and (2) Website Links private-document feature. Added /app/backend/tests/test_links_and_auth.py (16 tests) run against the public preview URL https://uno-word-build.preview.emergentagent.com — ALL PASS. Covered: login sets both uno_session (path=/) and uno_refresh (path=/api/auth) httpOnly+Secure cookies; POST /auth/refresh with ONLY the refresh cookie returns 200 authenticated:true and a fresh uno_session (transparent access-token refresh); POST /auth/refresh with no cookie returns 401; GET /auth/me returns plan='pro', ai_access=true for seeded User A; POST /auth/logout returns 204 and emits Set-Cookie clearing both cookies. Links SSRF: all 7 payloads (localhost, 127.0.0.1, 169.254.169.254 metadata, 192.168.0.1, 10.0.0.5, file://, ftp://) rejected with 400 before any fetch. Links auth: GET/POST /api/links → 401 without bearer. Links CRUD: POST https://example.com/ returns 201 with source_kind='link', enabled=true, processing_status in {ready,failed}; appears in /links; absent from /documents; PATCH enabled=false+category persists; POST /links/{id}/refresh keeps the same id (no duplicate) and the disabled flag persists after refresh. Dedupe: 2nd POST same URL → 409. Cross-user isolation: User B gets 404 on PATCH/refresh/DELETE of A's link and does not see it in GET /links. Final cleanup pass deletes every leftover link on both accounts — both test inboxes are now clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_links_and_auth.py",
+    "/app/test_reports/pytest/test_links_and_auth.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/auth.py refresh_session: inner `from fastapi import HTTPException` shadows the top-level import that is already available — unnecessary, remove the local import.",
+    "routers/links.py _reprocess returns None in the SupabaseAPIError branch after raise_http (raise_http does raise, so dead-code path is fine, but mypy/typing would complain). Minor.",
+    "routers/auth.py logout: response.delete_cookie uses samesite='none', secure=True — good for cross-site extension usage. Consider also deleting with path='/' AND path='/api/auth' explicitly to ensure both are cleared across all browsers; current path pair is correct but worth a comment.",
+    "SSRF guard in lib/link_ingest.validate_url correctly rejects non-http(s) schemes before DNS; _check_host_not_internal distinguishes 'blocked' (private/metadata/loopback/link-local/reserved) from 'unreachable' (DNS failure) and only hard-fails on 'blocked'. Good defense in depth.",
+    "Links dedupe uses user_id+source_kind=link+source_url=normalized; this correctly scopes dedupe per-user (User B can still save the same URL). Verified."
+  ],
+  "updated_files": ["/app/backend/tests/test_links_and_auth.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "not tested (backend-only run requested)"},
+  "test_credentials": "User A unoword.e2e.a@example.com / UnoWord-E2E-A!2026 (Pro). User B unoword.e2e.b@example.com / UnoWord-E2E-B!2026 (Pro). Both verified ai_access=true, plan=pro via /api/auth/me.",
+  "seed_data_creation": "None persisted. Links created during tests (https://example.com/, https://example.org/) were deleted in test teardown AND a final catch-all test_zz_cleanup_any_leftover_links sweeps both accounts clean.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Public preview URL honors Secure+SameSite=None cookies, so cookie-based auth tests must run there (not http://localhost which drops Secure cookies). Existing /app/backend/tests/test_links.py uses localhost+bearer and still works but doesn't exercise the refresh-cookie-only path. The new test_links_and_auth.py supersedes it for end-to-end verification. OpenAI embeddings succeed on example.com/example.org — processing_status came back 'ready', not 'failed'.",
+  "rca of the issue": "N/A — no defects found. Persistent-auth refresh flow and Website Links feature are both working as specified."
+}
