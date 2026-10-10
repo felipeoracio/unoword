@@ -1,0 +1,28 @@
+{
+  "summary": "Verified admin-only OpenAI API Configuration end-to-end (backend + UI). Backend pytest /app/backend/tests/test_openai_settings.py (3 tests) all PASS: 401 for unauthenticated GET/POST/DELETE, save→test→remove flow never leaks plaintext, non-'sk-' save returns 400. Frontend Playwright on https://uno-word-build.preview.emergentagent.com: admin login works, Settings tab renders the OpenAI panel with all required data-testids (openai-form, openai-status, openai-status-label, openai-key-input, openai-key-toggle, openai-save, openai-test, openai-remove, openai-msg, openai-err). Masking: input type=password by default, toggles to text and back. Validation: 'not-a-real-key-123456' → 400 and user-visible err 'That does not look like an OpenAI API key (expected to start with sk-).'. Save with dummy 'sk-proj-UNOWORD-UI-TEST-0...' → success msg 'API key saved.', status label 'Saved — not tested yet' (amber), source 'server-stored key ····0000'. Full key NOT present in DOM, in localStorage, or in any /api/admin/openai-* response payload. Status label never read 'Connected' from just saving. Test Connection on the dummy key → status 'Connection failed', openai-err 'The API key was rejected by OpenAI.' (friendly, no stack trace, no key). Remove with confirm() → DELETE 200; GET /api/admin/openai-settings now returns source='environment', key_hint=null, key_set_at=null — cleanup CONFIRMED (dummy key is gone, live app falls back to env OPENAI_API_KEY). Response shape returned only {configured, source, key_hint, key_set_at, last_test_at, last_test_ok, chat_model, embed_model} — no raw key field. Login-page admin-lang-toggle switches EN→ES correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_openai_settings.py",
+    "/app/test_reports/pytest/test_openai_settings.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "openai_config._fernet() falls back to a hardcoded 'uno-word-settings-dev' material if neither SETTINGS_ENC_KEY nor ADMIN_JWT_SECRET nor SUPABASE_SERVICE_ROLE_KEY is set. In production you should assert one of those is present and fail fast rather than silently using a known constant to derive the Fernet key.",
+    "After Remove, when env OPENAI_API_KEY is set, status.configured=true and the UI shows 'Saved — not tested yet · environment key'. That is technically correct but the label 'Saved' can read as if an admin-saved key still exists — consider a distinct label like 'Using environment key' for source=environment. Not a defect.",
+    "OpenAIPanel caches testState in React state; after Remove it resets to 'idle' so a stale last_test_ok from env source (none in this run) could flip the label to 'Connected'. Current flow is correct because remove_openai_key() also clears last_test_* in DB.",
+    "Backend /openai-test returns HTTP 200 even on auth failure (ok=false). This is intentional (semantic result in body) and is handled correctly by the UI."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (3/3 openai + prior 11/11 admin)", "frontend": "100% (all 10 checklist items verified)"},
+  "test_credentials": "Admin: felipe.oracio.gonzalez@gmail.com (from /app/memory/test_credentials.md). Dummy key used during UI test: sk-proj-UNOWORD-UI-TEST-000000000000000000. CLEANUP CONFIRMED — dummy key was removed; final GET /api/admin/openai-settings shows source='environment'.",
+  "seed_data_creation": "None.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "OpenAI admin panel is fully covered. Live env has OPENAI_API_KEY set but it is INVALID (rejected by OpenAI) — a 'Connection failed / The API key was rejected by OpenAI.' result on Test Connection is EXPECTED, not a defect. Always run cleanup (DELETE /api/admin/openai-key) if you save a dummy key.",
+  "rca of the issue": "N/A — no defects found."
+}

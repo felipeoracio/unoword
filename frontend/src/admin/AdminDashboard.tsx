@@ -447,6 +447,7 @@ function OpenAIPanel({ t }: { t: T }) {
     testState === "testing" ? t("status.testingConn")
     : connected ? t("status.connected")
     : testState === "fail" ? t("status.failed")
+    : status?.source === "environment" ? t("openai.statusEnv")
     : configured ? t("openai.statusSaved")
     : t("status.notConfigured");
   const dotColor =

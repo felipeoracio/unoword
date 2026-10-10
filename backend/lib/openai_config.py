@@ -57,8 +57,11 @@ def _fernet() -> Fernet:
         material = (
             os.environ.get("ADMIN_JWT_SECRET")
             or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-            or "uno-word-settings-dev"
         )
+        if not material:
+            raise RuntimeError(
+                "Cannot encrypt stored settings: set SETTINGS_ENC_KEY (or ADMIN_JWT_SECRET)."
+            )
     derived = base64.urlsafe_b64encode(hashlib.sha256(material.encode()).digest())
     return Fernet(derived)
 

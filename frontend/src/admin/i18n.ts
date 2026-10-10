@@ -86,6 +86,7 @@ const DICT: Record<string, { en: string; es: string }> = {
   "openai.saved": { en: "API key saved.", es: "Clave guardada." },
   "openai.removed": { en: "API key removed.", es: "Clave eliminada." },
   "openai.statusSaved": { en: "Saved — not tested yet", es: "Guardada — sin probar" },
+  "openai.statusEnv": { en: "Using environment key", es: "Usando clave del entorno" },
   "openai.lastTest": { en: "Last successful test", es: "Última prueba correcta" },
   "openai.source.database": { en: "server-stored key", es: "clave en servidor" },
   "openai.source.environment": { en: "environment key", es: "clave de entorno" },
