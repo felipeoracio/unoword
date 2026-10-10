@@ -26,6 +26,7 @@ from lib.admin_auth import (
     set_admin_cookie,
     verify_password,
 )
+from lib import openai_config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -161,6 +162,46 @@ async def admin_change_password(payload: AdminPasswordChange, request: Request,
     set_admin_cookie(response, create_token(str(row[0]), email))
     _audit("password_change", email=email, ip=_client_ip(request))
     return {"ok": True}
+
+
+class OpenAIKeyIn(BaseModel):
+    api_key: str = Field(min_length=10, max_length=300)
+
+
+@router.get("/openai-settings")
+async def openai_settings(admin=Depends(require_admin)):
+    return openai_config.get_status()
+
+
+@router.post("/openai-key")
+async def save_openai_key(payload: OpenAIKeyIn, request: Request, admin=Depends(require_admin)):
+    key = payload.api_key.strip()
+    if not key.startswith("sk-"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="That does not look like an OpenAI API key (expected to start with 'sk-').",
+        )
+    openai_config.set_openai_key(key)
+    _audit("openai_key_saved", email=admin.get("email"), ip=_client_ip(request))
+    return openai_config.get_status()
+
+
+@router.post("/openai-test")
+async def test_openai_key(request: Request, admin=Depends(require_admin)):
+    ok, label, message = await openai_config.test_connection()
+    tested_at = openai_config.record_test(ok) if label != "not_configured" else None
+    _audit(
+        "openai_key_tested", email=admin.get("email"), ip=_client_ip(request),
+        detail=f"ok={ok} status={label}",
+    )
+    return {"ok": ok, "status": label, "message": message, "tested_at": tested_at}
+
+
+@router.delete("/openai-key")
+async def delete_openai_key(request: Request, admin=Depends(require_admin)):
+    openai_config.remove_openai_key()
+    _audit("openai_key_removed", email=admin.get("email"), ip=_client_ip(request))
+    return openai_config.get_status()
 
 
 # --------------------------------------------------------------------------- data
@@ -347,14 +388,21 @@ async def system_health(admin=Depends(require_admin)):
             db_ok = cur.fetchone()[0] == 1
     except Exception:
         db_ok = False
+    ai_status = openai_config.get_status()
     return {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": {
             "database": {"status": "ok" if db_ok else "down", "available": True},
             "auth": {"status": "ok" if os.environ.get("SUPABASE_JWT_SECRET") else "unknown",
                      "available": bool(os.environ.get("SUPABASE_URL"))},
-            "ai_provider": {"status": "configured" if os.environ.get("OPENAI_API_KEY") else "missing",
-                            "available": True, "model": os.environ.get("OPENAI_CHAT_MODEL", "gpt-5.4-mini")},
+            "ai_provider": {
+                "status": "connected" if ai_status["last_test_ok"]
+                          else ("configured" if ai_status["configured"] else "missing"),
+                "available": True,
+                "model": ai_status["chat_model"],
+                "source": ai_status["source"],
+                "last_test_at": ai_status["last_test_at"],
+            },
             "payment_webhooks": {"status": "unavailable", "available": False},
             "feedback_delivery": {"status": "unavailable", "available": False},
         },

@@ -29,6 +29,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const adminGet = <T>(path: string) => req<T>("GET", path);
 export const adminPost = <T>(path: string, body?: unknown) => req<T>("POST", path, body ?? null);
+export const adminDelete = <T>(path: string) => req<T>("DELETE", path);
 
 export function errorText(e: unknown): string {
   if (e instanceof AdminError) {

@@ -66,6 +66,33 @@ const DICT: Record<string, { en: string; es: string }> = {
   "settings.action": { en: "Action", es: "Acción" },
   "settings.admin": { en: "Admin", es: "Admin" },
   "settings.when": { en: "When", es: "Cuándo" },
+  "openai.title": { en: "OpenAI API Configuration", es: "Configuración de API de OpenAI" },
+  "openai.desc": {
+    en: "Set the project-wide OpenAI key used by AI suggestions and embeddings. Stored encrypted on the server and never shown again.",
+    es: "Configura la clave de OpenAI del proyecto que usan las sugerencias de IA y los embeddings. Se guarda cifrada en el servidor y no se vuelve a mostrar.",
+  },
+  "openai.placeholder": { en: "sk-...", es: "sk-..." },
+  "openai.show": { en: "Show", es: "Mostrar" },
+  "openai.hide": { en: "Hide", es: "Ocultar" },
+  "openai.save": { en: "Save API Key", es: "Guardar clave" },
+  "openai.saving": { en: "Saving…", es: "Guardando…" },
+  "openai.test": { en: "Test Connection", es: "Probar conexión" },
+  "openai.testing": { en: "Testing…", es: "Probando…" },
+  "openai.remove": { en: "Remove key", es: "Eliminar clave" },
+  "openai.removeConfirm": {
+    en: "Remove the saved OpenAI key? AI features will fall back to the environment key or basic prompts.",
+    es: "¿Eliminar la clave de OpenAI guardada? Las funciones de IA usarán la clave del entorno o los prompts básicos.",
+  },
+  "openai.saved": { en: "API key saved.", es: "Clave guardada." },
+  "openai.removed": { en: "API key removed.", es: "Clave eliminada." },
+  "openai.statusSaved": { en: "Saved — not tested yet", es: "Guardada — sin probar" },
+  "openai.lastTest": { en: "Last successful test", es: "Última prueba correcta" },
+  "openai.source.database": { en: "server-stored key", es: "clave en servidor" },
+  "openai.source.environment": { en: "environment key", es: "clave de entorno" },
+  "status.notConfigured": { en: "Not configured", es: "Sin configurar" },
+  "status.testingConn": { en: "Testing connection", es: "Probando conexión" },
+  "status.connected": { en: "Connected", es: "Conectado" },
+  "status.failed": { en: "Connection failed", es: "Conexión fallida" },
 };
 
 export function makeT(lang: Lang) {

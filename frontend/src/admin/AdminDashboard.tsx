@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users as UsersIcon, CreditCard, PenLine, MessageSquare,
-  Activity, Settings as SettingsIcon, LogOut, ShieldCheck, Menu,
+  Activity, Settings as SettingsIcon, LogOut, ShieldCheck, Menu, Loader2,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
   Tooltip, ResponsiveContainer,
 } from "recharts";
-import { adminGet, adminPost, errorText } from "@/lib/adminApi";
+import { adminGet, adminPost, adminDelete, errorText } from "@/lib/adminApi";
 import { makeT, type Lang } from "./i18n";
 
 type Tab = "overview" | "users" | "subscriptions" | "writing" | "feedback" | "health" | "settings";
@@ -384,6 +384,140 @@ function Health({ t }: { t: T }) {
 }
 
 interface Audit { admin_email: string | null; action: string; record_id: string | null; created_at: string | null; }
+type OpenAIStatus = {
+  configured: boolean;
+  source: string | null;
+  key_hint: string | null;
+  key_set_at: string | null;
+  last_test_at: string | null;
+  last_test_ok: boolean | null;
+  chat_model: string;
+  embed_model: string;
+};
+
+function OpenAIPanel({ t }: { t: T }) {
+  const [status, setStatus] = useState<OpenAIStatus | null>(null);
+  const [keyInput, setKeyInput] = useState("");
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState<null | "save" | "test" | "remove">(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+
+  async function load() {
+    try { setStatus(await adminGet<OpenAIStatus>("/openai-settings")); } catch { /* ignore */ }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy("save"); setMsg(null); setErr(null);
+    try {
+      const s = await adminPost<OpenAIStatus>("/openai-key", { api_key: keyInput.trim() });
+      setStatus(s); setKeyInput(""); setShow(false); setTestState("idle");
+      setMsg(t("openai.saved"));
+    } catch (ex) { setErr(errorText(ex)); } finally { setBusy(null); }
+  }
+
+  async function test() {
+    if (busy) return;
+    setBusy("test"); setMsg(null); setErr(null); setTestState("testing");
+    try {
+      const r = await adminPost<{ ok: boolean; message: string }>("/openai-test");
+      setTestState(r.ok ? "ok" : "fail");
+      if (r.ok) setMsg(t("status.connected")); else setErr(r.message);
+      await load();
+    } catch (ex) { setTestState("fail"); setErr(errorText(ex)); } finally { setBusy(null); }
+  }
+
+  async function remove() {
+    if (busy) return;
+    if (!window.confirm(t("openai.removeConfirm"))) return;
+    setBusy("remove"); setMsg(null); setErr(null);
+    try {
+      const s = await adminDelete<OpenAIStatus>("/openai-key");
+      setStatus(s); setTestState("idle"); setMsg(t("openai.removed"));
+    } catch (ex) { setErr(errorText(ex)); } finally { setBusy(null); }
+  }
+
+  const configured = !!status?.configured;
+  const connected = testState === "ok" || (testState === "idle" && status?.last_test_ok === true);
+  const statusLabel =
+    testState === "testing" ? t("status.testingConn")
+    : connected ? t("status.connected")
+    : testState === "fail" ? t("status.failed")
+    : configured ? t("openai.statusSaved")
+    : t("status.notConfigured");
+  const dotColor =
+    connected ? "bg-emerald-400"
+    : testState === "fail" ? "bg-rose-400"
+    : testState === "testing" ? "bg-amber-400"
+    : configured ? "bg-amber-400"
+    : "bg-slate-500";
+
+  return (
+    <Panel title={t("openai.title")}>
+      <p className="text-sm text-slate-400" data-testid="openai-desc">{t("openai.desc")}</p>
+      <div className="mt-3 flex items-center gap-2 text-sm" data-testid="openai-status">
+        <span className={`inline-block w-2.5 h-2.5 rounded-full ${dotColor}`} />
+        <span className="text-slate-200" data-testid="openai-status-label">{statusLabel}</span>
+        {configured && status?.source && (
+          <span className="text-xs text-slate-500">
+            · {t(`openai.source.${status.source}`)}{status.key_hint ? ` ····${status.key_hint}` : ""}
+          </span>
+        )}
+      </div>
+      {status?.last_test_at && (
+        <div className="text-xs text-slate-500 mt-1" data-testid="openai-last-test">
+          {t("openai.lastTest")}: {new Date(status.last_test_at).toLocaleString()}
+        </div>
+      )}
+      <form onSubmit={save} className="mt-4 space-y-3" data-testid="openai-form">
+        <div className="relative">
+          <input
+            data-testid="openai-key-input" type={show ? "text" : "password"} value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)} placeholder={t("openai.placeholder")} autoComplete="off"
+            className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 pr-16 text-sm outline-none focus:border-indigo-500"
+          />
+          <button
+            type="button" data-testid="openai-key-toggle" onClick={() => setShow(!show)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-200"
+          >
+            {show ? t("openai.hide") : t("openai.show")}
+          </button>
+        </div>
+        {msg && <p className="text-sm text-emerald-400" data-testid="openai-msg">{msg}</p>}
+        {err && <p className="text-sm text-rose-400" data-testid="openai-err">{err}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit" data-testid="openai-save" disabled={busy !== null || keyInput.trim().length < 10}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+          >
+            {busy === "save" && <Loader2 size={15} className="animate-spin" />}
+            {busy === "save" ? t("openai.saving") : t("openai.save")}
+          </button>
+          <button
+            type="button" data-testid="openai-test" onClick={test} disabled={busy !== null || !configured}
+            className="rounded-lg border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+          >
+            {busy === "test" && <Loader2 size={15} className="animate-spin" />}
+            {busy === "test" ? t("openai.testing") : t("openai.test")}
+          </button>
+          {configured && (
+            <button
+              type="button" data-testid="openai-remove" onClick={remove} disabled={busy !== null}
+              className="rounded-lg border border-rose-800 text-rose-300 hover:bg-rose-950 disabled:opacity-50 px-3 py-2 text-sm font-medium transition-colors"
+            >
+              {t("openai.remove")}
+            </button>
+          )}
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
 function SettingsTab({ t, email }: { t: T; email: string }) {
   const [cur, setCur] = useState("");
   const [nw, setNw] = useState("");
@@ -400,6 +534,7 @@ function SettingsTab({ t, email }: { t: T; email: string }) {
   }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="lg:col-span-2"><OpenAIPanel t={t} /></div>
       <Panel title={t("settings.account")}>
         <div className="text-sm text-slate-300">{email}</div>
         <form onSubmit={changePw} className="mt-4 space-y-3" data-testid="change-pw-form">

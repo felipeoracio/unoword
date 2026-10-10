@@ -41,3 +41,20 @@ Reuses existing server env: `SUPABASE_DB_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE
 ## Unavailable metrics (clearly labeled, not faked)
 - Revenue / billing renewal data: no payment provider is connected.
 - Feedback `app_version` / `browser` / `delivery_status`: not collected by the current feedback model.
+
+## OpenAI API Configuration (Admin → Settings)
+
+Admins set the project-wide OpenAI key in the dashboard under **Admin Settings → OpenAI API Configuration**:
+- **Save API Key** — stored AES-encrypted (Fernet) in `public.app_settings` (server-only table, RLS on, no policies). The raw key is never returned to the client; only a last-4 hint + status are exposed.
+- **Test Connection** — makes a real minimal OpenAI request (a 1-token embedding) and reports Connected / invalid key / quota / network, recording the last successful-test time.
+- **Remove key** (with confirm) — deletes the stored key; AI falls back to the `OPENAI_API_KEY` environment value, or to basic prompts if none.
+
+### How AI features consume it
+`lib/openai_config.resolve_openai_key()` is the single source of truth: it returns the DB-stored key (preferred) or `OPENAI_API_KEY` (fallback). Both `lib/ai_provider.get_suggestion_provider()` (personalized suggestions) and `lib/embeddings.get_embeddings_service()` (RAG embeddings) resolve through it and rebuild automatically when the key changes — no redeploy needed.
+
+### Environment variables
+- `SETTINGS_ENC_KEY` *(optional)* — a Fernet key used to encrypt stored settings. If unset, a key is derived from `ADMIN_JWT_SECRET`. Set a dedicated value in production and keep it stable (rotating it makes a previously-stored OpenAI key undecryptable, after which the app falls back to `OPENAI_API_KEY`).
+- `OPENAI_API_KEY` *(fallback)*, `OPENAI_CHAT_MODEL`, `OPENAI_EMBED_MODEL` — unchanged.
+
+### Migration
+`supabase/migrations/20260930140000_app_settings.sql` creates `public.app_settings`.

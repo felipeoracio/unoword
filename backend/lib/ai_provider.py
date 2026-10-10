@@ -128,23 +128,38 @@ class OpenAISuggestionProvider:
 
 
 _provider: SuggestionProvider | None = None
+_provider_key: str | None = None
+_provider_model: str | None = None
 
 
 def get_suggestion_provider() -> SuggestionProvider:
-    global _provider
-    if _provider is not None:
-        return _provider
-    provider = os.environ.get("AI_PROVIDER", "mock").lower()
-    model = os.environ.get("OPENAI_CHAT_MODEL") or os.environ.get("AI_MODEL", "gpt-5.4-mini")
-    if provider == "openai":
-        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-        if not api_key:
-            logger.warning("openai_provider_missing_key falling_back_to_mock")
+    """Resolve the active provider from the centralized OpenAI config.
+
+    The key resolves from the admin-configured (DB) value, falling back to the
+    environment. When the resolved key or model changes (e.g. an admin saves a
+    new key), the provider is rebuilt so subsequent requests use it without a
+    redeploy. With no key available we fall back to the mock/basic provider.
+    """
+    global _provider, _provider_key, _provider_model
+    from lib import openai_config
+
+    model = openai_config.get_chat_model()
+    api_key, _source = openai_config.resolve_openai_key()
+    forced_mock = os.environ.get("AI_PROVIDER", "").lower() == "mock"
+
+    if forced_mock or not api_key:
+        if not isinstance(_provider, MockSuggestionProvider) or _provider_model != model:
+            if not forced_mock:
+                logger.warning("openai_provider_missing_key falling_back_to_mock")
             _provider = MockSuggestionProvider(model)
-        else:
-            _provider = OpenAISuggestionProvider(model=model, api_key=api_key)
-    elif provider == "mock":
-        _provider = MockSuggestionProvider(model)
-    else:
-        raise RuntimeError(f"Unsupported AI_PROVIDER: {provider}")
+            _provider_key, _provider_model = None, model
+        return _provider
+
+    if (
+        not isinstance(_provider, OpenAISuggestionProvider)
+        or _provider_key != api_key
+        or _provider_model != model
+    ):
+        _provider = OpenAISuggestionProvider(model=model, api_key=api_key)
+        _provider_key, _provider_model = api_key, model
     return _provider

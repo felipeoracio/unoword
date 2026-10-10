@@ -109,14 +109,28 @@ class EmbeddingsService:
 
 
 _service: EmbeddingsService | None = None
+_service_key: str | None = None
+_service_model: str | None = None
 
 
 def get_embeddings_service() -> EmbeddingsService:
-    global _service
-    if _service is None:
+    """Resolve the embeddings service from the centralized OpenAI config.
+
+    Rebuilt when the resolved key or model changes so a newly-saved admin key is
+    used for subsequent embedding calls without a redeploy. With no key the
+    service is disabled (``embed`` returns None) and retrieval still works over
+    any pre-existing vectors.
+    """
+    global _service, _service_key, _service_model
+    from lib import openai_config
+
+    api_key, _source = openai_config.resolve_openai_key()
+    model = openai_config.get_embed_model()
+    if _service is None or _service_key != api_key or _service_model != model:
         _service = EmbeddingsService(
-            api_key=os.environ.get("OPENAI_API_KEY") or None,
-            model=os.environ.get("OPENAI_EMBED_MODEL", DEFAULT_EMBED_MODEL),
+            api_key=api_key or None,
+            model=model,
             cache_size=int(os.environ.get("AI_EMBED_CACHE_SIZE", "512")),
         )
+        _service_key, _service_model = api_key, model
     return _service
