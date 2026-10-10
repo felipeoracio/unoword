@@ -46,6 +46,13 @@ async def aclient():
 
 # --- app-specific fixtures below this line ---
 
+# Load backend/.env so tests use the same configuration as the running server
+# (e.g. the rotated ADMIN_INITIAL_PASSWORD) instead of any hard-coded default.
+from dotenv import load_dotenv as _load_dotenv
+
+_load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+
 USER_A_EMAIL = "unoword.e2e.a@example.com"
 USER_A_PASSWORD = "UnoWord-E2E-A!2026"
 USER_B_EMAIL = "unoword.e2e.b@example.com"
