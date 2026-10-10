@@ -35,7 +35,7 @@ async def _owned_documents(user: AuthenticatedUser, extra: dict[str, str] | None
 
 @router.get("", response_model=list[AIDocument])
 async def list_documents(user: AuthenticatedUser = Depends(require_ai_user)) -> list[AIDocument]:
-    rows = await _owned_documents(user, {"order": "updated_at.desc", "limit": "200"})
+    rows = await _owned_documents(user, {"source_kind": "eq.file", "order": "updated_at.desc", "limit": "200"})
     return [AIDocument(**row) for row in rows]
 
 

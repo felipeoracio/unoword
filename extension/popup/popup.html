@@ -571,6 +571,7 @@
           </div>
           <div class="wc__setting-editor wc__documents-manager" id="ai-documents-editor" data-testid="ai-documents-editor" hidden>
             <p class="wc__helper" data-i18n="documents.helper" data-testid="documents-helper">Upload TXT, Markdown, PDF, or DOCX files. UnoWord extracts text privately; scanned PDFs are not supported yet.</p>
+            <p class="wc__setting-label" data-i18n="documents.uploadedTitle" data-testid="documents-uploaded-label">Uploaded documents</p>
             <input type="file" id="document-file" data-testid="document-file" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
             <label class="wc__field" for="document-title" data-testid="document-title-field">
               <span data-i18n="documents.documentTitle" data-testid="document-title-label">Document title</span>
@@ -595,6 +596,32 @@
             <p class="wc__memory-manager-note" id="document-upload-status" data-testid="document-upload-status" hidden></p>
             <div class="wc__document-list" id="document-list" data-testid="document-list"></div>
             <p class="wc__memory-manager-note" id="document-empty" data-testid="document-empty" data-i18n="documents.empty">No private documents uploaded yet.</p>
+            <hr style="border:none;border-top:1px solid rgba(128,128,128,.2);margin:16px 0;" />
+            <p class="wc__setting-label" data-i18n="links.title" data-testid="links-label">Website links</p>
+            <p class="wc__helper" data-i18n="links.helper" data-testid="links-helper">Save articles, blog posts, or online documents. UnoWord privately reads the page text to understand your writing. It never signs in or bypasses paywalls.</p>
+            <label class="wc__field" for="link-url" data-testid="link-url-field">
+              <span data-i18n="links.url" data-testid="link-url-label">Website URL</span>
+              <input id="link-url" type="url" maxlength="2000" data-testid="link-url" data-i18n-placeholder="links.urlPlaceholder" />
+            </label>
+            <label class="wc__field" for="link-title" data-testid="link-title-field">
+              <span data-i18n="links.linkTitle" data-testid="link-title-label">Title (optional)</span>
+              <input id="link-title" maxlength="300" data-testid="link-title" data-i18n-placeholder="links.titlePlaceholder" />
+            </label>
+            <label class="wc__field" for="link-category" data-testid="link-category-field">
+              <span data-i18n="links.category" data-testid="link-category-label">Category</span>
+              <select id="link-category" data-testid="link-category">
+                <option value="personal_story" data-i18n="links.cat.personal_story">Personal story</option>
+                <option value="writing_sample" data-i18n="links.cat.writing_sample">Writing sample</option>
+                <option value="interests" data-i18n="links.cat.interests">Interests</option>
+                <option value="research" data-i18n="links.cat.research">Research</option>
+                <option value="other" data-i18n="links.cat.other" selected>Other</option>
+              </select>
+            </label>
+            <button class="wc__btn wc__btn--primary wc__btn--sm" id="link-add" data-testid="link-add" data-i18n="links.add">Add link</button>
+            <p class="wc__error" id="link-error" data-testid="link-error" hidden></p>
+            <p class="wc__memory-manager-note" id="link-status" data-testid="link-status" hidden></p>
+            <div class="wc__document-list" id="link-list" data-testid="link-list"></div>
+            <p class="wc__memory-manager-note" id="link-empty" data-testid="link-empty" data-i18n="links.empty">No website links saved yet.</p>
           </div>
           <p class="wc__footnote" data-i18n="aiSettings.syncNote" data-testid="ai-settings-sync-note">After your first confirmation, future profile edits sync automatically. Writing sessions are never uploaded automatically.</p>
         </div>

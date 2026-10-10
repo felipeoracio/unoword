@@ -11,7 +11,18 @@
     }
   }
 
-  async function request(path, options = {}) {
+  async function tryRefresh() {
+    try {
+      const r = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      return r.ok;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  const NO_REFRESH = new Set(['/auth/refresh', '/auth/login', '/auth/signup', '/auth/logout']);
+
+  async function request(path, options = {}, _retried = false) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), options.timeout || 8000);
     try {
@@ -22,6 +33,13 @@
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
         signal: controller.signal,
       });
+      // A 401 usually means the short-lived access token expired. Transparently
+      // refresh once using the persistent refresh cookie, then retry the call,
+      // so the user stays signed in across popup reopenings and Chrome restarts.
+      if (response.status === 401 && !_retried && !NO_REFRESH.has(path)) {
+        clearTimeout(timeout);
+        if (await tryRefresh()) return request(path, options, true);
+      }
       const body = response.status === 204 ? null : await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, body);
       return body;
@@ -62,6 +80,7 @@
     get: (path) => request(path),
     post: (path, body) => request(path, { method: 'POST', body }),
     put: (path, body) => request(path, { method: 'PUT', body }),
+    patch: (path, body) => request(path, { method: 'PATCH', body }),
     delete: (path) => request(path, { method: 'DELETE' }),
     upload,
   };

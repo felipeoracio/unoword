@@ -209,6 +209,14 @@ const els = {
   documentUploadStatus:$('document-upload-status'),
   documentList:$('document-list'),
   documentEmpty:$('document-empty'),
+  linkUrl:$('link-url'),
+  linkTitle:$('link-title'),
+  linkCategory:$('link-category'),
+  linkAdd:$('link-add'),
+  linkError:$('link-error'),
+  linkStatus:$('link-status'),
+  linkList:$('link-list'),
+  linkEmpty:$('link-empty'),
   settingsPrivacy:$('settings-privacy'),
 };
 
@@ -1111,7 +1119,7 @@ async function openSettings() {
   if (response.ok) account = response.account;
   renderOfflineBadge();
   await refreshMemoryQueueStatus();
-  if (account.authenticated && account.aiAccess) { await loadDocuments(); await loadUsage(); }
+  if (account.authenticated && account.aiAccess) { await loadDocuments(); await loadUsage(); await loadLinks(); }
   renderSettings();
 }
 
@@ -1167,6 +1175,7 @@ function renderSettings() {
       : t('memory.settings.encrypted', { n: memoryQueue.total });
     els.aiDocumentsMeta.textContent = t('documents.summary', { n: documents.length });
     renderDocuments();
+    renderLinks();
     renderUsage();
   }
   els.settingsPrivacy.textContent = signedIn
@@ -1273,7 +1282,7 @@ function renderDocuments() {
 
 function toggleDocumentsManager() {
   els.aiDocumentsEditor.hidden = !els.aiDocumentsEditor.hidden;
-  if (!els.aiDocumentsEditor.hidden) renderDocuments();
+  if (!els.aiDocumentsEditor.hidden) { renderDocuments(); renderLinks(); }
 }
 
 function onDocumentFileSelected() {
@@ -1349,6 +1358,180 @@ async function deleteDocument(documentId) {
     closeDialogs();
     els.documentError.hidden = false;
     els.documentError.textContent = documentErrorMessage(error);
+  } finally {
+    els.confirmOk.disabled = false;
+  }
+}
+
+let links = [];
+async function loadLinks() {
+  try {
+    links = await window.WCApi.get('/links');
+    els.linkError.hidden = true;
+  } catch (_error) {
+    links = [];
+  }
+}
+
+function renderLinks() {
+  if (!els.linkList) return;
+  els.linkList.innerHTML = '';
+  els.linkEmpty.hidden = links.length > 0;
+  links.forEach((link) => {
+    const item = window.document.createElement('article');
+    item.className = 'wc__document-item';
+    item.setAttribute('data-testid', `link-item-${link.id}`);
+    const main = window.document.createElement('div');
+    main.className = 'wc__document-main';
+    const title = window.document.createElement('p');
+    title.className = 'wc__document-title';
+    title.textContent = link.document_title || link.source_url;
+    title.setAttribute('data-testid', `link-title-${link.id}`);
+    const meta = window.document.createElement('p');
+    meta.className = 'wc__document-meta';
+    const statusLabel = t(`documents.status.${link.processing_status}`);
+    const catLabel = link.category ? t(`links.cat.${link.category}`) : '';
+    const enabledLabel = link.enabled ? '' : ` · ${t('links.disabled')}`;
+    meta.textContent = `${statusLabel} · ${t('documents.words', { n: fmtNumber(link.word_count) })}${catLabel ? ' · ' + catLabel : ''}${enabledLabel}`;
+    meta.setAttribute('data-testid', `link-meta-${link.id}`);
+    main.appendChild(title);
+    main.appendChild(meta);
+    if (link.processing_error) {
+      const err = window.document.createElement('p');
+      err.className = 'wc__error';
+      err.textContent = link.processing_error;
+      err.setAttribute('data-testid', `link-processing-error-${link.id}`);
+      main.appendChild(err);
+    }
+    const actions = window.document.createElement('div');
+    actions.className = 'wc__document-actions';
+    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+
+    const open = window.document.createElement('a');
+    open.className = 'wc__link-btn';
+    open.textContent = t('links.open');
+    open.href = link.source_url; open.target = '_blank'; open.rel = 'noopener noreferrer';
+    open.setAttribute('data-testid', `link-open-${link.id}`);
+    actions.appendChild(open);
+
+    const toggle = window.document.createElement('button');
+    toggle.className = 'wc__link-btn'; toggle.type = 'button';
+    toggle.textContent = link.enabled ? t('links.disable') : t('links.enable');
+    toggle.setAttribute('data-testid', `link-toggle-${link.id}`);
+    toggle.addEventListener('click', () => updateLink(link.id, { enabled: !link.enabled }));
+    actions.appendChild(toggle);
+
+    const edit = window.document.createElement('button');
+    edit.className = 'wc__link-btn'; edit.type = 'button';
+    edit.textContent = t('links.edit');
+    edit.setAttribute('data-testid', `link-edit-${link.id}`);
+    edit.addEventListener('click', () => editLink(link));
+    actions.appendChild(edit);
+
+    const refresh = window.document.createElement('button');
+    refresh.className = 'wc__link-btn'; refresh.type = 'button';
+    refresh.textContent = t('links.refresh');
+    refresh.setAttribute('data-testid', `link-refresh-${link.id}`);
+    refresh.addEventListener('click', () => refreshLink(link.id));
+    actions.appendChild(refresh);
+
+    const remove = window.document.createElement('button');
+    remove.className = 'wc__link-btn wc__link-btn--danger'; remove.type = 'button';
+    remove.textContent = t('documents.delete');
+    remove.setAttribute('data-testid', `link-delete-${link.id}`);
+    remove.addEventListener('click', () => confirmDeleteLink(link));
+    actions.appendChild(remove);
+
+    item.appendChild(main);
+    item.appendChild(actions);
+    els.linkList.appendChild(item);
+  });
+}
+
+async function addLink() {
+  const url = els.linkUrl.value.trim();
+  if (!url) {
+    els.linkError.hidden = false;
+    els.linkError.textContent = t('links.error.required');
+    return;
+  }
+  els.linkAdd.disabled = true;
+  els.linkError.hidden = true;
+  els.linkStatus.hidden = false;
+  els.linkStatus.textContent = t('links.processing');
+  try {
+    const saved = await window.WCApi.post('/links', {
+      url,
+      title: els.linkTitle.value.trim() || undefined,
+      category: els.linkCategory.value,
+    });
+    links = [saved, ...links.filter((l) => l.id !== saved.id)];
+    els.linkUrl.value = '';
+    els.linkTitle.value = '';
+    els.linkCategory.value = 'other';
+    els.linkStatus.textContent = saved.processing_status === 'ready' ? t('links.added') : (saved.processing_error || t('links.failed'));
+    renderLinks();
+  } catch (error) {
+    els.linkStatus.hidden = true;
+    els.linkError.hidden = false;
+    els.linkError.textContent = documentErrorMessage(error);
+  } finally {
+    els.linkAdd.disabled = false;
+  }
+}
+
+async function updateLink(linkId, patch) {
+  try {
+    const res = await window.WCApi.patch(`/links/${linkId}`, patch);
+    links = links.map((l) => (l.id === linkId ? res : l));
+    renderLinks();
+  } catch (error) {
+    els.linkError.hidden = false;
+    els.linkError.textContent = documentErrorMessage(error);
+  }
+}
+
+function editLink(link) {
+  const nextTitle = window.prompt(t('links.editTitlePrompt'), link.document_title || '');
+  if (nextTitle === null) return;
+  updateLink(link.id, { title: nextTitle.trim().slice(0, 300) });
+}
+
+async function refreshLink(linkId) {
+  els.linkStatus.hidden = false;
+  els.linkStatus.textContent = t('links.processing');
+  try {
+    const saved = await window.WCApi.post(`/links/${linkId}/refresh`);
+    links = links.map((l) => (l.id === linkId ? saved : l));
+    els.linkStatus.textContent = saved.processing_status === 'ready' ? t('links.refreshed') : (saved.processing_error || t('links.failed'));
+    renderLinks();
+  } catch (error) {
+    els.linkStatus.hidden = true;
+    els.linkError.hidden = false;
+    els.linkError.textContent = documentErrorMessage(error);
+  }
+}
+
+function confirmDeleteLink(link) {
+  showConfirm(
+    t('links.deleteTitle'),
+    t('links.deleteBody', { title: link.document_title || link.source_url }),
+    t('documents.deleteAction'),
+    () => deleteLink(link.id),
+  );
+}
+
+async function deleteLink(linkId) {
+  els.confirmOk.disabled = true;
+  try {
+    await window.WCApi.delete(`/links/${linkId}`);
+    links = links.filter((l) => l.id !== linkId);
+    closeDialogs();
+    renderLinks();
+  } catch (error) {
+    closeDialogs();
+    els.linkError.hidden = false;
+    els.linkError.textContent = documentErrorMessage(error);
   } finally {
     els.confirmOk.disabled = false;
   }
@@ -1667,6 +1850,7 @@ function wire() {
   els.aiDocumentsManage.addEventListener('click', toggleDocumentsManager);
   els.documentFile.addEventListener('change', onDocumentFileSelected);
   els.documentUpload.addEventListener('click', uploadDocument);
+  els.linkAdd.addEventListener('click', addLink);
   els.promptEditThemes.addEventListener('click', () => { openSettings(); toggleThemesEditor(); });
   els.settingsOpenHistory.addEventListener('click', () => { if (isPro()) openHistory(); else openUpgrade(); });
   els.openFeedback.addEventListener('click', openFeedback);

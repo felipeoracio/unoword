@@ -78,15 +78,42 @@ class AIDocument(AIModel):
     user_id: str
     filename: str
     file_type: str
-    storage_path: str
+    storage_path: str | None = None
     document_title: str
     document_type: DocumentType = "other"
     processing_status: ProcessingStatus = "pending"
     processing_error: str | None = None
     summary: str | None = None
     word_count: int = Field(default=0, ge=0)
+    source_kind: Literal["file", "link"] = "file"
+    source_url: str | None = None
+    canonical_url: str | None = None
+    author: str | None = None
+    published_at: str | None = None
+    description: str | None = None
+    category: str | None = None
+    enabled: bool = True
+    content_hash: str | None = None
+    last_processed_at: datetime | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+LinkCategory = Literal["personal_story", "writing_sample", "interests", "research", "other"]
+
+
+class AILinkCreate(AIModel):
+    url: str = Field(min_length=4, max_length=2000)
+    title: str | None = Field(default=None, max_length=300)
+    description: str | None = Field(default=None, max_length=2000)
+    category: LinkCategory = "other"
+
+
+class AILinkUpdate(AIModel):
+    title: str | None = Field(default=None, max_length=300)
+    description: str | None = Field(default=None, max_length=2000)
+    category: LinkCategory | None = None
+    enabled: bool | None = None
 
 
 class AIDocumentUpload(AIModel):
