@@ -86,15 +86,18 @@ def test_users_endpoint_supports_search_and_filter():
 
 # ---- Secrets not exposed in built frontend bundle ----
 SECRETS_TO_CHECK = [
-    "***ADMIN_PW_REDACTED***",  # ADMIN_INITIAL_PASSWORD
-    # Service role JWT prefix (unique substring from the SRK)
-    "***SRK_FRAGMENT_REDACTED***",
-    # OpenAI key fragment
-    "***OPENAI_API_KEY_REDACTED***",
+    v for v in (
+        os.environ.get("ADMIN_INITIAL_PASSWORD"),
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY"),
+        os.environ.get("OPENAI_API_KEY"),
+    )
+    if v
 ]
 
 
 def test_secrets_not_in_frontend_bundle():
+    if not SECRETS_TO_CHECK:
+        pytest.skip("no runtime secrets configured to scan for")
     dist = pathlib.Path("/app/frontend/dist")
     if not dist.exists():
         pytest.skip("frontend/dist not built")
@@ -108,5 +111,5 @@ def test_secrets_not_in_frontend_bundle():
             continue
         for s in SECRETS_TO_CHECK:
             if s in content:
-                leaks.append((str(p), s[:20]))
+                leaks.append(str(p))
     assert not leaks, f"secrets found in bundle: {leaks}"
