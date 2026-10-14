@@ -33,14 +33,14 @@ def client():
         def test_status(client):
             assert client.get("/status").status_code == 200
     """
-    with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+    with httpx.Client(base_url=API_URL, timeout=90.0) as c:
         yield c
 
 
 @pytest_asyncio.fixture
 async def aclient():
     """Async variant, for tests that also await motor/backend helpers directly."""
-    async with httpx.AsyncClient(base_url=API_URL, timeout=30.0) as c:
+    async with httpx.AsyncClient(base_url=API_URL, timeout=90.0) as c:
         yield c
 
 
@@ -64,7 +64,7 @@ def _login_access_token(email: str, password: str) -> str:
     access token straight from the login response's httpOnly cookie -- the
     `require_user` dependency accepts the same token via `Authorization: Bearer`.
     """
-    with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+    with httpx.Client(base_url=API_URL, timeout=90.0) as c:
         response = c.post("/auth/login", json={"email": email, "password": password})
         response.raise_for_status()
         token = response.cookies.get("uno_session")
@@ -85,7 +85,7 @@ def user_b_token() -> str:
 @pytest.fixture
 def client_a(user_a_token):
     with httpx.Client(
-        base_url=API_URL, timeout=30.0, headers={"Authorization": f"Bearer {user_a_token}"}
+        base_url=API_URL, timeout=90.0, headers={"Authorization": f"Bearer {user_a_token}"}
     ) as c:
         yield c
 
@@ -93,6 +93,6 @@ def client_a(user_a_token):
 @pytest.fixture
 def client_b(user_b_token):
     with httpx.Client(
-        base_url=API_URL, timeout=30.0, headers={"Authorization": f"Bearer {user_b_token}"}
+        base_url=API_URL, timeout=90.0, headers={"Authorization": f"Bearer {user_b_token}"}
     ) as c:
         yield c

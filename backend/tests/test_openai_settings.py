@@ -9,10 +9,13 @@ exercises error handling without consuming credits.
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import httpx
 import pytest
+
+from lib.supabase_client import service_rest
 
 API_URL = os.environ.get("BACKEND_URL", "http://localhost:8001") + "/api"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
@@ -45,7 +48,22 @@ def test_openai_settings_requires_admin():
         assert c.delete("/admin/openai-key").status_code == 401
 
 
+def _snapshot_settings() -> list[dict]:
+    return asyncio.run(service_rest("GET", "app_settings", params={"select": "*", "key": "like.openai_*"})) or []
+
+
+def _restore_settings(rows: list[dict]) -> None:
+    async def run():
+        await service_rest("DELETE", "app_settings", params={"key": "like.openai_*"})
+        if rows:
+            await service_rest("POST", "app_settings", json=rows, prefer="return=minimal")
+    asyncio.run(run())
+
+
+# Temporarily swaps the live key, so it is opt-in: it would break concurrent AI tests.
+@pytest.mark.skipif(os.environ.get("UNOWORD_RUN_KEY_SWAP_TEST") != "1", reason="set UNOWORD_RUN_KEY_SWAP_TEST=1")
 def test_save_test_and_remove_key_never_leaks_plaintext():
+    snapshot = _snapshot_settings()
     c = _admin_client()
     try:
         # save
@@ -85,6 +103,7 @@ def test_save_test_and_remove_key_never_leaks_plaintext():
         assert after["source"] in {"environment", None}
     finally:
         c2.close()
+        _restore_settings(snapshot)
 
 
 def test_save_rejects_non_openai_key():

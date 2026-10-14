@@ -8,9 +8,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 
 from lib.ai_access import require_ai_user
 from lib.auth import AuthenticatedUser
-from lib.chunking import chunk_text
+from lib import knowledge
 from lib.document_processing import DocumentProcessingError, MAX_UPLOAD_BYTES, extract_document
-from lib.embeddings import get_embeddings_service
 from lib.supabase_client import (
     SupabaseAPIError,
     raise_http,
@@ -18,7 +17,7 @@ from lib.supabase_client import (
     user_storage_delete,
     user_storage_upload,
 )
-from models.ai import AIDocument, AIDocumentChunk, AIDocumentUpload, DocumentType
+from models.ai import AIDocument, AIDocumentUpload, AISourceIndexStatus, DocumentType
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -82,32 +81,22 @@ async def upload_document(
             prefer="return=representation",
         )
         metadata_created = bool(created)
-        embeddings = get_embeddings_service()
-        chunks: list[dict] = []
-        for index, content in enumerate(chunk_text(extracted.text)):
-            row = AIDocumentChunk(
-                user_id=user.id,
-                document_id=document_id,
-                chunk_index=index,
-                content=content,
-                metadata={"filename": metadata.filename, "file_type": metadata.file_type},
-            ).model_dump(mode="json")
-            embedded = await embeddings.embed(content) if embeddings.enabled else None
-            if embedded:
-                row["embedding"] = embedded.embedding
-                row["embedding_model"] = embedded.model
-                row["embedding_version"] = embedded.version
-            chunks.append(row)
-        await user_rest(
-            "POST", "ai_document_chunks", user.access_token,
-            params={"on_conflict": "document_id,chunk_index"},
-            json=chunks,
-            prefer="resolution=merge-duplicates,return=minimal",
+        chunk_count, embedded = await knowledge.index_source(
+            user.id, user.access_token, document_id, extracted.text,
+            {"filename": metadata.filename, "file_type": metadata.file_type},
+        )
+        await knowledge.rebuild_source_memory(
+            user.id, user.access_token, document_id,
+            title=metadata.document_title, text=extracted.text, kind="document",
         )
         ready = await user_rest(
             "PATCH", "ai_documents", user.access_token,
             params={"id": f"eq.{document_id}", "user_id": f"eq.{user.id}"},
-            json={"processing_status": "ready", "processing_error": None, "word_count": extracted.word_count},
+            json={
+                "processing_status": "ready",
+                "processing_error": knowledge.index_note(chunk_count, embedded),
+                "word_count": extracted.word_count,
+            },
             prefer="return=representation",
         )
         return AIDocument(**ready[0])
@@ -139,6 +128,28 @@ async def document_status(document_id: str, user: AuthenticatedUser = Depends(re
     return AIDocument(**rows[0])
 
 
+@router.get("/{document_id}/index-status", response_model=AISourceIndexStatus)
+async def index_status(document_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> AISourceIndexStatus:
+    rows = await _owned_documents(user, {"id": f"eq.{document_id}", "limit": "1"})
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    base = {"select": "id", "user_id": f"eq.{user.id}"}
+    try:
+        chunks = await user_rest("GET", "ai_document_chunks", user.access_token,
+                                 params={**base, "document_id": f"eq.{document_id}"})
+        embedded = await user_rest("GET", "ai_document_chunks", user.access_token,
+                                   params={**base, "document_id": f"eq.{document_id}", "embedding": "not.is.null"})
+        memories = await user_rest("GET", "ai_memories", user.access_token,
+                                   params={**base, "source_id": f"eq.{document_id}"})
+    except SupabaseAPIError as error:
+        raise_http(error)
+    return AISourceIndexStatus(
+        document_id=document_id, processing_status=rows[0]["processing_status"],
+        enabled=rows[0].get("enabled", True), chunk_count=len(chunks or []),
+        embedded_chunk_count=len(embedded or []), memory_ids=[str(m["id"]) for m in memories or []],
+    )
+
+
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(document_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> None:
     rows = await _owned_documents(user, {"id": f"eq.{document_id}", "limit": "1"})
@@ -151,6 +162,7 @@ async def delete_document(document_id: str, user: AuthenticatedUser = Depends(re
         except SupabaseAPIError as storage_error:
             if storage_error.response_status != 404:
                 raise
+        await knowledge.delete_source_memory(user.id, user.access_token, document_id)
         await user_rest(
             "DELETE", "ai_documents", user.access_token,
             params={"id": f"eq.{document_id}", "user_id": f"eq.{user.id}"},

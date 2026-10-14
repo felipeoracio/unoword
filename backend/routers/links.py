@@ -15,8 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from lib.ai_access import require_ai_user
 from lib.auth import AuthenticatedUser
-from lib.chunking import chunk_text
-from lib.embeddings import get_embeddings_service
+from lib import knowledge
 from lib.link_ingest import LinkIngestError, _check_host_not_internal, fetch_and_extract, validate_url
 from lib.supabase_client import SupabaseAPIError, raise_http, user_rest
 from models.ai import AIDocument, AILinkCreate, AILinkUpdate
@@ -65,38 +64,34 @@ async def _reprocess(user: AuthenticatedUser, link_id: str, url: str, *,
 
     # Nothing changed since last time → skip re-embedding (caching rule).
     if previous_hash and data["content_hash"] == previous_hash:
+        memories = await user_rest(
+            "GET", "ai_memories", user.access_token,
+            params={"select": "id", "user_id": f"eq.{user.id}", "source_id": f"eq.{link_id}", "limit": "1"},
+        )
+        if not memories:
+            link = await _owned_link(user, link_id)
+            await knowledge.rebuild_source_memory(
+                user.id, user.access_token, link_id,
+                title=link.get("document_title") or url, text=data["text"], kind="saved link",
+            )
+        await knowledge.heal_missing_embeddings(user.id)
         return await _patch(user, link_id, {
             "processing_status": "ready", "processing_error": None, "last_processed_at": _now(),
         })
 
     try:
-        await user_rest(
-            "DELETE", "ai_document_chunks", user.access_token,
-            params={"document_id": f"eq.{link_id}", "user_id": f"eq.{user.id}"},
-            prefer="return=minimal",
+        chunk_count, embedded = await knowledge.index_source(
+            user.id, user.access_token, link_id, data["text"],
+            {"source": "link", "url": url, "title": data.get("title")},
         )
-        embeddings = get_embeddings_service()
-        chunks: list[dict] = []
-        for index, content in enumerate(chunk_text(data["text"])):
-            row = {
-                "id": str(uuid4()), "user_id": user.id, "document_id": link_id,
-                "chunk_index": index, "content": content,
-                "metadata": {"source": "link", "url": url, "title": data.get("title")},
-            }
-            embedded = await embeddings.embed(content) if embeddings.enabled else None
-            if embedded:
-                row["embedding"] = embedded.embedding
-                row["embedding_model"] = embedded.model
-                row["embedding_version"] = embedded.version
-            chunks.append(row)
-        if chunks:
-            await user_rest(
-                "POST", "ai_document_chunks", user.access_token,
-                params={"on_conflict": "document_id,chunk_index"},
-                json=chunks, prefer="resolution=merge-duplicates,return=minimal",
-            )
+        title = data.get("title") or url
+        if keep_title:
+            title = (await _owned_link(user, link_id)).get("document_title") or title
+        await knowledge.rebuild_source_memory(
+            user.id, user.access_token, link_id, title=title, text=data["text"], kind="saved link",
+        )
         patch = {
-            "processing_status": "ready", "processing_error": None,
+            "processing_status": "ready", "processing_error": knowledge.index_note(chunk_count, embedded),
             "canonical_url": data.get("canonical_url"), "author": data.get("author"),
             "published_at": data.get("published_at"), "content_hash": data["content_hash"],
             "word_count": data["word_count"], "last_processed_at": _now(),
@@ -202,6 +197,7 @@ async def refresh_link(link_id: str, user: AuthenticatedUser = Depends(require_a
 async def delete_link(link_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> None:
     await _owned_link(user, link_id)
     try:
+        await knowledge.delete_source_memory(user.id, user.access_token, link_id)
         await user_rest(
             "DELETE", "ai_documents", user.access_token,
             params={"id": f"eq.{link_id}", "user_id": f"eq.{user.id}"},

@@ -19,7 +19,7 @@ from lib.ai_provider import (
 )
 from lib.ai_access import get_entitlement, require_ai_user
 from lib.auth import AuthenticatedUser, auth_is_configured
-from lib.chunking import chunk_text
+from lib import knowledge
 from lib.dates import today_iso
 from lib.embeddings import get_embeddings_service
 from lib.prompts import UNO_WORD_COACH_SYSTEM_PROMPT
@@ -79,6 +79,7 @@ async def _entitlement(user_id: str) -> dict:
 # memory set can never inflate token cost without limit. Both are env-tunable.
 MAX_DRAFT_CHARS = int(os.environ.get("AI_MAX_DRAFT_CHARS", "2000"))
 MAX_CONTEXT_CHARS = int(os.environ.get("AI_MAX_CONTEXT_CHARS", "6000"))
+MAX_CHUNK_CHARS = int(os.environ.get("AI_MAX_CHUNK_CHARS", "900"))
 
 
 def _resolve_daily_limit(entitlement: dict) -> int:
@@ -130,27 +131,26 @@ def _compose_prompt_context(
         if fields:
             parts.append(f"Profile — {fields}")
         source_ids.append(item["id"])
-    for answer in answers[:10]:
-        parts.append(f"Onboarding — {answer.get('question')}: {answer.get('answer')}")
-        source_ids.append(answer["id"])
+    if retrieved:
+        parts.append("Relevant passages from the writer's private documents, links and writing:")
+        for chunk in retrieved:
+            label = chunk.source_type + (f' "{chunk.source_title}"' if chunk.source_title else "")
+            parts.append(f"- [{label}] {chunk.content[:MAX_CHUNK_CHARS]}")
+            source_ids.append(chunk.source_id)
     for memory in memories[:10]:
         parts.append(f"Memory ({memory.get('memory_type')}): {memory.get('memory')}")
         source_ids.append(memory["id"])
+    for answer in answers[:10]:
+        parts.append(f"Onboarding — {answer.get('question')}: {answer.get('answer')}")
+        source_ids.append(answer["id"])
     for suggestion in previous[:5]:
         parts.append(
             f"Previous suggestion ({suggestion.get('status')}): {suggestion.get('suggestion')}"
         )
-    if retrieved:
-        parts.append("Retrieved private chunks:")
-        for chunk in retrieved:
-            parts.append(
-                f"- [{chunk.source_type} sim={chunk.similarity:.2f}] {chunk.content[:600]}"
-            )
-            source_ids.append(chunk.source_id)
     joined = "\n".join(parts[:80])
     if len(joined) > MAX_CONTEXT_CHARS:
         joined = joined[:MAX_CONTEXT_CHARS].rstrip() + "\n…[context truncated to fit AI cost budget]"
-    return joined or "No saved user context is available yet.", source_ids[:50]
+    return joined or "No saved user context is available yet.", list(dict.fromkeys(source_ids))[:50]
 
 
 async def _record_usage(
@@ -373,7 +373,7 @@ async def save_writing_session(
         if payload.save_to_memory and payload.content:
             embeddings = get_embeddings_service()
             chunks: list[dict] = []
-            for index, content in enumerate(chunk_text(payload.content)):
+            for index, content in enumerate(knowledge.split(payload.content)):
                 row = AIWritingChunk(
                     user_id=user.id,
                     writing_session_id=session.id,
@@ -394,6 +394,11 @@ async def save_writing_session(
                 params={"on_conflict": "writing_session_id,chunk_index"},
                 json=chunks,
                 prefer="resolution=merge-duplicates,return=minimal",
+            )
+            await knowledge.rebuild_source_memory(
+                user.id, user.access_token, session.id,
+                title=f"{session.created_at:%Y-%m-%d}", text=payload.content,
+                kind="writing session", memory_type="experience",
             )
     except SupabaseAPIError as error:
         raise_http(error)
@@ -439,6 +444,11 @@ async def create_suggestion(
         user,
         extra={"order": "importance.desc,updated_at.desc", "limit": "30"},
     )
+    try:
+        disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
+    except SupabaseAPIError as error:
+        raise_http(error)
+    memories = [m for m in memories if str(m.get("source_id")) not in disabled]
     previous = await _user_rows(
         "ai_suggestions",
         user,
@@ -455,8 +465,15 @@ async def create_suggestion(
         if profile:
             query_parts.append(profile[0].get("writing_goal") or "")
             query_parts.extend(profile[0].get("primary_topics") or [])
-    query = "\n".join(part for part in query_parts if part).strip()
+        if not any(query_parts):
+            query_parts.extend(m.get("memory") or "" for m in memories[:3])
+    query = "\n".join(part for part in query_parts if part).strip()[:MAX_DRAFT_CHARS]
+    await knowledge.heal_missing_embeddings(user.id)
     retrieved = await retrieve_user_chunks(user.id, query) if query else []
+    logger.info(
+        "suggestion_context user=%s retrieved=%d vector=%d memories=%d",
+        user.id, len(retrieved), sum(c.match == "vector" for c in retrieved), len(memories),
+    )
 
     context, source_ids = _compose_prompt_context(
         payload, profile, answers, memories, previous, retrieved

@@ -187,6 +187,8 @@ def test_zz_cleanup_any_leftover_links():
         c = _client(creds)
         try:
             for link in c.get("/links").json():
-                c.delete(f"/links/{link['id']}")
+                # Only this module's fixed URLs; other modules own their unique links.
+                if link.get("source_url") in {"https://example.com/", "https://example.org/"}:
+                    c.delete(f"/links/{link['id']}")
         finally:
             c.close()

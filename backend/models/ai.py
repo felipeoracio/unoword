@@ -99,6 +99,15 @@ class AIDocument(AIModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class AISourceIndexStatus(AIModel):
+    document_id: str
+    processing_status: str
+    enabled: bool
+    chunk_count: int
+    embedded_chunk_count: int
+    memory_ids: list[str]
+
+
 LinkCategory = Literal["personal_story", "writing_sample", "interests", "research", "other"]
 
 

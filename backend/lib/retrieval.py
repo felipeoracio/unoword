@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from collections import defaultdict
 from dataclasses import dataclass
 
 from lib.embeddings import get_embeddings_service
+from lib.knowledge import keyword_terms
 from lib.supabase_client import SupabaseAPIError, service_rest
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,11 @@ BIAS_CLAMP = 3.0
 # Drop candidates whose adjusted similarity is clearly below the retrieval
 # threshold after bias — otherwise a rejected chunk with a slightly higher
 # raw similarity would still slip in.
-MIN_ADJUSTED_SIMILARITY = 0.35
+# text-embedding-3-small cosine scores for related text are typically 0.25-0.6.
+MATCH_THRESHOLD = float(os.environ.get("AI_MATCH_THRESHOLD", "0.25"))
+MIN_ADJUSTED_SIMILARITY = float(os.environ.get("AI_MIN_ADJUSTED_SIMILARITY", "0.2"))
+# A long document can contribute a couple of distinct relevant passages.
+MAX_PER_SOURCE = 2
 # How many past accepted/rejected suggestions to consider.
 FEEDBACK_LOOKBACK = 100
 
@@ -48,6 +54,8 @@ class RetrievedChunk:
     parent_id: str | None
     content: str
     similarity: float
+    source_title: str | None = None
+    match: str = "vector"
 
 
 async def _fetch_feedback_bias(user_id: str) -> tuple[dict[str, float], dict[str, float]]:
@@ -102,36 +110,74 @@ def _bias_for(
     return FEEDBACK_WEIGHT * math.tanh(combined / BIAS_CLAMP)
 
 
-async def retrieve_user_chunks(
-    user_id: str,
-    query: str,
-    *,
-    match_count: int = 8,
-    match_threshold: float = 0.55,
-) -> list[RetrievedChunk]:
+async def _vector_rows(user_id: str, query: str, fetch_count: int, threshold: float) -> list[dict]:
     embeddings = get_embeddings_service()
     if not embeddings.enabled:
         return []
     embedded = await embeddings.embed(query)
     if not embedded:
         return []
-    # Overfetch so feedback-driven reranking has room to drop losers without
-    # returning fewer results than requested.
-    fetch_count = min(20, max(match_count * 2, match_count))
     try:
-        rows = await service_rest(
+        return await service_rest(
             "POST",
             "rpc/match_user_chunks",
             json={
                 "p_user_id": user_id,
                 "p_query_embedding": embedded.embedding,
-                "p_match_threshold": match_threshold,
+                "p_match_threshold": threshold,
                 "p_match_count": fetch_count,
             },
-        )
+        ) or []
     except SupabaseAPIError as error:
         logger.warning("retrieval_rpc_failed status=%s detail=%s", error.response_status, error.detail)
         return []
+
+
+async def _keyword_rows(user_id: str, query: str, fetch_count: int) -> list[dict]:
+    terms = keyword_terms(query)
+    if not terms:
+        return []
+    try:
+        return await service_rest(
+            "POST",
+            "rpc/search_user_chunks_text",
+            json={"p_user_id": user_id, "p_terms": terms, "p_match_count": fetch_count},
+        ) or []
+    except SupabaseAPIError as error:
+        logger.warning("keyword_rpc_failed status=%s detail=%s", error.response_status, error.detail)
+        return []
+
+
+async def _document_titles(user_id: str, ids: set[str]) -> dict[str, str]:
+    if not ids:
+        return {}
+    try:
+        rows = await service_rest(
+            "GET",
+            "ai_documents",
+            params={"select": "id,document_title", "user_id": f"eq.{user_id}", "id": f"in.({','.join(ids)})"},
+        )
+    except SupabaseAPIError:
+        return {}
+    return {str(row["id"]): row.get("document_title") or "" for row in rows or []}
+
+
+async def retrieve_user_chunks(
+    user_id: str,
+    query: str,
+    *,
+    match_count: int = 6,
+    match_threshold: float | None = None,
+) -> list[RetrievedChunk]:
+    # Overfetch so feedback-driven reranking has room to drop losers.
+    fetch_count = min(20, match_count * 2)
+    threshold = MATCH_THRESHOLD if match_threshold is None else match_threshold
+    rows = await _vector_rows(user_id, query, fetch_count, threshold)
+    match_kind = "vector"
+    if not rows:
+        # Missing vectors, embedding outage, or no semantic hit: keyword fallback.
+        rows = await _keyword_rows(user_id, query, fetch_count)
+        match_kind = "keyword"
     if not rows:
         return []
 
@@ -142,34 +188,44 @@ async def retrieve_user_chunks(
         source_id = str(row.get("source_id"))
         parent = row.get("parent_id")
         parent_id = str(parent) if parent else None
-        base = float(row.get("similarity") or 0.0)
         bias = _bias_for(source_id, parent_id, source_scores, parent_scores)
-        adjusted = base + bias
-        if adjusted < MIN_ADJUSTED_SIMILARITY:
-            continue
-        scored.append((adjusted, base, row))
+        if match_kind == "keyword":
+            base = MIN_ADJUSTED_SIMILARITY + min(0.2, float(row.get("similarity") or 0.0))
+            if bias < 0 and base + bias < MIN_ADJUSTED_SIMILARITY:
+                continue
+        else:
+            base = float(row.get("similarity") or 0.0)
+            if base + bias < MIN_ADJUSTED_SIMILARITY:
+                continue
+        scored.append((base + bias, base, row))
     if not scored:
         return []
     scored.sort(key=lambda item: item[0], reverse=True)
 
-    seen: set[str] = set()
-    chunks: list[RetrievedChunk] = []
-    for adjusted, base, row in scored:
-        source_id = str(row.get("source_id"))
+    per_parent: dict[str, int] = defaultdict(int)
+    picked: list[tuple[float, dict]] = []
+    for adjusted, _base, row in scored:
         parent = row.get("parent_id")
-        dedupe_key = str(parent) if parent else source_id
-        if dedupe_key in seen:
+        dedupe_key = str(parent) if parent else str(row.get("source_id"))
+        if per_parent[dedupe_key] >= MAX_PER_SOURCE:
             continue
-        seen.add(dedupe_key)
-        chunks.append(
-            RetrievedChunk(
-                source_type=str(row.get("source_type") or "unknown"),
-                source_id=source_id,
-                parent_id=str(parent) if parent else None,
-                content=str(row.get("content") or ""),
-                similarity=adjusted,
-            )
-        )
-        if len(chunks) >= match_count:
+        per_parent[dedupe_key] += 1
+        picked.append((adjusted, row))
+        if len(picked) >= match_count:
             break
-    return chunks
+    titles = await _document_titles(
+        user_id,
+        {str(row["parent_id"]) for _, row in picked if row.get("parent_id") and row.get("source_type") != "writing_chunk"},
+    )
+    return [
+        RetrievedChunk(
+            source_type=str(row.get("source_type") or "unknown"),
+            source_id=str(row.get("source_id")),
+            parent_id=str(row["parent_id"]) if row.get("parent_id") else None,
+            content=str(row.get("content") or ""),
+            similarity=adjusted,
+            source_title=titles.get(str(row.get("parent_id"))),
+            match=match_kind,
+        )
+        for adjusted, row in picked
+    ]
