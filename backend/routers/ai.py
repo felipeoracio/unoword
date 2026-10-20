@@ -26,6 +26,7 @@ from lib.prompts import UNO_WORD_COACH_SYSTEM_PROMPT
 from lib.retrieval import RetrievedChunk, retrieve_user_chunks
 from lib.supabase_client import SupabaseAPIError, raise_http, service_rest, user_rest
 from lib.supabase_config import supabase_is_configured
+from lib.writing_context import library_overview
 from models.ai import (
     AIFeedback,
     AIMemory,
@@ -73,10 +74,8 @@ async def _entitlement(user_id: str) -> dict:
 
 
 # --- Phase 15 cost controls -------------------------------------------------
-# The full document collection is never sent to the model: retrieval already
-# caps us to the top-K most relevant chunks. These two bounds additionally cap
-# the raw draft and the total composed prompt so a long draft or a growing
-# memory set can never inflate token cost without limit. Both are env-tunable.
+# Send a bounded overview of the library alongside relevant passages. Reserve
+# space for interests and recent suggestions so passages cannot crowd them out.
 MAX_DRAFT_CHARS = int(os.environ.get("AI_MAX_DRAFT_CHARS", "2000"))
 MAX_CONTEXT_CHARS = int(os.environ.get("AI_MAX_CONTEXT_CHARS", "6000"))
 MAX_CHUNK_CHARS = int(os.environ.get("AI_MAX_CHUNK_CHARS", "900"))
@@ -99,58 +98,69 @@ def _compose_prompt_context(
     memories: list[dict],
     previous: list[dict],
     retrieved: list[RetrievedChunk],
+    sources: list[dict] | None = None,
 ) -> tuple[str, list[str]]:
-    """Build the composed context string and the list of related source ids.
-
-    Retrieved chunks are delimited so the model treats them as untrusted
-    evidence and does not follow any instructions embedded in them.
-    """
-
+    """Balance breadth, focused evidence, and novelty within the context budget."""
     parts: list[str] = []
     source_ids: list[str] = []
+
+    def section(heading: str, items: list[tuple[str, list[str]]], budget: int, count: int) -> None:
+        items = items[:count]
+        if not items:
+            return
+        remaining = min(budget, MAX_CONTEXT_CHARS - sum(len(p) + 1 for p in parts))
+        per_item = (remaining - len(heading) - 1) // len(items) - 3
+        if per_item < 30:
+            return
+        lines = [heading]
+        for text, ids in items:
+            text = text.strip()
+            if not text:
+                continue
+            lines.append("- " + (text if len(text) <= per_item else text[:per_item - 1] + "…"))
+            source_ids.extend(ids)
+        parts.append("\n".join(lines))
+
     if payload.current_writing:
         parts.append(f"Current writing draft:\n{payload.current_writing[:MAX_DRAFT_CHARS]}")
     if payload.current_project:
-        parts.append(f"Current project focus: {payload.current_project}")
+        parts.append(f"Current project focus: {payload.current_project[:300]}")
+    available = max(0, MAX_CONTEXT_CHARS - sum(len(p) + 1 for p in parts))
     if profile:
         item = profile[0]
-        fields = " | ".join(
-            f"{name}: {item.get(name)}"
+        fields = [
+            (f"{name}: {item[name]}", [item["id"]])
             for name in (
+                "avoid_topics",
                 "writing_goal",
+                "primary_topics",
+                "favorite_subjects",
+                "current_projects",
+                "personal_context",
                 "writing_style",
                 "audience",
-                "primary_topics",
-                "current_projects",
-                "favorite_subjects",
-                "avoid_topics",
-                "personal_context",
             )
             if item.get(name)
-        )
-        if fields:
-            parts.append(f"Profile — {fields}")
-        source_ids.append(item["id"])
-    if retrieved:
-        parts.append("Relevant passages from the writer's private documents, links and writing:")
-        for chunk in retrieved:
-            label = chunk.source_type + (f' "{chunk.source_title}"' if chunk.source_title else "")
-            parts.append(f"- [{label}] {chunk.content[:MAX_CHUNK_CHARS]}")
-            source_ids.append(chunk.source_id)
-    for memory in memories[:10]:
-        parts.append(f"Memory ({memory.get('memory_type')}): {memory.get('memory')}")
-        source_ids.append(memory["id"])
-    for answer in answers[:10]:
-        parts.append(f"Onboarding — {answer.get('question')}: {answer.get('answer')}")
-        source_ids.append(answer["id"])
-    for suggestion in previous[:5]:
-        parts.append(
-            f"Previous suggestion ({suggestion.get('status')}): {suggestion.get('suggestion')}"
-        )
-    joined = "\n".join(parts[:80])
-    if len(joined) > MAX_CONTEXT_CHARS:
-        joined = joined[:MAX_CONTEXT_CHARS].rstrip() + "\n…[context truncated to fit AI cost budget]"
-    return joined or "No saved user context is available yet.", list(dict.fromkeys(source_ids))[:50]
+        ]
+        section("Writer profile and interests:", fields, int(available * 0.17), 8)
+    section("Onboarding answers:", [
+        (f'{a.get("question")}: {a.get("answer")}', [a["id"]]) for a in answers
+    ], int(available * 0.08), 4)
+    section("Recent suggestions — choose a different topic or angle:", [
+        (f'({s.get("status")}) {s.get("title") or ""}: {s.get("suggestion") or ""}', [])
+        for s in previous
+    ], int(available * 0.18), 5)
+    section("Broader shared context — interests, saved writing, documents and links:",
+            library_overview(sources or [], memories, previous), int(available * 0.35), 12)
+    passages = []
+    for chunk in retrieved:
+        label = chunk.source_type + (f' "{chunk.source_title}"' if chunk.source_title else "")
+        passages.append((f"[{label}] {chunk.content[:MAX_CHUNK_CHARS]}", [chunk.source_id]))
+    # Use remaining space for supporting detail after preserving the broader view.
+    section("Matching passages (supporting evidence, not the only possible topics):",
+            passages, MAX_CONTEXT_CHARS, 6)
+    joined = "\n".join(parts)[:MAX_CONTEXT_CHARS]
+    return joined or "No saved user context is available yet.", list(dict.fromkeys(source_ids))
 
 
 async def _record_usage(
@@ -442,7 +452,19 @@ async def create_suggestion(
     memories = await _user_rows(
         "ai_memories",
         user,
-        extra={"order": "importance.desc,updated_at.desc", "limit": "30"},
+        extra={
+            "select": "id,source_id,memory_type,memory,importance",
+            "order": "importance.desc,updated_at.desc",
+            "limit": "200",
+        },
+    )
+    sources = await _user_rows(
+        "ai_documents", user,
+        extra={
+            "select": "id,document_title,source_kind,summary,description",
+            "enabled": "eq.true", "processing_status": "eq.ready",
+            "order": "updated_at.desc", "limit": "200",
+        },
     )
     try:
         disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
@@ -465,8 +487,10 @@ async def create_suggestion(
         if profile:
             query_parts.append(profile[0].get("writing_goal") or "")
             query_parts.extend(profile[0].get("primary_topics") or [])
-        if not any(query_parts):
-            query_parts.extend(m.get("memory") or "" for m in memories[:3])
+            query_parts.extend(profile[0].get("favorite_subjects") or [])
+        # Include less recently surfaced interests beyond the same goal/nearest
+        # source on every request. All summaries remain user-scoped.
+        query_parts.extend(text[:350] for text, _ in library_overview(sources, memories, previous)[:3])
     query = "\n".join(part for part in query_parts if part).strip()[:MAX_DRAFT_CHARS]
     await knowledge.heal_missing_embeddings(user.id)
     retrieved = await retrieve_user_chunks(user.id, query) if query else []
@@ -476,7 +500,7 @@ async def create_suggestion(
     )
 
     context, source_ids = _compose_prompt_context(
-        payload, profile, answers, memories, previous, retrieved
+        payload, profile, answers, memories, previous, retrieved, sources
     )
 
     # Phase-13 cold-start seam: if the user's private knowledge base is empty
@@ -492,6 +516,7 @@ async def create_suggestion(
     )
     knowledge_empty = (
         not retrieved
+        and not sources
         and not memories
         and not answers
         and not profile_populated
