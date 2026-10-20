@@ -1173,7 +1173,6 @@ function renderSettings() {
     els.memoryManagerNote.textContent = memoryQueue.full
       ? t('memory.settings.full')
       : t('memory.settings.encrypted', { n: memoryQueue.total });
-    els.aiDocumentsMeta.textContent = t('documents.summary', { n: documents.length });
     renderDocuments();
     renderLinks();
     renderUsage();
@@ -1240,7 +1239,15 @@ function documentErrorMessage(error) {
   return detail === 'offline' ? t('documents.error.offline') : t('documents.error.generic');
 }
 
+function renderDocumentsSummary() {
+  els.aiDocumentsMeta.textContent = t('documents.summary', {
+    documents: fmtNumber(documents.length),
+    links: fmtNumber(links.length),
+  });
+}
+
 function renderDocuments() {
+  renderDocumentsSummary();
   if (!els.documentList) return;
   els.documentList.innerHTML = '';
   els.documentEmpty.hidden = documents.length > 0;
@@ -1374,6 +1381,7 @@ async function loadLinks() {
 }
 
 function renderLinks() {
+  renderDocumentsSummary();
   if (!els.linkList) return;
   els.linkList.innerHTML = '';
   els.linkEmpty.hidden = links.length > 0;

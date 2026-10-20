@@ -12,7 +12,9 @@ test('requests include browser-managed credentials without auth headers', async 
     return { ok: true, status: 200, json: async () => ({ authenticated: true }) };
   };
   await API.post('/auth/login', { email: 'writer@example.com', password: 'password' });
-  assert.equal(captured.url, `${API.API_BASE}/auth/login`);
+  assert.equal(captured.url, 'https://unoword.vercel.app/api/auth/login');
+  const manifest = require('../manifest.json');
+  assert.ok(manifest.host_permissions.includes(`${new URL(captured.url).origin}/*`));
   assert.equal(captured.options.credentials, 'include');
   assert.equal(captured.options.headers.Authorization, undefined);
 });
