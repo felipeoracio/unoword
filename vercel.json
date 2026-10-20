@@ -4,21 +4,19 @@
     "backend": {
       "root": "backend",
       "framework": "fastapi",
-      "entrypoint": "server.py"
+      "entrypoint": "server.py",
+      "mount": "/api"
     },
     "frontend": {
       "root": "frontend",
-      "framework": "vite"
+      "framework": "vite",
+      "mount": "/",
+      "rewrites": [
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": { "service": "backend" }
-    },
-    {
-      "source": "/(.*)",
-      "destination": { "service": "frontend" }
-    }
-  ]
+  }
 }
