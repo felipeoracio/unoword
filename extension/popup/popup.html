@@ -67,6 +67,7 @@
       <section class="wc__panel wc__prompt" id="prompt-panel" data-testid="prompt-panel" hidden>
         <div class="wc__page-heading"><div><p class="wc__eyebrow" data-i18n="dashboard.companion">Your writing companion</p><h1 data-i18n="nav.ideas">Ideas</h1></div><span class="wc__page-sparkle" aria-hidden="true">✦</span></div>
         <button class="wc__link-btn" id="ideas-open-saved" data-i18n="suggestion.savedIdeas">Saved ideas</button>
+        <div id="personalization-explainer" class="wc__privacy-note" hidden><div><strong data-i18n="prompt.ai.eyebrow">Personalized for you</strong><p class="wc__helper" data-i18n="profile.explainer">Your suggestions are inspired by your Writing Profile, selected themes, and writing knowledge.</p><button id="edit-writing-profile" class="wc__link-btn" data-i18n="profile.edit">Edit My Writing Profile</button></div></div>
         <div id="suggestion-controls" class="wc__suggestion-controls" hidden>
           <fieldset class="wc__mode-picker">
             <legend class="wc__eyebrow" data-i18n="suggestion.chooseMode">Choose your direction</legend>
@@ -240,13 +241,25 @@
         <div class="wc__page-heading"><div><p class="wc__eyebrow" data-i18n="library.private">Your private knowledge</p><h1 data-i18n="nav.library">Library</h1></div><span class="wc__library-count" id="library-count"></span></div>
         <p class="wc__helper" data-i18n="library.intro">The writing, sources and ideas that make your suggestions personal.</p>
         <div id="library-access" hidden><p class="wc__helper" data-i18n="account.required"></p><button class="wc__btn wc__btn--primary" id="library-account-action" data-i18n="account.signIn">Sign in</button></div>
-        <div id="library-content">
           <nav class="wc__library-tabs" role="tablist" data-i18n-aria="nav.library">
-            <button data-library-filter="documents" aria-selected="true" role="tab" data-i18n="library.documents">Documents</button>
+            <button data-library-filter="profile" aria-selected="true" role="tab" data-i18n="profile.short">My profile</button>
+            <button data-library-filter="documents" aria-selected="false" role="tab" data-i18n="library.documents">Documents</button>
             <button data-library-filter="links" aria-selected="false" role="tab" data-i18n="library.websites">Websites</button>
             <button data-library-filter="memory" aria-selected="false" role="tab" data-i18n="library.memory">Memory</button>
             <button data-library-filter="saved" aria-selected="false" role="tab" data-i18n="library.saved">Saved ideas</button>
           </nav>
+          <section id="library-profile" class="wc__library-pane">
+            <h2 data-i18n="profile.title">My Writing Profile</h2><p class="wc__helper" data-i18n="profile.subtitle">Help UnoWord understand what you love to write about.</p>
+            <p id="writing-profile-status" class="wc__helper" role="status"></p>
+            <button id="writing-profile-login" class="wc__btn wc__btn--primary" data-i18n="account.signIn" hidden>Sign in</button>
+            <form id="writing-profile-form" hidden><div id="writing-profile-fields" class="wc__library-pane"></div>
+              <fieldset class="wc__profile-themes"><legend data-i18n="onboard.themes.title">Choose your themes</legend><div id="writing-profile-themes" class="wc__theme-grid"></div></fieldset>
+              <p id="writing-profile-theme-note" class="wc__helper" data-i18n="profile.proThemes" hidden>Prompt theme editing is included with Pro.</p>
+              <div class="wc__source-action-list"><button type="submit" class="wc__btn wc__btn--primary" id="writing-profile-save" data-i18n="settings.save">Save</button><button type="button" class="wc__btn wc__btn--outline" id="writing-profile-cancel" data-i18n="dialog.cancel">Cancel</button></div>
+            </form>
+            <button id="writing-profile-onboard" class="wc__link-btn" data-i18n="profile.guided" hidden>Guided writing setup</button>
+          </section>
+        <div id="library-content">
           <div id="library-documents" class="wc__library-pane"></div>
           <div id="library-links" class="wc__library-pane" hidden></div>
           <div id="library-memory" class="wc__library-pane" hidden><h2 data-i18n="library.syncedMemory">Saved writing memory</h2><div id="library-memory-list" class="wc__document-list"></div><p class="wc__helper" id="library-memory-empty" data-i18n="library.noMemory">Writing you save to memory will appear here.</p><p class="wc__error" id="library-memory-error" hidden></p><h2 data-i18n="library.deviceQueue">On this device</h2></div>
@@ -291,7 +304,7 @@
             <div class="wc__plan-head">
               <p class="wc__plan-title"><span data-i18n="upgrade.pro.title">Pro</span> <span class="wc__pro-badge" data-i18n="badge.pro">PRO</span></p>
               <p class="wc__plan-price"><span data-i18n="upgrade.pro.price">$20</span> <span class="wc__plan-per" data-i18n="upgrade.pro.per">/ month</span></p>
-              <p class="wc__plan-trial" data-i18n="upgrade.pro.trial" data-testid="upgrade-pro-trial">Includes a 7-day free trial</p>
+              <p class="wc__helper" data-i18n="billing.unavailable"></p>
             </div>
             <ul class="wc__plan-list">
               <li data-i18n="upgrade.pro.f1">Everything in Free</li>
@@ -305,8 +318,9 @@
           </div>
         </div>
 
-        <button class="wc__btn wc__btn--primary" id="try-pro" data-testid="try-pro" data-i18n="upgrade.tryPro">Start free 7-day trial</button>
-        <p class="wc__footnote" data-i18n="upgrade.demoNote">Demo mode — no payment collected. Toggle off anytime.</p>
+        <p id="plan-current" class="wc__helper"></p><p id="plan-error" class="wc__error" role="status"></p>
+        <button class="wc__btn wc__btn--primary" id="try-pro" data-testid="try-pro" data-i18n="billing.continue">Continue with Pro</button>
+        <p class="wc__footnote" data-i18n="billing.unavailable">Billing is currently unavailable. No plan changes will be made.</p>
       </section>
 
       <!-- ================= PRO ONBOARDING ================= -->
@@ -585,7 +599,7 @@
 
         <!-- Account group -->
         <div class="wc__setting-group">
-          <p class="wc__setting-group-title" data-i18n="settings.account">Account</p>
+          <p class="wc__setting-group-title" data-i18n="security.title">Account &amp; Security</p>
           <div class="wc__setting-row" data-testid="account-status-row">
             <div class="wc__setting-row-main">
               <p class="wc__setting-label" data-i18n="account.aiTitle" data-testid="account-ai-title">UnoWord AI</p>
@@ -610,6 +624,20 @@
             </div>
             <p class="wc__footnote" data-i18n="account.cookiePrivacy" data-testid="account-cookie-privacy">Your session is kept in a secure cookie. UnoWord never stores your password.</p>
           </div>
+          <div id="account-security" class="wc__setting-editor" hidden>
+            <p id="security-email" class="wc__helper"></p><p id="security-verified" class="wc__helper"></p>
+            <div class="wc__source-action-list"><button type="button" id="security-change-email" class="wc__btn wc__btn--outline" data-i18n="security.changeEmail"></button><button type="button" id="security-change-password" class="wc__btn wc__btn--outline" data-i18n="security.changePassword"></button></div>
+            <p id="security-provider-note" class="wc__helper" data-i18n="security.provider" hidden></p>
+            <form id="security-form" hidden>
+              <label id="security-email-field" class="wc__field"><span data-i18n="security.newEmail"></span><input id="security-new-email" type="email" autocomplete="email" required maxlength="254" /></label>
+              <label class="wc__field"><span data-i18n="security.currentPassword"></span><input id="security-current-password" type="password" autocomplete="current-password" required maxlength="200" /></label>
+              <div id="security-new-password-fields"><label class="wc__field"><span data-i18n="security.newPassword"></span><input id="security-new-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" /></label><label class="wc__field"><span data-i18n="security.confirmPassword"></span><input id="security-confirm-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" /></label></div>
+              <label class="wc__helper"><input id="security-show-password" type="checkbox" /><span data-i18n="security.showPassword"></span></label>
+              <div class="wc__source-action-list"><button type="submit" id="security-submit" class="wc__btn wc__btn--primary" data-i18n="dialog.continue"></button><button type="button" id="security-cancel" class="wc__btn wc__btn--outline" data-i18n="dialog.cancel"></button><button type="button" id="security-resend" class="wc__link-btn" data-i18n="security.resend" hidden></button></div>
+            </form>
+          </div>
+          <button type="button" id="forgot-password" class="wc__link-btn" data-i18n="security.forgot"></button>
+          <p id="security-status" class="wc__helper" role="status"></p>
           <div class="wc__setting-row" data-testid="plan-setting-row">
             <div class="wc__setting-row-main">
               <p class="wc__setting-label" data-i18n="settings.plan">Plan</p>
@@ -772,5 +800,7 @@
     <script src="../shared/resource-state.js"></script>
   <script src="../shared/dates.js"></script>
     <script src="popup.js"></script>
+    <script src="preferences.js"></script>
+    <script src="security.js"></script>
   </body>
 </html>

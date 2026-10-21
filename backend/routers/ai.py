@@ -17,8 +17,8 @@ from lib.ai_provider import (
     SuggestionProviderResponse,
     get_suggestion_provider,
 )
-from lib.ai_access import get_entitlement, require_ai_user
-from lib.auth import AuthenticatedUser, auth_is_configured
+from lib.ai_access import get_entitlement, require_ai_user, entitlement_is_active
+from lib.auth import AuthenticatedUser, auth_is_configured, require_user
 from lib import knowledge
 from lib.dates import today_iso
 from lib.embeddings import get_embeddings_service
@@ -27,6 +27,8 @@ from lib.retrieval import RetrievedChunk, retrieve_user_chunks
 from lib.supabase_client import SupabaseAPIError, raise_http, service_rest, user_rest
 from lib.supabase_config import supabase_is_configured
 from lib.writing_context import library_overview
+from lib.request_security import trusted_origin
+from lib.personalization import effective_profile, contextual_answers, prompt_themes
 from lib.suggestion_details import encode_details, evidence_catalog, attributed_sources
 from lib.suggestion_knowledge import selected_idea_text, diverse_passages, available_saved_memories
 from models.ai import (
@@ -149,16 +151,19 @@ def _compose_prompt_context(
             )
             if item.get(name)
         ]
-        section("Writer profile and interests:", fields, int(available * 0.17), 8)
+        themes = prompt_themes(item)
+        if themes:
+            fields.append((f"Selected prompt themes: {', '.join(themes)}", [item["id"]]))
+        section("My Writing Profile — current explicit preferences (highest priority):", fields, int(available * 0.35), 9)
     section("Onboarding answers:", [
         (f'{a.get("answer")} (question: {a.get("question")})', [a["id"]]) for a in answers
-    ], int(available * 0.08), 4)
+    ], int(available * 0.05), 4)
     section("Recent suggestions — choose a different topic or angle:", [
         (f'({s.get("status")}) {s.get("title") or ""}: {s.get("suggestion") or ""}', [])
         for s in previous
-    ], int(available * 0.18), 5)
+    ], int(available * 0.12), 5)
     section("Broader shared context — interests, saved writing, documents and links:",
-            library_overview(sources or [], memories, previous), int(available * 0.35), 12)
+            library_overview(sources or [], memories, previous), int(available * 0.30), 12)
     passages = []
     for chunk in retrieved:
         label = chunk.source_type + (f' "{chunk.source_title}"' if chunk.source_title else "")
@@ -230,10 +235,11 @@ async def ai_status() -> AIStatus:
 
 
 @router.get("/profile", response_model=AIProfile)
-async def get_profile(user: AuthenticatedUser = Depends(require_ai_user)) -> AIProfile:
+async def get_profile(user: AuthenticatedUser = Depends(require_user)) -> AIProfile:
     rows = await _user_rows("ai_profiles", user, extra={"limit": "1"})
     if rows:
-        return AIProfile(**rows[0])
+        answers = await _user_rows("ai_onboarding_answers", user, extra={"order": "updated_at.desc", "limit": "100"})
+        return AIProfile(**effective_profile(rows[0], answers))
     try:
         created = await user_rest(
             "POST",
@@ -244,15 +250,26 @@ async def get_profile(user: AuthenticatedUser = Depends(require_ai_user)) -> AIP
         )
     except SupabaseAPIError as error:
         raise_http(error)
-    return AIProfile(**created[0])
+    answers = await _user_rows("ai_onboarding_answers", user, extra={"order": "updated_at.desc", "limit": "100"})
+    return AIProfile(**effective_profile(created[0], answers))
 
 
-@router.put("/profile", response_model=AIProfile)
+@router.put("/profile", response_model=AIProfile, dependencies=[Depends(trusted_origin)])
 async def update_profile(
     payload: AIProfileUpdate,
-    user: AuthenticatedUser = Depends(require_ai_user),
+    user: AuthenticatedUser = Depends(require_user),
 ) -> AIProfile:
-    body = {"user_id": user.id, **payload.model_dump()}
+    if payload.expected_user_id and payload.expected_user_id != user.id:
+        raise HTTPException(409, "account_changed")
+    existing = await _user_rows("ai_profiles", user, extra={"limit": "1"})
+    old = existing[0] if existing else {}
+    preferences = {**(old.get("ai_preferences") or {}), **payload.ai_preferences}
+    proposed = {"ai_preferences": preferences}
+    if prompt_themes(proposed) != prompt_themes(old) and not entitlement_is_active(await get_entitlement(user.id)):
+        raise HTTPException(403, "An eligible plan is required to change prompt themes")
+    preferences["prompt_themes"] = prompt_themes(proposed)
+    preferences["profile_edited"] = True
+    body = {"user_id": user.id, **payload.model_dump(), "ai_preferences": preferences}
     try:
         rows = await user_rest(
             "POST",
@@ -467,6 +484,9 @@ async def create_suggestion(
         user,
         extra={"order": "updated_at.desc", "limit": "20"},
     )
+    if profile:
+        profile = [effective_profile(profile[0], answers)]
+        answers = contextual_answers(profile[0], answers)
     memories = await _user_rows(
         "ai_memories",
         user,
@@ -512,6 +532,7 @@ async def create_suggestion(
             query_parts.append(profile[0].get("writing_goal") or "")
             query_parts.extend(profile[0].get("primary_topics") or [])
             query_parts.extend(profile[0].get("favorite_subjects") or [])
+            query_parts.extend(prompt_themes(profile[0]))
         # Include less recently surfaced interests beyond the same goal/nearest
         # source on every request. All summaries remain user-scoped.
         query_parts.extend(text[:350] for text, _ in library_overview(sources, memories, previous)[:3])
@@ -530,7 +551,9 @@ async def create_suggestion(
     # Old suggestion bodies can quote a removed source. Only reuse history whose
     # complete citations are still available in this request's evidence catalog.
     previous = [item for item in previous if item.get("source_ids") and
-                set(item["source_ids"]).issubset(catalog)]
+                set(item["source_ids"]).issubset(catalog) and not (
+                    profile and profile[0]["id"] in item["source_ids"] and
+                    str(item.get("created_at") or "") < str(profile[0].get("updated_at") or ""))]
     context, source_ids = _compose_prompt_context(
         payload, profile, answers, memories, previous, retrieved, sources
     )
@@ -586,7 +609,7 @@ async def create_suggestion(
                 "user_id": user.id,
                 "title": response.result.title,
                 "suggestion": response.result.suggestion,
-                "reason": response.result.why,
+                "reason": response.result.why if inspirations else "",
                 "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations),
                 "related_topics": response.result.related_topics,
                 "source_ids": source_ids,

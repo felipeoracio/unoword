@@ -163,10 +163,18 @@ async def refresh_session(response: Response, uno_refresh: str | None = Cookie(d
 
 @router.get("/me", response_model=AuthUser)
 async def me(user: AuthenticatedUser = Depends(require_user)) -> AuthUser:
+    try:
+        identity = await auth_request("GET", "user", access_token=user.access_token)
+    except SupabaseAPIError as error:
+        if error.response_status in {401, 403}:
+            raise HTTPException(401, "session_expired")
+        raise_http(error)
+    if str(identity.get("id")) != user.id:
+        raise HTTPException(401, "session_expired")
     entitlement = await get_entitlement(user.id)
     return AuthUser(
         id=user.id,
-        email=user.email,
+        email=identity.get("email"),
         plan=entitlement.get("plan") if entitlement else None,
         ai_access=entitlement_is_active(entitlement),
     )

@@ -194,3 +194,15 @@ html[data-popup-window="true"] body { width: 100%; }
 
 .wc__prompt-head { flex-wrap: wrap; gap: 8px; }
 .wc__prompt-text { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); line-height: 1.65; overflow-wrap: break-word; }
+
+.wc__library-tabs { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.wc__profile-themes { min-width: 0; margin: 14px 0 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+#writing-profile-form { display: grid; gap: 14px; }
+.wc__profile-themes label { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; line-height: 1.5; }
+.wc__profile-themes .wc__theme-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+@media(max-width:319px) { .wc__library-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); } .wc__profile-themes .wc__theme-grid { grid-template-columns: minmax(0,1fr); } }
+#security-form { display:grid; gap:12px; margin-top:14px; }
+#security-form[hidden] { display:none; }
+#security-email, #security-status, #plan-current, #plan-error { overflow-wrap:anywhere; }
+#account-security .wc__source-action-list { flex-wrap:wrap; }
+#account-security input { max-width:100%; min-width:0; box-sizing:border-box; }

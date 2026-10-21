@@ -19,9 +19,9 @@ session history. Pro users add a **daily writing prompt**, a
 **English / Spanish** localization — all still stored locally on the
 device.
 
-> Phase 2 — Paid features (goals · prompts · dashboard · i18n). Payment
-> is a **demo toggle**: "Try Pro" flips the switch locally. Nothing is
-> billed. Wire Stripe later without changing the UI.
+> Plans are resolved from the authenticated account’s server entitlement.
+> Billing is unavailable until a verified provider integration is configured;
+> plan requests never grant or revoke Pro locally. See [account security setup](../docs/account-security-and-profiles.md).
 
 ---
 
@@ -37,7 +37,7 @@ device.
 - **Auto light/dark**, keyboard accessible, private (nothing leaves
   your device).
 
-**Pro** (demo toggle — click Upgrade → Try Pro)
+**Pro** (signed in with an active server entitlement)
 
 - **Session word goal** — Any positive integer, must be a multiple of
   25. Inline validation suggests the closest valid neighbours.
@@ -382,10 +382,10 @@ Suggested run-through before shipping any change:
 - [ ] Click the gear icon. Change to "Count pasted as typed" — big
       number in popup and pill both switch to combined total.
 
-**Pro (demo)**
+**Pro (authenticated account)**
 
-- [ ] Click the extension icon → **Upgrade** → **Try Pro** →
-      walk through the 4-step onboarding (Language → Goal → Themes → Done).
+- [ ] Sign in with an entitled Pro account. Open Library → My profile →
+      Guided writing setup (Language → Goal → Themes → Writing profile → Done).
 - [ ] The popup shows a PRO badge, a Dashboard icon, a **Today's writing
       prompt** card, and a `X / 250 words` pill in the session.
 - [ ] Enter `260` in Settings → Writing goal → shows red error
@@ -400,8 +400,8 @@ Suggested run-through before shipping any change:
       prompt, floating counter, dashboard) switches immediately.
 - [ ] Open the Dashboard — Today / Week / Month / Year / All time show
       correct totals and the chart uses the current data.
-- [ ] Settings → Plan → **Turn off Pro (demo)** — dashboard button
-      disappears, prompt card hides, goal pill hides, upgrade CTA returns.
+- [ ] Settings → Plan → request a change → confirm. Billing is unavailable;
+      the existing entitlement stays unchanged. Sign out to check Free access.
 
 **Session history**
 

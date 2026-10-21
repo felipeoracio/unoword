@@ -20,7 +20,7 @@
     }
   }
 
-  const NO_REFRESH = new Set(['/auth/refresh', '/auth/login', '/auth/signup', '/auth/logout']);
+  const NO_REFRESH = new Set(['/auth/refresh', '/auth/login', '/auth/signup', '/auth/logout', '/auth/password/change', '/auth/email/change', '/auth/email/resend', '/auth/recovery', '/auth/recovery/complete', '/auth/email/verify']);
 
   async function request(path, options = {}, _retried = false) {
     const controller = new AbortController();

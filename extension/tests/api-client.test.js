@@ -38,6 +38,14 @@ test('multipart uploads keep browser-generated content headers', async () => {
   assert.equal(captured.options.body, form);
 });
 
+test('wrong-current-password responses are never automatically retried', async () => {
+  const calls = [];
+  global.fetch = async url => { calls.push(url); return { ok: false, status: 401, json: async () => ({ detail: 'current_password_invalid' }) }; };
+  await assert.rejects(() => API.post('/auth/password/change', { current_password: 'fixture-password' }), error => error.status === 401);
+  assert.equal(calls.length, 1);
+  assert.ok(!calls.some(url => url.endsWith('/auth/refresh')));
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const [name, fn] of tests) {

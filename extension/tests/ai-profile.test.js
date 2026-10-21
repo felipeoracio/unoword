@@ -89,14 +89,14 @@ test('fromApiProfile round-trips the richer fields into the draft', () => {
   assert.equal(draft.personalContext, 'Farm kid.');
 });
 
-test('mergeWithCloud keeps non-empty local fields and preserves cloud-only fields', () => {
+test('complete profile edits preserve explicit clears instead of resurrecting cloud answers', () => {
   const merged = P.mergeWithCloud(
     { writingGoal: 'Local memoir', audience: '', currentProjects: 'Book one' },
     { writing_goal: 'Cloud goal', audience: 'Cloud readers', writing_style: 'lyrical', current_projects: ['Old project'] },
   );
   assert.equal(merged.writing_goal, 'Local memoir');
-  assert.equal(merged.audience, 'Cloud readers');
-  assert.equal(merged.writing_style, 'lyrical');
+  assert.equal(merged.audience, null);
+  assert.equal(merged.writing_style, null);
   assert.deepEqual(merged.current_projects, ['Book one']);
 });
 

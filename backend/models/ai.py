@@ -33,6 +33,7 @@ class AIProfile(AIModel):
 
 
 class AIProfileUpdate(AIModel):
+    expected_user_id: str | None = Field(default=None, exclude=True)
     writing_goal: str | None = None
     writing_style: str | None = None
     audience: str | None = None

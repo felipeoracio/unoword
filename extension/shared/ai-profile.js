@@ -1,9 +1,8 @@
 /**
  * UnoWord — local AI profile draft helpers.
  *
- * Phase 1 stores this draft in chrome.storage.local only. Nothing here sends
- * data over the network. The API mapper exists so a future explicit sync can
- * reuse the same shape after Supabase Auth is connected.
+ * Shared schema for onboarding and the account-backed Writing Profile.
+ * The worker owns explicit network writes; this module only maps values.
  */
 (function attach(scope) {
   const TEXT_LIMITS = {
@@ -30,6 +29,7 @@
     const source = value && typeof value === 'object' ? value : {};
     const storedUpdatedAt = Number(source.updatedAt);
     return {
+      promptThemes: Array.isArray(source.promptThemes) ? [...new Set(source.promptThemes.filter(v => typeof v === 'string').map(v => v.trim().slice(0,100)).filter(Boolean))].slice(0,30) : [],
       writingGoal: cleanText(source.writingGoal, TEXT_LIMITS.writingGoal),
       writingStyle: cleanText(source.writingStyle, TEXT_LIMITS.writingStyle),
       audience: cleanText(source.audience, TEXT_LIMITS.audience),
@@ -79,29 +79,21 @@
       favorite_subjects: splitList(draft.favoriteSubjects),
       avoid_topics: splitList(draft.avoidTopics),
       personal_context: draft.personalContext || null,
-      ai_preferences: { source: 'extension_onboarding', sync_status: draft.syncStatus },
+      ai_preferences: { source: 'extension_profile', sync_status: draft.syncStatus, prompt_themes: draft.promptThemes },
     };
   }
 
   function mergeWithCloud(localValue, cloudValue = {}) {
     const local = toApiProfile(localValue);
     const cloud = cloudValue && typeof cloudValue === 'object' ? cloudValue : {};
-    return {
-      writing_goal: local.writing_goal || cloud.writing_goal || null,
-      writing_style: local.writing_style || cloud.writing_style || null,
-      audience: local.audience || cloud.audience || null,
-      primary_topics: local.primary_topics.length ? local.primary_topics : (cloud.primary_topics || []),
-      current_projects: local.current_projects.length ? local.current_projects : (cloud.current_projects || []),
-      favorite_subjects: local.favorite_subjects.length ? local.favorite_subjects : (cloud.favorite_subjects || []),
-      avoid_topics: local.avoid_topics.length ? local.avoid_topics : (cloud.avoid_topics || []),
-      personal_context: local.personal_context || cloud.personal_context || null,
-      ai_preferences: { ...(cloud.ai_preferences || {}), ...local.ai_preferences, sync_status: 'synced' },
-    };
+    // A complete edited profile is authoritative, including explicit clears.
+    return { ...local, ai_preferences: { ...(cloud.ai_preferences || {}), ...local.ai_preferences, sync_status: 'synced' } };
   }
 
   function fromApiProfile(value = {}, existing = {}) {
     return sanitizeDraft({
       ...existing,
+      promptThemes: Object.hasOwn(value.ai_preferences || {}, 'prompt_themes') ? value.ai_preferences.prompt_themes : (existing.promptThemes || []),
       writingGoal: value.writing_goal || '',
       writingStyle: value.writing_style || '',
       audience: value.audience || '',

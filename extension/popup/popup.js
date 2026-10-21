@@ -273,10 +273,11 @@ function fmtDuration(ms) {
 
 let currentPanel = 'session';
 let completedWordsToday = 0;
-let libraryFilter = 'documents';
+let libraryFilter = 'profile';
 let cloudMemories = [];
 
 function showPanel(name) {
+  if (name !== 'settings' && typeof clearSecurityForms === 'function') clearSecurityForms();
   currentPanel = name;
   els.firstlaunch.hidden = name !== 'firstlaunch';
   els.promptPanel.hidden = name !== 'ideas';
@@ -345,8 +346,10 @@ async function openIdeas(mode = null) {
 function selectLibraryFilter(filter) {
   libraryFilter = filter;
   document.querySelectorAll('[data-library-filter]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.libraryFilter === filter)));
-  ['documents', 'links', 'memory', 'saved'].forEach(key => { $(`library-${key}`).hidden = key !== filter; });
+  ['profile', 'documents', 'links', 'memory', 'saved'].forEach(key => { $(`library-${key}`).hidden = key !== filter; });
   els.aiMemoryEditor.hidden = filter !== 'memory' || !account.aiAccess;
+  $('library-content').hidden = filter === 'profile' || !account.aiAccess;
+  $('library-access').hidden = filter === 'profile' || !!account.aiAccess;
 }
 
 function renderCloudMemory() {
@@ -360,33 +363,43 @@ function renderCloudMemory() {
   });
 }
 
+let libraryRequestVersion = 0;
 async function openLibrary(filter = libraryFilter) {
-  showPanel('library');
-  const response = await sendMessage({ type: 'GET_ACCOUNT' });
-  if (response.ok) updateSuggestionAccount(response.account);
-  const access = account.authenticated && account.aiAccess;
-  $('library-access').hidden = access;
-  $('library-content').hidden = !access;
-  if (!access) return;
-  const owner = account.userId;
-  await Promise.all([loadDocuments(), loadLinks(), loadIdeaChoices(), refreshMemoryQueueStatus()]);
+  const version = ++libraryRequestVersion;
+  els.library.setAttribute('aria-busy', 'true');
   try {
-    const memories = await window.WCApi.get('/ai/memories');
+    showPanel('library');
+    selectLibraryFilter(filter);
+    const response = await sendMessage({ type: 'GET_ACCOUNT' });
+    if (version !== libraryRequestVersion) return;
+    if (response.ok) updateSuggestionAccount(response.account);
+    selectLibraryFilter(filter);
+    if (filter === 'profile') { await loadWritingProfileEditor(); return; }
+    const access = account.authenticated && account.aiAccess;
+    $('library-access').hidden = access;
+    $('library-content').hidden = !access;
+    if (!access) return;
+    const owner = account.userId;
+    await Promise.all([loadDocuments(), loadLinks(), loadIdeaChoices(), refreshMemoryQueueStatus()]);
+    try {
+      const memories = await window.WCApi.get('/ai/memories');
+      if (owner !== account.userId) return;
+      cloudMemories = memories;
+      $('library-memory-error').hidden = true;
+    } catch (error) {
+      cloudMemories = [];
+      $('library-memory-error').hidden = false;
+      $('library-memory-error').textContent = documentErrorMessage(error);
+    }
     if (owner !== account.userId) return;
-    cloudMemories = memories;
-    $('library-memory-error').hidden = true;
-  } catch (error) {
-    cloudMemories = [];
-    $('library-memory-error').hidden = false;
-    $('library-memory-error').textContent = documentErrorMessage(error);
-  }
-  if (owner !== account.userId) return;
-  renderDocuments(); renderLinks(); renderCloudMemory(); renderSettings();
-  $('library-count').textContent = t('library.resourceCount', { n: fmtNumber(documents.length + links.length) });
-  selectLibraryFilter(filter);
+    if (version !== libraryRequestVersion || currentPanel !== 'library') return;
+    renderDocuments(); renderLinks(); renderCloudMemory(); renderSettings();
+    $('library-count').textContent = t('library.resourceCount', { n: fmtNumber(documents.length + links.length) });
+    selectLibraryFilter(filter);
+  } finally { if (version === libraryRequestVersion) els.library.setAttribute('aria-busy', 'false'); }
 }
 
-function isPro() { return (settings?.plan || 'free') === 'pro'; }
+function isPro() { return account.authenticated === true && account.aiAccess === true; }
 
 // ---------- session view ----------
 
@@ -637,7 +650,7 @@ let suggestionBusy = false;
 function hasProSuggestionOptions() {
   // Signed-in access follows the server's current entitlement. Local Pro
   // onboarding remains available before sign-in; AI requests still require auth.
-  return account.authenticated ? account.aiAccess === true : isPro();
+  return account.authenticated === true && account.aiAccess === true;
 }
 
 function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
@@ -667,6 +680,8 @@ function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
     els.promptAiCard.hidden = true;
     renderSavedIdeas();
     suggestionStatus(null);
+    if (identityChanged && typeof clearWritingProfileEditor === 'function') clearWritingProfileEditor();
+    if (identityChanged && typeof clearSecurityForms === 'function') clearSecurityForms();
   }
   account = next;
   if (refreshOptions && settings) {
@@ -701,6 +716,7 @@ function renderModePicker() {
   els.promptAnother.hidden = !original;
   els.ideasAccess.hidden = original || aiAccess;
   $('ideas-open-saved').hidden = !aiAccess;
+  $('personalization-explainer').hidden = original || !pro;
 }
 
 async function loadOriginalPrompt({ another = false } = {}) {
@@ -1070,9 +1086,13 @@ async function primaryClick() {
 let onboardStep = 0; // 0=lang, 1=goal, 2=themes, 3=AI context, 4=done
 let onboardDraft = { language: 'en', wordGoal: 250, themes: [], aiProfile: window.WCAIProfile.createDraft() };
 
-function openUpgrade() { showPanel('upgrade'); }
+function openUpgrade() { showPanel('upgrade'); renderPlanStatus(); }
 
-function startProOnboarding() {
+async function startProOnboarding() {
+  if (!isPro()) { await beginPlanChange('pro'); return; }
+  const loaded = await sendMessage({ type: 'LOAD_MY_PROFILE', expectedUserId: account.userId });
+  if (!loaded.ok) return;
+  settings = loaded.settings;
   onboardStep = 0;
   onboardDraft = {
     language: settings?.language || getLang(),
@@ -1227,15 +1247,16 @@ async function proOnboardNext() {
   }
   // Finalize
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const savedProfile = await sendMessage({ type: 'SAVE_MY_PROFILE', expectedUserId: account.userId, profile: { ...onboardDraft.aiProfile, promptThemes: onboardDraft.themes } });
+  if (!savedProfile.ok) { els.onboardThemesError.textContent = t('profile.error'); els.onboardThemesError.hidden = false; return; }
   const r = await sendMessage({
     type: 'SET_SETTINGS',
     settings: {
-      plan: 'pro',
       proOnboarded: true,
       language: onboardDraft.language,
       wordGoal: onboardDraft.wordGoal,
       themes: onboardDraft.themes,
-      aiProfileDraft: onboardDraft.aiProfile,
+      aiProfileDraft: savedProfile.profile,
       profile: {
         timezone: tz,
         createdAt: settings?.profile?.createdAt || Date.now(),
@@ -1462,6 +1483,7 @@ function sendFeedback() {
 // ---------- settings ----------
 
 async function openSettings() {
+  clearSecurityForms();
   renderSettings();
   showPanel('settings');
   const response = await sendMessage({ type: 'GET_ACCOUNT' });
@@ -1470,6 +1492,7 @@ async function openSettings() {
   await refreshMemoryQueueStatus();
   if (account.authenticated && account.aiAccess) { await loadDocuments(); await loadUsage(); await loadLinks(); }
   renderSettings();
+  await loadAccountSecurity();
 }
 
 async function refreshMemoryQueueStatus() {
@@ -1974,8 +1997,11 @@ async function submitAccount(mode) {
   const refreshed = await sendMessage({ type: 'GET_ACCOUNT' });
   if (refreshed.ok) updateSuggestionAccount(refreshed.account);
   await refreshMemoryQueueStatus();
+  const freshSettings = await sendMessage({ type: 'GET_SETTINGS' });
+  if (freshSettings.ok) settings = freshSettings.settings;
   renderSettings();
   await renderPrompt();
+  if (await resumePendingPlanChange()) return;
   if (account.aiAccess && memoryQueue.unclaimed > 0) {
     requestMemoryClaim();
   } else if (account.aiAccess && window.WCAIProfile.hasPersonalization(settings.aiProfileDraft) && !account.profileSyncEnabled) {
@@ -2082,10 +2108,7 @@ async function syncAIProfile() {
   renderSettings();
 }
 
-function aiProfileAction() {
-  if (account.profileSyncEnabled) syncAIProfile();
-  else requestProfileSync();
-}
+function aiProfileAction() { openLibrary('profile'); }
 
 function toggleGoalEditor() {
   els.goalEditor.hidden = !els.goalEditor.hidden;
@@ -2102,38 +2125,7 @@ async function saveGoal() {
   if (r.ok) { settings = r.settings; renderSettings(); }
 }
 
-function toggleThemesEditor() {
-  els.themesEditor.hidden = !els.themesEditor.hidden;
-  if (els.themesEditor.hidden) return;
-  els.settingsThemes.innerHTML = '';
-  const selected = new Set(settings.themes || []);
-  ALL_THEMES.forEach((slug) => {
-    const b = document.createElement('button');
-    b.className = 'wc__theme-chip';
-    b.type = 'button';
-    b.textContent = t(`theme.${slug}`);
-    b.setAttribute('data-theme', slug);
-    b.setAttribute('data-testid', `settings-theme-${slug}`);
-    b.setAttribute('aria-pressed', selected.has(slug) ? 'true' : 'false');
-    b.addEventListener('click', () => {
-      const has = selected.has(slug);
-      if (slug === 'surprise-me') { selected.clear(); if (!has) selected.add('surprise-me'); }
-      else { selected.delete('surprise-me'); has ? selected.delete(slug) : selected.add(slug); }
-      b.setAttribute('aria-pressed', selected.has(slug) ? 'true' : 'false');
-      els.settingsThemes.querySelectorAll('.wc__theme-chip').forEach((btn) => {
-        const s = btn.getAttribute('data-theme');
-        btn.setAttribute('aria-pressed', selected.has(s) ? 'true' : 'false');
-      });
-    });
-    els.settingsThemes.appendChild(b);
-  });
-  els.saveThemes.onclick = async () => {
-    if (selected.size === 0) { els.themesError.hidden = false; els.themesError.textContent = t('settings.themesSaveMin'); return; }
-    els.themesError.hidden = true;
-    const r = await sendMessage({ type: 'SET_SETTINGS', settings: { themes: Array.from(selected) } });
-    if (r.ok) { settings = r.settings; renderSettings(); await renderPrompt(); }
-  };
-}
+function toggleThemesEditor() { if (!isPro()) { openUpgrade(); return; } openLibrary('profile'); }
 
 function toggleLanguageEditor() {
   els.languageEditor.hidden = !els.languageEditor.hidden;
@@ -2154,12 +2146,7 @@ function toggleLanguageEditor() {
   }
 }
 
-async function planAction() {
-  if (els.planAction.dataset.action === 'upgrade') { openUpgrade(); return; }
-  // cancel Pro (demo)
-  const r = await sendMessage({ type: 'SET_SETTINGS', settings: { plan: 'free' } });
-  if (r.ok) { settings = r.settings; renderSettings(); renderSession(); await renderPrompt(); }
-}
+async function planAction() { await beginPlanChange(isPro() ? 'free' : 'pro'); }
 
 // ---------- upgrade / pro badge ----------
 
@@ -2202,7 +2189,7 @@ function wire() {
       next.focus(); next.click();
     });
   });
-  document.querySelectorAll('[data-library-filter]').forEach(button => button.addEventListener('click', () => selectLibraryFilter(button.dataset.libraryFilter)));
+  document.querySelectorAll('[data-library-filter]').forEach(button => button.addEventListener('click', () => openLibrary(button.dataset.libraryFilter)));
   document.querySelectorAll('[data-idea-mode]').forEach(button => button.addEventListener('click', () => openIdeas(button.dataset.ideaMode)));
   $('dashboard-more-ideas').addEventListener('click', () => openIdeas());
   $('ideas-open-saved').addEventListener('click', () => openLibrary('saved'));
@@ -2237,7 +2224,7 @@ function wire() {
 
   els.openUpgrade.addEventListener('click', openUpgrade);
   els.upgradeBack.addEventListener('click', () => { showPanel('session'); renderSession(); });
-  els.tryPro.addEventListener('click', startProOnboarding);
+  els.tryPro.addEventListener('click', () => beginPlanChange('pro'));
   els.proOnboardNext.addEventListener('click', proOnboardNext);
   els.onboardAISkip.addEventListener('click', skipAIOnboarding);
 
@@ -2347,6 +2334,7 @@ function wire() {
 async function boot() {
   mountLibraryResources();
   wire();
+  setupProfileAndPlans();
 
   // Load everything in one round-trip
   const r = await sendMessage({ type: 'GET_ALL' });

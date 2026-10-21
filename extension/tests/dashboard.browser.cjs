@@ -34,6 +34,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    const route=new URL(url).pathname.replace('/api',''),method=options.method||'GET',payload=options.body?JSON.parse(options.body):null;
    requests.push({route,method,payload});let body,status=200;
    if(route==='/auth/me')body={id:userId,email:'qa@example.com',plan:freeAccount?'free':'pro',ai_access:!freeAccount};
+   else if(route==='/ai/profile')body={id:'profile',user_id:userId,ai_preferences:{prompt_themes:['ideas']}};
    else if(route==='/documents')body=docs;
    else if(route==='/links'&&method==='GET')body=links;
    else if(route==='/links'&&method==='POST'){body={...ready,id:'added',source_url:payload.url,document_title:payload.title};links.unshift(body);}
@@ -105,6 +106,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    for(const lang of ['en','es']){
     await page.evaluate(async({lang,links})=>{settings.language=lang;WCi18n.setLang(lang);WCi18n.applyI18n(document);}, {lang,links});
     await page.evaluate(async items=>{links=items;renderLinks();},links);
+    await page.waitForFunction(()=>document.querySelector('#library-panel').getAttribute('aria-busy')==='false');
     await layout(`links ${width} ${lang}`);
     assert.ok((await page.locator('[data-testid="link-title-ready"]').boundingBox()).width>width-95);
     for(const id of ['link-url','link-title','link-category']){const r=await page.locator('#'+id).boundingBox();assert.ok(r.width>width-70&&r.x+r.width<=width,id+' full width');}

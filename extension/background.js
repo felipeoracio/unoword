@@ -96,12 +96,19 @@ const DEFAULT_ACCOUNT = {
 async function getState()   { const { [STATE_KEY]: s }    = await chrome.storage.local.get(STATE_KEY);    return { ...DEFAULT_STATE, ...(s || {}) }; }
 async function getSettings(){
   const { [SETTINGS_KEY]: s } = await chrome.storage.local.get(SETTINGS_KEY);
+  const account = await getAccount();
   const merged = {
     ...DEFAULT_SETTINGS,
     ...(s || {}),
     profile: { ...DEFAULT_SETTINGS.profile, ...((s && s.profile) || {}) },
     aiProfileDraft: self.WCAIProfile.sanitizeDraft((s && s.aiProfileDraft) || {}),
   };
+  // Plan is a cache of a server-verified entitlement, never a user setting.
+  merged.plan = account.authenticated && account.aiAccess === true ? 'pro' : 'free';
+  if (merged.aiProfileOwnerId && merged.aiProfileOwnerId !== account.userId) {
+    merged.aiProfileDraft = self.WCAIProfile.createDraft();
+    merged.themes = [...DEFAULT_SETTINGS.themes];
+  }
   // Purge the removed "copied/pasted text" setting so no obsolete value lingers.
   delete merged.pasteMode;
   delete merged.onboarded;
@@ -123,9 +130,27 @@ async function setState(next) {
   await chrome.storage.local.set({ [STATE_KEY]: withDerived });
   broadcastState(withDerived).catch(() => {});
 }
-async function setSettings(next) { await chrome.storage.local.set({ [SETTINGS_KEY]: next }); }
+async function setSettings(next) {
+  const { [SETTINGS_KEY]: old } = await chrome.storage.local.get(SETTINGS_KEY);
+  await chrome.storage.local.set({ [SETTINGS_KEY]: next });
+  if (old && JSON.stringify(old.themes) !== JSON.stringify(next.themes)) {
+    const prompt = await getPrompt();
+    await setPrompt({ ...prompt, dateKey: null, promptId: null, text: null });
+  }
+}
 async function setPrompt(next)   { await chrome.storage.local.set({ [PROMPT_KEY]: next });   }
-async function setAccount(next)  { await chrome.storage.local.set({ [ACCOUNT_KEY]: next }); }
+async function setAccount(next) {
+  const previous = await getAccount();
+  if (previous.userId && previous.userId !== next.userId) {
+    const { [SETTINGS_KEY]: stored } = await chrome.storage.local.get(SETTINGS_KEY);
+    await setSettings({ ...(stored || {}), aiProfileDraft: self.WCAIProfile.createDraft(), aiProfileOwnerId: next.userId || null, themes: [...DEFAULT_SETTINGS.themes] });
+    next = { ...next, profileSyncEnabled: false, profileSyncedAt: null };
+  }
+  await chrome.storage.local.set({ [ACCOUNT_KEY]: next });
+  if (previous.authenticated !== next.authenticated || previous.aiAccess !== next.aiAccess || previous.userId !== next.userId) {
+    await setSettings(await getSettings());
+  }
+}
 
 // ---------- Supabase account + explicit profile sync ----------
 
@@ -183,36 +208,64 @@ async function authenticateAccount(mode, email, password) {
   return { account, message: result.message };
 }
 
-async function syncAIProfileDraft(enableAutoSync = false) {
+async function cacheWritingProfile(cloud, owner) {
+  const current = await getAccount();
+  if (current.userId !== owner || !current.authenticated || cloud.user_id !== owner) throw new Error('account_changed');
+  const settings = await getSettings();
+  const profile = self.WCAIProfile.fromApiProfile(cloud, { promptThemes: settings.themes });
+  const next = { ...settings, aiProfileDraft: profile, aiProfileOwnerId: owner, themes: profile.promptThemes };
+  await setSettings(next);
+  return { profile, settings: next, account: current };
+}
+
+async function loadWritingProfile(expectedUserId = null) {
+  const account = await refreshAccount();
+  if (!account.authenticated) throw new Error('auth_required');
+  if (expectedUserId && account.userId !== expectedUserId) throw new Error('account_changed');
+  const cloud = await self.WCApi.get('/ai/profile');
+  return cacheWritingProfile(cloud, account.userId);
+}
+
+async function saveWritingProfile(draft, expectedUserId) {
+  const account = await refreshAccount();
+  if (!account.authenticated) throw new Error('auth_required');
+  if (expectedUserId !== account.userId) throw new Error('account_changed');
+  const body = self.WCAIProfile.toApiProfile(draft);
+  if (!account.aiAccess) delete body.ai_preferences.prompt_themes;
+  const cloud = await self.WCApi.put('/ai/profile', { ...body, expected_user_id: account.userId });
+  const result = await cacheWritingProfile(cloud, account.userId);
+  const nextAccount = { ...result.account, profileSyncEnabled: true, profileSyncedAt: Date.now() };
+  await setAccount(nextAccount);
+  return { ...result, account: nextAccount };
+}
+
+async function syncAIProfileDraft() {
   const [settings, account] = await Promise.all([getSettings(), refreshAccount()]);
   if (!account.authenticated) throw new Error('auth_required');
-  const cloud = await self.WCApi.get('/ai/profile');
-  const merged = self.WCAIProfile.mergeWithCloud(settings.aiProfileDraft, cloud);
-  const saved = await self.WCApi.put('/ai/profile', merged);
-  const syncedDraft = self.WCAIProfile.fromApiProfile(saved, settings.aiProfileDraft);
-  const nextSettings = { ...settings, aiProfileDraft: syncedDraft };
-  const nextAccount = {
-    ...account,
-    online: true,
-    profileSyncEnabled: enableAutoSync || account.profileSyncEnabled,
-    profileSyncedAt: Date.now(),
-  };
-  await Promise.all([setSettings(nextSettings), setAccount(nextAccount)]);
-  return { profile: syncedDraft, account: nextAccount };
+  if (settings.aiProfileOwnerId && settings.aiProfileOwnerId !== account.userId) throw new Error('account_changed');
+  return saveWritingProfile({ ...settings.aiProfileDraft, promptThemes: settings.themes }, account.userId);
 }
 
 async function maybeAutoSyncProfile(profile) {
-  const account = await getAccount();
-  if (!account.authenticated || !account.profileSyncEnabled) return profile;
+  const [account, settings] = await Promise.all([getAccount(), getSettings()]);
+  if (!account.authenticated || !account.profileSyncEnabled || settings.aiProfileOwnerId !== account.userId) return profile;
+  try { return (await saveWritingProfile({ ...profile, promptThemes: settings.themes }, account.userId)).profile; }
+  catch (_error) { return { ...profile, syncStatus: 'pending' }; }
+}
+
+let changingPlan = false;
+async function requestPlanChange(msg) {
+  const account = await refreshAccount();
+  if (!account.authenticated) return { ok: false, error: 'auth_required', account };
+  if (account.userId !== msg.expectedUserId) return { ok: false, error: 'account_changed', account };
+  if (msg.confirmed !== true) return { ok: false, error: 'confirmation_required' };
+  if (changingPlan) return { ok: false, error: 'request_in_progress' };
+  changingPlan = true;
   try {
-    const result = await syncAIProfileDraft(false);
-    return result.profile;
-  } catch (_error) {
-    const settings = await getSettings();
-    const pending = self.WCAIProfile.sanitizeDraft({ ...settings.aiProfileDraft, syncStatus: 'pending' }, Date.now());
-    await setSettings({ ...settings, aiProfileDraft: pending });
-    return pending;
-  }
+    await self.WCApi.post('/subscription/change', { target_plan: msg.targetPlan, confirmed: true, expected_user_id: account.userId });
+    return { ok: true, account: await refreshAccount() };
+  } catch (error) { return { ok: false, error: typeof error.body?.detail === 'string' ? error.body.detail : 'request_failed' }; }
+  finally { changingPlan = false; }
 }
 
 async function captureActiveEditor(preferredTabId = null) {
@@ -583,8 +636,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         case 'GET_ALL': {
-          const [state, settings, history, prompt, account] = await Promise.all([
-            getState(), getSettings(), getHistory(), getPrompt(), getAccount(),
+          const account = await refreshAccount();
+          const [state, settings, history, prompt] = await Promise.all([
+            getState(), getSettings(), getHistory(), getPrompt(),
           ]);
           sendResponse({ ok: true,
             payload: buildPopupPayload(state, settings),
@@ -632,7 +686,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'SET_SETTINGS': {
           const current = await getSettings();
           // Deep-merge nested profile records; the rest is a shallow overlay.
-          const patch = msg.settings || {};
+          const patch = { ...(msg.settings || {}) };
+          delete patch.plan;
+          delete patch.aiProfileOwnerId;
           const nextProfile = patch.profile
             ? { ...current.profile, ...patch.profile }
             : current.profile;
@@ -646,6 +702,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           broadcastState(state).catch(() => {});
           sendResponse({ ok: true, settings: next });
           return;
+        }
+        case 'LOAD_MY_PROFILE':
+        case 'SAVE_MY_PROFILE': {
+          try {
+            const result = msg.type === 'LOAD_MY_PROFILE' ? await loadWritingProfile(msg.expectedUserId) : await saveWritingProfile(msg.profile, msg.expectedUserId);
+            sendResponse({ ok: true, ...result });
+          } catch (error) { sendResponse({ ok: false, error: ['auth_required','account_changed'].includes(error.message) ? error.message : apiErrorCode(error) }); }
+          return;
+        }
+        case 'CHANGE_PLAN': {
+          sendResponse(await requestPlanChange(msg)); return;
         }
         case 'GET_AI_PROFILE_DRAFT': {
           const settings = await getSettings();
@@ -667,6 +734,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'GET_ACCOUNT': {
           const account = msg.refresh === false ? await getAccount() : await refreshAccount();
           sendResponse({ ok: true, account });
+          return;
+        }
+        case 'ACCOUNT_SECURITY': {
+          const routes = { status: '/auth/security', email: '/auth/email/change', resend: '/auth/email/resend', password: '/auth/password/change', recovery: '/auth/recovery' };
+          try {
+            if (!routes[msg.action]) throw new Error('invalid_action');
+            let body = msg.body || {};
+            if (!['status', 'recovery'].includes(msg.action)) {
+              const owner = await refreshAccount();
+              if (!owner.authenticated || owner.userId !== msg.expectedUserId) throw new Error('account_changed');
+              body = { ...body, expected_user_id: owner.userId };
+            }
+            const result = msg.action === 'status' ? await self.WCApi.get(routes.status) : await self.WCApi.post(routes[msg.action], body);
+            sendResponse({ ok: true, result });
+          } catch (error) {
+            const detail = error.body && error.body.detail;
+            sendResponse({ ok: false, error: typeof detail === 'string' ? detail : error.message === 'account_changed' ? 'account_changed' : 'security_provider_failed' });
+          }
           return;
         }
         case 'AUTH_ACCOUNT': {
@@ -813,11 +898,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'GET_AI_SUGGESTION': {
           const settings = await getSettings();
-          const draft = settings.aiProfileDraft || {};
-          const project = (draft.currentProjects || draft.writingGoal || '').toString();
           const result = await requestAISuggestion({
             currentWriting: msg.currentWriting || '',
-            currentProject: msg.currentProject || project,
+            currentProject: msg.currentProject || '',
             mode: msg.mode || 'new_topic', language: msg.language || settings.language || 'en', ideaSourceId: msg.ideaSourceId || null,
             expectedUserId: msg.expectedUserId || null,
           });
