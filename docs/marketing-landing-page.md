@@ -69,7 +69,7 @@ Verified during implementation:
 
 - **104 backend tests passed**, including anonymous catalog, no provider resolution/secrets, current feature policy, expiry and Pro authorization, auth/profile security, and suggestion regressions.
 - The built marketing browser suite passed at **320, 360, 390, 768, 1024, and 1440px**. It checks overflow, menus/anchors, all four keyboard-operated examples, FAQ, Free/Pro feature display, API failure state, signup/install/download/logout, authenticated plan confirmation, account-switch protection, recovery setup message, footer routes, SEO, and no AI calls.
-- **axe WCAG 2 A/AA and 2.1 AA audits passed** on desktop/mobile, the example UI, signup, and the Pro account flow. Automated checks supplement, rather than replace, manual accessibility review.
+- **axe WCAG 2 A/AA and 2.1 AA audits passed** on desktop/mobile, the example UI, signup, and the Pro account flow. Automated checks supplement, rather than replace, manual accessibility review. The blue gradient stops and pale text were also checked manually; those contrasts were darkened where automated gradient analysis was incomplete.
 - Existing extension unit suites and callback browser regressions passed. The dashboard browser regression also passed against files extracted from the actual downloadable ZIP, including EN/ES and 180–420px preview layouts. Native extension execution remains subject to the environment's managed-browser policy.
 - ZIP contents match the extension runtime source, manifest version and SHA-256. Tests/tools/credentials are excluded.
 - Build and lint pass. The four remaining lint warnings belong to pre-existing UI exports and the admin effect; no new lint warnings were introduced.

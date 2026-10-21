@@ -264,7 +264,7 @@
   margin-bottom: 27px;
 }
 .uw-hero h1 > span {
-  background: linear-gradient(110deg, #0964ff, #339afc);
+  background: linear-gradient(110deg, #0964ff, #2184ee);
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -1143,17 +1143,17 @@
   padding-block: 5px;
 }
 .uw-flow-result {
-  background: linear-gradient(100deg, #0964ff, #288bff);
+  background: linear-gradient(100deg, #064fd7, #0759e5);
   border-color: #0964ff;
 }
 .uw-flow-result h3 {
   color: white;
 }
 .uw-flow-result small {
-  color: #b7d6ff;
+  color: #eef6ff;
 }
 .uw-flow-result p {
-  color: #c5deff;
+  color: #f1f7ff;
 }
 .uw-flow-result .uw-flow-icon {
   color: white;
@@ -1431,9 +1431,9 @@
   padding-block: 73px 66px;
   position: relative;
   background:
-    radial-gradient(ellipse at 90% 110%, #5eaeff5c 0, transparent 55%),
-    radial-gradient(ellipse at -10% -20%, #58a6ff90 0, transparent 65%),
-    linear-gradient(120deg, #0564f3, #0862ed 60%, #0754df);
+    radial-gradient(ellipse at 90% 110%, #5eaeff12 0, transparent 55%),
+    radial-gradient(ellipse at -10% -20%, #58a6ff12 0, transparent 65%),
+    linear-gradient(120deg, #064fd7, #0754d9 60%, #0647c5);
   overflow: hidden;
   color: white;
   text-align: center;
@@ -1474,7 +1474,7 @@
   margin-bottom: 19px;
 }
 .uw-final-cta .uw-eyebrow {
-  color: #bad9ff;
+  color: #eef6ff;
   font-size: 8px;
   justify-content: center;
   margin-bottom: 15px !important;
@@ -1484,14 +1484,14 @@
   font-size: clamp(34px, 3.3vw, 47px);
 }
 .uw-final-cta p:not(.uw-eyebrow) {
-  color: #d8e9ff;
+  color: #f1f7ff;
   font-size: 12px;
   margin-bottom: 27px;
 }
 .uw-final-cta > div > small {
   display: block;
   font-size: 9px;
-  color: #b8d7ff;
+  color: #eef6ff;
   margin-top: 23px;
 }
 .uw-footer {
