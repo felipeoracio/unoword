@@ -77,7 +77,7 @@
   const api = {
     API_BASE,
     ApiError,
-    get: (path) => request(path),
+    get: (path, options = {}) => request(path, options),
     post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body }),
     put: (path, body) => request(path, { method: 'PUT', body }),
     patch: (path, body) => request(path, { method: 'PATCH', body }),

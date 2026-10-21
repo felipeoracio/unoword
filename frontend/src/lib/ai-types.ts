@@ -47,6 +47,10 @@ export type DocumentType = "memoir" | "journal" | "book" | "research" | "outline
 export type ProcessingStatus = "pending" | "processing" | "ready" | "failed";
 
 export interface AIDocument {
+  indexing_status?: "indexed" | "partial" | "not_indexed" | "unknown";
+  chunk_count?: number | null;
+  embedded_chunk_count?: number | null;
+  last_successful_processed_at?: string | null;
   id: string;
   user_id: string;
   filename: string;

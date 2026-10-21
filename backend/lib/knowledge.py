@@ -162,9 +162,10 @@ async def heal_missing_embeddings(user_id: str, limit: int = 16) -> int:
 
 
 async def disabled_source_ids(user_id: str, token: str | None) -> set[str]:
+    """Sources unavailable to AI, including failed/incomplete refreshes."""
     rows = await _rest(
         "GET", "ai_documents", token,
-        params={"select": "id", "user_id": f"eq.{user_id}", "enabled": "eq.false"},
+        params={"select": "id", "user_id": f"eq.{user_id}", "or": "(enabled.eq.false,processing_status.neq.ready)"},
     )
     return {str(row["id"]) for row in rows or []}
 

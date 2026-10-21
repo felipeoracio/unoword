@@ -81,7 +81,11 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
         "ai_documents": [{"id": "file", "document_title": "Recipe notes", "summary": "Family meals"},
                          {"id": "link", "source_kind": "link", "document_title": "Garden article",
                           "summary": "Urban gardens"}],
-        "ai_suggestions": [{"title": "Yesterday's topic", "suggestion": "Write about a recipe."}],
+        "ai_suggestions": [
+            {"title": "Yesterday's topic", "suggestion": "Write about a recipe.", "source_ids": ["profile"]},
+            {"title": "Hidden suggestion", "suggestion": "SECRET_DISABLED_HISTORY", "source_ids": ["disabled"]},
+            {"title": "Deleted suggestion", "suggestion": "SECRET_DELETED_HISTORY", "source_ids": ["deleted"]},
+        ],
     }
 
     async def rows(table, current_user, *, extra):
@@ -98,7 +102,8 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
     async def retrieve(user_id, query):
         assert user_id == user.id
         captured["query"] = query
-        return []
+        # Even a stale RPC result must not reintroduce unavailable source text.
+        return [RetrievedChunk("document_chunk", "stale-chunk", "disabled", "SECRET_DISABLED_PASSAGE", 0.99)]
 
     async def noop(*args, **kwargs):
         return {}
@@ -135,6 +140,7 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
     for text in ("astronomy", "music", "Urban gardens", "Family meals", "Yesterday's topic"):
         assert text in captured["context"]
     assert "SECRET_DISABLED" not in captured["context"]
+    assert "SECRET_DELETED" not in captured["context"]
     assert "hidden-memory" not in result.source_ids
     if focused:
         assert captured["query"] == payload.current_writing

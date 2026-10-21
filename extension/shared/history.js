@@ -49,17 +49,13 @@
     });
     if (active.size === 0) return 0;
 
-    const todayK = dayKeyOf(nowTs, tz);
-    const yestK = dayKeyOf(nowTs - DAY_MS, tz);
-    let cursor;
-    if (active.has(todayK)) cursor = nowTs;
-    else if (active.has(yestK)) cursor = nowTs - DAY_MS;
-    else return 0;
+    const cursor = new Date(`${dayKeyOf(nowTs, tz)}T00:00:00Z`);
+    if (!active.has(cursor.toISOString().slice(0, 10))) cursor.setUTCDate(cursor.getUTCDate() - 1);
 
     let streak = 0;
-    while (active.has(dayKeyOf(cursor, tz))) {
+    while (active.has(cursor.toISOString().slice(0, 10))) {
       streak++;
-      cursor -= DAY_MS;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
     }
     return streak;
   }

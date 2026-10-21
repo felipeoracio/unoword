@@ -28,7 +28,7 @@ from lib.supabase_client import SupabaseAPIError, raise_http, service_rest, user
 from lib.supabase_config import supabase_is_configured
 from lib.writing_context import library_overview
 from lib.suggestion_details import encode_details, evidence_catalog, attributed_sources
-from lib.suggestion_knowledge import selected_idea_text, diverse_passages
+from lib.suggestion_knowledge import selected_idea_text, diverse_passages, available_saved_memories
 from models.ai import (
     AIFeedback,
     AIMemory,
@@ -495,6 +495,12 @@ async def create_suggestion(
         extra={"order": "created_at.desc", "limit": "15"},
     )
 
+    try:
+        memories, unavailable_ideas = await available_saved_memories(
+            user, memories, previous, evidence_catalog(payload, profile, answers, memories, sources, []))
+    except SupabaseAPIError as error:
+        raise_http(error)
+
     query_parts = [
         payload.current_writing or "",
         payload.current_project or "",
@@ -513,15 +519,21 @@ async def create_suggestion(
     await knowledge.heal_missing_embeddings(user.id)
     retrieved = await retrieve_user_chunks(user.id, query) if query else []
     retrieved = await diverse_passages(user, retrieved, sources, mode=payload.mode, selected_id=payload.idea_source_id)
+    unavailable = disabled | unavailable_ideas
+    retrieved = [chunk for chunk in retrieved if str(chunk.parent_id) not in unavailable and chunk.source_id not in unavailable]
     logger.info(
         "suggestion_context user=%s retrieved=%d vector=%d memories=%d",
         user.id, len(retrieved), sum(c.match == "vector" for c in retrieved), len(memories),
     )
 
+    catalog = evidence_catalog(payload, profile, answers, memories, sources, retrieved)
+    # Old suggestion bodies can quote a removed source. Only reuse history whose
+    # complete citations are still available in this request's evidence catalog.
+    previous = [item for item in previous if item.get("source_ids") and
+                set(item["source_ids"]).issubset(catalog)]
     context, source_ids = _compose_prompt_context(
         payload, profile, answers, memories, previous, retrieved, sources
     )
-    catalog = evidence_catalog(payload, profile, answers, memories, sources, retrieved)
     allowed_ids = set(source_ids) | ({"current_writing"} if payload.current_writing else set())
     _, available_parents = attributed_sources(allowed_ids, allowed_ids, catalog)
 

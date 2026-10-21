@@ -96,6 +96,10 @@ class AIDocument(AIModel):
     enabled: bool = True
     content_hash: str | None = None
     last_processed_at: datetime | None = None
+    indexing_status: Literal["indexed", "partial", "not_indexed", "unknown"] = "unknown"
+    chunk_count: int | None = None
+    embedded_chunk_count: int | None = None
+    last_successful_processed_at: datetime | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

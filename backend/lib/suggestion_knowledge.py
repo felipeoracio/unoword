@@ -26,7 +26,8 @@ async def selected_idea_text(user, source_id: str) -> str:
         parent = memories[0].get("source_id")
         if parent:
             disabled = await user_rest("GET", "ai_documents", user.access_token, params={
-                "select": "id", "user_id": f"eq.{user.id}", "id": f"eq.{parent}", "enabled": "eq.false",
+                "select": "id", "user_id": f"eq.{user.id}", "id": f"eq.{parent}",
+                "or": "(enabled.eq.false,processing_status.neq.ready)",
             })
             if disabled:
                 raise HTTPException(404, "Idea not found")
@@ -75,3 +76,34 @@ async def diverse_passages(user, retrieved, sources, *, mode, selected_id=None):
             distinct.append(chunk)
             seen.add(parent)
     return (distinct + remaining)[:8]
+
+
+async def available_saved_memories(user, memories, previous, allowed_ids):
+    """Keep saved ideas visible, but don't automatically reuse removed evidence.
+
+    Saved ideas use their suggestion ID as source_id. Resolve that provenance
+    without changing the user's saved collection or creating another store.
+    """
+    saved = {str(m['source_id']): m for m in memories
+             if m.get('memory_type') == 'unfinished_idea' and m.get('source_id')}
+    if not saved:
+        return memories, set()
+    origins = {str(s['id']): s for s in previous if s.get('id') in saved}
+    missing = set(saved) - origins.keys()
+    if missing:
+        rows = await user_rest('GET', 'ai_suggestions', user.access_token, params={
+            'select': 'id,source_ids', 'user_id': f'eq.{user.id}',
+            'id': f"in.({','.join(sorted(missing))})", 'limit': '200',
+        })
+        origins.update((str(s['id']), s) for s in rows or [])
+    allowed = set(allowed_ids) - {str(m['id']) for m in saved.values()}
+    pending = dict(saved)
+    while pending:
+        usable = [sid for sid in pending if sid in origins and origins[sid].get('source_ids') and
+                  set(origins[sid]['source_ids']).issubset(allowed)]
+        if not usable:
+            break
+        for sid in usable:
+            allowed.add(str(pending.pop(sid)['id']))
+    unavailable = set(pending) | {str(m['id']) for m in pending.values()}
+    return [m for m in memories if str(m['id']) not in unavailable], unavailable

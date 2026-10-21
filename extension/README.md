@@ -501,3 +501,33 @@ Live ingestion and model quality still require a configured Supabase/OpenAI
 backend. The mode, questions and validated attribution are versioned in the
 existing suggestion context column, with older records supported; no database
 schema migration or client-side model key is required.
+
+### UnoWord dashboard (0.11.0)
+
+The popup has one navigation bar: Write, Ideas, Progress, Library. Write combines
+completed typed words today with the current session (pasted text is excluded).
+Calendar ranges and streaks respect the writing-profile timezone. Progress keeps
+completed-session analytics; the standalone dashboard remains a wider page.
+Library groups existing documents, websites, cloud/device memory, and saved ideas.
+
+Website cards use full-width titles and an expandable action menu. Ready requires
+stored text and a complete embedding index. Refresh repairs missing/partial
+passages even when the page hash is unchanged. View extracted content reads a
+bounded plain-text preview of the user's stored passages via
+`GET /api/links/{id}/content`. No migration or new environment variable is needed.
+Only public pages that can be fetched and extracted are supported; sign-in,
+paywall and JavaScript-only pages may fail with an actionable status.
+
+```sh
+node --test extension/tests/*.test.js
+node extension/tests/dashboard.browser.cjs
+# Optional screenshots: set DASHBOARD_SCREENSHOTS to an output directory.
+# Additional backend regressions, from backend/:
+python -m pytest tests/test_link_library.py tests/test_source_availability.py tests/test_suggestion_breadth.py
+```
+
+The browser harness exercises the shipped popup/background against isolated
+Chrome API and HTTP fixtures at 320/360/420 pixels in English and Spanish. It is
+separate from live backend/model verification. Toolbar PNGs can be regenerated
+from `icons/unoword.svg` with `python extension/icons/generate_icons.py` after
+installing the developer-only `cairosvg` package.

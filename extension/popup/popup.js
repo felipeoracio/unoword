@@ -17,6 +17,9 @@ const els = {
   dashboardBtn:$('dashboard-btn'),
   historyBtn:  $('history-btn'),
   settingsBtn: $('settings-btn'),
+  mainNav: $('main-nav'),
+  library: $('library-panel'),
+  ideasAccess: $('ideas-access'),
 
   // panels
   firstlaunch:   $('firstlaunch-panel'),
@@ -268,9 +271,17 @@ function fmtDuration(ms) {
 
 // ---------- panels ----------
 
+let currentPanel = 'session';
+let completedWordsToday = 0;
+let libraryFilter = 'documents';
+let cloudMemories = [];
+
 function showPanel(name) {
+  currentPanel = name;
   els.firstlaunch.hidden = name !== 'firstlaunch';
-  els.promptPanel.hidden = !(name === 'session' && isPro() && !state?.active);
+  els.promptPanel.hidden = !(name === 'ideas' && isPro());
+  els.ideasAccess.hidden = !(name === 'ideas' && !isPro());
+  els.library.hidden = name !== 'library';
   els.session.hidden    = name !== 'session';
   els.progress.hidden   = name !== 'progress';
   els.upgradeCta.hidden = !(name === 'session' && !isPro());
@@ -279,8 +290,100 @@ function showPanel(name) {
   els.history.hidden    = name !== 'history';
   els.settings.hidden   = name !== 'settings';
   els.feedback.hidden   = name !== 'feedback';
-  // The Progress view needs more room — widen the popup only for it.
-  document.body.classList.toggle('wc--wide', name === 'progress');
+  els.mainNav.hidden = ['firstlaunch', 'proOnboard'].includes(name);
+  document.querySelectorAll('[data-page]').forEach(button => {
+    button.setAttribute('aria-selected', String(button.dataset.page === name || (name === 'history' && button.dataset.page === 'progress')));
+  });
+  document.body.classList.remove('wc--wide');
+}
+
+function mountLibraryResources() {
+  const nodes = [...els.aiDocumentsEditor.children];
+  let isLink = false;
+  nodes.forEach(node => {
+    if (node.tagName === 'HR') { isLink = true; node.remove(); return; }
+    $(isLink ? 'library-links' : 'library-documents').appendChild(node);
+  });
+  $('library-memory').appendChild(els.aiMemoryEditor);
+  $('library-saved').appendChild($('suggestion-saved'));
+  $('suggestion-saved').open = true;
+}
+
+function renderWriteDashboard() {
+  if (!settings) return;
+  const activeWords = state?.active && dayKey(state.startedAt) === dayKey(Date.now()) ? (state.typedWords || 0) : 0;
+  const words = completedWordsToday + activeWords;
+  const goal = isPro() ? Number(settings.wordGoal || 0) : 0;
+  const percent = goal > 0 ? Math.min(100, Math.max(0, Math.round(words / goal * 100))) : 0;
+  $('daily-word-count').textContent = fmtNumber(words);
+  $('daily-word-count').style.fontSize = words >= 100000 ? '32px' : '';
+  $('daily-word-target').textContent = goal > 0 ? t('dashboard.ofGoal', { n: fmtNumber(goal) }) : t('dashboard.yourWords');
+  $('dashboard-daily-goal').textContent = goal > 0 ? fmtNumber(goal) : '—';
+  $('daily-goal-percent').textContent = goal > 0 ? `${percent}%` : '—';
+  $('daily-goal-ring').style.setProperty('--progress', `${percent}%`);
+  $('daily-goal-ring').setAttribute('aria-valuenow', String(percent));
+  $('daily-goal-ring').setAttribute('aria-label', t('dashboard.dailyGoal'));
+  const streak = streakValue + (activeWords > 0 && completedWordsToday === 0 ? 1 : 0);
+  $('dashboard-streak').textContent = t('dashboard.days', { n: fmtNumber(streak) });
+  const duration = state?.active ? Date.now() - (state.startedAt || Date.now()) :
+    Math.max(0, (state?.lastResult?.endedAt || 0) - (state?.lastResult?.startedAt || 0));
+  $('dashboard-session-time').textContent = fmtDuration(duration).replace(/^00:/, '');
+}
+
+async function refreshWriteDashboard() {
+  const response = await sendMessage({ type: 'GET_STATS', range: 'today' });
+  if (response.ok) completedWordsToday = response.stats.totalWords || 0;
+  renderWriteDashboard();
+}
+
+async function openIdeas(mode = null) {
+  await renderPrompt();
+  if (mode && isPro()) selectSuggestionMode(mode);
+  showPanel('ideas');
+}
+
+function selectLibraryFilter(filter) {
+  libraryFilter = filter;
+  document.querySelectorAll('[data-library-filter]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.libraryFilter === filter)));
+  ['documents', 'links', 'memory', 'saved'].forEach(key => { $(`library-${key}`).hidden = key !== filter; });
+  els.aiMemoryEditor.hidden = filter !== 'memory' || !account.aiAccess;
+}
+
+function renderCloudMemory() {
+  $('library-memory-list').replaceChildren();
+  $('library-memory-empty').hidden = cloudMemories.length > 0;
+  cloudMemories.forEach(memory => {
+    const card = document.createElement('details'); card.className = 'wc__document-item';
+    const heading = document.createElement('summary'); heading.textContent = (memory.memory || '').slice(0, 110);
+    const text = document.createElement('p'); text.className = 'wc__helper'; text.textContent = memory.memory || '';
+    card.append(heading, text); $('library-memory-list').appendChild(card);
+  });
+}
+
+async function openLibrary(filter = libraryFilter) {
+  showPanel('library');
+  const response = await sendMessage({ type: 'GET_ACCOUNT' });
+  if (response.ok) updateSuggestionAccount(response.account);
+  const access = account.authenticated && account.aiAccess;
+  $('library-access').hidden = access;
+  $('library-content').hidden = !access;
+  if (!access) return;
+  const owner = account.userId;
+  await Promise.all([loadDocuments(), loadLinks(), loadIdeaChoices(), refreshMemoryQueueStatus()]);
+  try {
+    const memories = await window.WCApi.get('/ai/memories');
+    if (owner !== account.userId) return;
+    cloudMemories = memories;
+    $('library-memory-error').hidden = true;
+  } catch (error) {
+    cloudMemories = [];
+    $('library-memory-error').hidden = false;
+    $('library-memory-error').textContent = documentErrorMessage(error);
+  }
+  if (owner !== account.userId) return;
+  renderDocuments(); renderLinks(); renderCloudMemory(); renderSettings();
+  $('library-count').textContent = t('library.resourceCount', { n: fmtNumber(documents.length + links.length) });
+  selectLibraryFilter(filter);
 }
 
 function isPro() { return (settings?.plan || 'free') === 'pro'; }
@@ -336,6 +439,7 @@ function renderSession() {
     stopDurationTicker();
   }
   renderMemoryPrompt();
+  renderWriteDashboard();
 }
 
 function renderMemoryPrompt() {
@@ -412,6 +516,7 @@ async function refreshStreak() {
   const r = await sendMessage({ type: 'GET_STREAK' });
   streakValue = r.ok ? (r.streak || 0) : 0;
   renderStreak();
+  renderWriteDashboard();
 }
 
 // ---------- progress (in-popup) ----------
@@ -512,6 +617,7 @@ function startDurationTicker() {
   durationTicker = setInterval(() => {
     if (!state || !state.active || !state.startedAt) return;
     els.durationValue.textContent = fmtDuration(Date.now() - state.startedAt);
+    renderWriteDashboard();
   }, 1000);
 }
 function stopDurationTicker() { if (durationTicker) { clearInterval(durationTicker); durationTicker = 0; } }
@@ -538,6 +644,15 @@ function updateSuggestionAccount(next) {
     documents = [];
     links = [];
     usage = null;
+    cloudMemories = [];
+    [els.documentList, els.linkList, $('library-memory-list')].forEach(list => list.replaceChildren());
+    $('link-content-dialog').close();
+    $('link-edit-dialog').close();
+    $('link-edit-title').value = '';
+    $('link-content-text').textContent = '';
+    $('link-content-title').textContent = '';
+    [els.linkUrl, els.linkTitle, els.documentTitle, els.documentFile].forEach(input => { input.value = ''; });
+    closeDialogs();
     els.suggestionIdeaText.value = '';
     els.suggestionGenerate.disabled = false;
     els.promptAiCard.hidden = true;
@@ -583,7 +698,10 @@ function renderSavedIdeas() {
     button.type = 'button';
     button.className = 'wc__link-btn wc__saved-idea';
     button.textContent = idea.title;
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
+      const owner = account.userId;
+      await openIdeas();
+      if (owner !== account.userId) return;
       selectSuggestionMode(idea.mode || 'new_topic');
       if (idea.mode === 'expand_idea') els.suggestionIdeaSource.value = idea.id;
       renderAISuggestion(idea);
@@ -710,7 +828,7 @@ function renderAISuggestion(sug) {
   els.promptAiReason.textContent = sug.reason || '';
   els.promptAiWhy.hidden = !sug.reason;
   els.promptAiWhyBtn.hidden = !sug.reason;
-  els.promptAiActions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;';
+  els.promptAiActions.removeAttribute('style');
   els.promptAiTopics.innerHTML = '';
   (sug.related_topics || []).slice(0, 6).forEach((topic) => {
     const chip = document.createElement('span');
@@ -891,6 +1009,7 @@ async function primaryClick() {
       : (r.memory?.saveStatus === 'queued' ? 'memory.prompt.savedQueued' : null);
     renderSession();
     refreshStreak();
+    await refreshWriteDashboard();
   }
 }
 
@@ -1096,7 +1215,7 @@ function formatDurationShort(ms) {
   if (mm < 60) return `${mm}m ${pad2(s % 60)}s`;
   const h = Math.floor(mm / 60); return `${h}h ${pad2(mm % 60)}m`;
 }
-function dayKey(ts) { const d = new Date(ts); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function dayKey(ts) { return window.WCDates.dayKey(ts, settings?.profile?.timezone); }
 function dayHeading(ts) {
   const t2 = new Date(), y = new Date(t2); y.setDate(t2.getDate() - 1);
   if (dayKey(ts) === dayKey(t2.getTime())) return t('history.today');
@@ -1371,10 +1490,14 @@ function renderSettings() {
 }
 
 async function loadDocuments() {
+  const owner = account.userId;
   try {
-    documents = await window.WCApi.get('/documents');
+    const rows = await window.WCApi.get('/documents');
+    if (owner !== account.userId) return;
+    documents = rows;
     els.documentError.hidden = true;
   } catch (error) {
+    if (owner !== account.userId) return;
     documents = [];
     els.documentError.hidden = false;
     els.documentError.textContent = documentErrorMessage(error);
@@ -1418,6 +1541,7 @@ function documentErrorMessage(error) {
 }
 
 function renderDocumentsSummary() {
+  $('library-count').textContent = t('library.resourceCount', { n: fmtNumber(documents.length + links.length) });
   els.aiDocumentsMeta.textContent = t('documents.summary', {
     documents: fmtNumber(documents.length),
     links: fmtNumber(links.length),
@@ -1466,8 +1590,7 @@ function renderDocuments() {
 }
 
 function toggleDocumentsManager() {
-  els.aiDocumentsEditor.hidden = !els.aiDocumentsEditor.hidden;
-  if (!els.aiDocumentsEditor.hidden) { renderDocuments(); renderLinks(); }
+  openLibrary('documents');
 }
 
 function onDocumentFileSelected() {
@@ -1478,6 +1601,7 @@ function onDocumentFileSelected() {
 }
 
 async function uploadDocument() {
+  const owner = account.userId;
   const file = els.documentFile.files && els.documentFile.files[0];
   const title = els.documentTitle.value.trim();
   if (!file || !title) {
@@ -1506,6 +1630,7 @@ async function uploadDocument() {
   els.documentUploadStatus.textContent = t('documents.processing');
   try {
     const saved = await window.WCApi.upload('/documents/upload', form);
+    if (owner !== account.userId) return;
     documents = [saved, ...documents.filter((document) => document.id !== saved.id)];
     els.documentFile.value = '';
     els.documentTitle.value = '';
@@ -1514,6 +1639,7 @@ async function uploadDocument() {
     renderSettings();
     els.aiDocumentsEditor.hidden = false;
   } catch (error) {
+    if (owner !== account.userId) return;
     els.documentUploadStatus.hidden = true;
     els.documentError.hidden = false;
     els.documentError.textContent = documentErrorMessage(error);
@@ -1532,14 +1658,17 @@ function confirmDeleteDocument(document) {
 }
 
 async function deleteDocument(documentId) {
+  const owner = account.userId;
   els.confirmOk.disabled = true;
   try {
     await window.WCApi.delete(`/documents/${documentId}`);
+    if (owner !== account.userId) return;
     documents = documents.filter((document) => document.id !== documentId);
     closeDialogs();
     renderSettings();
     els.aiDocumentsEditor.hidden = false;
   } catch (error) {
+    if (owner !== account.userId) return;
     closeDialogs();
     els.documentError.hidden = false;
     els.documentError.textContent = documentErrorMessage(error);
@@ -1550,91 +1679,97 @@ async function deleteDocument(documentId) {
 
 let links = [];
 async function loadLinks() {
+  const owner = account.userId;
   try {
-    links = await window.WCApi.get('/links');
+    const rows = await window.WCApi.get('/links');
+    if (owner !== account.userId) return;
+    links = rows;
     els.linkError.hidden = true;
-  } catch (_error) {
+  } catch (error) {
+    if (owner !== account.userId) return;
     links = [];
+    els.linkError.hidden = false;
+    els.linkError.textContent = documentErrorMessage(error);
   }
 }
 
 function renderLinks() {
   renderDocumentsSummary();
-  if (!els.linkList) return;
-  els.linkList.innerHTML = '';
+  els.linkList.replaceChildren();
   els.linkEmpty.hidden = links.length > 0;
-  links.forEach((link) => {
-    const item = window.document.createElement('article');
-    item.className = 'wc__document-item';
-    item.setAttribute('data-testid', `link-item-${link.id}`);
-    const main = window.document.createElement('div');
-    main.className = 'wc__document-main';
-    const title = window.document.createElement('p');
-    title.className = 'wc__document-title';
-    title.textContent = link.document_title || link.source_url;
-    title.setAttribute('data-testid', `link-title-${link.id}`);
-    const meta = window.document.createElement('p');
-    meta.className = 'wc__document-meta';
-    const statusLabel = t(`documents.status.${link.processing_status}`);
-    const catLabel = link.category ? t(`links.cat.${link.category}`) : '';
-    const enabledLabel = link.enabled ? '' : ` · ${t('links.disabled')}`;
-    meta.textContent = `${statusLabel} · ${t('documents.words', { n: fmtNumber(link.word_count) })}${catLabel ? ' · ' + catLabel : ''}${enabledLabel}`;
-    meta.setAttribute('data-testid', `link-meta-${link.id}`);
-    main.appendChild(title);
-    main.appendChild(meta);
-    if (link.processing_error) {
-      const err = window.document.createElement('p');
-      err.className = 'wc__error';
-      err.textContent = link.processing_error;
-      err.setAttribute('data-testid', `link-processing-error-${link.id}`);
-      main.appendChild(err);
+  links.forEach(link => {
+    const item = document.createElement('article');
+    item.className = 'wc__document-item'; item.dataset.testid = `link-item-${link.id}`;
+    const main = document.createElement('div'); main.className = 'wc__document-main';
+    const title = document.createElement('h3'); title.className = 'wc__document-title';
+    title.textContent = link.document_title || link.source_url; title.title = title.textContent;
+    title.dataset.testid = `link-title-${link.id}`;
+    const url = document.createElement('p'); url.className = 'wc__source-url'; url.textContent = link.source_url || '';
+    const status = window.WCResourceState.websiteStatus(link);
+    const badge = document.createElement('span'); badge.className = 'wc__source-status';
+    badge.dataset.status = status; badge.textContent = t(`library.status.${status}`);
+    const meta = document.createElement('p'); meta.className = 'wc__document-meta'; meta.dataset.testid = `link-meta-${link.id}`;
+    const facts = [];
+    if (link.word_count > 0) facts.push(t('documents.words', { n: fmtNumber(link.word_count) }));
+    const processed = link.last_successful_processed_at;
+    if (processed && !Number.isNaN(Date.parse(processed))) {
+      const date = new Intl.DateTimeFormat(getLang() === 'es' ? 'es' : 'en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(processed));
+      facts.push(t('library.lastRead', { date }));
     }
-    const actions = window.document.createElement('div');
-    actions.className = 'wc__document-actions';
-    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
-
-    const open = window.document.createElement('a');
-    open.className = 'wc__link-btn';
-    open.textContent = t('links.open');
-    open.href = link.source_url; open.target = '_blank'; open.rel = 'noopener noreferrer';
-    open.setAttribute('data-testid', `link-open-${link.id}`);
-    actions.appendChild(open);
-
-    const toggle = window.document.createElement('button');
-    toggle.className = 'wc__link-btn'; toggle.type = 'button';
-    toggle.textContent = link.enabled ? t('links.disable') : t('links.enable');
-    toggle.setAttribute('data-testid', `link-toggle-${link.id}`);
-    toggle.addEventListener('click', () => updateLink(link.id, { enabled: !link.enabled }));
-    actions.appendChild(toggle);
-
-    const edit = window.document.createElement('button');
-    edit.className = 'wc__link-btn'; edit.type = 'button';
-    edit.textContent = t('links.edit');
-    edit.setAttribute('data-testid', `link-edit-${link.id}`);
-    edit.addEventListener('click', () => editLink(link));
-    actions.appendChild(edit);
-
-    const refresh = window.document.createElement('button');
-    refresh.className = 'wc__link-btn'; refresh.type = 'button';
-    refresh.textContent = t('links.refresh');
-    refresh.setAttribute('data-testid', `link-refresh-${link.id}`);
-    refresh.addEventListener('click', () => refreshLink(link.id));
-    actions.appendChild(refresh);
-
-    const remove = window.document.createElement('button');
-    remove.className = 'wc__link-btn wc__link-btn--danger'; remove.type = 'button';
-    remove.textContent = t('documents.delete');
-    remove.setAttribute('data-testid', `link-delete-${link.id}`);
-    remove.addEventListener('click', () => confirmDeleteLink(link));
-    actions.appendChild(remove);
-
-    item.appendChild(main);
-    item.appendChild(actions);
-    els.linkList.appendChild(item);
+    meta.textContent = facts.join(' · ');
+    main.append(title, url, badge, meta);
+    if (link.processing_error) {
+      const error = document.createElement('p'); error.className = 'wc__error';
+      error.textContent = link.processing_error; error.dataset.testid = `link-processing-error-${link.id}`;
+      main.appendChild(error);
+    }
+    if (status === 'not_indexed') {
+      const note = document.createElement('p'); note.className = 'wc__helper'; note.textContent = t('library.indexNote'); main.appendChild(note);
+    }
+    const actions = document.createElement('details'); actions.className = 'wc__document-actions';
+    const summary = document.createElement('summary'); summary.textContent = t('library.actions');
+    summary.setAttribute('aria-label', t('library.actionsFor', { title: title.textContent }));
+    const buttons = document.createElement('div'); buttons.className = 'wc__source-action-list';
+    const safeUrl = window.WCResourceState.publicWebUrl(link.source_url);
+    if (safeUrl) {
+      const open = document.createElement('a'); open.className = 'wc__link-btn'; open.textContent = t('links.open');
+      open.href = safeUrl; open.target = '_blank'; open.rel = 'noopener noreferrer'; open.dataset.testid = `link-open-${link.id}`; buttons.appendChild(open);
+    }
+    const addAction = (key, testid, action) => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'wc__link-btn';
+      button.textContent = t(key); button.dataset.testid = testid; button.addEventListener('click', action); buttons.appendChild(button);
+    };
+    addAction('library.viewContent', `link-view-${link.id}`, () => viewExtractedContent(link));
+    addAction(link.enabled ? 'links.disable' : 'links.enable', `link-toggle-${link.id}`, () => updateLink(link.id, { enabled: !link.enabled }));
+    addAction('links.edit', `link-edit-${link.id}`, () => editLink(link));
+    addAction('links.refresh', `link-refresh-${link.id}`, () => refreshLink(link.id));
+    addAction('documents.delete', `link-delete-${link.id}`, () => confirmDeleteLink(link));
+    actions.append(summary, buttons); item.append(main, actions); els.linkList.appendChild(item);
   });
 }
 
+async function viewExtractedContent(link) {
+  const owner = account.userId;
+  $('link-content-title').textContent = link.document_title || link.source_url;
+  $('link-content-text').textContent = '';
+  $('link-content-error').hidden = true;
+  $('link-content-note').textContent = t('library.loadingContent');
+  $('link-content-dialog').showModal();
+  try {
+    const result = await window.WCApi.get(`/links/${link.id}/content`, { timeout: 30000 });
+    if (owner !== account.userId) return;
+    $('link-content-text').textContent = result.content;
+    $('link-content-note').textContent = t(result.truncated ? 'library.contentTruncated' : 'library.contentNote');
+  } catch (error) {
+    if (owner !== account.userId) return;
+    $('link-content-note').textContent = '';
+    $('link-content-error').hidden = false;
+    $('link-content-error').textContent = documentErrorMessage(error);
+  }
+}
+
 async function addLink() {
+  const owner = account.userId;
   const url = els.linkUrl.value.trim();
   if (!url) {
     els.linkError.hidden = false;
@@ -1650,14 +1785,16 @@ async function addLink() {
       url,
       title: els.linkTitle.value.trim() || undefined,
       category: els.linkCategory.value,
-    });
+    }, { timeout: 90000 });
+    if (owner !== account.userId) return;
     links = [saved, ...links.filter((l) => l.id !== saved.id)];
     els.linkUrl.value = '';
     els.linkTitle.value = '';
     els.linkCategory.value = 'other';
-    els.linkStatus.textContent = saved.processing_status === 'ready' ? t('links.added') : (saved.processing_error || t('links.failed'));
+    els.linkStatus.textContent = window.WCResourceState.websiteStatus(saved) === 'ready' ? t('links.added') : (saved.processing_error || t('library.indexNote'));
     renderLinks();
   } catch (error) {
+    if (owner !== account.userId) return;
     els.linkStatus.hidden = true;
     els.linkError.hidden = false;
     els.linkError.textContent = documentErrorMessage(error);
@@ -1667,31 +1804,51 @@ async function addLink() {
 }
 
 async function updateLink(linkId, patch) {
+  const owner = account.userId;
   try {
     const res = await window.WCApi.patch(`/links/${linkId}`, patch);
+    if (owner !== account.userId) return;
     links = links.map((l) => (l.id === linkId ? res : l));
     renderLinks();
+    return res;
   } catch (error) {
+    if (owner !== account.userId) return;
     els.linkError.hidden = false;
     els.linkError.textContent = documentErrorMessage(error);
   }
 }
 
+let editingLinkId = null;
 function editLink(link) {
-  const nextTitle = window.prompt(t('links.editTitlePrompt'), link.document_title || '');
-  if (nextTitle === null) return;
-  updateLink(link.id, { title: nextTitle.trim().slice(0, 300) });
+  editingLinkId = link.id;
+  $('link-edit-title').value = link.document_title || '';
+  $('link-edit-error').hidden = true;
+  $('link-edit-dialog').showModal();
+}
+
+async function saveEditedLink(event) {
+  event.preventDefault();
+  const title = $('link-edit-title').value.trim();
+  if (!title) return;
+  $('link-edit-save').disabled = true;
+  const saved = await updateLink(editingLinkId, { title });
+  $('link-edit-save').disabled = false;
+  if (saved) $('link-edit-dialog').close();
+  else { $('link-edit-error').hidden = false; $('link-edit-error').textContent = els.linkError.textContent; }
 }
 
 async function refreshLink(linkId) {
+  const owner = account.userId;
   els.linkStatus.hidden = false;
   els.linkStatus.textContent = t('links.processing');
   try {
-    const saved = await window.WCApi.post(`/links/${linkId}/refresh`);
+    const saved = await window.WCApi.post(`/links/${linkId}/refresh`, {}, { timeout: 90000 });
+    if (owner !== account.userId) return;
     links = links.map((l) => (l.id === linkId ? saved : l));
-    els.linkStatus.textContent = saved.processing_status === 'ready' ? t('links.refreshed') : (saved.processing_error || t('links.failed'));
+    els.linkStatus.textContent = window.WCResourceState.websiteStatus(saved) === 'ready' ? t('links.refreshed') : (saved.processing_error || t('library.indexNote'));
     renderLinks();
   } catch (error) {
+    if (owner !== account.userId) return;
     els.linkStatus.hidden = true;
     els.linkError.hidden = false;
     els.linkError.textContent = documentErrorMessage(error);
@@ -1708,13 +1865,16 @@ function confirmDeleteLink(link) {
 }
 
 async function deleteLink(linkId) {
+  const owner = account.userId;
   els.confirmOk.disabled = true;
   try {
     await window.WCApi.delete(`/links/${linkId}`);
+    if (owner !== account.userId) return;
     links = links.filter((l) => l.id !== linkId);
     closeDialogs();
     renderLinks();
   } catch (error) {
+    if (owner !== account.userId) return;
     closeDialogs();
     els.linkError.hidden = false;
     els.linkError.textContent = documentErrorMessage(error);
@@ -1790,7 +1950,7 @@ async function claimMemoryQueue() {
 }
 
 function toggleMemoryManager() {
-  els.aiMemoryEditor.hidden = !els.aiMemoryEditor.hidden;
+  openLibrary('memory');
 }
 
 async function setAlwaysMemoryPreference(preference) {
@@ -1974,6 +2134,31 @@ async function onFirstLangChoice(lang) {
 // ---------- wire ----------
 
 function wire() {
+  document.querySelectorAll('[data-page]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const page = button.dataset.page;
+      if (page === 'ideas') await openIdeas();
+      else if (page === 'progress') await openProgress();
+      else if (page === 'library') await openLibrary();
+      else { showPanel('session'); await refreshWriteDashboard(); renderSession(); }
+    });
+    button.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const tabs = [...document.querySelectorAll('[data-page]')];
+      const next = tabs[(tabs.indexOf(button) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus(); next.click();
+    });
+  });
+  document.querySelectorAll('[data-library-filter]').forEach(button => button.addEventListener('click', () => selectLibraryFilter(button.dataset.libraryFilter)));
+  document.querySelectorAll('[data-idea-mode]').forEach(button => button.addEventListener('click', () => openIdeas(button.dataset.ideaMode)));
+  $('dashboard-more-ideas').addEventListener('click', () => openIdeas());
+  $('ideas-open-saved').addEventListener('click', () => openLibrary('saved'));
+  $('dashboard-goal-action').addEventListener('click', async () => { if (isPro()) { await openSettings(); toggleGoalEditor(); } else openUpgrade(); });
+  ['ideas-account-action', 'library-account-action'].forEach(id => $(id).addEventListener('click', () => openSettings()));
+  $('link-content-close').addEventListener('click', () => $('link-content-dialog').close());
+  $('link-edit-cancel').addEventListener('click', () => $('link-edit-dialog').close());
+  $('link-edit-form').addEventListener('submit', saveEditedLink);
   els.primaryBtn.addEventListener('click', primaryClick);
   els.memorySave.addEventListener('click', () => saveSessionMemory(false));
   els.memoryDontSave.addEventListener('click', dismissSessionMemory);
@@ -2112,6 +2297,7 @@ function wire() {
 }
 
 async function boot() {
+  mountLibraryResources();
   wire();
 
   // Load everything in one round-trip
@@ -2139,6 +2325,7 @@ async function boot() {
   renderOfflineBadge();
   await renderPrompt();
   await refreshStreak();
+  await refreshWriteDashboard();
   showPanel('session');
   renderSession();
 }

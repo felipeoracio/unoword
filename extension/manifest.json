@@ -1,30 +1,41 @@
 {
   "manifest_version": 3,
-  "name": "Word Count — Writing Session Tracker",
-  "short_name": "Word Count",
-  "version": "0.10.0",
-  "description": "A minimal, private writing session tracker with goals, prompts and progress. Click Start, type anywhere in Chrome, click Stop — see exactly how many words you wrote.",
+  "name": "UnoWord \u2014 Writing Assistant",
+  "short_name": "UnoWord",
+  "version": "0.11.0",
+  "description": "A minimal, private writing session tracker with goals, prompts and progress. Click Start, type anywhere in Chrome, click Stop \u2014 see exactly how many words you wrote.",
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Word Count — Writing Session"
+    "default_title": "UnoWord \u2014 Writing Assistant"
   },
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "exclude_matches": [
         "*://chrome.google.com/webstore/*",
         "*://chromewebstore.google.com/*"
       ],
-      "js": ["shared/wordcount.js", "shared/i18n.js", "content.js"],
+      "js": [
+        "shared/wordcount.js",
+        "shared/i18n.js",
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     }
   ],
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://unoword.vercel.app/*"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://unoword.vercel.app/*"
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

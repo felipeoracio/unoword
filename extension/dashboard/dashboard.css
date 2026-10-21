@@ -1,14 +1,14 @@
 /* Word Count — Dashboard styles */
 :root {
-  --bg:            #F6F7FB;
+  --bg:            #F7FAFF;
   --surface:       #FFFFFF;
-  --surface-2:     #F1F3F9;
-  --border:        #E5E7EE;
+  --surface-2:     #F1F6FD;
+  --border:        #E3EBF7;
   --border-strong: #D5D9E4;
-  --text:          #0B0D12;
-  --text-muted:    #5B6172;
+  --text:          #101D46;
+  --text-muted:    #53678E;
   --text-subtle:   #8A90A2;
-  --primary:       #1F5EFF;
+  --primary:       #0964FF;
   --primary-ink:   #FFFFFF;
   --primary-hover: #1A4FDB;
   --primary-soft:  #E6EEFF;
@@ -21,7 +21,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg:#0B0D12; --surface:#12151C; --surface-2:#1A1E27; --border:#232834; --border-strong:#2E3442;
+    --bg:#101D46; --surface:#12151C; --surface-2:#1A1E27; --border:#232834; --border-strong:#2E3442;
     --text:#F5F6F8; --text-muted:#A4AAB8; --text-subtle:#6D7385;
     --primary:#4B7BFF; --primary-hover:#3D6BEF; --primary-soft:#1B2540;
     --success:#22C77B;
@@ -43,7 +43,7 @@ html, body {
 .wd-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
 .wd-brand  { display: inline-flex; align-items: center; gap: 10px; }
 .wd-brand-mark { color: var(--text); opacity: 0.9; }
-.wd-brand-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+.wd-brand-name { font-weight: 750; font-size: 23px; letter-spacing: -0.01em; }
 .wd-badge {
   display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
   border-radius: 6px; background: var(--surface-2); color: var(--text-muted);

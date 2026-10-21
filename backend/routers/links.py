@@ -8,6 +8,8 @@ surfaces them automatically for that user only. Disabled links are excluded by
 the match_user_chunks RPC. Extracted content is untrusted reference material.
 """
 
+import asyncio
+from collections import Counter
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -50,6 +52,40 @@ async def _patch(user: AuthenticatedUser, link_id: str, patch: dict) -> dict:
     return rows[0]
 
 
+async def _index_state(user: AuthenticatedUser, ids: list[str]) -> dict[str, dict]:
+    """Read index evidence in bulk without downloading embedding arrays."""
+    if not ids:
+        return {}
+    params = {"select": "document_id", "user_id": f"eq.{user.id}",
+              "document_id": f"in.({','.join(ids)})", "limit": "1000", "order": "id.asc"}
+    async def all_rows(extra):
+        rows = []
+        while True:
+            page = await user_rest("GET", "ai_document_chunks", user.access_token,
+                                   params={**params, **extra, "offset": str(len(rows))}) or []
+            rows.extend(page)
+            if len(page) < 1000:
+                return rows
+    try:
+        rows, embedded = await asyncio.gather(
+            all_rows({}), all_rows({"embedding": "not.is.null"}),
+        )
+    except SupabaseAPIError as error:
+        raise_http(error)
+    counts = Counter(str(row["document_id"]) for row in rows or [])
+    vectors = Counter(str(row["document_id"]) for row in embedded or [])
+    return {sid: {"chunk_count": counts[sid], "embedded_chunk_count": vectors[sid],
+                  "indexing_status": ("indexed" if counts[sid] and vectors[sid] == counts[sid] else
+                                      "partial" if vectors[sid] else "not_indexed")} for sid in ids}
+
+
+async def _with_index_state(user: AuthenticatedUser, rows: list[dict]) -> list[AIDocument]:
+    states = await _index_state(user, [str(row["id"]) for row in rows])
+    return [AIDocument(**{**row, **states[str(row["id"])],
+                          "last_successful_processed_at": row.get("last_processed_at") if row.get("processing_status") == "ready" and row.get("word_count", 0) > 0 and states[str(row["id"])]["chunk_count"] > 0 else None})
+            for row in rows]
+
+
 async def _reprocess(user: AuthenticatedUser, link_id: str, url: str, *,
                      keep_title: bool, previous_hash: str | None) -> dict:
     """Fetch + extract + (re)embed. Updates the row in place — never duplicates it."""
@@ -59,31 +95,36 @@ async def _reprocess(user: AuthenticatedUser, link_id: str, url: str, *,
         return await _patch(user, link_id, {
             "processing_status": "failed",
             "processing_error": error.message,
-            "last_processed_at": _now(),
         })
 
     # Nothing changed since last time → skip re-embedding (caching rule).
     if previous_hash and data["content_hash"] == previous_hash:
+        index = (await _index_state(user, [link_id]))[link_id]
         memories = await user_rest(
             "GET", "ai_memories", user.access_token,
             params={"select": "id", "user_id": f"eq.{user.id}", "source_id": f"eq.{link_id}", "limit": "1"},
         )
-        if not memories:
+        if not memories and index["chunk_count"]:
             link = await _owned_link(user, link_id)
             await knowledge.rebuild_source_memory(
                 user.id, user.access_token, link_id,
                 title=link.get("document_title") or url, text=data["text"], kind="saved link",
             )
-        await knowledge.heal_missing_embeddings(user.id)
-        return await _patch(user, link_id, {
-            "processing_status": "ready", "processing_error": None, "last_processed_at": _now(),
-        })
+        if index["chunk_count"] and index["indexing_status"] == "indexed":
+            return await _patch(user, link_id, {
+                "processing_status": "ready", "processing_error": None, "last_processed_at": _now(),
+            })
+        # A matching hash does not prove chunks/vectors survived. Rebuild this
+        # source from the fetched text rather than healing unrelated sources.
 
     try:
         chunk_count, embedded = await knowledge.index_source(
             user.id, user.access_token, link_id, data["text"],
             {"source": "link", "url": url, "title": data.get("title")},
         )
+        if not chunk_count:
+            return await _patch(user, link_id, {"processing_status": "failed", "word_count": 0,
+                                                "processing_error": "No readable passages were stored. Refresh to try again."})
         title = data.get("title") or url
         if keep_title:
             title = (await _owned_link(user, link_id)).get("document_title") or title
@@ -113,7 +154,10 @@ async def list_links(user: AuthenticatedUser = Depends(require_ai_user)) -> list
         )
     except SupabaseAPIError as error:
         raise_http(error)
-    return [AIDocument(**row) for row in rows]
+    try:
+        return await _with_index_state(user, rows)
+    except SupabaseAPIError as error:
+        raise_http(error)
 
 
 @router.post("", response_model=AIDocument, status_code=status.HTTP_201_CREATED)
@@ -158,7 +202,7 @@ async def add_link(payload: AILinkCreate, user: AuthenticatedUser = Depends(requ
         raise_http(error)
 
     processed = await _reprocess(user, link_id, normalized, keep_title=bool(payload.title), previous_hash=None)
-    return AIDocument(**processed)
+    return (await _with_index_state(user, [processed]))[0]
 
 
 @router.patch("/{link_id}", response_model=AIDocument)
@@ -167,7 +211,9 @@ async def update_link(link_id: str, payload: AILinkUpdate,
     await _owned_link(user, link_id)
     patch: dict = {}
     if payload.title is not None:
-        patch["document_title"] = payload.title[:300] or None
+        if not payload.title.strip():
+            raise HTTPException(422, "A website title cannot be empty.")
+        patch["document_title"] = payload.title.strip()[:300]
     if payload.description is not None:
         patch["description"] = payload.description
     if payload.category is not None:
@@ -175,9 +221,9 @@ async def update_link(link_id: str, payload: AILinkUpdate,
     if payload.enabled is not None:
         patch["enabled"] = payload.enabled
     if not patch:
-        return AIDocument(**await _owned_link(user, link_id))
+        return (await _with_index_state(user, [await _owned_link(user, link_id)]))[0]
     try:
-        return AIDocument(**await _patch(user, link_id, patch))
+        return (await _with_index_state(user, [await _patch(user, link_id, patch)]))[0]
     except SupabaseAPIError as error:
         raise_http(error)
 
@@ -190,7 +236,34 @@ async def refresh_link(link_id: str, user: AuthenticatedUser = Depends(require_a
         user, link_id, link["source_url"],
         keep_title=True, previous_hash=link.get("content_hash"),
     )
-    return AIDocument(**processed)
+    return (await _with_index_state(user, [processed]))[0]
+
+
+@router.get("/{link_id}/content")
+async def extracted_content(link_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> dict:
+    """A bounded plain-text preview of the stored passages, never raw HTML."""
+    link = await _owned_link(user, link_id)
+    try:
+        rows = await user_rest("GET", "ai_document_chunks", user.access_token, params={
+            "select": "content", "user_id": f"eq.{user.id}", "document_id": f"eq.{link_id}",
+            "order": "chunk_index.asc", "limit": "100",
+        })
+    except SupabaseAPIError as error:
+        raise_http(error)
+    text = ""
+    truncated = False
+    for row in rows or []:
+        content = row.get("content") or ""
+        overlap = next((size for size in range(min(len(text), len(content), knowledge.CHUNK_CHARS), 0, -1)
+                        if text.endswith(content[:size])), 0)
+        text += content[overlap:] if overlap else ("\n\n" if text else "") + content
+        if len(text) > 40000:
+            text, truncated = text[:40000], True
+            break
+    if not text.strip():
+        raise HTTPException(409, "No extracted content is stored yet. Refresh this website to try again.")
+    return {"id": link_id, "title": link["document_title"], "url": link["source_url"],
+            "content": text, "word_count": link.get("word_count") or 0, "truncated": truncated or len(rows) == 100}
 
 
 @router.delete("/{link_id}", status_code=status.HTTP_204_NO_CONTENT)

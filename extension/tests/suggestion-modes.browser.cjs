@@ -41,6 +41,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       requests.push({route,method,payload});
       let body, status=200;
       if (route==='/auth/me') body={id:userId,email:'qa@example.com',plan:'pro',ai_access:true};
+      else if (['/documents','/links','/ai/memories'].includes(route)) body=[];
       else if (route==='/ai/ideas') body=saved;
       else if (route==='/ai/idea-options') body=[{id:sourceId,title:'Solar ferry notes',kind:'file'}];
       else if (route==='/ai/suggestion') {
@@ -75,10 +76,15 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     await page.route('http://popup.test/**',async route=>{
       const pathname=new URL(route.request().url()).pathname;
       const file=path.join(root,pathname);
-      const contentType=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html';
+      const contentType=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html';
       await route.fulfill({body:fs.readFileSync(file),contentType});
     });
+    await page.route('https://unoword.vercel.app/api/**',async route=>{
+      const response=await fetchFixture(route.request().url(),{method:route.request().method(),body:route.request().postData()});
+      await route.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});
+    });
     await page.goto('http://popup.test/popup/popup.html');
+    await page.click('#nav-ideas');
     await page.waitForFunction(()=>!document.querySelector('#suggestion-controls').hidden);
     assert.equal(suggestions.length,0,'Opening the popup must not spend AI allowance');
     async function choose(mode) {await page.locator(`label:has(input[value="${mode}"])`).click();}
@@ -98,7 +104,8 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     await page.click('#suggestion-save');
     await page.waitForFunction(()=>document.querySelector('#suggestion-save').textContent==='Saved');
     await page.reload();
-    await page.locator('#suggestion-saved summary').click();
+    await page.click('#nav-library');
+    await page.locator('[data-library-filter="saved"]').click();
     await page.locator('#suggestion-saved-list button').first().click();
     assert.equal(await page.locator('#suggestion-save').textContent(),'Saved');
     await choose('expand_idea');
@@ -140,7 +147,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     assert.equal(history[0].typedWords,5);
     assert.equal(history[0].pastedWords,3);
     assert.ok(history[0].idea.id,'The writing history keeps the chosen idea');
-    await page.evaluate(async()=>{state.active=false;await renderPrompt();showPanel('session');});
+    await page.evaluate(async()=>{state.active=false;await renderPrompt();showPanel('ideas');});
     generationStatus=429;
     await page.click('#suggestion-generate');
     await page.waitForFunction(()=>document.querySelector('#prompt-ai-status').textContent.includes('cupo diario'));

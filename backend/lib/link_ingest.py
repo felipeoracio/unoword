@@ -102,7 +102,17 @@ async def _fetch(url: str) -> tuple[httpx.Response, str]:
             normalized, host = validate_url(current)
             _check_host_not_internal(host)  # re-validate every hop (redirect SSRF)
             try:
-                resp = await client.get(normalized, headers=headers)
+                async with client.stream("GET", normalized, headers=headers) as streamed:
+                    if streamed.is_redirect:
+                        resp = httpx.Response(streamed.status_code, headers=streamed.headers, request=streamed.request)
+                    else:
+                        content = bytearray()
+                        async for piece in streamed.aiter_bytes():
+                            content.extend(piece)
+                            if len(content) > MAX_BYTES:
+                                raise LinkIngestError("too_large", "That page is too large to process.")
+                        clean_headers = {k: v for k, v in streamed.headers.items() if k.lower() not in {"content-encoding", "content-length"}}
+                        resp = httpx.Response(streamed.status_code, headers=clean_headers, content=bytes(content), request=streamed.request)
             except httpx.TimeoutException as exc:
                 raise LinkIngestError("timeout", "The website took too long to respond.") from exc
             except httpx.HTTPError as exc:
@@ -119,7 +129,7 @@ async def _fetch(url: str) -> tuple[httpx.Response, str]:
 
 def _extract(html: str, url: str) -> dict:
     text = trafilatura.extract(
-        html, include_comments=False, include_tables=False, favor_recall=True, url=url
+        html, include_comments=False, include_tables=False, favor_precision=True, deduplicate=True, url=url
     ) or ""
     text = text.strip()
     if not text:
@@ -127,6 +137,10 @@ def _extract(html: str, url: str) -> dict:
             "no_content",
             "Could not extract readable article text (the page may require JavaScript or sign-in).",
         )
+    if len(text.split()) < 80 and any(marker in text.lower() for marker in (
+        "sign in to continue", "subscribe to continue", "log in to read", "verify you are human", "checking your browser",
+    )):
+        raise LinkIngestError("restricted_content", "Only a sign-in, subscription, or access-check page was available. UnoWord cannot read the protected article.")
     title = author = published_at = canonical = None
     try:
         meta = trafilatura.extract_metadata(html, default_url=url)

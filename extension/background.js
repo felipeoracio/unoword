@@ -16,6 +16,7 @@
 
 importScripts('shared/wordcount.js');
 importScripts('shared/history.js');
+importScripts('shared/dates.js');
 importScripts('shared/prompts.js');
 importScripts('shared/ai-profile.js');
 importScripts('shared/api-client.js');
@@ -491,34 +492,7 @@ async function getStats(range) {
 }
 
 function rangeBounds(range, now, tz) {
-  const nowDate = new Date(now);
-  const todayKey = dayKey(now, tz);
-  // Rebuild start/end using local (or tz) day boundaries.
-  const startOfDay = new Date(`${todayKey}T00:00:00`);
-  if (range === 'today') {
-    const end = new Date(startOfDay); end.setDate(end.getDate() + 1);
-    return { start: startOfDay.getTime(), end: end.getTime() };
-  }
-  if (range === 'week') {
-    // Start on Monday
-    const d = new Date(startOfDay);
-    const dow = (d.getDay() + 6) % 7; // 0 = Mon
-    d.setDate(d.getDate() - dow);
-    const end = new Date(d); end.setDate(end.getDate() + 7);
-    return { start: d.getTime(), end: end.getTime() };
-  }
-  if (range === 'month') {
-    const d = new Date(startOfDay); d.setDate(1);
-    const end = new Date(d); end.setMonth(end.getMonth() + 1);
-    return { start: d.getTime(), end: end.getTime() };
-  }
-  if (range === 'year') {
-    const d = new Date(startOfDay); d.setMonth(0, 1);
-    const end = new Date(d); end.setFullYear(end.getFullYear() + 1);
-    return { start: d.getTime(), end: end.getTime() };
-  }
-  // all
-  return { start: 0, end: nowDate.getTime() + 1 };
+  return self.WCDates.rangeBounds(range, now, tz);
 }
 
 function buildBuckets(range, start, end, sessions, tz) {
@@ -530,45 +504,20 @@ function buildBuckets(range, start, end, sessions, tz) {
     const words = sessions.reduce((s, x) => s + x._words, 0);
     return [{ key: perDay(start), label: perDay(start), words, sessions: sessions.length }];
   }
-  if (range === 'week') {
-    const buckets = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + i);
-      const k = perDay(d.getTime());
-      const list = sessions.filter((s) => s._dayKey === k);
-      buckets.push({
-        key: k,
-        label: k,
-        dow: (d.getDay() + 6) % 7, // 0=Mon
-        words: list.reduce((sum, s) => sum + s._words, 0),
-        sessions: list.length,
-      });
-    }
-    return buckets;
-  }
-  if (range === 'month') {
-    const buckets = [];
-    const d0 = new Date(start);
-    const monthEnd = new Date(end);
-    for (let d = new Date(d0); d < monthEnd; d.setDate(d.getDate() + 1)) {
-      const k = perDay(d.getTime());
-      const list = sessions.filter((s) => s._dayKey === k);
-      buckets.push({
-        key: k,
-        label: `${pad(d.getDate())}`,
-        dayOfMonth: d.getDate(),
-        words: list.reduce((sum, s) => sum + s._words, 0),
-        sessions: list.length,
-      });
-    }
-    return buckets;
+  if (range === 'week' || range === 'month') {
+    return self.WCDates.dayKeysForRange(start, end, tz).map(key => {
+      const date = new Date(`${key}T00:00:00Z`);
+      const list = sessions.filter(session => session._dayKey === key);
+      return { key, label: range === 'week' ? key : String(date.getUTCDate()),
+        dow: (date.getUTCDay() + 6) % 7, dayOfMonth: date.getUTCDate(),
+        words: list.reduce((sum, session) => sum + session._words, 0), sessions: list.length };
+    });
   }
   if (range === 'year') {
     const buckets = [];
     for (let m = 0; m < 12; m++) {
-      const d = new Date(start); d.setMonth(m);
-      const monthKey = `${d.getFullYear()}-${pad(m + 1)}`;
-      const list = sessions.filter((s) => new Date(s.startedAt).getFullYear() === d.getFullYear() && new Date(s.startedAt).getMonth() === m);
+      const monthKey = `${perDay(start).slice(0, 4)}-${pad(m + 1)}`;
+      const list = sessions.filter(session => session._dayKey.startsWith(monthKey));
       buckets.push({
         key: monthKey,
         label: monthKey,
@@ -582,8 +531,7 @@ function buildBuckets(range, start, end, sessions, tz) {
   // all — bucket by month for chart
   const monthSet = new Map();
   sessions.forEach((s) => {
-    const d = new Date(s.startedAt);
-    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+    const key = perDay(s.startedAt).slice(0, 7);
     if (!monthSet.has(key)) monthSet.set(key, { key, label: key, words: 0, sessions: 0 });
     const b = monthSet.get(key);
     b.words += s._words;
