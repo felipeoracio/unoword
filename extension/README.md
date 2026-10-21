@@ -531,3 +531,18 @@ Chrome API and HTTP fixtures at 320/360/420 pixels in English and Spanish. It is
 separate from live backend/model verification. Toolbar PNGs can be regenerated
 from `icons/unoword.svg` with `python extension/icons/generate_icons.py` after
 installing the developer-only `cairosvg` package.
+
+### Popup sizing correction (0.11.1)
+
+Native Chrome popups now establish a 420px intrinsic width before the first
+paint. A viewport-relative maximum could otherwise lock Chrome's initial
+layout near 200px. Embedded/web previews keep their available width; below
+320px navigation uses two columns, and below 280px the count/ring, metrics
+and actions stack. Text remains at readable sizes instead of shrinking to fit.
+
+The browser regression checks native versus embedded context detection,
+intrinsic width at an initial 194px viewport, text/container collisions at
+180/194/240/280/320/420px in English and Spanish, and a real 194px iframe
+preview with zero words on the Free plan. Reload the updated unpacked
+extension after replacing the old folder; a GitHub push does not update an
+already loaded local extension.

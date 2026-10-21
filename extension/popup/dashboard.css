@@ -6,7 +6,8 @@
   --primary: #0964ff; --primary-hover: #0352db; --primary-soft: #eaf2ff;
   --shadow-soft: 0 6px 24px #203d7010; --radius-lg: 20px;
 }
-html, body { width: 420px; max-width: 100vw; min-height: 540px; }
+html { width: 420px; max-width: 100%; min-height: 540px; }
+body { width: 100%; min-height: 540px; }
 html:has(body.wc--wide), body.wc--wide { width: 420px; }
 body { background: var(--surface); }
 .wc { min-width: 0; padding: 20px 20px 24px; gap: 18px; }
@@ -155,3 +156,38 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
 }
 
 .wc__content-dialog input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border-strong); border-radius: 9px; color: var(--text); background: var(--surface); font: inherit; }
+
+@media (max-width: 319px) {
+  .wc__main-nav, .wc__library-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+/* A host narrower than a practical popup gets a true stacked layout. */
+@media (max-width: 279px) {
+  .wc { padding: 12px; }
+  .wc__header { display: grid; grid-template-columns: minmax(0,1fr) 32px; gap: 6px; }
+  .wc__brand { display: grid; grid-template-columns: 32px minmax(0,1fr); gap: 7px; }
+  .wc__brand-mark { width: 32px; height: 32px; }
+  .wc__brand-name { font-size: 20px; white-space: normal; line-height: 1.15; }
+  .wc__offline-badge { grid-column: 1 / -1; }
+  #settings-btn { width: 32px; height: 32px; }
+  .wc__daily-hero { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .wc__daily-hero > div:first-child { text-align: center; }
+  .wc__goal-visual { justify-self: center; }
+  .wc__daily-metrics, .wc__prog-cards, .wc__range-tabs, .wc__prompt-ai-actions, .wc__source-action-list { grid-template-columns: minmax(0,1fr); }
+  .wc__daily-metrics > div, .wc__daily-metrics > button { padding: 12px; gap: 10px; }
+  .wc__daily-metrics p { font-size: 12px; }
+  .wc__daily-metrics strong { font-size: 17px; }
+  .wc__quick-ideas, .wc__prompt-ai, .wc__document-item { padding: 12px; }
+  .wc__quick-heading { display: block; }
+  .wc__quick-heading h2 { margin-top: 4px; }
+  .wc__mode-option { flex-direction: column; align-items: flex-start; }
+  .wc__page-heading { flex-wrap: wrap; }
+  .wc__setting-row { grid-template-columns: minmax(0,1fr); }
+  .wc__setting-row > button { justify-self: start; }
+  .wc__content-dialog { padding: 12px; }
+  .wc__dialog-actions { flex-direction: column; }
+}
+/* Chrome chooses popup bounds from intrinsic document size. Do not cap this
+   width with vw/percentages: that can lock its first layout near 200px. */
+html[data-popup-window="true"] { width: 420px; min-width: 420px; max-width: none; }
+html[data-popup-window="true"] body { width: 100%; }

@@ -7,6 +7,13 @@ const {webcrypto}=require('node:crypto');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'../../tests/node_modules/playwright');
 const root=path.resolve(__dirname,'..');
 const userId='00000000-0000-4000-8000-000000000001';
+// Native Chrome popups need intrinsic width; embedded previews must not force it.
+for(const [protocol,embedded,expected] of [['chrome-extension:',false,true],['chrome-extension:',true,false],['http:',false,false],['http:',true,false]]){
+ const hostWindow={};hostWindow.top=embedded?{}:hostWindow;
+ const document={documentElement:{dataset:{}}};
+ vm.runInNewContext(fs.readFileSync(path.join(root,'popup/viewport.js'),'utf8'),{location:{protocol},window:hostWindow,document});
+ assert.equal(document.documentElement.dataset.popupWindow==='true',expected,`${protocol} embedded=${embedded}`);
+}
 const now=Date.now();
 const article='Observation before action: how a neighborhood watches the tide and shares what it learns';
 const longTitle=article+' — '+article+' — lessons in community, patience and practical responsibility';
@@ -109,6 +116,48 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
     await page.click('#nav-library');await page.locator('[data-library-filter="links"]').click();
    }
   }
+  // The screenshot regression: narrow hosts must reflow instead of colliding.
+  async function assertNoCollisions(label){
+   const problems=await page.evaluate(()=>{
+    const failures=[];
+    function separate(selectors,name){
+     const boxes=selectors.map(selector=>typeof selector==='string'?document.querySelector(selector):selector).filter(el=>el&&el.getClientRects().length).map(el=>el.getBoundingClientRect());
+     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
+      const a=boxes[i],b=boxes[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)failures.push(name+' overlaps');
+     }
+    }
+    separate(['.wc__brand','#settings-btn'],'header');
+    separate([...document.querySelectorAll('.wc__daily-hero > div')],'count and ring');
+    separate([...document.querySelectorAll('.wc__daily-metrics > *')],'metrics');
+    for(const button of document.querySelectorAll('.wc__main-nav button')){
+     const range=document.createRange();range.selectNodeContents(button);const bounds=button.getBoundingClientRect();
+     for(const rect of range.getClientRects())if(rect.left<bounds.left-1||rect.right>bounds.right+1)failures.push('navigation text spills');
+    }
+    const count=document.querySelector('#daily-word-count');const range=document.createRange();range.selectNodeContents(count);const column=count.parentElement.getBoundingClientRect();
+    if(range.getBoundingClientRect().right>column.right+1)failures.push('word count spills into ring');
+    return failures;
+   });assert.deepEqual(problems,[],label);
+  }
+  await page.setViewportSize({width:194,height:600});
+  await page.evaluate(()=>{document.documentElement.dataset.popupWindow='true';});
+  assert.equal(await page.evaluate(()=>document.documentElement.getBoundingClientRect().width),420,'Native popup keeps intrinsic width even during Chrome initial narrow layout');
+  await page.setViewportSize({width:420,height:600});
+  await page.click('#nav-write');
+  await page.evaluate(()=>{settings.language='en';WCi18n.setLang('en');WCi18n.applyI18n(document);renderSession();});
+  await assertNoCollisions('native 420px popup');await capture('write-native-420');
+  await page.evaluate(()=>{delete document.documentElement.dataset.popupWindow;});
+  for(const width of [180,194,240,280,320,420]){
+   await page.setViewportSize({width,height:600});
+   for(const lang of ['en','es']){
+    await page.evaluate(lang=>{settings.language=lang;WCi18n.setLang(lang);WCi18n.applyI18n(document);renderSession();showPanel('session');},lang);
+    await layout(`narrow Write ${width} ${lang}`);await assertNoCollisions(`narrow Write ${width} ${lang}`);
+    if(width===194&&lang==='en')await capture('write-194');
+    await page.click('#nav-ideas');await layout(`narrow Ideas ${width} ${lang}`);
+    await page.click('#nav-progress');await layout(`narrow Progress ${width} ${lang}`);
+    await page.click('#nav-library');await page.locator('[data-library-filter="links"]').click();await layout(`narrow Library ${width} ${lang}`);
+   }
+  }
+  await page.setViewportSize({width:420,height:600});await page.click('#nav-library');
   await page.locator('[data-library-filter="documents"]').click();await layout('long document title');
   await page.locator('[data-library-filter="memory"]').click();assert.ok((await page.locator('#library-memory-list').textContent()).includes('observation'));
   await page.locator('[data-library-filter="saved"]').click();assert.equal(await page.locator('#suggestion-saved-list button').count(),1);
@@ -118,7 +167,17 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   await page.click('#nav-ideas');assert.ok(await page.locator('#ideas-access').isVisible());
   await page.click('#nav-library');
   assert.ok(await page.locator('#library-access').isVisible());
+  // Real embedded host at the screenshot's width, with a zero-word Free account.
+  storage.wc_state={active:false,typedWords:0,pastedWords:0};storage.wc_history=[];
+  await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="UnoWord preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
+  await page.goto('http://popup.test/sizing-host');
+  const frame=page.frameLocator('iframe');await frame.locator('#nav-write').click();
+  await frame.locator('#primary-btn').waitFor({state:'visible'});
+  assert.equal(await frame.locator('#daily-word-count').textContent(),'0');
+  assert.ok(await frame.locator('html').evaluate(el=>el.scrollWidth<=innerWidth),'Embedded preview has no horizontal overflow');
+  assert.equal(await frame.locator('html').getAttribute('data-popup-window'),null,'Embedded host stays responsive');
+  if(process.env.DASHBOARD_SCREENSHOTS)await page.locator('iframe').screenshot({path:path.join(process.env.DASHBOARD_SCREENSHOTS,'preview-194-free.png')});
   assert.deepEqual(errors,[]);
-  console.log('PASS: four views; real session statistics; 320/360/420px; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels.');
+  console.log('PASS: four views; real session statistics; 180–420px; native intrinsic width; embedded 194px Free preview; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
