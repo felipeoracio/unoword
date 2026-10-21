@@ -19,7 +19,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
  try {
   const page=await browser.newPage({viewport:{width:420,height:600},timezoneId:'UTC',colorScheme:'light'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const requests=[];let freeAccount=false;
+  const requests=[];let freeAccount=false,unsafePreview=false;
   const storage={wc_settings:{langChosen:true,plan:'pro',language:'en',wordGoal:1000,themes:['ideas'],profile:{timezone:'America/Chicago'},aiSuggestionMode:'connect_dots'},wc_state:{active:true,typedWords:438,pastedWords:500,startedAt:now-42*60000-15000,sessionGoal:1000},wc_account:{authenticated:true,userId,email:'qa@example.com',aiAccess:true,plan:'pro',online:true},wc_history:Array.from({length:5},(_,i)=>({id:i,typedWords:i===0?310:242,pastedWords:100,startedAt:now-(i*86400000)-120000,endedAt:now-i*86400000-60000}))};
   let listener;
   const chrome={storage:{local:{get:async k=>({[k]:storage[k]}),set:async v=>Object.assign(storage,v)}},runtime:{onInstalled:{addListener(){}},onMessage:{addListener:l=>listener=l},sendMessage:async m=>page.evaluate(m=>(window.backgroundListeners||[]).forEach(l=>l(m)),m).catch(()=>{})},tabs:{query:async()=>[{id:7}],sendMessage:(_id,_msg,cb)=>cb({ok:true,text:'An actual draft.'})}};
@@ -30,7 +30,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    else if(route==='/documents')body=docs;
    else if(route==='/links'&&method==='GET')body=links;
    else if(route==='/links'&&method==='POST'){body={...ready,id:'added',source_url:payload.url,document_title:payload.title};links.unshift(body);}
-   else if(/^\/links\/[^/]+\/content$/.test(route)){const id=route.split('/')[2];body=id==='failed'?{detail:'Refresh this source to extract readable text.'}:{content:'Readable article text. <script>window.injected=true</script>\nThe pilot measures the tide twice before making a decision.\n'+('Observation is a promise to the community. '.repeat(30)),truncated:false};if(id==='failed')status=409;}
+   else if(/^\/links\/[^/]+\/content$/.test(route)){const id=route.split('/')[2];body=id==='failed'?{detail:'Refresh this source to extract readable text.'}:{content:(unsafePreview?'Readable article text. <script>window.injected=true</script>':'Readable article text.')+'\nThe pilot measures the tide twice before making a decision.\n'+('Observation is a promise to the community. '.repeat(30)),truncated:false};if(id==='failed')status=409;}
    else if(/^\/links\/[^/]+\/refresh$/.test(route)){body=links.find(l=>l.id===route.split('/')[2]);Object.assign(body,{processing_status:'ready',chunk_count:3,indexing_status:'indexed',word_count:748,processing_error:null});}
    else if(/^\/links\/[^/]+$/.test(route)){const id=route.split('/')[2];if(method==='PATCH'){body=links.find(l=>l.id===id);Object.assign(body,payload.title?{document_title:payload.title}:payload);}else if(method==='DELETE'){links=links.filter(l=>l.id!==id);body={ok:true};}}
    else if(route==='/ai/memories')body=[{id:'memory',memory_type:'interest',memory:'I enjoy stories about how observation changes a decision.'}];
@@ -76,6 +76,10 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   assert.equal(await page.evaluate(()=>window.injected),undefined,'Preview text never executes source markup');
   const dialog=await page.locator('#link-content-dialog').boundingBox();assert.ok(dialog.x>=0&&dialog.x+dialog.width<=420);
   await capture('extracted-content');await page.click('#link-content-close');
+  unsafePreview=true;await page.click('[data-testid="link-view-ready"]');
+  await page.waitForFunction(()=>document.querySelector('#link-content-text').textContent.includes('<script>'));
+  assert.equal(await page.evaluate(()=>window.injected),undefined,'Untrusted preview markup is inert text');
+  await page.click('#link-content-close');unsafePreview=false;
   await page.click('[data-testid="link-edit-ready"]');await page.fill('#link-edit-title','A clearer title for the observation essay');await page.click('#link-edit-save');
   await page.waitForFunction(()=>!document.querySelector('#link-edit-dialog').open);
   assert.equal(await page.locator('[data-testid="link-title-ready"]').textContent(),'A clearer title for the observation essay');

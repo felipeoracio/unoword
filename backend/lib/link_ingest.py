@@ -128,8 +128,10 @@ async def _fetch(url: str) -> tuple[httpx.Response, str]:
 
 
 def _extract(html: str, url: str) -> dict:
+    # Extraction must be independent across refreshes and users. Trafilatura's
+    # deduplicate=True uses a process-wide cache and can suppress repeat reads.
     text = trafilatura.extract(
-        html, include_comments=False, include_tables=False, favor_precision=True, deduplicate=True, url=url
+        html, include_comments=False, include_tables=False, favor_precision=True, deduplicate=False, url=url
     ) or ""
     text = text.strip()
     if not text:

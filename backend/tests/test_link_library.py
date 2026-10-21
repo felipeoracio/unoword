@@ -133,3 +133,14 @@ async def test_stream_size_guard_and_single_gzip_decoding(monkeypatch):
     assert response.text=='hello readable page'
     monkeypatch.setattr(link_ingest,'MAX_BYTES',5)
     with pytest.raises(link_ingest.LinkIngestError,match='too large'):await link_ingest._fetch('https://example.com')
+
+
+def test_repeated_reads_and_other_users_do_not_lose_the_same_article():
+    # A process-global dedup cache can silently suppress a later refresh (or
+    # another user's read). Each extraction must be independent and repeatable.
+    paragraph = ('A civic archivist measures rainfall in a copper basin each morning. '
+                 'The public record helps neighbors decide when their shared garden needs water. ')
+    html = f'<html><head><title>Independent rainfall records</title></head><body><article><h1>Rainfall records</h1><p>{paragraph * 5}</p></article></body></html>'
+    results = [link_ingest._extract(html, f'https://example.com/rainfall?reader={i % 2}') for i in range(6)]
+    assert all('copper basin' in result['text'] for result in results)
+    assert len({result['content_hash'] for result in results}) == 1
