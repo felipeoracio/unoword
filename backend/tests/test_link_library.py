@@ -27,6 +27,9 @@ def library(monkeypatch):
             elif value=='not.is.null':rows=[r for r in rows if r.get(key) is not None]
         if method=='GET':
             offset=int((params or {}).get('offset',0));return rows[offset:offset+int((params or {}).get('limit',1000))]
+        if method=='POST':
+            state[table].append(json)
+            return [json]
         if method=='PATCH':
             for row in rows:row.update(json)
             return rows
@@ -144,3 +147,31 @@ def test_repeated_reads_and_other_users_do_not_lose_the_same_article():
     results = [link_ingest._extract(html, f'https://example.com/rainfall?reader={i % 2}') for i in range(6)]
     assert all('copper basin' in result['text'] for result in results)
     assert len({result['content_hash'] for result in results}) == 1
+
+
+@pytest.mark.parametrize('failure', [OSError('resolver unavailable'), RuntimeError('runtime DNS wrapper'), None, []])
+def test_resolver_failures_are_closed_and_actionable(monkeypatch, failure):
+    def resolve(*args):
+        if isinstance(failure, Exception):
+            raise failure
+        return failure
+    monkeypatch.setattr(link_ingest.socket, 'getaddrinfo', resolve)
+    with pytest.raises(link_ingest.LinkIngestError, match="Could not resolve") as error:
+        link_ingest._check_host_not_internal('unreachable.example')
+    assert error.value.reason == 'unreachable'
+
+
+def test_unreachable_link_can_be_saved_as_failed_and_retried(library, monkeypatch):
+    def fail_host(host):
+        raise link_ingest.LinkIngestError('unreachable', "Could not resolve that website's address.")
+    async def fail_fetch(url):
+        fail_host('unreachable.example')
+    monkeypatch.setattr(links, '_check_host_not_internal', fail_host)
+    monkeypatch.setattr(links, 'fetch_and_extract', fail_fetch)
+    response = library.client.post('/api/links', json={'url': 'https://unreachable.example/story'})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body['processing_status'] == 'failed' and body['indexing_status'] == 'not_indexed'
+    assert 'resolve' in body['processing_error']
+    retry = library.client.post(f"/api/links/{body['id']}/refresh")
+    assert retry.status_code == 200 and retry.json()['processing_status'] == 'failed'

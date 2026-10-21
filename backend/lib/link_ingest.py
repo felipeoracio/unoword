@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import logging
 import socket
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 import trafilatura
+
+logger = logging.getLogger(__name__)
 
 MAX_BYTES = 2_500_000
 TIMEOUT = 12.0
@@ -83,11 +86,17 @@ def _check_host_not_internal(host: str) -> None:
     except ValueError:
         pass
     try:
-        infos = socket.getaddrinfo(host_l, None)
-    except socket.gaierror:
+        # Managed runtimes may wrap resolver failures or return no address list.
+        # Fail closed for every resolver failure instead of leaking a 500 or
+        # proceeding to fetch without validating the destination addresses.
+        addresses = [info[4][0] for info in socket.getaddrinfo(host_l, None)]
+    except Exception as error:
+        logger.warning("link_dns_failed host=%s type=%s", host_l, type(error).__name__)
+        raise LinkIngestError("unreachable", "Could not resolve that website's address.") from error
+    if not addresses:
         raise LinkIngestError("unreachable", "Could not resolve that website's address.")
-    for info in infos:
-        if _ip_is_blocked(info[4][0]):
+    for address in addresses:
+        if _ip_is_blocked(address):
             raise LinkIngestError(
                 "blocked",
                 "That website resolves to a private or internal address and was blocked.",
