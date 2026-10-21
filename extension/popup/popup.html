@@ -63,17 +63,18 @@
         </div>
       </section>
 
-      <!-- ================= PROMPT (pro only) ================= -->
+      <!-- ================= IDEAS (original on all plans; AI on Pro) ================= -->
       <section class="wc__panel wc__prompt" id="prompt-panel" data-testid="prompt-panel" hidden>
         <div class="wc__page-heading"><div><p class="wc__eyebrow" data-i18n="dashboard.companion">Your writing companion</p><h1 data-i18n="nav.ideas">Ideas</h1></div><span class="wc__page-sparkle" aria-hidden="true">✦</span></div>
-        <div class="wc__prompt-head">
-          <span class="wc__eyebrow" id="prompt-eyebrow" data-testid="prompt-eyebrow" data-i18n="prompt.today">Today's writing prompt</span>
-          <button class="wc__link-btn" id="prompt-another" data-testid="prompt-another" data-i18n="prompt.another">Another prompt</button>
-        </div>
         <button class="wc__link-btn" id="ideas-open-saved" data-i18n="suggestion.savedIdeas">Saved ideas</button>
         <div id="suggestion-controls" class="wc__suggestion-controls" hidden>
           <fieldset class="wc__mode-picker">
             <legend class="wc__eyebrow" data-i18n="suggestion.chooseMode">Choose your direction</legend>
+            <label class="wc__mode-option">
+              <input type="radio" name="suggestion-mode" value="original" />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 3h10l4 4v14H5Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>
+              <span><strong data-i18n="suggestion.mode.original">Original Writing Suggestion</strong><small data-i18n="suggestion.subtitle.original">A writing prompt from your chosen themes.</small></span>
+            </label>
             <label class="wc__mode-option">
               <input type="radio" name="suggestion-mode" value="new_topic" checked />
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18h6M10 22h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z"/></svg>
@@ -104,6 +105,11 @@
           <details id="suggestion-saved" class="wc__saved-ideas"><summary data-i18n="suggestion.savedIdeas">Saved ideas</summary>
             <div id="suggestion-saved-list"></div><p id="suggestion-saved-empty" class="wc__helper" data-i18n="suggestion.noSaved">Your saved ideas will appear here.</p>
           </details>
+        </div>
+        <div class="wc__idea-access" id="ideas-access" hidden><p class="wc__helper" data-i18n="account.required">Sign in with an eligible plan for AI suggestions.</p><button class="wc__btn wc__btn--primary" id="ideas-account-action" data-i18n="settings.account">Account</button></div>
+        <div class="wc__prompt-head">
+          <span class="wc__eyebrow" id="prompt-eyebrow" data-testid="prompt-eyebrow" data-i18n="prompt.today">Today's writing prompt</span>
+          <button class="wc__link-btn" id="prompt-another" data-testid="prompt-another" data-i18n="prompt.another">Another prompt</button>
         </div>
         <p class="wc__prompt-text" id="prompt-text" data-testid="prompt-text">…</p>
         <div class="wc__prompt-ai" id="prompt-ai-card" data-testid="prompt-ai-card" hidden>
@@ -222,14 +228,13 @@
         <button class="wc__progress-link" id="open-progress" data-testid="open-progress" data-i18n="progress.link">Progress →</button>
         <div class="wc__quick-ideas">
           <div class="wc__quick-heading"><span aria-hidden="true">✦</span><div><h2 data-i18n="dashboard.needIdea">Need an idea?</h2><p data-i18n="dashboard.findDirection">Find your next writing direction.</p></div></div>
+          <button class="wc__quick-idea" data-idea-mode="original"><span data-i18n="suggestion.mode.original">Original Writing Suggestion</span><span aria-hidden="true">›</span></button>
           <button class="wc__quick-idea" data-idea-mode="new_topic"><span data-i18n="suggestion.mode.new_topic">New Topic</span><span aria-hidden="true">›</span></button>
           <button class="wc__quick-idea" data-idea-mode="expand_idea"><span data-i18n="suggestion.mode.expand_idea">Expand an Idea</span><span aria-hidden="true">›</span></button>
           <button class="wc__quick-idea" data-idea-mode="connect_dots"><span data-i18n="suggestion.mode.connect_dots">Connect the Dots</span><span aria-hidden="true">›</span></button>
           <button class="wc__btn wc__btn--primary" id="dashboard-more-ideas" data-i18n="dashboard.exploreIdeas">✦ Explore ideas</button>
         </div>
       </section>
-
-      <section class="wc__panel" id="ideas-access" hidden><h2 data-i18n="nav.ideas">Ideas</h2><p class="wc__helper" data-i18n="account.required">Sign in with an eligible plan for AI suggestions.</p><button class="wc__btn wc__btn--primary" id="ideas-account-action" data-i18n="settings.account">Account</button></section>
 
       <section class="wc__panel wc__library" id="library-panel" hidden>
         <div class="wc__page-heading"><div><p class="wc__eyebrow" data-i18n="library.private">Your private knowledge</p><h1 data-i18n="nav.library">Library</h1></div><span class="wc__library-count" id="library-count"></span></div>

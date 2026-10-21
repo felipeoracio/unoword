@@ -279,8 +279,8 @@ let cloudMemories = [];
 function showPanel(name) {
   currentPanel = name;
   els.firstlaunch.hidden = name !== 'firstlaunch';
-  els.promptPanel.hidden = !(name === 'ideas' && isPro());
-  els.ideasAccess.hidden = !(name === 'ideas' && !isPro());
+  els.promptPanel.hidden = name !== 'ideas';
+  if (name === 'ideas') els.proBadge.hidden = !hasProSuggestionOptions();
   els.library.hidden = name !== 'library';
   els.session.hidden    = name !== 'session';
   els.progress.hidden   = name !== 'progress';
@@ -338,7 +338,7 @@ async function refreshWriteDashboard() {
 
 async function openIdeas(mode = null) {
   await renderPrompt();
-  if (mode && isPro()) selectSuggestionMode(mode);
+  if (mode && (mode === 'original' || hasProSuggestionOptions())) await selectSuggestionMode(mode);
   showPanel('ideas');
 }
 
@@ -626,15 +626,24 @@ function stopDurationTicker() { if (durationTicker) { clearInterval(durationTick
 
 let aiSuggestion = null;
 let aiMode = false;
-const SUGGESTION_MODES = ['new_topic', 'expand_idea', 'connect_dots'];
+const AI_SUGGESTION_MODES = ['new_topic', 'expand_idea', 'connect_dots'];
+const SUGGESTION_MODES = ['original', ...AI_SUGGESTION_MODES];
 let selectedSuggestionMode = 'new_topic';
 let savedIdeas = [];
 let ideaOptions = [];
 let suggestionRequestVersion = 0;
 let suggestionBusy = false;
 
-function updateSuggestionAccount(next) {
-  if (account.userId !== next.userId || account.authenticated !== next.authenticated) {
+function hasProSuggestionOptions() {
+  // Signed-in access follows the server's current entitlement. Local Pro
+  // onboarding remains available before sign-in; AI requests still require auth.
+  return account.authenticated ? account.aiAccess === true : isPro();
+}
+
+function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
+  const identityChanged = account.userId !== next.userId || account.authenticated !== next.authenticated;
+  const accessChanged = account.aiAccess !== next.aiAccess;
+  if (identityChanged || (accessChanged && !next.aiAccess)) {
     suggestionRequestVersion++;
     suggestionBusy = false;
     aiSuggestion = null;
@@ -660,6 +669,10 @@ function updateSuggestionAccount(next) {
     suggestionStatus(null);
   }
   account = next;
+  if (refreshOptions && settings) {
+    renderModePicker();
+    if (currentPanel === 'ideas' && selectedSuggestionMode === 'original' && (identityChanged || accessChanged)) loadOriginalPrompt();
+  }
 }
 
 function suggestionStatus(key) {
@@ -668,26 +681,60 @@ function suggestionStatus(key) {
 }
 
 function renderModePicker() {
+  const pro = hasProSuggestionOptions();
+  if (currentPanel === 'ideas') els.proBadge.hidden = !pro;
+  if (!pro) selectedSuggestionMode = 'original';
+  const original = selectedSuggestionMode === 'original';
+  const aiAccess = pro && account.authenticated && account.aiAccess;
+  els.suggestionControls.hidden = false;
   document.querySelectorAll('input[name="suggestion-mode"]').forEach(input => {
+    const allowed = input.value === 'original' || pro;
+    input.closest('label').hidden = !allowed;
+    input.disabled = !allowed;
     input.checked = input.value === selectedSuggestionMode;
   });
-  els.suggestionIdeaInput.hidden = selectedSuggestionMode !== 'expand_idea';
+  document.querySelectorAll('[data-idea-mode]').forEach(button => {
+    button.hidden = button.dataset.ideaMode !== 'original' && !pro;
+  });
+  els.suggestionIdeaInput.hidden = original || !aiAccess || selectedSuggestionMode !== 'expand_idea';
+  els.suggestionGenerate.hidden = original || !aiAccess;
+  els.promptAnother.hidden = !original;
+  els.ideasAccess.hidden = original || aiAccess;
+  $('ideas-open-saved').hidden = !aiAccess;
 }
 
-function selectSuggestionMode(mode) {
-  if (!SUGGESTION_MODES.includes(mode)) return;
+async function loadOriginalPrompt({ another = false } = {}) {
+  if (selectedSuggestionMode !== 'original') return;
+  const version = ++suggestionRequestVersion;
+  els.promptAnother.disabled = true;
+  try {
+    const response = await sendMessage({ type: another ? 'ANOTHER_PROMPT' : 'GET_PROMPT' });
+    if (version !== suggestionRequestVersion || selectedSuggestionMode !== 'original') return;
+    renderStaticPrompt(response.ok ? response.prompt : null);
+  } finally {
+    if (version === suggestionRequestVersion) els.promptAnother.disabled = false;
+  }
+}
+
+async function selectSuggestionMode(mode) {
+  if (!SUGGESTION_MODES.includes(mode) || (mode !== 'original' && !hasProSuggestionOptions())) return;
   selectedSuggestionMode = mode;
   settings.aiSuggestionMode = mode;
   suggestionRequestVersion++;
   suggestionBusy = false;
   els.suggestionGenerate.disabled = false;
+  els.promptAiAgain.disabled = false;
+  els.promptAnother.disabled = false;
   aiSuggestion = null;
   aiMode = false;
   els.promptAiCard.hidden = true;
   els.promptText.hidden = true;
+  els.promptEmpty.hidden = true;
+  els.promptGoal.hidden = true;
   suggestionStatus(null);
   renderModePicker();
   sendMessage({ type: 'SET_SETTINGS', settings: { aiSuggestionMode: mode } });
+  if (mode === 'original') await loadOriginalPrompt();
 }
 
 function renderSavedIdeas() {
@@ -765,10 +812,10 @@ async function loadTabWriting() {
  *                    timeout, rate-limit — so authenticated free users and
  *                    signed-out users see the plain static path silently)
  */
-async function getNextPrompt({ draft = '', project = '', mode = selectedSuggestionMode, ideaSourceId = null } = {}) {
+async function getNextPrompt({ draft = '', project = '', mode = selectedSuggestionMode, ideaSourceId = null, requestVersion = suggestionRequestVersion } = {}) {
   const staticPromise = sendMessage({ type: 'GET_PROMPT' });
   const isOffline = account.online === false || (typeof navigator !== 'undefined' && navigator.onLine === false);
-  const canUseAI = !!account.authenticated && !!account.aiAccess && !isOffline;
+  const canUseAI = AI_SUGGESTION_MODES.includes(mode) && hasProSuggestionOptions() && !!account.authenticated && !!account.aiAccess && !isOffline;
   if (!canUseAI) {
     const staticResp = await staticPromise;
     // AI-eligible but offline → keep basic prompts working and gently note that
@@ -777,6 +824,7 @@ async function getNextPrompt({ draft = '', project = '', mode = selectedSuggesti
     return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey };
   }
   const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId, expectedUserId: account.userId });
+  if (requestVersion !== suggestionRequestVersion) return { mode: 'stale' };
   if (aiResp.account) updateSuggestionAccount(aiResp.account);
   if (aiResp.ok && aiResp.suggestion) {
     return { mode: 'ai', suggestion: aiResp.suggestion };
@@ -894,6 +942,8 @@ function onAiReasonPick(reason, button) {
 async function refreshAiSuggestion() {
   if (suggestionBusy) return;
   const mode = selectedSuggestionMode;
+  if (mode === 'original') { await loadOriginalPrompt(); return; }
+  if (!hasProSuggestionOptions()) return;
   const draft = mode === 'expand_idea' ? els.suggestionIdeaText.value.trim() : '';
   const ideaSourceId = mode === 'expand_idea' ? els.suggestionIdeaSource.value : null;
   if (mode === 'expand_idea' && !draft && !ideaSourceId) { suggestionStatus('suggestion.ideaRequired'); return; }
@@ -903,7 +953,7 @@ async function refreshAiSuggestion() {
   els.promptAiAgain.disabled = true;
   suggestionStatus('prompt.ai.loading');
   try {
-    const result = await getNextPrompt({ mode, draft, ideaSourceId });
+    const result = await getNextPrompt({ mode, draft, ideaSourceId, requestVersion: version });
     if (version !== suggestionRequestVersion) return;
     if (result.mode === 'ai') { renderAISuggestion(result.suggestion); return; }
     const errors = { rate_limited: 'suggestion.rateLimited', idea_required: 'suggestion.ideaRequired', offline: 'prompt.ai.offline' };
@@ -945,7 +995,7 @@ function renderStaticPrompt(prompt, statusKey = null) {
   els.promptEyebrow.textContent = t('prompt.today');
   const hasPrompt = promptState && promptState.text;
   els.promptText.hidden = !hasPrompt;
-  els.promptGoal.hidden = !hasPrompt;
+  els.promptGoal.hidden = !hasPrompt || !hasProSuggestionOptions();
   els.promptEmpty.hidden = hasPrompt;
   els.promptAiCard.hidden = true;
   els.promptAnother.textContent = t('prompt.another');
@@ -970,28 +1020,30 @@ function renderOfflineBadge() {
 }
 
 async function renderPrompt() {
-  if (!isPro()) return;
-  const refreshed = await sendMessage({ type: 'GET_ACCOUNT' });
-  if (refreshed.ok) updateSuggestionAccount(refreshed.account);
-  const canUseAI = !!account.authenticated && !!account.aiAccess;
-  els.suggestionControls.hidden = !canUseAI;
-  els.promptAnother.hidden = canUseAI;
-  if (canUseAI) {
-    selectedSuggestionMode = SUGGESTION_MODES.includes(settings.aiSuggestionMode) ? settings.aiSuggestionMode : 'new_topic';
-    renderModePicker();
-    els.promptText.hidden = true;
-    els.promptEmpty.hidden = true;
-    els.promptGoal.hidden = true;
-    els.promptAiCard.hidden = true;
-    await loadIdeaChoices();
-    return;
-  }
-  const result = await getNextPrompt();
-  if (result.mode === 'ai') {
-    renderAISuggestion(result.suggestion);
-  } else {
-    renderStaticPrompt(result.prompt, result.statusKey);
-  }
+  const version = ++suggestionRequestVersion;
+  const refreshed = isOfflineNow() ? { ok: false } : await sendMessage({ type: 'GET_ACCOUNT' });
+  if (version !== suggestionRequestVersion) return;
+  if (refreshed.ok) updateSuggestionAccount(refreshed.account, { refreshOptions: false });
+  const pro = hasProSuggestionOptions();
+  const preferred = settings.aiSuggestionMode;
+  selectedSuggestionMode = SUGGESTION_MODES.includes(preferred) && (pro || preferred === 'original')
+    ? preferred : (pro ? 'new_topic' : 'original');
+  suggestionBusy = false;
+  els.suggestionGenerate.disabled = false;
+  els.promptAiAgain.disabled = false;
+  els.promptAnother.disabled = false;
+  aiSuggestion = null;
+  aiMode = false;
+  els.promptText.hidden = true;
+  els.promptEmpty.hidden = true;
+  els.promptGoal.hidden = true;
+  els.promptAiCard.hidden = true;
+  suggestionStatus(null);
+  renderModePicker();
+  const pending = [];
+  if (selectedSuggestionMode === 'original') pending.push(loadOriginalPrompt());
+  if (pro && account.authenticated && account.aiAccess && !isOfflineNow()) pending.push(loadIdeaChoices());
+  await Promise.all(pending);
 }
 
 // ---------- primary action ----------
@@ -2106,7 +2158,7 @@ async function planAction() {
   if (els.planAction.dataset.action === 'upgrade') { openUpgrade(); return; }
   // cancel Pro (demo)
   const r = await sendMessage({ type: 'SET_SETTINGS', settings: { plan: 'free' } });
-  if (r.ok) { settings = r.settings; renderSettings(); renderSession(); }
+  if (r.ok) { settings = r.settings; renderSettings(); renderSession(); await renderPrompt(); }
 }
 
 // ---------- upgrade / pro badge ----------
@@ -2253,12 +2305,8 @@ function wire() {
   // Dashboard header icon opens Progress inside the popup (see wire()).
   // (kept for back-compat; no external tab is opened anymore)
 
-  // Prompt "Another" — routed through the same Phase-13 seam so a broken AI call quietly falls back to the static library.
-  els.promptAnother.addEventListener('click', async () => {
-    if (aiMode) { await refreshAiSuggestion(); return; }
-    const r = await sendMessage({ type: 'ANOTHER_PROMPT' });
-    if (r.ok) { promptState = r.prompt; if (promptState?.text) els.promptText.textContent = promptState.text; }
-  });
+  // The original option uses the unchanged local generator on every plan.
+  els.promptAnother.addEventListener('click', () => loadOriginalPrompt({ another: true }));
 
   // AI suggestion feedback → /api/ai/feedback (thumbs + optional reason).
   els.promptAiUp.addEventListener('click', onAiThumbUp);
@@ -2278,8 +2326,8 @@ function wire() {
   // counting, sessions and progress stay fully local; only AI requests surface
   // the "internet required" notice.
   if (typeof window !== 'undefined') {
-    window.addEventListener('offline', () => { account.online = false; renderOfflineBadge(); if (isPro()) renderPrompt(); });
-    window.addEventListener('online', () => { account.online = true; renderOfflineBadge(); if (isPro()) renderPrompt(); });
+    window.addEventListener('offline', () => { account.online = false; renderOfflineBadge(); renderPrompt(); });
+    window.addEventListener('online', () => { account.online = true; renderOfflineBadge(); renderPrompt(); });
   }
   els.promptAiReasons.querySelectorAll('.wc__chip').forEach((chip) => {
     chip.addEventListener('click', () => onAiReasonPick(chip.dataset.reason, chip));

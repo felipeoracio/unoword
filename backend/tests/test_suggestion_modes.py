@@ -194,3 +194,16 @@ async def test_real_provider_request_boundary_includes_text_and_trusted_mode():
     assert 'CONNECT THE DOTS' in captured['messages'][0]['content'] and 'Spanish' in captured['messages'][0]['content']
     assert TEXT1 in captured['messages'][1]['content'] and TEXT2 in captured['messages'][1]['content']
     assert captured['response_format']['json_schema']['strict'] is True
+
+
+@pytest.mark.parametrize('mode', ['new_topic', 'expand_idea', 'connect_dots'])
+def test_each_ai_mode_requires_server_entitlement_even_if_client_claims_pro(monkeypatch, mode):
+    app = FastAPI()
+    app.include_router(ai.router, prefix='/api')
+    app.dependency_overrides[require_user] = lambda: AuthenticatedUser(id=A, plan='pro', access_token='token-a')
+    async def free_entitlement(_):
+        return {'plan': 'free', 'status': 'inactive'}
+    monkeypatch.setattr(ai_access, 'get_entitlement', free_entitlement)
+    with TestClient(app) as client:
+        response = client.post('/api/ai/suggestion', json={'mode': mode, 'current_writing': 'An actual idea.'})
+    assert response.status_code == 403

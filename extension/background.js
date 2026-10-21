@@ -310,7 +310,7 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
     const reason = !account.authenticated
       ? 'auth_required'
       : (!account.aiAccess ? 'plan_required' : 'offline');
-    return { ok: false, reason };
+    return { ok: false, reason, account };
   }
   const payload = { mode, language };
   if (ideaSourceId) payload.idea_source_id = ideaSourceId;
@@ -323,8 +323,9 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
     return { ok: true, suggestion, account };
   } catch (error) {
     const status = error && error.status;
-    if (status === 401) return { ok: false, reason: 'auth_required' };
-    if (status === 403) return { ok: false, reason: 'plan_required' };
+    if (status === 401 || status === 403) {
+      return { ok: false, reason: status === 401 ? 'auth_required' : 'plan_required', account: await refreshAccount() };
+    }
     if (status === 429) return { ok: false, reason: 'rate_limited' };
     if (status === 422) return { ok: false, reason: 'idea_required' };
     return { ok: false, reason: status === 0 ? 'offline' : 'request_failed' };

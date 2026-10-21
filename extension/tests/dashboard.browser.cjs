@@ -164,7 +164,9 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   freeAccount=true;
   await message({type:'SET_SETTINGS',settings:{plan:'free'}});
   await page.evaluate(()=>{settings.plan='free';renderSession();});
-  await page.click('#nav-ideas');assert.ok(await page.locator('#ideas-access').isVisible());
+  await page.click('#nav-ideas');assert.ok(await page.locator('label:has(input[value="original"])').isVisible());
+  assert.equal(await page.locator('.wc__mode-option:visible').count(),1);
+  assert.ok(await page.locator('#prompt-text').isVisible());
   await page.click('#nav-library');
   assert.ok(await page.locator('#library-access').isVisible());
   // Real embedded host at the screenshot's width, with a zero-word Free account.

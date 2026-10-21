@@ -546,3 +546,24 @@ intrinsic width at an initial 194px viewport, text/container collisions at
 preview with zero words on the Free plan. Reload the updated unpacked
 extension after replacing the old folder; a GitHub push does not update an
 already loaded local extension.
+
+### Original writing suggestions on Free and Pro (0.12.0)
+
+Ideas uses one picker. Free offers Original Writing Suggestion; Pro adds New
+Topic, Expand an Idea, and Connect the Dots. Write shortcuts reflect the same
+availability. Original calls the existing `GET_PROMPT` / `ANOTHER_PROMPT` worker
+messages: the bilingual prompt bank, themes, daily cache, recent-history rotation
+and limits are unchanged. It works signed out/offline and never calls the AI
+endpoint or uses AI allowance. No second prompt store or backend route is added.
+
+Signed-in AI availability follows the current server entitlement, including
+upgrades/downgrades when the local plan setting is stale. The worker still
+checks authentication/AI access before requests, and the backend independently
+requires an active eligible entitlement for all three AI modes. A 401/403 refreshes
+account state; late responses cannot restore old access or overwrite Original.
+
+Verification uses the browser scripts above. The suggestion suite additionally
+checks identical Free/Pro cache and rotation behavior, no AI requests from
+Original, all four Pro choices, one Free choice, signed-out/offline use,
+subscription changes, rejected forged plan claims, and 180–420px English/Spanish
+layouts. Set `SUGGESTION_SCREENSHOTS` to capture Free/Pro Original screens.

@@ -191,3 +191,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px soli
    width with vw/percentages: that can lock its first layout near 200px. */
 html[data-popup-window="true"] { width: 420px; min-width: 420px; max-width: none; }
 html[data-popup-window="true"] body { width: 100%; }
+
+.wc__prompt-head { flex-wrap: wrap; gap: 8px; }
+.wc__prompt-text { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); line-height: 1.65; overflow-wrap: break-word; }
