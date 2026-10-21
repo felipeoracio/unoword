@@ -1,6 +1,6 @@
-# Stripe billing for UnoWord
+# Stripe billing for Uno Word
 
-UnoWord Pro is **$20 USD per month after a 7-day free trial**, once per account.
+Uno Word Pro is **$20 USD per month after a 7-day free trial**, once per account.
 Checkout collects a payment method before the trial starts. Users cancel in the
 Stripe billing portal; cancellation takes effect at the end of the trial or paid
 period. Free tracking, Quick Prompt and the editable Writing Profile stay free.
@@ -22,7 +22,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    for billing, so billing does not depend on a reachable direct IPv6 DB hostname.
    The migration creates billing state, durable leases and event receipts; it
    adds a nullable entitlement source without changing existing grants.
-2. In the Stripe sandbox Product catalog, create **UnoWord Pro** with a flat,
+2. In the Stripe sandbox Product catalog, create **Uno Word Pro** with a flat,
    recurring, licensed price of **20.00 USD every month**, quantity 1. Copy the
    `price_...` identifier. Trials are configured by the backend when creating
    Checkout; do not create a separate trial price.
@@ -44,7 +44,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    scheduled cancellation and final cancellation. No invoice or checkout redirect
    grants access. Copy this endpoint's signing secret (`whsec_...`), not an API key
    or a Stripe CLI forwarding secret from a different endpoint.
-5. In Vercel → UnoWord project → Settings → Environment Variables, configure the
+5. In Vercel → Uno Word project → Settings → Environment Variables, configure the
    backend/server environment, **never a VITE_ variable**:
 
    | Variable | Value |

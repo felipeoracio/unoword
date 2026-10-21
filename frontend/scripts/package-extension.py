@@ -26,4 +26,4 @@ with ZipFile(target, 'w', ZIP_DEFLATED, compresslevel=9) as archive:
         archive.writestr(item, file.read_bytes())
 metadata = {'version': manifest['version'], 'sha256': hashlib.sha256(target.read_bytes()).hexdigest(), 'file': target.name}
 (out / 'release.json').write_text(json.dumps(metadata, indent=2) + '\n')
-print(f"Packaged UnoWord {metadata['version']}: {target.stat().st_size} bytes")
+print(f"Packaged Uno Word {metadata['version']}: {target.stat().st_size} bytes")

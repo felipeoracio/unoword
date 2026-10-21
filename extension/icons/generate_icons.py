@@ -1,4 +1,4 @@
-"""Rasterize the canonical UnoWord SVG into Chrome's required PNG sizes.
+"""Rasterize the canonical Uno Word SVG into Chrome's required PNG sizes.
 
 Developer dependency: pip install cairosvg
 """

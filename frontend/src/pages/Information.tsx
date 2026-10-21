@@ -14,7 +14,7 @@ export default function Information({
       <header className="uw-account-header uw-container">
         <Brand />
         <Link className="uw-text-link" to="/">
-          <ArrowLeft size={15} /> Back to UnoWord
+          <ArrowLeft size={15} /> Back to Uno Word
         </Link>
       </header>
       <main className="uw-info-content">
@@ -23,7 +23,7 @@ export default function Information({
             <p className="uw-eyebrow">YOUR WRITING, WITH CONTEXT</p>
             <h1>Privacy &amp; data</h1>
             <p>
-              This page describes the current UnoWord implementation. It does
+              This page describes the current Uno Word implementation. It does
               not promise that data never leaves your device: cloud
               personalization works with information you choose to share.
             </p>
@@ -57,7 +57,7 @@ export default function Information({
             <h2>Billing data</h2>
             <p>
               Stripe hosts checkout and subscription management and processes
-              payment details. UnoWord stores Stripe customer and subscription
+              payment details. Uno Word stores Stripe customer and subscription
               identifiers, subscription status, trial eligibility, and billing
               period dates to manage access. Card details are entered on
               Stripe’s pages.
@@ -93,7 +93,7 @@ export default function Information({
             </p>
             <h2>Current availability</h2>
             <p>
-              UnoWord has Free features and account-controlled Pro capabilities.
+              Uno Word has Free features and account-controlled Pro capabilities.
               Pro costs $20 USD monthly after a 7-day free trial for eligible
               accounts. A payment method is required; cancel before your trial
               ends to avoid a charge. Checkout remains unavailable until
@@ -134,7 +134,7 @@ export default function Information({
               download
               className="uw-button"
             >
-              <Download size={17} /> Download UnoWord
+              <Download size={17} /> Download Uno Word
             </a>
             <ol>
               <li>Unzip the download.</li>
@@ -147,7 +147,7 @@ export default function Information({
                 <strong>unoword</strong> folder.
               </li>
               <li>
-                Pin the extension. Open UnoWord, choose your language, and start
+                Pin the extension. Open Uno Word, choose your language, and start
                 a writing session.
               </li>
               <li>
@@ -163,7 +163,7 @@ export default function Information({
             </p>
             <h2>Which editors work?</h2>
             <p>
-              UnoWord tracks active sessions in supported text fields,
+              Uno Word tracks active sessions in supported text fields,
               textareas, and contenteditable editors. Pasted words are recorded
               separately from typed progress. Chrome internal pages and the
               Chrome Web Store do not allow the extension. Google Docs’
@@ -205,9 +205,9 @@ export default function Information({
           <>
             <p className="uw-eyebrow">A NEW DIRECTION</p>
             <h1>This page hasn’t been written yet.</h1>
-            <p>Head back to UnoWord and find your next idea.</p>
+            <p>Head back to Uno Word and find your next idea.</p>
             <Link className="uw-button" to="/">
-              Back to UnoWord
+              Back to Uno Word
               <ArrowRight size={17} />
             </Link>
           </>

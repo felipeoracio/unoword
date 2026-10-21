@@ -39,7 +39,7 @@ api_router.include_router(account_security_router)
 
 @api_router.get("/")
 async def root() -> dict[str, str]:
-    return {"message": "UnoWord AI API is running"}
+    return {"message": "Uno Word AI API is running"}
 
 
 app.add_middleware(

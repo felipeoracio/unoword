@@ -1,7 +1,7 @@
 export type Lang = "en" | "es";
 
 const DICT: Record<string, { en: string; es: string }> = {
-  "app.title": { en: "UnoWord Admin", es: "Administración UnoWord" },
+  "app.title": { en: "Uno Word Admin", es: "Administración Uno Word" },
   "login.title": { en: "Admin sign in", es: "Acceso de administrador" },
   "login.subtitle": { en: "Restricted area. Authorized administrators only.", es: "Área restringida. Solo administradores autorizados." },
   "login.email": { en: "Email", es: "Correo" },
@@ -54,7 +54,7 @@ const DICT: Record<string, { en: string; es: string }> = {
   "feedback.message": { en: "Message", es: "Mensaje" },
   "feedback.helpful": { en: "Helpful", es: "Útil" },
   "feedback.date": { en: "Date", es: "Fecha" },
-  "feedback.privacy": { en: "Writing content is never shown here. UnoWord is privacy-first.", es: "El contenido de escritura nunca se muestra aquí. UnoWord prioriza la privacidad." },
+  "feedback.privacy": { en: "Writing content is never shown here. Uno Word is privacy-first.", es: "El contenido de escritura nunca se muestra aquí. Uno Word prioriza la privacidad." },
   "health.title": { en: "Operational status", es: "Estado operativo" },
   "settings.account": { en: "Administrator account", es: "Cuenta de administrador" },
   "settings.changePw": { en: "Change password", es: "Cambiar contraseña" },

@@ -277,7 +277,7 @@ export default function Account() {
       <header className="uw-account-header uw-container">
         <Brand />
         <Link to="/" className="uw-text-link">
-          <ArrowLeft size={15} /> Back to UnoWord
+          <ArrowLeft size={15} /> Back to Uno Word
         </Link>
       </header>
       <main className="uw-account-main">
@@ -402,7 +402,7 @@ export default function Account() {
               <div className="uw-install-card" id="install">
                 <div>
                   <Chrome size={24} />
-                  <h2>Make room for UnoWord in Chrome.</h2>
+                  <h2>Make room for Uno Word in Chrome.</h2>
                 </div>
                 {product.data?.chrome_store_url ? (
                   <a className="uw-button" href={product.data.chrome_store_url}>
@@ -420,7 +420,7 @@ export default function Account() {
                       href="/downloads/unoword-extension.zip"
                       download
                     >
-                      <Download size={16} /> Download UnoWord for Chrome
+                      <Download size={16} /> Download Uno Word for Chrome
                     </a>
                     <ol>
                       <li>Unzip the downloaded file.</li>
@@ -433,7 +433,7 @@ export default function Account() {
                         extracted <strong>unoword</strong> folder.
                       </li>
                       <li>
-                        Pin UnoWord, open it, choose your language, and start a
+                        Pin Uno Word, open it, choose your language, and start a
                         session. Sign in under Settings to access your account
                         features.
                       </li>
@@ -471,10 +471,10 @@ export default function Account() {
                 {proIntent
                   ? "Sign in to review your account and continue your Pro request."
                   : mode === "signup"
-                    ? "Create your free UnoWord account, then install the Chrome extension."
+                    ? "Create your free Uno Word account, then install the Chrome extension."
                     : mode === "recovery"
                       ? "Enter your account email to request a secure recovery link."
-                      : "Sign in to your existing UnoWord account."}
+                      : "Sign in to your existing Uno Word account."}
               </p>
               <form className="uw-auth-form" onSubmit={authenticate}>
                 <label htmlFor="launch-email">
@@ -556,7 +556,7 @@ export default function Account() {
               <p className="uw-auth-switch">
                 {mode === "signup"
                   ? "Already have an account?"
-                  : "New to UnoWord?"}{" "}
+                  : "New to Uno Word?"}{" "}
                 <Link
                   to={
                     mode === "signup"

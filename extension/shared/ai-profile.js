@@ -1,5 +1,5 @@
 /**
- * UnoWord — local AI profile draft helpers.
+ * Uno Word — local AI profile draft helpers.
  *
  * Shared schema for onboarding and the account-backed Writing Profile.
  * The worker owns explicit network writes; this module only maps values.

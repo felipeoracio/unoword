@@ -22,7 +22,7 @@ def store_listing():
 @router.get('/product')
 async def product():
     return {
-        'name': 'UnoWord', 'billing_available': billing_available(),
+        'name': 'Uno Word', 'billing_available': billing_available(),
         'chrome_store_url': store_listing(),
         'plans': [{'id': key, 'name': name, 'price': dict(PRO_PRICE) if key == 'pro' else None, 'features': plan_features(key)}
                   for key, name in [('free', 'Free'), ('pro', 'Pro')]],

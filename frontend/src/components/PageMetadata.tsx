@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 const titles: Record<string, string> = {
-  "/": "UnoWord — AI Writing Companion & Word Counter",
-  "/account": "Your account — UnoWord",
-  "/account/security": "Account & Security — UnoWord",
-  "/privacy": "Privacy & data — UnoWord",
-  "/terms": "Terms of service — UnoWord",
-  "/support": "Support — UnoWord",
+  "/": "Uno Word — AI Writing Companion & Word Counter",
+  "/account": "Your account — Uno Word",
+  "/account/security": "Account & Security — Uno Word",
+  "/privacy": "Privacy & data — Uno Word",
+  "/terms": "Terms of service — Uno Word",
+  "/support": "Support — Uno Word",
 };
 export default function PageMetadata() {
   const { pathname } = useLocation();
@@ -15,8 +15,8 @@ export default function PageMetadata() {
     document.title =
       titles[pathname] ||
       (pathname.startsWith("/admin")
-        ? "Admin — UnoWord"
-        : "Page not found — UnoWord");
+        ? "Admin — Uno Word"
+        : "Page not found — Uno Word");
     const robots = document.querySelector<HTMLMetaElement>(
       'meta[name="robots"]',
     );

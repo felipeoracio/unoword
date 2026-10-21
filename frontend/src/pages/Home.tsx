@@ -172,23 +172,23 @@ const audiences = [
 ];
 const faqs = [
   [
-    "What is UnoWord?",
-    "UnoWord is a Chrome extension and personal writing companion. It helps you track active writing sessions, follow your progress, and find your next idea with quick prompts or personalized Pro AI suggestions.",
+    "What is Uno Word?",
+    "Uno Word is a Chrome extension and personal writing companion. It helps you track active writing sessions, follow your progress, and find your next idea with quick prompts or personalized Pro AI suggestions.",
   ],
   [
-    "Is UnoWord free?",
+    "Is Uno Word free?",
     "Yes. Free includes session tracking, Quick Prompt, recent writing history, and an editable Writing Profile. Pro adds the three AI suggestion modes, knowledge sources, writing goals, and extended history. Pro is $20 USD monthly, with a 7-day free trial for eligible accounts when checkout is available.",
   ],
   [
-    "How does UnoWord count words?",
-    "Start a session in the extension and write in a supported text field or editor. UnoWord tracks typed and pasted words separately; pasted text does not count toward your typed-word progress. Deletions and undo are reconciled with the editor. Google Docs’ canvas-based main editor is not currently supported.",
+    "How does Uno Word count words?",
+    "Start a session in the extension and write in a supported text field or editor. Uno Word tracks typed and pasted words separately; pasted text does not count toward your typed-word progress. Deletions and undo are reconciled with the editor. Google Docs’ canvas-based main editor is not currently supported.",
   ],
   [
     "How are AI suggestions personalized?",
     "Pro suggestions use your latest saved Writing Profile and selected themes, alongside available documents, website content, writing memory, and relevant previous ideas. You choose what to share. Editing your profile changes the preferences used on your next AI request. AI suggestions need an internet connection.",
   ],
   [
-    "Can I use UnoWord without AI?",
+    "Can I use Uno Word without AI?",
     "Absolutely. Word tracking, local writing sessions, and Quick Prompt work without the three Pro AI modes. The original prompt library does not need an AI request.",
   ],
   [
@@ -250,7 +250,7 @@ export default function Home() {
               Sign in
             </Link>
             <a className="uw-button uw-button-small" href={freeHref}>
-              Get UnoWord Free <ArrowUpRight size={15} />
+              Get Uno Word Free <ArrowUpRight size={15} />
             </a>
             <button
               className="uw-menu-button"
@@ -310,7 +310,7 @@ export default function Home() {
               </p>
               <div className="uw-hero-buttons">
                 <a href={freeHref} className="uw-button">
-                  Get UnoWord Free <ArrowRight size={19} />
+                  Get Uno Word Free <ArrowRight size={19} />
                 </a>
                 <a href="#features" className="uw-button uw-button-outline">
                   Explore features <ArrowDown size={17} />
@@ -383,7 +383,7 @@ export default function Home() {
               unsure where to begin.
             </p>
             <p>
-              UnoWord helps you turn scattered ideas into a sustainable writing
+              Uno Word helps you turn scattered ideas into a sustainable writing
               practice. Track your progress, celebrate consistency, and discover
               your next writing direction.
             </p>
@@ -549,7 +549,7 @@ export default function Home() {
               </h2>
               <p>
                 The more relevant information you choose to share, the more
-                context UnoWord can use to personalize your next suggestion.
+                context Uno Word can use to personalize your next suggestion.
               </p>
               <p className="uw-control-note">
                 <ShieldCheck size={20} />
@@ -562,7 +562,7 @@ export default function Home() {
                 </span>
               </p>
               <Link className="uw-text-link" to={FREE_START}>
-                Make UnoWord yours <ArrowRight size={17} />
+                Make Uno Word yours <ArrowRight size={17} />
               </Link>
             </div>
             <div className="uw-personalization-visual">
@@ -629,7 +629,7 @@ export default function Home() {
             {[
               {
                 icon: Chrome,
-                title: "Install UnoWord",
+                title: "Install Uno Word",
                 text: "Add the Chrome extension and start a writing session in a supported editor. One click, and you’re on your way.",
               },
               {
@@ -667,7 +667,7 @@ export default function Home() {
               <h2>
                 Whatever you write,
                 <br />
-                UnoWord helps you keep going.
+                Uno Word helps you keep going.
               </h2>
               <p>
                 For writers of all kinds. Especially the one you’re becoming.
@@ -851,11 +851,11 @@ export default function Home() {
             <span className="uw-cta-sparkle" aria-hidden="true">
               <Sparkles size={30} />
             </span>
-            <p className="uw-eyebrow">ONE WORD CAN TAKE YOU SOMEWHERE</p>
+            <p className="uw-eyebrow">UNO WORD CAN TAKE YOU SOMEWHERE</p>
             <h2>
               Your next great idea
               <br />
-              starts with one word.
+              starts with Uno Word.
             </h2>
             <p>
               Whether you’re writing your first blog post or your next book,
@@ -863,7 +863,7 @@ export default function Home() {
               little inspiration, and a reason to keep going.
             </p>
             <a className="uw-button uw-button-white" href={freeHref}>
-              Get UnoWord Free <ArrowRight size={18} />
+              Get Uno Word Free <ArrowRight size={18} />
             </a>
             <small>Every idea starts with Uno Word.</small>
           </div>
@@ -895,7 +895,7 @@ export default function Home() {
             </nav>
           </div>
           <div className="uw-footer-bottom">
-            <span>© {new Date().getFullYear()} UnoWord</span>
+            <span>© {new Date().getFullYear()} Uno Word</span>
             <span>Every idea starts with Uno Word.</span>
             <a href="#main">Back to top ↑</a>
           </div>

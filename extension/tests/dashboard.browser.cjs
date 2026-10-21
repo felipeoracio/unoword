@@ -173,7 +173,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   assert.ok(await page.locator('#library-access').isVisible());
   // Real embedded host at the screenshot's width, with a zero-word Free account.
   storage.wc_state={active:false,typedWords:0,pastedWords:0};storage.wc_history=[];
-  await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="UnoWord preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
+  await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="Uno Word preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
   await page.goto('http://popup.test/sizing-host');
   const frame=page.frameLocator('iframe');await frame.locator('#nav-write').click();
   await frame.locator('#primary-btn').waitFor({state:'visible'});

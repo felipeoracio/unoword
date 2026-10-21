@@ -1,4 +1,4 @@
-# UnoWord marketing website
+# Uno Word marketing website
 
 The official landing page is `/` in **felipeoracio/unoword**, the current repository connected to `https://unoword.vercel.app`. The older `felipeoracio/app` copy was inspected; the user explicitly chose the current repository.
 
@@ -8,7 +8,7 @@ The official landing page is `/` in **felipeoracio/unoword**, the current reposi
 - `/account`: `frontend/src/pages/Account.tsx`. A web adapter to the existing Supabase-backed `/api/auth/login`, `/signup`, `/me`, `/refresh`, `/logout`, and `/recovery` APIs. Free signup leads to extension installation. `?plan=pro` retains the intended Pro request through sign-in, requires explicit account-specific confirmation, checks the current account again, and calls the existing `/api/subscription/change`. No local entitlement is granted.
 - `/privacy`, `/terms`, `/support`: `frontend/src/pages/Information.tsx`. Verified data-handling information, honest legal-publication status, installation/editor-support instructions, and the verified public project's GitHub issues destination. No contact address or legal contract is invented.
 - `/account/security`, `/admin/login`, and `/admin`: existing behavior is preserved. Account and admin pages are lazy-loaded and marked noindex. Unknown paths have a real fallback screen.
-- `ProductPreview.tsx` reuses the canonical UnoWord brand and dashboard design as a clearly labeled illustration with fictional metrics. All four marketing examples are fictional static content; selecting a mode never calls a paid model.
+- `ProductPreview.tsx` reuses the canonical Uno Word brand and dashboard design as a clearly labeled illustration with fictional metrics. All four marketing examples are fictional static content; selecting a mode never calls a paid model.
 - `marketing.css` and `account.css` scope the blue/navy/white design to these website pages. They do not change extension CSS. Keyboard tabs, menu disclosure/Escape, FAQ expansion, focus styles, skip navigation, readable layouts, and reduced motion are supported.
 
 ## Application facts and pricing

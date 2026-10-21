@@ -16,7 +16,7 @@ export default function ProductPreview() {
   return (
     <figure
       className="uw-showcase"
-      aria-label="Illustrative UnoWord dashboard with fictional session data"
+      aria-label="Illustrative Uno Word dashboard with fictional session data"
     >
       <div className="uw-browser-art" aria-hidden="true">
         <div className="uw-browser-dots">
@@ -39,7 +39,7 @@ export default function ProductPreview() {
         <div className="uw-product-header">
           <span className="uw-product-brand">
             <img src="/brand/unoword.svg" width="34" height="34" alt="" />
-            UnoWord
+            Uno Word
           </span>
           <Settings size={19} aria-hidden="true" />
         </div>

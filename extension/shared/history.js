@@ -140,9 +140,9 @@
   }
 
   /**
-   * Parse a UnoWord CSV export.
+   * Parse a Uno Word CSV export.
    * @returns {{ok, records, validCount, invalidCount, total, error?}}
-   *   ok=false with `error` when the file is not a valid UnoWord CSV at all.
+   *   ok=false with `error` when the file is not a valid Uno Word CSV at all.
    *   Otherwise `records` holds the valid session objects; invalid rows are
    *   counted but never partially applied by the caller.
    */

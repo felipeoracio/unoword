@@ -1465,7 +1465,7 @@ function sendFeedback() {
   const msg = (els.feedbackMessage.value || '').trim();
   if (!msg) { els.feedbackError.hidden = false; els.feedbackError.textContent = t('feedback.empty'); return; }
   const typeLabel = feedbackType ? t(`feedback.${feedbackType}`) : t('feedback.other');
-  const subject = `UnoWord Feedback — ${typeLabel}`;
+  const subject = `Uno Word Feedback — ${typeLabel}`;
   let version = '';
   try { version = chrome.runtime.getManifest().version; } catch (_e) { /* preview */ }
   const bodyLines = [
