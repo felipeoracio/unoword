@@ -1,10 +1,11 @@
 """Pydantic contracts for UnoWord's user-scoped AI writing context."""
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def utc_now() -> datetime:
@@ -213,6 +214,13 @@ class AIMemoryCreate(AIModel):
 
 
 SuggestionStatus = Literal["shown", "accepted", "rejected", "ignored", "written"]
+SuggestionMode = Literal["new_topic", "expand_idea", "connect_dots"]
+
+
+class SuggestionInspiration(AIModel):
+    source_id: str
+    title: str
+    kind: str
 
 
 class AISuggestion(AIModel):
@@ -226,11 +234,32 @@ class AISuggestion(AIModel):
     source_ids: list[str] = Field(default_factory=list)
     status: SuggestionStatus = "shown"
     created_at: datetime = Field(default_factory=utc_now)
+    mode: SuggestionMode = "new_topic"
+    questions: list[str] = Field(default_factory=list)
+    inspired_by: list[SuggestionInspiration] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def unpack_details(cls, data):
+        # Versioned details reuse the existing text column; old records remain
+        # readable and deployments do not require a coordinated DB migration.
+        if isinstance(data, dict) and isinstance(data.get("context_summary"), str):
+            try:
+                details = json.loads(data["context_summary"])
+            except (ValueError, TypeError):
+                return data
+            if isinstance(details, dict) and details.get("unoword_suggestion_version") == 1:
+                return {**data, "context_summary": details.get("context", ""),
+                        **{key: details[key] for key in ("mode", "questions", "inspired_by") if key in details}}
+        return data
 
 
 class AISuggestionRequest(AIModel):
     current_writing: str | None = Field(default=None, max_length=20_000)
     current_project: str | None = Field(default=None, max_length=2_000)
+    mode: SuggestionMode = "new_topic"
+    language: Literal["en", "es"] = "en"
+    idea_source_id: str | None = Field(default=None, pattern=r"^[0-9a-fA-F-]{36}$")
 
 
 class AISuggestionResult(AIModel):
@@ -238,6 +267,8 @@ class AISuggestionResult(AIModel):
     suggestion: str = Field(min_length=1, max_length=5_000)
     why: str = Field(min_length=1, max_length=5_000)
     related_topics: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list, min_length=3, max_length=3)
+    source_ids: list[str] = Field(default_factory=list, max_length=8)
 
 
 class AISuggestionFeedbackCreate(AIModel):

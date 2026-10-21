@@ -136,6 +136,8 @@ export interface AIMemoryCreate {
 }
 
 export type SuggestionStatus = "shown" | "accepted" | "rejected" | "ignored" | "written";
+export type SuggestionMode = "new_topic" | "expand_idea" | "connect_dots";
+export interface SuggestionInspiration { source_id: string; title: string; kind: string; }
 export interface AISuggestion {
   id: string;
   user_id: string;
@@ -147,11 +149,17 @@ export interface AISuggestion {
   source_ids: string[];
   status: SuggestionStatus;
   created_at: string;
+  mode: SuggestionMode;
+  questions: string[];
+  inspired_by: SuggestionInspiration[];
 }
 
 export interface AISuggestionRequest {
   current_writing: string | null;
   current_project: string | null;
+  mode?: SuggestionMode;
+  language?: "en" | "es";
+  idea_source_id?: string | null;
 }
 
 export interface AISuggestionResult {
@@ -159,6 +167,8 @@ export interface AISuggestionResult {
   suggestion: string;
   why: string;
   related_topics: string[];
+  questions: string[];
+  source_ids: string[];
 }
 
 export interface AISuggestionFeedbackCreate {

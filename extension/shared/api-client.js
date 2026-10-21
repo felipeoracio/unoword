@@ -78,7 +78,7 @@
     API_BASE,
     ApiError,
     get: (path) => request(path),
-    post: (path, body) => request(path, { method: 'POST', body }),
+    post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body }),
     put: (path, body) => request(path, { method: 'PUT', body }),
     patch: (path, body) => request(path, { method: 'PATCH', body }),
     delete: (path) => request(path, { method: 'DELETE' }),

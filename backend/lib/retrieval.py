@@ -68,7 +68,7 @@ async def _fetch_feedback_bias(user_id: str) -> tuple[dict[str, float], dict[str
             params={
                 "select": "status,source_ids",
                 "user_id": f"eq.{user_id}",
-                "status": "in.(accepted,rejected)",
+                "status": "in.(accepted,written,rejected)",
                 "order": "created_at.desc",
                 "limit": str(FEEDBACK_LOOKBACK),
             },
@@ -82,7 +82,7 @@ async def _fetch_feedback_bias(user_id: str) -> tuple[dict[str, float], dict[str
         return {}, {}
     source_score: dict[str, float] = defaultdict(float)
     for row in rows or []:
-        inc = ACCEPT_INC if row.get("status") == "accepted" else REJECT_INC
+        inc = REJECT_INC if row.get("status") == "rejected" else ACCEPT_INC
         for sid in row.get("source_ids") or []:
             source_score[str(sid)] += inc
     # Parents inherit an averaged share of their children's scores; if the

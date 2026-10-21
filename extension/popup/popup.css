@@ -683,3 +683,30 @@ html:has(body.wc--wide), body.wc--wide { width: 720px; }
   display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
 }
 .wc__prog-paywall .wc__btn { align-self: stretch; }
+
+/* Discover / develop / connect: equal, keyboard-accessible popup choices. */
+@media (max-width: 359px) {
+  html:not(:has(body.wc--wide)), body:not(.wc--wide) { width: 100%; }
+}
+.wc__suggestion-controls { display: grid; gap: 12px; margin: 12px 0; min-width: 0; }
+.wc__mode-picker { border: 0; padding: 0; margin: 0; display: grid; gap: 7px; min-width: 0; }
+.wc__mode-picker legend { margin-bottom: 8px; }
+.wc__mode-option { display: flex; align-items: center; gap: 10px; position: relative; padding: 10px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; min-width: 0; }
+.wc__mode-option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.wc__mode-option svg { flex: 0 0 22px; }
+.wc__mode-option span { min-width: 0; }
+.wc__mode-option strong { display: block; font-size: 12px; font-weight: 600; }
+.wc__mode-option small { display: block; font-size: 11px; color: var(--text-subtle); line-height: 1.4; margin-top: 2px; }
+.wc__mode-option:has(input:checked) { border-color: var(--text); background: var(--surface-2); box-shadow: inset 3px 0 var(--text); }
+.wc__mode-option:has(input:focus-visible) { outline: 2px solid #5b8def; outline-offset: 2px; }
+.wc__idea-input { display: grid; gap: 8px; min-width: 0; }
+.wc__idea-input textarea, .wc__idea-input select { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; font: inherit; }
+.wc__idea-input textarea { resize: vertical; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.wc__suggestion-questions, .wc__suggestion-inspirations { padding-left: 18px; margin: 8px 0 14px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.wc__suggestion-questions li + li, .wc__suggestion-inspirations li + li { margin-top: 6px; }
+.wc__saved-ideas { font-size: 12px; min-width: 0; }
+.wc__saved-ideas summary { cursor: pointer; }
+.wc__saved-idea { display: block; width: 100%; text-align: left; white-space: normal; margin-top: 8px; overflow-wrap: anywhere; }
+.wc__session-idea { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 14px; text-align: left; overflow-wrap: anywhere; }
+.wc__session-idea strong { font-size: 13px; }
+.wc__session-idea p { font-size: 12px; line-height: 1.5; }

@@ -75,6 +75,14 @@ device.
   PDFs without a text layer, stores the original in private Supabase Storage,
   and creates bounded retrieval chunks. Delete removes the Storage object,
   metadata, chunks, and any future cascading embeddings together.
+- **Discover → Develop → Connect** — Eligible AI accounts can select New Topic,
+  Expand an Idea, or Connect the Dots, then Generate Suggestion. Opening the
+  popup does not spend AI allowance. Expand accepts an explicitly loaded tab
+  draft, a pasted idea, or previous material. Each result includes three
+  questions and checked source credits. Try Another keeps the chosen mode;
+  Save Idea adds private unfinished-idea memory, and Start Writing starts the
+  existing word-counting session with that idea. Saved ideas reopen in the
+  popup. Existing server entitlements and daily limits apply to every mode.
 
 ---
 
@@ -468,3 +476,28 @@ cleanly:
 
 No rewrite required — the popup, content script, and background are all
 independent modules that talk over a well-defined message API.
+
+### Suggestion mode verification
+
+Backend regression tests (from `backend/`):
+
+```sh
+python -m pytest tests/test_suggestion_modes.py tests/test_suggestion_breadth.py tests/test_phase15_cost.py
+```
+
+The popup/browser regression uses the shipped popup and background code with
+Chrome API and HTTP fixtures, so it runs without production credentials or
+model calls. Install `tests/package.json` dependencies and Chromium with
+Playwright, then run from the repository root:
+
+```sh
+node extension/tests/suggestion-modes.browser.cjs
+```
+
+`PLAYWRIGHT_MODULE` and `CHROMIUM_EXECUTABLE` can point to existing installations.
+This covers all three modes, alternatives, Save/reload, Expand input choices,
+English/Spanish, Start/Stop, word counting, daily-cap errors and a narrow popup.
+Live ingestion and model quality still require a configured Supabase/OpenAI
+backend. The mode, questions and validated attribution are versioned in the
+existing suggestion context column, with older records supported; no database
+schema migration or client-side model key is required.

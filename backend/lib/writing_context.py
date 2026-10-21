@@ -26,6 +26,9 @@ def library_overview(
         source_id = str(source["id"])
         memory = by_source.get(source_id)
         summary = source.get("summary") or (memory or {}).get("memory") or source.get("description") or ""
+        if not summary.strip():
+            # Names and URLs alone cannot substantiate a writing suggestion.
+            continue
         kind = "link" if source.get("source_kind") == "link" else "file"
         ids = [source_id] + ([str(memory["id"])] if memory else [])
         text = f'{kind} "{source.get("document_title") or "Untitled"}": {summary}'

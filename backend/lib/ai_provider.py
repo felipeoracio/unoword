@@ -16,7 +16,7 @@ from typing import Protocol
 
 from openai import AsyncOpenAI, OpenAIError
 
-from lib.prompts import UNO_WORD_COACH_SYSTEM_PROMPT
+from lib.prompts import UNO_WORD_COACH_SYSTEM_PROMPT, SUGGESTION_MODE_PROMPTS
 from models.ai import AISuggestionResult
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ _SUGGESTION_JSON_SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["title", "suggestion", "why", "related_topics"],
+        "required": ["title", "suggestion", "why", "related_topics", "questions", "source_ids"],
         "properties": {
             "title": {"type": "string", "minLength": 1, "maxLength": 120},
             "suggestion": {"type": "string", "minLength": 1, "maxLength": 400},
@@ -36,6 +36,8 @@ _SUGGESTION_JSON_SCHEMA = {
                 "items": {"type": "string", "minLength": 1, "maxLength": 120},
                 "maxItems": 8,
             },
+            "questions": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 240}, "minItems": 3, "maxItems": 3},
+            "source_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
         },
     },
     "strict": True,
@@ -58,7 +60,7 @@ class SuggestionProvider(Protocol):
     name: str
     model: str
 
-    async def generate_suggestion(self, context: str) -> SuggestionProviderResponse: ...
+    async def generate_suggestion(self, context: str, *, mode: str = "new_topic", language: str = "en") -> SuggestionProviderResponse: ...
 
 
 _SUMMARY_SYSTEM_PROMPT = (
@@ -88,19 +90,23 @@ class MockSuggestionProvider:
     async def summarize(self, title: str, text: str) -> str:
         return extractive_summary(text)
 
-    async def generate_suggestion(self, context: str) -> SuggestionProviderResponse:
-        words = [
-            word.lower()
-            for word in re.findall(r"[\w'-]{4,}", context)
-            if word.lower() not in {"that", "with", "from", "this", "your", "about"}
-        ]
-        topics = list(dict.fromkeys(words))[:3]
-        topic_text = ", ".join(topics) if topics else "your current thread"
+    async def generate_suggestion(self, context: str, *, mode: str = "new_topic", language: str = "en") -> SuggestionProviderResponse:
+        spanish = language == "es"
+        directions = {
+            "new_topic": ("Notice something new", "Choose a small detail from today and explore why it caught your attention.",
+                          "Observa algo nuevo", "Elige un pequeño detalle de hoy y explora por qué te llamó la atención."),
+            "expand_idea": ("Take your idea a step further", "Choose one claim or scene in your idea. Add an example, a different perspective, or a question it leaves open.",
+                            "Lleva tu idea más lejos", "Elige una afirmación o escena de tu idea. Añade un ejemplo, otra perspectiva o una pregunta que deje abierta."),
+            "connect_dots": ("Bring two ideas together", "There is not enough available evidence for a grounded connection yet. Add another writing sample, or choose two ideas and explore what they share.",
+                             "Acerca dos ideas", "Todavía no hay suficiente evidencia para establecer una conexión. Añade otra muestra de escritura o elige dos ideas y explora qué comparten."),
+        }
+        en_title, en_direction, es_title, es_direction = directions[mode]
         result = AISuggestionResult(
-            title="Follow the thread that still feels unfinished",
-            suggestion=f"Write the next scene, reflection, or question connected to {topic_text}.",
-            why="This is a local fallback suggestion. It uses only the context supplied to UnoWord and makes no claim about facts outside it.",
-            related_topics=topics,
+            title=es_title if spanish else en_title,
+            suggestion=es_direction if spanish else en_direction,
+            why="Una guía básica para empezar; no afirma conocer experiencias tuyas." if spanish else "A basic starting prompt, without claiming knowledge of your experiences.",
+            questions=(["¿Qué idea o detalle quieres explorar?", "¿Qué ejemplo concreto podría mostrarlo?", "¿Qué pregunta te gustaría dejar al lector?"] if spanish else
+                       ["Which idea or detail would you like to explore?", "What concrete example could bring it to life?", "What question would you like to leave with the reader?"]),
         )
         return SuggestionProviderResponse(result=result, usage=SuggestionUsage(None, None))
 
@@ -122,11 +128,12 @@ class OpenAISuggestionProvider:
         )
         return (response.choices[0].message.content or "").strip()
 
-    async def generate_suggestion(self, context: str) -> SuggestionProviderResponse:
+    async def generate_suggestion(self, context: str, *, mode: str = "new_topic", language: str = "en") -> SuggestionProviderResponse:
         response = await self._client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": UNO_WORD_COACH_SYSTEM_PROMPT},
+                {"role": "system", "content": UNO_WORD_COACH_SYSTEM_PROMPT + "\n" + SUGGESTION_MODE_PROMPTS[mode] +
+                 ("\nRespond entirely in Spanish." if language == "es" else "\nRespond entirely in English.")},
                 {
                     "role": "user",
                     "content": (

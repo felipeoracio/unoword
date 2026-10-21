@@ -65,18 +65,58 @@
           <span class="wc__eyebrow" id="prompt-eyebrow" data-testid="prompt-eyebrow" data-i18n="prompt.today">Today's writing prompt</span>
           <button class="wc__link-btn" id="prompt-another" data-testid="prompt-another" data-i18n="prompt.another">Another prompt</button>
         </div>
+        <div id="suggestion-controls" class="wc__suggestion-controls" hidden>
+          <fieldset class="wc__mode-picker">
+            <legend class="wc__eyebrow" data-i18n="suggestion.chooseMode">Choose your direction</legend>
+            <label class="wc__mode-option">
+              <input type="radio" name="suggestion-mode" value="new_topic" checked />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18h6M10 22h4M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z"/></svg>
+              <span><strong data-i18n="suggestion.mode.new_topic">New Topic</strong><small data-i18n="suggestion.subtitle.new_topic">Discover something new to write about.</small></span>
+            </label>
+            <label class="wc__mode-option">
+              <input type="radio" name="suggestion-mode" value="expand_idea" />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v16M3 3c4 0 6 0 9 2 3-2 5-2 9-2v16c-4 0-6 0-9 2-3-2-5-2-9-2Z"/></svg>
+              <span><strong data-i18n="suggestion.mode.expand_idea">Expand an Idea</strong><small data-i18n="suggestion.subtitle.expand_idea">Take an existing idea further.</small></span>
+            </label>
+            <label class="wc__mode-option">
+              <input type="radio" name="suggestion-mode" value="connect_dots" />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="5" cy="6" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="12" cy="19" r="3"/><path d="m7 8 4 8M17 8l-4 8M8 6h8"/></svg>
+              <span><strong data-i18n="suggestion.mode.connect_dots">Connect the Dots</strong><small data-i18n="suggestion.subtitle.connect_dots">Discover connections between your ideas.</small></span>
+            </label>
+          </fieldset>
+          <div id="suggestion-idea-input" class="wc__idea-input" hidden>
+            <label class="wc__field" for="suggestion-idea-source"><span data-i18n="suggestion.previousIdea">Choose previous material</span>
+              <select id="suggestion-idea-source"><option value="" data-i18n="suggestion.chooseIdea">Select an idea or source…</option></select>
+            </label>
+            <label class="wc__field" for="suggestion-idea-text"><span data-i18n="suggestion.describeIdea">Or describe or paste your idea</span>
+              <textarea id="suggestion-idea-text" rows="3" maxlength="20000" data-i18n-placeholder="suggestion.ideaPlaceholder" placeholder="What would you like to develop?"></textarea>
+            </label>
+            <button type="button" class="wc__link-btn" id="suggestion-use-tab" data-i18n="suggestion.useTab">Use writing from this tab</button>
+            <p class="wc__helper" data-i18n="suggestion.tabPrivacy">Tab writing is read only when you choose it and sent when you generate.</p>
+          </div>
+          <button type="button" id="suggestion-generate" class="wc__btn wc__btn--primary wc__btn--sm" data-i18n="suggestion.generate">Generate Suggestion</button>
+          <details id="suggestion-saved" class="wc__saved-ideas"><summary data-i18n="suggestion.savedIdeas">Saved ideas</summary>
+            <div id="suggestion-saved-list"></div><p id="suggestion-saved-empty" class="wc__helper" data-i18n="suggestion.noSaved">Your saved ideas will appear here.</p>
+          </details>
+        </div>
         <p class="wc__prompt-text" id="prompt-text" data-testid="prompt-text">…</p>
         <div class="wc__prompt-ai" id="prompt-ai-card" data-testid="prompt-ai-card" hidden>
+          <p class="wc__eyebrow" data-i18n="suggestion.outputTitle">Suggested Title</p>
           <p class="wc__prompt-ai-title" id="prompt-ai-title" data-testid="prompt-ai-title"></p>
+          <p class="wc__eyebrow" data-i18n="suggestion.direction">Writing Direction</p>
           <p class="wc__prompt-ai-suggestion" id="prompt-ai-suggestion" data-testid="prompt-ai-suggestion"></p>
+          <p class="wc__eyebrow" data-i18n="suggestion.questions">Questions to Explore</p>
+          <ol id="suggestion-questions" class="wc__suggestion-questions"></ol>
+          <div id="suggestion-inspiration-group" hidden><p class="wc__eyebrow" data-i18n="suggestion.inspiredBy">Inspired By</p><ul id="suggestion-inspirations" class="wc__suggestion-inspirations"></ul></div>
           <details class="wc__prompt-ai-why" id="prompt-ai-why" data-testid="prompt-ai-why">
             <summary data-i18n="prompt.ai.why" data-testid="prompt-ai-why-label">Why this</summary>
             <p id="prompt-ai-reason" data-testid="prompt-ai-reason"></p>
           </details>
           <div class="wc__prompt-ai-topics" id="prompt-ai-topics" data-testid="prompt-ai-topics"></div>
           <div class="wc__prompt-ai-actions" id="prompt-ai-actions" data-testid="prompt-ai-actions">
-            <button class="wc__btn wc__btn--primary wc__btn--sm" id="prompt-ai-write" data-testid="prompt-ai-write" data-i18n="prompt.ai.write" type="button">Write About This</button>
-            <button class="wc__btn wc__btn--outline wc__btn--sm" id="prompt-ai-again" data-testid="prompt-ai-again" data-i18n="prompt.ai.again" type="button">Give Me Another</button>
+            <button class="wc__btn wc__btn--primary wc__btn--sm" id="prompt-ai-write" data-testid="prompt-ai-write" data-i18n="suggestion.startWriting" type="button">Start Writing</button>
+            <button class="wc__btn wc__btn--outline wc__btn--sm" id="prompt-ai-again" data-testid="prompt-ai-again" data-i18n="suggestion.tryAnother" type="button">Try Another</button>
+            <button class="wc__btn wc__btn--outline wc__btn--sm" id="suggestion-save" data-i18n="suggestion.save" type="button">Save Idea</button>
             <button class="wc__btn wc__btn--outline wc__btn--sm" id="prompt-ai-not-relevant" data-testid="prompt-ai-not-relevant" data-i18n="prompt.ai.notRelevant" type="button">Not Relevant</button>
             <button class="wc__link-btn" id="prompt-ai-why-btn" data-testid="prompt-ai-why-btn" data-i18n="prompt.ai.whyBtn" type="button">Why This?</button>
           </div>
@@ -112,6 +152,7 @@
 
       <!-- ================= MAIN SESSION VIEW ================= -->
       <section class="wc__panel wc__session" id="session-panel" data-testid="session-panel">
+        <div id="session-idea" class="wc__session-idea" hidden><p class="wc__eyebrow" data-i18n="suggestion.writingFrom">Writing from your idea</p><strong id="session-idea-title"></strong><p id="session-idea-direction"></p></div>
         <div class="wc__status wc__status--idle" id="status-idle" data-testid="status-idle">
           <span class="wc__eyebrow" data-i18n="session.eyebrowIdle">Ready to write?</span>
         </div>

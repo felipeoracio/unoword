@@ -147,8 +147,8 @@
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('input', onInput, true);
 
-  // Writing text is read only after an explicit AI Memory choice (or a prior
-  // Always Save consent). It is never streamed with the normal word deltas.
+  // Writing text is read only after an explicit AI Memory / Expand an Idea
+  // choice (or prior Always Save consent), never with normal word deltas.
   try {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type !== 'CAPTURE_ACTIVE_EDITOR') return false;

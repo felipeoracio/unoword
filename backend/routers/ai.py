@@ -27,6 +27,8 @@ from lib.retrieval import RetrievedChunk, retrieve_user_chunks
 from lib.supabase_client import SupabaseAPIError, raise_http, service_rest, user_rest
 from lib.supabase_config import supabase_is_configured
 from lib.writing_context import library_overview
+from lib.suggestion_details import encode_details, evidence_catalog, attributed_sources
+from lib.suggestion_knowledge import selected_idea_text, diverse_passages
 from models.ai import (
     AIFeedback,
     AIMemory,
@@ -117,12 +119,15 @@ def _compose_prompt_context(
             text = text.strip()
             if not text:
                 continue
-            lines.append("- " + (text if len(text) <= per_item else text[:per_item - 1] + "…"))
-            source_ids.extend(ids)
+            # Only label IDs actually sent, so output references can be checked.
+            prefix = f"[{ids[0]}] " if ids else ""
+            text_budget = max(1, per_item - len(prefix))
+            lines.append("- " + prefix + (text if len(text) <= text_budget else text[:text_budget - 1] + "…"))
+            source_ids.extend(ids[:1])
         parts.append("\n".join(lines))
 
     if payload.current_writing:
-        parts.append(f"Current writing draft:\n{payload.current_writing[:MAX_DRAFT_CHARS]}")
+        parts.append(f"Current writing draft [current_writing]:\n{payload.current_writing[:MAX_DRAFT_CHARS]}")
     if payload.current_project:
         parts.append(f"Current project focus: {payload.current_project[:300]}")
     available = max(0, MAX_CONTEXT_CHARS - sum(len(p) + 1 for p in parts))
@@ -443,6 +448,17 @@ async def create_suggestion(
                 detail="Daily AI suggestion limit reached",
             )
 
+    if payload.mode == "expand_idea":
+        if payload.idea_source_id:
+            try:
+                idea_text = await selected_idea_text(user, payload.idea_source_id)
+            except SupabaseAPIError as error:
+                raise_http(error)
+            text = idea_text + (f"\nWriter's focus: {payload.current_writing}" if payload.current_writing else "")
+            payload = payload.model_copy(update={"current_writing": text[:MAX_DRAFT_CHARS]})
+        elif not (payload.current_writing or "").strip():
+            raise HTTPException(422, "idea_required")
+
     profile = await _user_rows("ai_profiles", user, extra={"limit": "1"})
     answers = await _user_rows(
         "ai_onboarding_answers",
@@ -494,6 +510,7 @@ async def create_suggestion(
     query = "\n".join(part for part in query_parts if part).strip()[:MAX_DRAFT_CHARS]
     await knowledge.heal_missing_embeddings(user.id)
     retrieved = await retrieve_user_chunks(user.id, query) if query else []
+    retrieved = await diverse_passages(user, retrieved, sources, mode=payload.mode, selected_id=payload.idea_source_id)
     logger.info(
         "suggestion_context user=%s retrieved=%d vector=%d memories=%d",
         user.id, len(retrieved), sum(c.match == "vector" for c in retrieved), len(memories),
@@ -502,38 +519,30 @@ async def create_suggestion(
     context, source_ids = _compose_prompt_context(
         payload, profile, answers, memories, previous, retrieved, sources
     )
+    catalog = evidence_catalog(payload, profile, answers, memories, sources, retrieved)
+    allowed_ids = set(source_ids) | ({"current_writing"} if payload.current_writing else set())
+    _, available_parents = attributed_sources(allowed_ids, allowed_ids, catalog)
 
     # Phase-13 cold-start seam: if the user's private knowledge base is empty
     # (no profile fields, no onboarding answers, no memories, no retrieval
     # results) skip the model call entirely and return a friendly basic
     # suggestion. This saves tokens and gives a better first-time experience
     # than a hallucinated "personalized" response.
-    profile_populated = bool(profile) and any(
-        (profile[0].get(field) for field in (
-            "writing_goal", "writing_style", "audience", "personal_context",
-            "primary_topics", "current_projects", "favorite_subjects",
-        ))
-    )
-    knowledge_empty = (
-        not retrieved
-        and not sources
-        and not memories
-        and not answers
-        and not profile_populated
-        and not (payload.current_writing or payload.current_project)
-    )
+    knowledge_empty = not allowed_ids and not (payload.current_writing or payload.current_project)
 
     provider = get_suggestion_provider()
     response: SuggestionProviderResponse
     used_fallback = False
     fallback_reason: str | None = None
-    if knowledge_empty:
-        response = await MockSuggestionProvider(provider.model).generate_suggestion(context)
+    if knowledge_empty or (payload.mode == "connect_dots" and len(available_parents) < 2):
+        response = await MockSuggestionProvider(provider.model).generate_suggestion(context, mode=payload.mode, language=payload.language)
         used_fallback = True
-        fallback_reason = "cold_start"
+        fallback_reason = "insufficient_context" if payload.mode == "connect_dots" else "cold_start"
     else:
         try:
-            response = await provider.generate_suggestion(context)
+            response = await provider.generate_suggestion(context, mode=payload.mode, language=payload.language)
+            if provider.name == "mock":
+                used_fallback, fallback_reason = True, "unconfigured"
         except Exception as error:  # noqa: BLE001 - explicit fallback surface
             logger.warning(
                 "suggestion_provider_failed provider=%s model=%s error=%s",
@@ -542,9 +551,17 @@ async def create_suggestion(
                 error,
             )
             # Phase-13 basic fallback: never let the endpoint 5xx for the extension.
-            response = await MockSuggestionProvider(provider.model).generate_suggestion(context)
+            response = await MockSuggestionProvider(provider.model).generate_suggestion(context, mode=payload.mode, language=payload.language)
             used_fallback = True
             fallback_reason = "provider_error"
+
+    inspirations, cited_parents = attributed_sources(response.result.source_ids, allowed_ids, catalog)
+    if payload.mode == "connect_dots" and not used_fallback and len(cited_parents) < 2:
+        # A model response cannot turn one source into a claimed relationship.
+        basic = await MockSuggestionProvider(provider.model).generate_suggestion(context, mode=payload.mode, language=payload.language)
+        response.result = basic.result
+        inspirations = []
+    source_ids = [item.source_id for item in inspirations if item.source_id != "current_writing"]
 
     try:
         rows = await user_rest(
@@ -556,7 +573,7 @@ async def create_suggestion(
                 "title": response.result.title,
                 "suggestion": response.result.suggestion,
                 "reason": response.result.why,
-                "context_summary": context[:2000],
+                "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations),
                 "related_topics": response.result.related_topics,
                 "source_ids": source_ids,
                 "status": "shown",
@@ -579,6 +596,84 @@ async def create_suggestion(
         provider="mock" if used_fallback else provider.name,
     )
     return AISuggestion(**rows[0])
+
+
+@router.get("/idea-options")
+async def idea_options(user: AuthenticatedUser = Depends(require_ai_user)) -> list[dict]:
+    """Private, usable choices for expansion; generation reloads their actual text."""
+    sources = await _user_rows("ai_documents", user, extra={
+        "select": "id,document_title,source_kind,summary", "enabled": "eq.true",
+        "processing_status": "eq.ready", "order": "updated_at.desc", "limit": "100",
+    })
+    memories = await _user_rows("ai_memories", user, extra={
+        "select": "id,memory,source_id", "order": "importance.desc,updated_at.desc", "limit": "100",
+    })
+    try:
+        disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
+    except SupabaseAPIError as error:
+        raise_http(error)
+    source_ids = {str(s["id"]) for s in sources} | disabled
+    return ([{"id": s["id"], "title": s["document_title"], "kind": s["source_kind"]} for s in sources] +
+            [{"id": m["id"], "title": m["memory"][:100], "kind": "memory"}
+             for m in memories if str(m.get("source_id")) not in source_ids])[:100]
+
+
+@router.get("/ideas", response_model=list[AISuggestion])
+async def saved_ideas(user: AuthenticatedUser = Depends(require_ai_user)) -> list[AISuggestion]:
+    memories = await _user_rows("ai_memories", user, extra={
+        "select": "source_id", "memory_type": "eq.unfinished_idea", "source_id": "not.is.null",
+        "order": "updated_at.desc", "limit": "100",
+    })
+    ids = list(dict.fromkeys(str(m["source_id"]) for m in memories))
+    if not ids:
+        return []
+    rows = await _user_rows("ai_suggestions", user, extra={"id": f"in.({','.join(ids)})", "limit": "100"})
+    by_id = {str(row["id"]): row for row in rows}
+    return [AISuggestion(**by_id[sid]) for sid in ids if sid in by_id]
+
+
+async def _owned_suggestion(suggestion_id: str, user: AuthenticatedUser) -> AISuggestion:
+    rows = await _user_rows("ai_suggestions", user, extra={"id": f"eq.{suggestion_id}", "limit": "1"})
+    if not rows:
+        raise HTTPException(404, "Suggestion not found")
+    return AISuggestion(**rows[0])
+
+
+@router.put("/suggestions/{suggestion_id}/save", response_model=AISuggestion)
+async def save_idea(suggestion_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> AISuggestion:
+    suggestion = await _owned_suggestion(suggestion_id, user)
+    existing = await _user_rows("ai_memories", user, extra={"id": f"eq.{suggestion.id}", "limit": "1"})
+    if existing:
+        return suggestion
+    body = {"id": suggestion.id, "user_id": user.id, "source_id": suggestion.id,
+            "memory_type": "unfinished_idea", "importance": 4,
+            "memory": ("Saved idea (not completed writing): " + suggestion.title + "\n" + suggestion.suggestion +
+                       "\n" + "\n".join(suggestion.questions))[:5000]}
+    embeddings = get_embeddings_service()
+    if embeddings.enabled:
+        embedded = await embeddings.embed(body["memory"])
+        if embedded:
+            body.update(embedding=embedded.embedding, embedding_model=embedded.model, embedding_version=embedded.version)
+    try:
+        await user_rest("POST", "ai_memories", user.access_token, params={"on_conflict": "id"}, json=body,
+                        prefer="resolution=merge-duplicates,return=minimal")
+        await create_feedback(AISuggestionFeedbackCreate(suggestion_id=suggestion.id, helpful=True, note="Saved idea"), user)
+    except SupabaseAPIError as error:
+        raise_http(error)
+    return suggestion
+
+
+@router.post("/suggestions/{suggestion_id}/use", response_model=AISuggestion)
+async def use_idea(suggestion_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> AISuggestion:
+    suggestion = await _owned_suggestion(suggestion_id, user)
+    try:
+        await create_feedback(AISuggestionFeedbackCreate(suggestion_id=suggestion.id, helpful=True, note="Started writing"), user)
+        await user_rest("PATCH", "ai_suggestions", user.access_token,
+                        params={"id": f"eq.{suggestion.id}", "user_id": f"eq.{user.id}"},
+                        json={"status": "written"}, prefer="return=minimal")
+    except SupabaseAPIError as error:
+        raise_http(error)
+    return suggestion.model_copy(update={"status": "written"})
 
 
 @router.post("/feedback", response_model=AIFeedback, status_code=status.HTTP_201_CREATED)

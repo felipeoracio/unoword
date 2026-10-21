@@ -110,7 +110,7 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
     class Provider:
         name, model = "test", "test-model"
 
-        async def generate_suggestion(self, context):
+        async def generate_suggestion(self, context, **kwargs):
             captured["context"] = context
             return SuggestionProviderResponse(
                 AISuggestionResult(title="A new angle", suggestion="Explore an unexpected interest.",
@@ -126,6 +126,9 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
     monkeypatch.setattr(ai.knowledge, "disabled_source_ids", disabled)
     monkeypatch.setattr(ai.knowledge, "heal_missing_embeddings", noop)
     monkeypatch.setattr(ai, "retrieve_user_chunks", retrieve)
+    async def passages(user, retrieved, sources, **kwargs):
+        return retrieved
+    monkeypatch.setattr(ai, "diverse_passages", passages)
     monkeypatch.setattr(ai, "get_suggestion_provider", Provider)
     payload = AISuggestionRequest(current_writing="Continue my poem about rain." if focused else None)
     result = await ai.create_suggestion(payload, user)

@@ -73,6 +73,21 @@ const els = {
   promptGoal:   $('prompt-goal'),
   promptEmpty:  $('prompt-empty'),
   promptAnother:$('prompt-another'),
+  suggestionControls:$('suggestion-controls'),
+  suggestionIdeaInput:$('suggestion-idea-input'),
+  suggestionIdeaSource:$('suggestion-idea-source'),
+  suggestionIdeaText:$('suggestion-idea-text'),
+  suggestionUseTab:$('suggestion-use-tab'),
+  suggestionGenerate:$('suggestion-generate'),
+  suggestionQuestions:$('suggestion-questions'),
+  suggestionInspirations:$('suggestion-inspirations'),
+  suggestionInspirationGroup:$('suggestion-inspiration-group'),
+  suggestionSave:$('suggestion-save'),
+  suggestionSavedList:$('suggestion-saved-list'),
+  suggestionSavedEmpty:$('suggestion-saved-empty'),
+  sessionIdea:$('session-idea'),
+  sessionIdeaTitle:$('session-idea-title'),
+  sessionIdeaDirection:$('session-idea-direction'),
   promptEditThemes: $('prompt-edit-themes'),
   promptAiCard: $('prompt-ai-card'),
   promptAiTitle:$('prompt-ai-title'),
@@ -280,6 +295,9 @@ function setStatus(kind) {
 
 function renderSession() {
   if (!state) return;
+  els.sessionIdea.hidden = !state.idea;
+  els.sessionIdeaTitle.textContent = state.idea?.title || '';
+  els.sessionIdeaDirection.textContent = state.idea?.suggestion || '';
 
   els.proBadge.hidden = !isPro();
   els.dashboardBtn.hidden = !isPro();
@@ -502,6 +520,100 @@ function stopDurationTicker() { if (durationTicker) { clearInterval(durationTick
 
 let aiSuggestion = null;
 let aiMode = false;
+const SUGGESTION_MODES = ['new_topic', 'expand_idea', 'connect_dots'];
+let selectedSuggestionMode = 'new_topic';
+let savedIdeas = [];
+let ideaOptions = [];
+let suggestionRequestVersion = 0;
+let suggestionBusy = false;
+
+function suggestionStatus(key) {
+  els.promptAiStatus.hidden = !key;
+  els.promptAiStatus.textContent = key ? t(key) : '';
+}
+
+function renderModePicker() {
+  document.querySelectorAll('input[name="suggestion-mode"]').forEach(input => {
+    input.checked = input.value === selectedSuggestionMode;
+  });
+  els.suggestionIdeaInput.hidden = selectedSuggestionMode !== 'expand_idea';
+}
+
+function selectSuggestionMode(mode) {
+  if (!SUGGESTION_MODES.includes(mode)) return;
+  selectedSuggestionMode = mode;
+  settings.aiSuggestionMode = mode;
+  suggestionRequestVersion++;
+  suggestionBusy = false;
+  els.suggestionGenerate.disabled = false;
+  aiSuggestion = null;
+  aiMode = false;
+  els.promptAiCard.hidden = true;
+  els.promptText.hidden = true;
+  suggestionStatus(null);
+  renderModePicker();
+  sendMessage({ type: 'SET_SETTINGS', settings: { aiSuggestionMode: mode } });
+}
+
+function renderSavedIdeas() {
+  els.suggestionSavedList.replaceChildren();
+  els.suggestionSavedEmpty.hidden = savedIdeas.length > 0;
+  savedIdeas.forEach(idea => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'wc__link-btn wc__saved-idea';
+    button.textContent = idea.title;
+    button.addEventListener('click', () => {
+      selectSuggestionMode(idea.mode || 'new_topic');
+      if (idea.mode === 'expand_idea') els.suggestionIdeaSource.value = idea.id;
+      renderAISuggestion(idea);
+    });
+    els.suggestionSavedList.appendChild(button);
+  });
+  const selected = els.suggestionIdeaSource.value;
+  els.suggestionIdeaSource.replaceChildren(new Option(t('suggestion.chooseIdea'), ''));
+  const seen = new Set();
+  [...savedIdeas, ...ideaOptions].forEach(idea => {
+    if (seen.has(idea.id)) return;
+    seen.add(idea.id);
+    els.suggestionIdeaSource.appendChild(new Option(idea.title, idea.id));
+  });
+  els.suggestionIdeaSource.value = selected;
+}
+
+async function loadIdeaChoices() {
+  const response = await sendMessage({ type: 'GET_AI_IDEAS' });
+  if (response.ok) {
+    savedIdeas = response.ideas || [];
+    ideaOptions = response.options || [];
+    renderSavedIdeas();
+  } else suggestionStatus('suggestion.ideaLoadError');
+}
+
+async function saveCurrentIdea() {
+  if (!aiSuggestion) return;
+  const idea = aiSuggestion;
+  els.suggestionSave.disabled = true;
+  const response = await sendMessage({ type: 'SAVE_AI_IDEA', suggestionId: idea.id });
+  if (response.ok) {
+    savedIdeas = [response.idea, ...savedIdeas.filter(saved => saved.id !== idea.id)];
+    renderSavedIdeas();
+    if (aiSuggestion?.id === idea.id) els.suggestionSave.textContent = t('suggestion.saved');
+  } else {
+    suggestionStatus('suggestion.saveError');
+    els.suggestionSave.disabled = false;
+  }
+}
+
+async function loadTabWriting() {
+  els.suggestionUseTab.disabled = true;
+  const response = await sendMessage({ type: 'GET_ACTIVE_WRITING' });
+  els.suggestionUseTab.disabled = false;
+  if (!response.ok) { suggestionStatus('suggestion.noEditor'); return; }
+  els.suggestionIdeaText.value = response.text;
+  els.suggestionIdeaSource.value = '';
+  suggestionStatus('suggestion.tabLoaded');
+}
 
 /**
  * Single Phase-13 seam: decide whether to fetch a personalized AI suggestion
@@ -513,7 +625,7 @@ let aiMode = false;
  *                    timeout, rate-limit — so authenticated free users and
  *                    signed-out users see the plain static path silently)
  */
-async function getNextPrompt({ draft = '', project = '' } = {}) {
+async function getNextPrompt({ draft = '', project = '', mode = selectedSuggestionMode, ideaSourceId = null } = {}) {
   const staticPromise = sendMessage({ type: 'GET_PROMPT' });
   const isOffline = account.online === false || (typeof navigator !== 'undefined' && navigator.onLine === false);
   const canUseAI = !!account.authenticated && !!account.aiAccess && !isOffline;
@@ -524,7 +636,7 @@ async function getNextPrompt({ draft = '', project = '' } = {}) {
     const statusKey = (account.authenticated && account.aiAccess && isOffline) ? 'prompt.ai.offline' : null;
     return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey };
   }
-  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project });
+  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId });
   if (aiResp.ok && aiResp.suggestion) {
     return { mode: 'ai', suggestion: aiResp.suggestion };
   }
@@ -534,7 +646,7 @@ async function getNextPrompt({ draft = '', project = '' } = {}) {
   const statusKey = noisy.has(aiResp.reason)
     ? (aiResp.reason === 'offline' ? 'prompt.ai.offline' : 'prompt.ai.error')
     : null;
-  return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey };
+  return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey, reason: aiResp.reason };
 }
 
 function resetFeedbackUI() {
@@ -560,6 +672,18 @@ function renderAISuggestion(sug) {
   els.promptAiCard.hidden = false;
   els.promptAiTitle.textContent = sug.title || '';
   els.promptAiSuggestion.textContent = sug.suggestion || '';
+  els.suggestionQuestions.replaceChildren();
+  (sug.questions || []).forEach(question => {
+    const item = document.createElement('li'); item.textContent = question; els.suggestionQuestions.appendChild(item);
+  });
+  els.suggestionInspirations.replaceChildren();
+  (sug.inspired_by || []).forEach(source => {
+    const item = document.createElement('li'); item.textContent = source.title; els.suggestionInspirations.appendChild(item);
+  });
+  els.suggestionInspirationGroup.hidden = !(sug.inspired_by || []).length;
+  const saved = savedIdeas.some(idea => idea.id === sug.id);
+  els.suggestionSave.disabled = saved;
+  els.suggestionSave.textContent = t(saved ? 'suggestion.saved' : 'suggestion.save');
   els.promptAiReason.textContent = sug.reason || '';
   els.promptAiWhy.hidden = !sug.reason;
   els.promptAiWhyBtn.hidden = !sug.reason;
@@ -627,19 +751,40 @@ function onAiReasonPick(reason, button) {
 
 // Phase 18 — explicit suggestion actions, reusing the existing feedback/refresh paths.
 async function refreshAiSuggestion() {
-  els.promptAiStatus.hidden = false;
-  els.promptAiStatus.textContent = t('prompt.ai.loading');
-  const result = await getNextPrompt();
-  if (result.mode === 'ai') { renderAISuggestion(result.suggestion); return; }
-  renderStaticPrompt(result.prompt, result.statusKey);
+  if (suggestionBusy) return;
+  const mode = selectedSuggestionMode;
+  const draft = mode === 'expand_idea' ? els.suggestionIdeaText.value.trim() : '';
+  const ideaSourceId = mode === 'expand_idea' ? els.suggestionIdeaSource.value : null;
+  if (mode === 'expand_idea' && !draft && !ideaSourceId) { suggestionStatus('suggestion.ideaRequired'); return; }
+  const version = ++suggestionRequestVersion;
+  suggestionBusy = true;
+  els.suggestionGenerate.disabled = true;
+  els.promptAiAgain.disabled = true;
+  suggestionStatus('prompt.ai.loading');
+  try {
+    const result = await getNextPrompt({ mode, draft, ideaSourceId });
+    if (version !== suggestionRequestVersion) return;
+    if (result.mode === 'ai') { renderAISuggestion(result.suggestion); return; }
+    const errors = { rate_limited: 'suggestion.rateLimited', idea_required: 'suggestion.ideaRequired', offline: 'prompt.ai.offline' };
+    suggestionStatus(errors[result.reason] || 'suggestion.error');
+  } finally {
+    if (version === suggestionRequestVersion) {
+      suggestionBusy = false;
+      els.suggestionGenerate.disabled = false;
+      els.promptAiAgain.disabled = false;
+    }
+  }
 }
 
-function onAiWriteAbout() {
+async function onAiWriteAbout() {
   if (!aiSuggestion) return;
-  els.promptAiUp.setAttribute('aria-pressed', 'true');
-  els.promptAiDown.setAttribute('aria-pressed', 'false');
-  els.promptAiReasons.hidden = true;
-  submitAiFeedback({ helpful: true, thanksKey: 'prompt.ai.writeThanks' });
+  els.promptAiWrite.disabled = true;
+  const response = await sendMessage({ type: 'START_SESSION', suggestionId: aiSuggestion.id });
+  els.promptAiWrite.disabled = false;
+  if (!response.ok) { suggestionStatus('suggestion.startError'); return; }
+  state = response.payload;
+  showPanel('session');
+  renderSession();
 }
 
 function onAiNotRelevant() {
@@ -685,10 +830,18 @@ function renderOfflineBadge() {
 
 async function renderPrompt() {
   if (!isPro()) return;
-  const canUseAI = !!account.authenticated && !!account.aiAccess && account.online !== false && !(typeof navigator !== 'undefined' && navigator.onLine === false);
+  const canUseAI = !!account.authenticated && !!account.aiAccess;
+  els.suggestionControls.hidden = !canUseAI;
+  els.promptAnother.hidden = canUseAI;
   if (canUseAI) {
-    els.promptAiStatus.hidden = false;
-    els.promptAiStatus.textContent = t('prompt.ai.loading');
+    selectedSuggestionMode = SUGGESTION_MODES.includes(settings.aiSuggestionMode) ? settings.aiSuggestionMode : 'new_topic';
+    renderModePicker();
+    els.promptText.hidden = true;
+    els.promptEmpty.hidden = true;
+    els.promptGoal.hidden = true;
+    els.promptAiCard.hidden = true;
+    await loadIdeaChoices();
+    return;
   }
   const result = await getNextPrompt();
   if (result.mode === 'ai') {
@@ -1902,6 +2055,12 @@ function wire() {
   els.promptAiAgain.addEventListener('click', refreshAiSuggestion);
   els.promptAiNotRelevant.addEventListener('click', onAiNotRelevant);
   els.promptAiWhyBtn.addEventListener('click', onAiWhy);
+  document.querySelectorAll('input[name="suggestion-mode"]').forEach(input => {
+    input.addEventListener('change', () => selectSuggestionMode(input.value));
+  });
+  els.suggestionGenerate.addEventListener('click', refreshAiSuggestion);
+  els.suggestionSave.addEventListener('click', saveCurrentIdea);
+  els.suggestionUseTab.addEventListener('click', loadTabWriting);
 
   // Phase 19 — reflect connectivity changes immediately. Basic prompts, word
   // counting, sessions and progress stay fully local; only AI requests surface

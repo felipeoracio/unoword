@@ -67,6 +67,7 @@ const DEFAULT_SETTINGS = {
   aiProfileDraft: self.WCAIProfile.createDraft(),
   aiMemoryPreference: 'ask',  // 'ask' | 'always'
   aiMemoryLastHandledSession: null,
+  aiSuggestionMode: 'new_topic',
 };
 
 const DEFAULT_PROMPT = {
@@ -299,7 +300,7 @@ function dayKey(ts, tz) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-async function requestAISuggestion({ currentWriting = '', currentProject = '' } = {}) {
+async function requestAISuggestion({ currentWriting = '', currentProject = '', mode = 'new_topic', language = 'en', ideaSourceId = null } = {}) {
   const account = await refreshAccount();
   if (!account.authenticated || !account.aiAccess || !account.online) {
     const reason = !account.authenticated
@@ -307,32 +308,35 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '' } 
       : (!account.aiAccess ? 'plan_required' : 'offline');
     return { ok: false, reason };
   }
-  const payload = {};
+  const payload = { mode, language };
+  if (ideaSourceId) payload.idea_source_id = ideaSourceId;
   const draft = (currentWriting || '').trim().slice(0, 20000);
   if (draft) payload.current_writing = draft;
   const project = (currentProject || '').trim().slice(0, 2000);
   if (project) payload.current_project = project;
   try {
-    const suggestion = await self.WCApi.post('/ai/suggestion', payload);
+    const suggestion = await self.WCApi.post('/ai/suggestion', payload, { timeout: 60000 });
     return { ok: true, suggestion, account };
   } catch (error) {
     const status = error && error.status;
     if (status === 401) return { ok: false, reason: 'auth_required' };
     if (status === 403) return { ok: false, reason: 'plan_required' };
     if (status === 429) return { ok: false, reason: 'rate_limited' };
-    return { ok: false, reason: 'offline' };
+    if (status === 422) return { ok: false, reason: 'idea_required' };
+    return { ok: false, reason: status === 0 ? 'offline' : 'request_failed' };
   }
 }
 
 // ---------- session lifecycle ----------
 
-async function startSession() {
+async function startSession(idea = null) {
   const settings = await getSettings();
   const next = {
     ...DEFAULT_STATE,
     active: true,
     startedAt: Date.now(),
     sessionGoal: settings.plan === 'pro' ? Math.max(0, Number(settings.wordGoal) || 0) : 0,
+    idea: idea ? { id: idea.id, title: idea.title, suggestion: idea.suggestion, mode: idea.mode, questions: idea.questions } : null,
   };
   await setState(next);
   return next;
@@ -354,6 +358,7 @@ async function stopSession() {
     sessionGoal: goal,                       // historical goal snapshot
     goalReached: goal > 0 ? typedWords >= goal : false,
     timezone: settings.profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+    idea: state.idea || null,
   };
   const next = { ...state, active: false, endedAt, lastResult };
   await setState(next);
@@ -597,6 +602,7 @@ function buildPopupPayload(state, settings) {
   const typedWords  = state.typedWords || 0;
   const pastedWords = state.pastedWords || 0;
   return {
+    idea: state.idea || null,
     active: state.active,
     startedAt: state.startedAt,
     endedAt: state.endedAt,
@@ -635,7 +641,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         case 'START_SESSION': {
-          const state = await startSession();
+          let idea = null;
+          if (msg.suggestionId) {
+            try { idea = await self.WCApi.post(`/ai/suggestions/${encodeURIComponent(msg.suggestionId)}/use`, {}); }
+            catch (error) { sendResponse({ ok: false, error: apiErrorCode(error) }); return; }
+          }
+          const state = await startSession(idea);
           const settings = await getSettings();
           sendResponse({ ok: true, payload: buildPopupPayload(state, settings) });
           return;
@@ -855,8 +866,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const result = await requestAISuggestion({
             currentWriting: msg.currentWriting || '',
             currentProject: msg.currentProject || project,
+            mode: msg.mode || 'new_topic', language: msg.language || settings.language || 'en', ideaSourceId: msg.ideaSourceId || null,
           });
           sendResponse(result);
+          return;
+        }
+        case 'GET_ACTIVE_WRITING': {
+          try { sendResponse({ ok: true, text: (await captureActiveEditor()).slice(0, 20000) }); }
+          catch (_error) { sendResponse({ ok: false, error: 'no_editor' }); }
+          return;
+        }
+        case 'GET_AI_IDEAS': {
+          try {
+            const [ideas, options] = await Promise.all([self.WCApi.get('/ai/ideas'), self.WCApi.get('/ai/idea-options')]);
+            sendResponse({ ok: true, ideas, options });
+          } catch (error) { sendResponse({ ok: false, error: apiErrorCode(error) }); }
+          return;
+        }
+        case 'SAVE_AI_IDEA': {
+          try {
+            const idea = await self.WCApi.put(`/ai/suggestions/${encodeURIComponent(msg.suggestionId)}/save`, {});
+            sendResponse({ ok: true, idea });
+          } catch (error) { sendResponse({ ok: false, error: apiErrorCode(error) }); }
           return;
         }
         case 'SEND_AI_FEEDBACK': {
