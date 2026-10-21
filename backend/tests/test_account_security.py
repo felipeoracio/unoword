@@ -17,6 +17,7 @@ NEW = 'replacement-secret-never-reflect'
 @pytest.fixture
 def fixture(monkeypatch):
     _bursts.clear()
+    monkeypatch.setenv('STRIPE_BILLING_ENABLED', 'false')
     calls = []
     identity = {'id': OWNER, 'email': 'writer@example.com', 'email_confirmed_at': 'today', 'app_metadata': {'providers': ['email']}}
     session = {'access_token': 'fresh-session-secret', 'refresh_token': 'refresh-secret', 'user': identity}

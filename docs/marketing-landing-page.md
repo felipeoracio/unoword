@@ -13,11 +13,11 @@ The official landing page is `/` in **felipeoracio/unoword**, the current reposi
 
 ## Application facts and pricing
 
-`GET /api/product` is public and sanitized. `backend/lib/plans.py` supplies the feature policy used by both the public comparison and existing paid entitlement enforcement. Active/trial status and expiry checks are unchanged. `backend/routers/subscriptions.py` shares the billing availability flag. No amounts, billing periods, unlimited usage, or account-specific quotas are advertised.
+`GET /api/product` is public and sanitized. `backend/lib/plans.py` supplies the feature policy used by both the public comparison and existing paid entitlement enforcement. Active/trial status and expiry checks are unchanged. `backend/routers/subscriptions.py` shares the billing availability flag. The public catalog now also provides the confirmed Stripe offer: $20 USD per month with a 7-day trial for eligible accounts. Account-specific quotas remain private.
 
 One correction to the proposed copy: the existing backend allows Free accounts to edit their Writing Profile. The comparison accurately includes that feature on both plans. The three AI modes, source knowledge, goals, and extended history require eligible Pro access. Free recent history covers the past 24 hours. Typed and pasted counts remain separate; Google Docs' canvas-based main editor is not advertised as supported.
 
-Billing is still unavailable by the user's earlier choice. Both signed-out and signed-in Pro CTAs lead to the current account flow; confirmed requests return the existing billing-unavailable response without changing entitlements. There is no new payment system.
+Stripe integration now replaces the original unavailable billing boundary. Both signed-out and signed-in Pro CTAs lead to the account flow; confirmed requests open hosted Stripe Checkout or the billing portal when configured. Checkout remains unavailable until secure configuration is complete. Verified subscription events alone update Pro access. See [Stripe setup](stripe-billing.md).
 
 ## Installation and configuration
 

@@ -11,14 +11,14 @@ const root = path.resolve(__dirname, '..');
  try {
   const page=await browser.newPage({viewport:{width:420,height:600}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  let current='writer-a',pro=true,signedIn=true,failSave=false,profileGate=null;
+  let current='writer-a',pro=true,signedIn=true,failSave=false,profileGate=null,billingEnabled=false;const openedUrls=[];
   const profiles={
    'writer-a':{id:'profile-a',user_id:'writer-a',writing_goal:'Educational urban gardening posts',writing_style:'encouraging',audience:'apartment gardeners',primary_topics:['gardening'],current_projects:[],favorite_subjects:[],avoid_topics:[],personal_context:'A private memory',ai_preferences:{prompt_themes:['nature','ideas']}},
    'writer-b':{id:'profile-b',user_id:'writer-b',writing_goal:'Science fiction stories',ai_preferences:{prompt_themes:['science']}},
   };
   const storage={wc_settings:{langChosen:true,language:'en',plan:'pro',themes:['ideas']},wc_state:{active:false,typedWords:0,pastedWords:0},wc_history:[],wc_account:{authenticated:true,userId:current,email:'writer-a@example.com',aiAccess:true,plan:'pro',online:true}};
   const requests=[];let listener;
-  const chrome={storage:{local:{get:async k=>({[k]:storage[k]}),set:async v=>Object.assign(storage,v)}},runtime:{onInstalled:{addListener(){}},onMessage:{addListener:l=>listener=l},sendMessage:async()=>{}},tabs:{query:async()=>[]}};
+  const chrome={storage:{local:{get:async k=>({[k]:storage[k]}),set:async v=>Object.assign(storage,v)}},runtime:{onInstalled:{addListener(){}},onMessage:{addListener:l=>listener=l},sendMessage:async()=>{}},tabs:{query:async()=>[],create:async tab=>{openedUrls.push(tab.url);return {id:10};}}};
   async function fixture(url,options={}){
    const route=new URL(url).pathname.replace('/api',''),method=options.method||'GET',body=options.body?JSON.parse(options.body):null;
    requests.push({route,method,body});let result,status=200;
@@ -30,7 +30,7 @@ const root = path.resolve(__dirname, '..');
    else if(route==='/auth/password/change')result={status:'password_updated',other_sessions_revoked:true};
    else if(route==='/auth/email/change')result={status:'verification_required'};
    else if(route==='/auth/recovery')result={status:'if_account_exists_check_email'};
-   else if(route==='/subscription/change'){status=503;result={detail:'billing_unavailable'};}
+   else if(route==='/subscription/change'){if(billingEnabled){result=body.target_plan==='free'?{url:'https://billing.stripe.com/p/session/fixture',destination:'portal'}:{url:'https://checkout.stripe.com/c/pay/fixture',destination:'checkout'};}else{status=503;result={detail:'billing_unavailable'};}}
    else if(route==='/ai/profile'){
     const owner=current;
     if(method==='PUT'){
@@ -114,6 +114,21 @@ const root = path.resolve(__dirname, '..');
   await page.click('#confirm-ok');await page.waitForFunction(()=>document.querySelector('#plan-error').textContent.includes('Billing is currently unavailable'));
   assert.ok(requests.some(r=>r.route==='/subscription/change'&&r.body.expected_user_id==='writer-b'&&r.body.confirmed));
   const final=await message({type:'GET_SETTINGS'});assert.equal(final.settings.plan,'free');
+  billingEnabled=true;
+  for (const [target, host] of [['pro','checkout.stripe.com'],['free','billing.stripe.com']]) {
+   await page.evaluate(target=>beginPlanChange(target),target);
+   await page.click('#confirm-ok');
+   await page.waitForFunction(()=>document.querySelector('#plan-error').textContent.includes('Stripe opened'));
+   assert.equal(new URL(openedUrls.at(-1)).hostname,host);
+   assert.equal((await message({type:'GET_SETTINGS'})).settings.plan,'free','Opening Stripe cannot grant Pro locally');
+  }
+  for (const width of [180,194,320,420]) for (const lang of ['en','es']) {
+   await page.setViewportSize({width,height:600});
+   await page.evaluate(lang=>{WCi18n.setLang(lang);WCi18n.applyI18n(document);},lang);
+   await page.evaluate(()=>beginPlanChange('pro'));
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Billing confirmation ${width} ${lang}`);
+   await page.evaluate(()=>closeDialogs());
+  }
   assert.deepEqual(errors,[]);
   console.log('PASS: canonical profile load/edit/clear/reload/Cancel/error retention; late account-swap protection; Free permissions; secure plan sign-in/confirmation/unavailable; password validation/visibility/clearing; pending email; no credential persistence; EN/ES 180–420px.');
  } finally {await browser.close();}

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "UnoWord \u2014 Writing Assistant",
   "short_name": "UnoWord",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "A minimal, private writing session tracker with goals, prompts and progress. Click Start, type anywhere in Chrome, click Stop \u2014 see exactly how many words you wrote.",
   "action": {
     "default_popup": "popup/popup.html",

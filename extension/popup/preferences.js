@@ -40,11 +40,11 @@ async function beginPlanChange(targetPlan) {
     els.accountError.textContent = t('billing.signIn'); els.accountError.hidden = false; els.accountEmail.focus(); return;
   }
   const owner = account.userId; pendingPlanIntent = null; openUpgrade();
-  showConfirm(t('billing.confirmTitle'), t('billing.confirm', { email: account.email, plan: targetPlan === 'pro' ? 'Pro' : 'Free' }), t('dialog.continue'), async () => {
+  showConfirm(t('billing.confirmTitle'), t(targetPlan === 'free' ? 'billing.manageConfirm' : 'billing.confirm', { email: account.email, plan: targetPlan === 'pro' ? 'Pro' : 'Free' }), t('dialog.continue'), async () => {
     els.confirmOk.disabled = true;
     try {
       const result = await sendMessage({ type: 'CHANGE_PLAN', targetPlan, expectedUserId: owner, confirmed: true });
-      closeDialogs(); $('plan-error').textContent = t(result.error === 'account_changed' ? 'profile.accountChanged' : 'billing.unavailable');
+      closeDialogs(); $('plan-error').textContent = t(result.ok && result.opened ? 'billing.opened' : result.error === 'account_changed' ? 'profile.accountChanged' : result.error === 'plan_managed_separately' ? 'billing.separate' : result.error === 'no_paid_subscription' ? 'billing.noSubscription' : 'billing.unavailable');
     } finally { els.confirmOk.disabled = false; }
   }, 'primary');
 }

@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # Never reflect credential values from malformed request bodies into responses.
 @app.exception_handler(RequestValidationError)
 async def safe_validation_error(request, error):
-    if not request.url.path.startswith('/api/auth/'):
+    if not request.url.path.startswith(('/api/auth/', '/api/subscription/')):
         return await request_validation_exception_handler(request, error)
     return JSONResponse(status_code=422, content={"detail": [
         {"loc": list(item["loc"]), "type": item["type"], "msg": "Invalid value"}

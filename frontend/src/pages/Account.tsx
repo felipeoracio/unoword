@@ -38,6 +38,20 @@ function messageFor(error: unknown) {
   const detail = (error.body as { detail?: unknown })?.detail;
   if (detail === "billing_unavailable")
     return "Billing is currently unavailable. Your plan has not changed.";
+  if (detail === "plan_managed_separately")
+    return "Your Pro access is managed separately. No purchase is needed for your current access.";
+  if (detail === "no_paid_subscription")
+    return "There is no Stripe subscription to manage for this account.";
+  if (detail === "billing_busy")
+    return "Another billing request is in progress. Please wait a moment and retry.";
+  if (
+    [
+      "billing_storage_unavailable",
+      "billing_price_mismatch",
+      "billing_portal_not_configured",
+    ].includes(String(detail))
+  )
+    return "Billing setup is incomplete. Your plan has not changed. Please contact Support.";
   if (detail === "email_workflow_not_configured")
     return "Email recovery is not configured yet. Please see Support for help.";
   if (detail === "account_changed")
@@ -49,6 +63,24 @@ function messageFor(error: unknown) {
   if (error.status === 422)
     return "Please enter a valid email and a password of at least 8 characters.";
   return "This request could not be completed. Please try again.";
+}
+type Subscription = {
+  user_id: string;
+  managed_by_stripe: boolean;
+  trial_eligible: boolean;
+  status: string;
+  period_end: string | null;
+  cancel_at_period_end: boolean;
+};
+function redirectToBilling(result: { url: string; destination: string }) {
+  const url = new URL(result.url);
+  const host =
+    result.destination === "portal"
+      ? "billing.stripe.com"
+      : "checkout.stripe.com";
+  if (url.protocol !== "https:" || url.host !== host)
+    throw new Error("Invalid billing redirect");
+  window.location.assign(url.href);
 }
 export default function Account() {
   const [params] = useSearchParams();
@@ -68,6 +100,7 @@ export default function Account() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const submitting = useRef(false);
   const product = useProduct();
   useEffect(() => {
@@ -94,6 +127,54 @@ export default function Account() {
     setPassword("");
     setShowPassword(false);
   }, [mode]);
+  const billingOwner = user?.id;
+  useEffect(() => {
+    if (!billingOwner) {
+      setSubscription(null);
+      return;
+    }
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let attempts = 0;
+    const owner = billingOwner;
+    async function refreshBilling() {
+      try {
+        const status = await apiGet<Subscription>("/subscription");
+        if (cancelled || status.user_id !== owner) return;
+        setSubscription(status);
+        if (
+          params.get("billing") === "success" ||
+          params.get("billing") === "return"
+        ) {
+          const fresh = await currentUser();
+          if (cancelled) return;
+          if (!fresh || fresh.id !== owner) {
+            setUser(fresh);
+            setConfirmed(false);
+            return;
+          }
+          setUser(fresh);
+          if (fresh.ai_access)
+            setMessage(
+              "Your Pro access is confirmed. Reopen the extension to refresh your account.",
+            );
+          else {
+            setMessage(
+              "Waiting for Stripe verification. Your plan updates only after the subscription is confirmed. You can refresh this page shortly.",
+            );
+            if (++attempts < 6) timer = setTimeout(refreshBilling, 5000);
+          }
+        }
+      } catch {
+        /* Account access stays independent of billing availability. */
+      }
+    }
+    void refreshBilling();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [billingOwner, params]);
   async function authenticate(event: FormEvent) {
     event.preventDefault();
     if (submitting.current) return;
@@ -130,7 +211,7 @@ export default function Account() {
       submitting.current = false;
     }
   }
-  async function changePlan(event: FormEvent) {
+  async function changePlan(event: FormEvent, target: "pro" | "free" = "pro") {
     event.preventDefault();
     if (!user || !confirmed || submitting.current) return;
     const owner = user.id;
@@ -147,12 +228,25 @@ export default function Account() {
         );
         return;
       }
-      await apiPost("/subscription/change", {
-        target_plan: "pro",
-        confirmed: true,
-        expected_user_id: owner,
-      });
-      setUser(await currentUser());
+      const result = await apiPost<{ url: string; destination: string }>(
+        "/subscription/change",
+        {
+          target_plan: target,
+          confirmed: true,
+          expected_user_id: owner,
+        },
+      );
+      const after = await currentUser();
+      if (!after || after.id !== owner) {
+        setUser(after);
+        setConfirmed(false);
+        setSubscription(null);
+        setMessage(
+          "Your account changed. Review your account before continuing.",
+        );
+        return;
+      }
+      redirectToBilling(result);
     } catch (error) {
       setMessage(messageFor(error));
     } finally {
@@ -207,15 +301,21 @@ export default function Account() {
               <p className="uw-account-plan">
                 Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
-              {proIntent && (
-                <form className="uw-plan-intent" onSubmit={changePlan}>
+              {proIntent && !user.ai_access && (
+                <form
+                  className="uw-plan-intent"
+                  onSubmit={(event) => changePlan(event)}
+                >
                   <div>
                     <Sparkles size={20} />
                     <h2>Continue with Pro</h2>
                   </div>
                   <p>
-                    Billing is currently unavailable, so your plan will stay
-                    unchanged. Existing eligible Pro accounts keep their access.
+                    {product.data?.billing_available
+                      ? subscription?.trial_eligible === false
+                        ? "Pro costs $20 USD per month. Your account has already used its trial. Review your subscription in Stripe before confirming payment."
+                        : "Try Pro free for 7 days, then $20 USD per month unless you cancel. A payment method is required. The trial is available once per account."
+                      : "Billing is currently unavailable, so your plan will stay unchanged. Existing eligible Pro accounts keep their access."}
                   </p>
                   <label className="uw-confirm-plan">
                     <input
@@ -240,6 +340,65 @@ export default function Account() {
                   </button>
                 </form>
               )}
+              {!proIntent && !user.ai_access && (
+                <Link
+                  className="uw-button uw-button-outline"
+                  to="/account?plan=pro"
+                >
+                  Explore Pro
+                </Link>
+              )}
+              {subscription?.user_id === user.id &&
+                subscription.managed_by_stripe && (
+                  <form
+                    className="uw-plan-intent"
+                    onSubmit={(event) => changePlan(event, "free")}
+                  >
+                    <h2>Your subscription</h2>
+                    <p>
+                      Status: {subscription.status.replaceAll("_", " ")}
+                      {subscription.period_end && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          {subscription.cancel_at_period_end
+                            ? "Ends"
+                            : subscription.status === "trialing"
+                              ? "Trial ends"
+                              : "Current period ends"}{" "}
+                          {new Date(
+                            subscription.period_end,
+                          ).toLocaleDateString()}
+                        </>
+                      )}
+                    </p>
+                    <p>
+                      Update payment details or cancel in Stripe. A scheduled
+                      cancellation keeps access through the paid period or trial
+                      end.
+                    </p>
+                    <label className="uw-confirm-plan">
+                      <input
+                        type="checkbox"
+                        checked={confirmed}
+                        onChange={(e) => setConfirmed(e.target.checked)}
+                        disabled={busy}
+                        required
+                      />
+                      <span>
+                        Manage the subscription for{" "}
+                        <strong>{user.email}</strong>.
+                      </span>
+                    </label>
+                    <button
+                      className="uw-button uw-button-outline"
+                      type="submit"
+                      disabled={busy || !confirmed}
+                    >
+                      Manage subscription
+                    </button>
+                  </form>
+                )}
               <div className="uw-install-card" id="install">
                 <div>
                   <Chrome size={24} />

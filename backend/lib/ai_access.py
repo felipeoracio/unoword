@@ -1,5 +1,6 @@
 """Server-authoritative UnoWord AI entitlement checks."""
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, status
@@ -25,6 +26,12 @@ def entitlement_is_active(entitlement: dict | None) -> bool:
     if not entitlement:
         return False
     if entitlement.get("status") not in {"active", "trialing"} or not plan_features(entitlement.get("plan", "free"))["new_topic"]:
+        return False
+    # Sandbox subscriptions must not unlock paid access after a switch to live keys.
+    key = os.getenv('STRIPE_SECRET_KEY', '')
+    if entitlement.get('billing_source') == 'stripe' and key and (
+        bool(entitlement.get('billing_livemode')) != key.startswith(('sk_live_', 'rk_live_'))
+    ):
         return False
     valid_until = entitlement.get("valid_until")
     return not valid_until or datetime.fromisoformat(valid_until.replace("Z", "+00:00")) >= datetime.now(timezone.utc)

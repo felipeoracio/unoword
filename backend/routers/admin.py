@@ -244,7 +244,7 @@ async def overview(range: str = "30d", admin=Depends(require_admin)):
             "active_users_30d": active30, "free_users": free, "paid_users": paid,
             "conversion_rate": conversion, "writing_sessions": sessions,
             "total_words": int(words), "feedback": feedback,
-            "revenue": None,  # no billing provider wired → unavailable
+            "revenue": None,  # Stripe revenue reporting is not implemented
         },
         "charts": {"user_growth": growth, "writing_activity": activity,
                    "accounts": [{"name": "free", "value": free}, {"name": "paid", "value": paid}]},
@@ -331,7 +331,7 @@ async def subscriptions(admin=Depends(require_admin)):
         for k in ("valid_until", "updated_at"):
             r[k] = r[k].isoformat() if r.get(k) else None
     return {"subscriptions": rows, "by_plan": by_plan, "revenue_available": False,
-            "note": "No billing provider is connected; revenue and renewal billing data are unavailable."}
+            "note": "Stripe billing is managed from the account page. Aggregated revenue reporting is not implemented."}
 
 
 @router.get("/writing-activity")

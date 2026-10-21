@@ -1,10 +1,9 @@
 """Public capabilities shared by entitlement enforcement and the plan comparison.
 
-Amounts and paid quotas are deliberately absent until billing is configured.
+Billing offer configuration lives in lib.billing.
 Per-account usage remains available only through the authenticated usage API.
 """
 PAID_PLANS = frozenset({'pro', 'premium'})
-BILLING_AVAILABLE = False
 FEATURES = (
     ('session_tracking', 'Writing session tracking', True, True),
     ('quick_prompt', 'Quick Prompt', True, True),

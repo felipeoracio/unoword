@@ -177,7 +177,7 @@ const faqs = [
   ],
   [
     "Is UnoWord free?",
-    "Yes. Free includes session tracking, Quick Prompt, recent writing history, and an editable Writing Profile. Pro adds the three AI suggestion modes, knowledge sources, writing goals, and extended history. New paid plan changes are currently unavailable while billing is being configured.",
+    "Yes. Free includes session tracking, Quick Prompt, recent writing history, and an editable Writing Profile. Pro adds the three AI suggestion modes, knowledge sources, writing goals, and extended history. Pro is $20 USD monthly, with a 7-day free trial for eligible accounts when checkout is available.",
   ],
   [
     "How does UnoWord count words?",
@@ -193,7 +193,7 @@ const faqs = [
   ],
   [
     "Can I change my subscription later?",
-    "Plan requests belong to your signed-in account and require confirmation. Billing is not configured yet, so upgrade and downgrade requests currently leave your plan unchanged. Existing eligible Pro accounts retain their access. Prices and account-specific usage limits are not advertised until they can be verified.",
+    "Sign in to your account to open Stripe Checkout or manage an existing Stripe subscription. Pro is $20 USD monthly after a 7-day trial, available once per account; a payment method is required. You can cancel through the billing portal. Scheduled cancellation retains access until the trial or paid period ends. Checkout remains unavailable until billing setup is complete.",
   ],
   [
     "Is my writing private?",
@@ -724,10 +724,21 @@ export default function Home() {
                       : "Everything you need to begin building your writing habit."}
                   </p>
                   <div className="uw-price-status">
-                    {paid ? "More room to grow." : "Your first word is free."}
+                    {paid
+                      ? plan?.price
+                        ? new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: plan.price.currency,
+                          }).format(plan.price.amount / 100) +
+                          " / " +
+                          plan.price.interval
+                        : "More room to grow."
+                      : "Your first word is free."}
                     <span>
                       {paid
-                        ? "Paid plan changes are currently unavailable."
+                        ? product.data?.billing_available
+                          ? `${plan?.price?.trial_days ?? 7}-day free trial for eligible accounts. Then billed monthly.`
+                          : "Paid plan changes are currently unavailable."
                         : "No payment required to get started."}
                     </span>
                   </div>
@@ -752,12 +763,16 @@ export default function Home() {
                     className={`uw-button${paid ? "" : " uw-button-outline"}`}
                     to={paid ? PRO_START : FREE_START}
                   >
-                    {paid ? "View Pro in your account" : "Get started free"}
+                    {paid
+                      ? product.data?.billing_available
+                        ? "Try Pro free for 7 days"
+                        : "View Pro in your account"
+                      : "Get started free"}
                     <ArrowRight size={17} />
                   </Link>
                   <small>
                     {paid
-                      ? "Sign in to view your current plan."
+                      ? "Payment method required. Cancel before your trial ends to avoid a charge."
                       : "Quick Prompt included. No AI subscription needed."}
                   </small>
                 </article>
@@ -765,9 +780,12 @@ export default function Home() {
             })}
           </div>
           <p className="uw-pricing-note">
-            <LockKeyhole size={14} /> No paid plan changes are processed until
-            billing is configured. AI allowances are account-specific; check
-            your account for current access and limits.
+            <LockKeyhole size={14} />{" "}
+            {product.data?.billing_available
+              ? "Secure checkout and subscription management through Stripe."
+              : "No paid plan changes are processed until billing is configured."}{" "}
+            AI allowances are account-specific; check your account for current
+            access and limits.
           </p>
         </section>
 

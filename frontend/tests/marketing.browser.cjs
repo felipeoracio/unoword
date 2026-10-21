@@ -49,6 +49,9 @@ const catalog = {
       requests = [];
     let authenticated = false,
       failCatalog = false,
+      billingEnabled = false,
+      managed = false,
+      trialEligible = true,
       storeUrl = null;
     const user = {
       id: "isolated-fixture-user",
@@ -58,7 +61,11 @@ const catalog = {
     };
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (message) => {
-      if (message.type() === "error" && /hydrat|Minified React error|server rendered HTML/i.test(message.text())) errors.push(message.text());
+      if (
+        message.type() === "error" &&
+        /hydrat|Minified React error|server rendered HTML/i.test(message.text())
+      )
+        errors.push(message.text());
     });
     await page.route("http://marketing.test/**", async (r) => {
       const url = new URL(r.request().url());
@@ -73,7 +80,23 @@ const catalog = {
           status = failCatalog ? 503 : 200;
           result = failCatalog
             ? { detail: "unavailable" }
-            : { ...catalog, chrome_store_url: storeUrl };
+            : {
+                ...catalog,
+                billing_available: billingEnabled,
+                chrome_store_url: storeUrl,
+                plans: catalog.plans.map((p) => ({
+                  ...p,
+                  price:
+                    p.id === "pro"
+                      ? {
+                          amount: 2000,
+                          currency: "usd",
+                          interval: "month",
+                          trial_days: 7,
+                        }
+                      : null,
+                })),
+              };
         } else if (route === "/auth/me") {
           status = authenticated ? 200 : 401;
           result = authenticated ? user : { detail: "Authentication required" };
@@ -89,9 +112,32 @@ const catalog = {
         } else if (route === "/auth/recovery") {
           status = 503;
           result = { detail: "email_workflow_not_configured" };
+        } else if (route === "/subscription") {
+          result = {
+            user_id: user.id,
+            managed_by_stripe: managed,
+            trial_eligible: trialEligible,
+            status: user.ai_access ? "trialing" : "inactive",
+            period_end: null,
+            cancel_at_period_end: false,
+          };
         } else if (route === "/subscription/change") {
-          status = 503;
-          result = { detail: "billing_unavailable" };
+          if (billingEnabled || body.target_plan === "free") {
+            managed = true;
+            result =
+              body.target_plan === "free"
+                ? {
+                    url: "https://billing.stripe.com/p/session/fixture",
+                    destination: "portal",
+                  }
+                : {
+                    url: "https://checkout.stripe.com/c/pay/fixture",
+                    destination: "checkout",
+                  };
+          } else {
+            status = 503;
+            result = { detail: "billing_unavailable" };
+          }
         } else throw Error("Unexpected marketing API request: " + route);
         return r.fulfill({
           status,
@@ -120,6 +166,18 @@ const catalog = {
         }[path.extname(file)] || "text/html";
       return r.fulfill({ body: fs.readFileSync(file), contentType });
     });
+    await page.route("https://checkout.stripe.com/**", (r) =>
+      r.fulfill({
+        contentType: "text/html",
+        body: "<h1>Stripe Checkout fixture</h1>",
+      }),
+    );
+    await page.route("https://billing.stripe.com/**", (r) =>
+      r.fulfill({
+        contentType: "text/html",
+        body: "<h1>Stripe Portal fixture</h1>",
+      }),
+    );
     async function load(route = "/") {
       await page.goto("http://marketing.test" + route);
       await page.evaluate(() => document.fonts.ready);
@@ -423,6 +481,63 @@ const catalog = {
     await layout("Pro confirmation");
     await audit("Pro account");
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    // Configured checkout: consent, safe redirect, verified return and billing portal.
+    billingEnabled = true;
+    authenticated = true;
+    await load("/account?plan=pro");
+    await page.getByRole("button", { name: "Confirm plan request" }).waitFor();
+    assert.ok(
+      (await page.locator(".uw-plan-intent").textContent()).includes(
+        "$20 USD per month",
+      ),
+    );
+    assert.ok(
+      (await page.locator(".uw-plan-intent").textContent()).includes("7 days"),
+    );
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: "Confirm plan request" }).click();
+    await page.waitForURL("https://checkout.stripe.com/**");
+    assert.equal(user.ai_access, false, "Checkout redirect cannot grant Pro");
+    await load("/account?billing=success");
+    await page
+      .getByRole("status")
+      .filter({ hasText: "Waiting for Stripe verification" })
+      .waitFor();
+    assert.equal(
+      await page.locator(".uw-account-plan span").textContent(),
+      "Free",
+      "A forged success URL cannot grant Pro",
+    );
+    const beforeReturn = requests.filter(
+      (r) => r.route === "/subscription/change",
+    ).length;
+    user.ai_access = true;
+    user.plan = "pro";
+    trialEligible = false;
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".uw-account-plan span")?.textContent === "Pro",
+    );
+    assert.equal(
+      requests.filter((r) => r.route === "/subscription/change").length,
+      beforeReturn,
+      "Return only reads verified status",
+    );
+    await layout("Verified subscription");
+    await audit("Verified subscription");
+    billingEnabled = false; // Existing customers can still cancel when new sales stop.
+    await page.getByRole("checkbox").check();
+    await page.getByRole("button", { name: "Manage subscription" }).click();
+    await page.waitForURL("https://billing.stripe.com/**");
+    assert.equal(
+      requests.filter((r) => r.route === "/subscription/change").at(-1).body
+        .target_plan,
+      "free",
+    );
+    authenticated = false;
+    user.ai_access = false;
+    user.plan = "free";
+    managed = false;
     await load("/account?mode=recovery");
     await page
       .getByLabel("Email address", { exact: true })

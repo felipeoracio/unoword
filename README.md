@@ -193,3 +193,9 @@ local-run instructions above.
   Vite HMR for the frontend); no rebuild step needed for normal iteration. A
   restart is still needed after changing `.env`, `requirements.txt`, or
   `vite.config.ts`.
+
+## Stripe billing
+
+Pro is $20 USD monthly with a 7-day trial for eligible accounts. Checkout remains
+disabled until Stripe and the billing migration are configured. See
+[Stripe setup, verification and activation](docs/stripe-billing.md).

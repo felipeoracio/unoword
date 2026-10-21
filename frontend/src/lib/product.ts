@@ -8,7 +8,12 @@ export interface Product {
   plans: {
     id: string;
     name: string;
-    price: null | { amount: number; currency: string; interval: string };
+    price: null | {
+      amount: number;
+      currency: string;
+      interval: string;
+      trial_days: number;
+    };
     features: Record<string, boolean>;
   }[];
   features: { id: string; label: string }[];

@@ -9,6 +9,7 @@ import pytest
 
 def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch):
     from routers import ai
+    monkeypatch.setenv('STRIPE_BILLING_ENABLED', 'false')
     monkeypatch.setenv('SUPABASE_SERVICE_ROLE_KEY', 'must-not-appear')
     monkeypatch.setenv('OPENAI_API_KEY', 'must-not-appear')
     monkeypatch.setattr(ai, 'get_suggestion_provider', lambda: pytest.fail('Marketing must not resolve an AI provider'))
@@ -16,7 +17,8 @@ def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch)
     assert response.status_code == 200
     result = response.json()
     assert result['billing_available'] is False
-    assert all(plan['price'] is None for plan in result['plans'])
+    assert result['plans'][0]['price'] is None
+    assert result['plans'][1]['price'] == {'amount': 2000, 'currency': 'usd', 'interval': 'month', 'trial_days': 7}
     assert 'must-not-appear' not in response.text
     assert 'daily_request_limit' not in response.text
     for plan in result['plans']:

@@ -54,6 +54,14 @@ export default function Information({
               AI summaries and embeddings. AI providers and Supabase process the
               data needed for these services under their own policies.
             </p>
+            <h2>Billing data</h2>
+            <p>
+              Stripe hosts checkout and subscription management and processes
+              payment details. UnoWord stores Stripe customer and subscription
+              identifiers, subscription status, trial eligibility, and billing
+              period dates to manage access. Card details are entered on
+              Stripe’s pages.
+            </p>
             <h2>Your choices</h2>
             <p>
               You can edit your Writing Profile, choose whether to save writing
@@ -86,8 +94,10 @@ export default function Information({
             <h2>Current availability</h2>
             <p>
               UnoWord has Free features and account-controlled Pro capabilities.
-              Billing is not configured, and paid plan changes are unavailable.
-              Creating a Free account or downloading the developer extension
+              Pro costs $20 USD monthly after a 7-day free trial for eligible
+              accounts. A payment method is required; cancel before your trial
+              ends to avoid a charge. Checkout remains unavailable until
+              configured. Creating a Free account or downloading the extension
               does not purchase a subscription.
             </p>
             <h2>Developer release</h2>
@@ -161,11 +171,13 @@ export default function Information({
             </p>
             <h2>Plans and account recovery</h2>
             <p>
-              Billing is unavailable, so plan requests leave your current access
-              unchanged. Email changes and password recovery require the
-              administrator’s completed Supabase email configuration; the app
-              reports when this setup is missing. Existing password sign-in is
-              available.
+              Sign in to your account to start Pro through Stripe Checkout or
+              manage a Stripe subscription. You can update payment details and
+              schedule cancellation in the billing portal. Checkout is
+              unavailable until billing is configured. Email changes and
+              password recovery require the administrator’s completed Supabase
+              email configuration; the app reports when this setup is missing.
+              Existing password sign-in is available.
             </p>
             <Link
               className="uw-button uw-button-outline"

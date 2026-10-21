@@ -262,8 +262,14 @@ async function requestPlanChange(msg) {
   if (changingPlan) return { ok: false, error: 'request_in_progress' };
   changingPlan = true;
   try {
-    await self.WCApi.post('/subscription/change', { target_plan: msg.targetPlan, confirmed: true, expected_user_id: account.userId });
-    return { ok: true, account: await refreshAccount() };
+    const result = await self.WCApi.post('/subscription/change', { target_plan: msg.targetPlan, confirmed: true, expected_user_id: account.userId });
+    const url = new URL(result.url);
+    const host = result.destination === 'portal' ? 'billing.stripe.com' : 'checkout.stripe.com';
+    if (url.protocol !== 'https:' || url.host !== host) throw new Error('invalid_billing_redirect');
+    const after = await refreshAccount();
+    if (!after.authenticated || after.userId !== account.userId) return { ok: false, error: 'account_changed', account: after };
+    await chrome.tabs.create({ url: url.href });
+    return { ok: true, opened: true, account: after };
   } catch (error) { return { ok: false, error: typeof error.body?.detail === 'string' ? error.body.detail : 'request_failed' }; }
   finally { changingPlan = false; }
 }
