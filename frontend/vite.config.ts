@@ -14,8 +14,15 @@ if (!hotReloadDisabled) {
 
 // https://vite.dev/config/
 export default defineConfig(async () => {
+  const candidate = process.env.PUBLIC_APP_URL || "https://unoword.vercel.app";
+  const parsedSite = new URL(candidate);
+  const siteUrl = parsedSite.origin + "/";
+  if (parsedSite.protocol !== "https:" && parsedSite.hostname !== "localhost") throw new Error("PUBLIC_APP_URL must use HTTPS");
   return {
     plugins: [
+      { name: "unoword-public-meta", transformIndexHtml(html: string) {
+        return html.replaceAll("__UNOWORD_SITE_URL__", siteUrl).replaceAll("__UNOWORD_ROBOTS__", process.env.VERCEL_ENV === "preview" ? "noindex, nofollow" : "index, follow");
+      } },
       react(),
       tailwindcss(),
     ],

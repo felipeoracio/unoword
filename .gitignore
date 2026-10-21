@@ -91,3 +91,6 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Reviewed public extension release; other archives remain ignored.
+!frontend/public/downloads/unoword-extension.zip

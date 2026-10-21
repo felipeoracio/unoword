@@ -12,6 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+from routers.product import router as product_router
 from routers.ai import router as ai_router
 from routers.auth import router as auth_router
 from routers.documents import router as documents_router
@@ -26,6 +27,7 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+api_router.include_router(product_router)
 api_router.include_router(ai_router)
 api_router.include_router(documents_router)
 api_router.include_router(links_router)

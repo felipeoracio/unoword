@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, status
 
+from lib.plans import plan_features
 from lib.auth import AuthenticatedUser, require_user
 from lib.supabase_client import SupabaseAPIError, raise_http, service_rest
 
@@ -23,7 +24,7 @@ async def get_entitlement(user_id: str) -> dict | None:
 def entitlement_is_active(entitlement: dict | None) -> bool:
     if not entitlement:
         return False
-    if entitlement.get("status") not in {"active", "trialing"} or entitlement.get("plan") not in {"pro", "premium"}:
+    if entitlement.get("status") not in {"active", "trialing"} or not plan_features(entitlement.get("plan", "free"))["new_topic"]:
         return False
     valid_until = entitlement.get("valid_until")
     return not valid_until or datetime.fromisoformat(valid_until.replace("Z", "+00:00")) >= datetime.now(timezone.utc)

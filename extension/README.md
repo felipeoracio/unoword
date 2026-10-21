@@ -284,28 +284,19 @@ Full behavior is validated in `tests/engine.test.js`.
 
 ## Privacy
 
-- The extension **never sends your writing anywhere**.
-- No network requests are made from `background.js` or `content.js`.
-- Storage is `chrome.storage.local` only.
-- The typed/pasted text buffers stored during an active session are only
-  kept to compute the word count accurately across deletions. They are
-  cleared at the start of the next session.
-- No analytics, no telemetry.
+- Session counts, goals, recent history, and local preferences use `chrome.storage.local`.
+- During an active session, content scripts observe input in supported editors and keep temporary text buffers to reconcile typed words, pasted words, deletions, and undo.
+- Cloud features make network requests: Supabase manages accounts and user-scoped profile, memory, document, and website data. AI suggestions, summaries, and embeddings use the configured AI provider.
+- The user chooses profile information and sources, when to save writing to memory, and when to request AI suggestions. This is not a browsing-history recorder.
+- Disabling or deleting a source removes it from automatic AI context. Saved suggestions may still contain text generated earlier.
+- The marketing showcase uses fictional static examples and never calls a paid model just to render a demo.
+- See the website’s Privacy & data notice for current behavior; formal legal terms and contact details require publication by the product owner.
 
 ---
 
 ## Permissions
 
-Only one Chrome permission is requested:
-
-- **`storage`** — to persist session state locally so the popup can close and
-  reopen without losing your count.
-
-The extension uses `content_scripts` with `<all_urls>` so it can observe
-`input` events on the page you're writing on. It does **not** request
-`tabs`, `history`, `bookmarks`, or `activeTab`. It never reads the
-existing content of a page — only responds to `input` events that fire
-while a session is active.
+The manifest requests `storage` and `activeTab`, plus access to the UnoWord backend origin. Content scripts run on supported pages (excluding browser/Chrome Web Store pages). `activeTab` supports explicit actions such as using current writing for an idea. The extension does not request browsing history or bookmarks permissions.
 
 ---
 

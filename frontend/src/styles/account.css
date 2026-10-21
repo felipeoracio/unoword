@@ -1,0 +1,385 @@
+.uw-account-page {
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse at 50% 20%, #eaf3ff, transparent 65%), #fbfdff;
+}
+.uw-account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 26px;
+  gap: 20px;
+}
+.uw-account-header > .uw-text-link {
+  color: #546986;
+  font-size: 11px;
+}
+.uw-account-main {
+  padding: 35px 20px 60px;
+}
+.uw-account-card {
+  max-width: 500px;
+  margin-inline: auto;
+  padding: 39px;
+  background: white;
+  border: 1px solid #e1e9f5;
+  border-radius: 19px;
+  box-shadow: 0 12px 40px #1d477010;
+}
+.uw-account-card h1 {
+  font-size: 33px;
+  line-height: 1.18;
+  letter-spacing: -1.4px;
+  font-weight: 650;
+  margin-bottom: 20px;
+}
+.uw-account-card > p:not(.uw-eyebrow) {
+  color: #546986;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.uw-account-card .uw-eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.1px;
+  margin-bottom: 17px !important;
+}
+.uw-auth-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 27px;
+}
+.uw-auth-form > label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  color: #4e6386;
+  font-weight: 500;
+}
+.uw-auth-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d9e4f3;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #243b5e;
+  background: #fcfdff;
+}
+.uw-password-field {
+  display: flex;
+  position: relative;
+}
+.uw-password-field input {
+  padding-right: 45px;
+}
+.uw-password-field button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 40px;
+  background: transparent;
+  border: 0;
+  color: #546986;
+  border-radius: 0 8px 8px 0;
+}
+.uw-auth-form > label > small {
+  color: #546986;
+  font-size: 9px;
+  font-weight: 400;
+}
+.uw-auth-form .uw-button {
+  margin-top: 3px;
+  width: 100%;
+  font-size: 12px;
+}
+.uw-site button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+.uw-forgot-link {
+  display: block;
+  margin-top: 17px;
+  color: #1d63be;
+  font-size: 10px;
+}
+.uw-auth-switch {
+  font-size: 11px !important;
+  margin-top: 21px !important;
+}
+.uw-auth-switch a {
+  color: #0964ff;
+  font-weight: 550;
+  margin-left: 4px;
+}
+.uw-cookie-note {
+  display: flex;
+  gap: 8px;
+  font-size: 9px !important;
+  margin-top: 24px !important;
+  padding-top: 18px;
+  border-top: 1px solid #e8eef7;
+  color: #546986 !important;
+}
+.uw-cookie-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.uw-account-message {
+  margin-top: 23px !important;
+  border: 1px solid #d8e7fa;
+  background: #f4f8ff;
+  padding: 12px;
+  border-radius: 9px;
+  color: #446d9e !important;
+  overflow-wrap: anywhere;
+}
+.uw-account-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin-top: 25px;
+  color: #546986;
+  font-size: 10px;
+}
+.uw-account-email {
+  overflow-wrap: anywhere;
+}
+.uw-account-email strong {
+  font-weight: 550;
+  color: #546986;
+}
+.uw-account-plan {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px;
+  border-radius: 9px;
+  margin-top: 19px !important;
+  background: #f4f8ff;
+  font-size: 12px;
+}
+.uw-account-plan span {
+  color: #0964ff;
+  font-weight: 650;
+}
+.uw-install-card {
+  margin-top: 30px;
+  border-top: 1px solid #e8eef7;
+  padding-top: 25px;
+}
+.uw-install-card > div:first-child {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+.uw-install-card svg {
+  flex-shrink: 0;
+  color: #3781e7;
+}
+.uw-install-card h2 {
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  line-height: 1.4;
+}
+.uw-install-card p {
+  font-size: 11px;
+  color: #546986;
+  margin-bottom: 17px;
+}
+.uw-install-card .uw-button {
+  width: 100%;
+  font-size: 11px;
+  gap: 9px;
+  min-height: 46px;
+  padding-inline: 12px;
+}
+.uw-install-card .uw-button svg {
+  color: white;
+}
+.uw-install-card ol {
+  margin: 24px 0;
+  padding-left: 20px;
+  color: #546986;
+  font-size: 11px;
+  display: grid;
+  gap: 12px;
+}
+.uw-install-card code {
+  font-size: 10px;
+  background: #eff5ff;
+  color: #346da4;
+  padding: 2px 4px;
+  overflow-wrap: anywhere;
+}
+.uw-install-card strong {
+  font-weight: 600;
+}
+.uw-install-note {
+  font-size: 9px !important;
+  color: #546986 !important;
+}
+.uw-account-signout {
+  background: none;
+  border: 0;
+  margin-top: 15px;
+  padding: 0;
+  font-size: 11px;
+}
+.uw-plan-intent {
+  padding: 20px;
+  background: #f3f8ff;
+  border: 1px solid #dce9fb;
+  border-radius: 12px;
+  margin-top: 25px;
+}
+.uw-plan-intent > div:first-child {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #2878e4;
+  margin-bottom: 11px;
+}
+.uw-plan-intent h2 {
+  font-size: 16px;
+  letter-spacing: -0.4px;
+  color: #234369;
+}
+.uw-plan-intent > p {
+  font-size: 11px;
+  color: #546986;
+}
+.uw-confirm-plan {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: #546986;
+  line-height: 1.8;
+  margin-block: 20px;
+  overflow-wrap: anywhere;
+}
+.uw-confirm-plan input {
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 15px;
+  height: 15px;
+  accent-color: #0964ff;
+}
+.uw-plan-intent .uw-button {
+  width: 100%;
+  min-height: 43px;
+  font-size: 11px;
+}
+.uw-info-page {
+  min-height: 100svh;
+  background: #fbfdff;
+}
+.uw-info-content {
+  max-width: 760px;
+  padding: 65px 24px 90px;
+  margin-inline: auto;
+}
+.uw-info-content h1 {
+  font-size: 43px;
+  line-height: 1.2;
+  letter-spacing: -1.7px;
+  margin-bottom: 20px;
+  font-weight: 650;
+}
+.uw-info-content h2 {
+  font-size: 23px;
+  letter-spacing: -0.5px;
+  margin-block: 36px 15px;
+}
+.uw-info-content p,
+.uw-info-content li {
+  color: #546986;
+  font-size: 13px;
+  line-height: 1.95;
+}
+.uw-info-content p {
+  margin-bottom: 16px;
+}
+.uw-info-content ul,
+.uw-info-content ol {
+  padding-left: 22px;
+  display: grid;
+  gap: 10px;
+}
+.uw-info-content a:not(.uw-button) {
+  color: #0964ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.uw-info-content .uw-button {
+  margin-block: 15px;
+}
+.uw-info-content code {
+  background: #edf5ff;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #3b6eaa;
+  overflow-wrap: anywhere;
+}
+.uw-info-note {
+  padding: 18px;
+  border: 1px solid #dce8f9;
+  border-radius: 11px;
+  background: #f0f6ff;
+}
+.uw-info-content .uw-eyebrow {
+  color: #0964ff;
+  font-size: 9px;
+}
+@media (max-width: 600px) {
+  .uw-account-header {
+    padding-block: 21px;
+  }
+  .uw-account-header > .uw-text-link {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .uw-account-main {
+    padding: 19px 16px 40px;
+  }
+  .uw-account-card {
+    padding: 28px 23px;
+  }
+  .uw-account-card h1 {
+    font-size: 29px;
+  }
+  .uw-account-card > p:not(.uw-eyebrow) {
+    font-size: 11px;
+  }
+  .uw-account-header .uw-brand {
+    font-size: 20px;
+  }
+  .uw-account-header .uw-brand img {
+    width: 30px;
+    height: 30px;
+  }
+  .uw-account-footer {
+    font-size: 9px;
+    gap: 20px;
+  }
+  .uw-info-content {
+    padding-top: 40px;
+  }
+  .uw-info-content h1 {
+    font-size: 35px;
+  }
+  .uw-info-content h2 {
+    font-size: 22px;
+  }
+  .uw-info-content p,
+  .uw-info-content li {
+    font-size: 12px;
+  }
+}
