@@ -300,8 +300,11 @@ function dayKey(ts, tz) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-async function requestAISuggestion({ currentWriting = '', currentProject = '', mode = 'new_topic', language = 'en', ideaSourceId = null } = {}) {
+async function requestAISuggestion({ currentWriting = '', currentProject = '', mode = 'new_topic', language = 'en', ideaSourceId = null, expectedUserId = null } = {}) {
   const account = await refreshAccount();
+  if (expectedUserId && account.userId !== expectedUserId) {
+    return { ok: false, reason: 'account_changed', account };
+  }
   if (!account.authenticated || !account.aiAccess || !account.online) {
     const reason = !account.authenticated
       ? 'auth_required'
@@ -867,6 +870,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             currentWriting: msg.currentWriting || '',
             currentProject: msg.currentProject || project,
             mode: msg.mode || 'new_topic', language: msg.language || settings.language || 'en', ideaSourceId: msg.ideaSourceId || null,
+            expectedUserId: msg.expectedUserId || null,
           });
           sendResponse(result);
           return;

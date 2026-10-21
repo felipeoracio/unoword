@@ -31,7 +31,8 @@ def library_overview(
             continue
         kind = "link" if source.get("source_kind") == "link" else "file"
         ids = [source_id] + ([str(memory["id"])] if memory else [])
-        text = f'{kind} "{source.get("document_title") or "Untitled"}": {summary}'
+        # Content first: a long title must not consume the evidence budget.
+        text = f'{kind}: {summary} (source: {str(source.get("document_title") or "Untitled")[:60]})'
         groups[kind].append((sum(exposure[sid] for sid in ids), text, ids))
     for memory in memories:
         if str(memory.get("source_id")) in document_ids:

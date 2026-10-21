@@ -145,6 +145,17 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     await page.click('#suggestion-generate');
     await page.waitForFunction(()=>document.querySelector('#prompt-ai-status').textContent.includes('cupo diario'));
     assert.equal(await page.locator('#suggestion-generate').isEnabled(),true);
+    await page.evaluate(()=>{
+      els.suggestionIdeaText.value='Private draft from the previous account';
+      updateSuggestionAccount({authenticated:true,userId:'another-user',aiAccess:true,online:true});
+    });
+    assert.equal(await page.locator('#suggestion-idea-text').inputValue(),'');
+    assert.equal(await page.locator('#suggestion-saved-list button').count(),0);
+    assert.equal(await page.locator('#prompt-ai-card').isHidden(),true);
+    const generations=requests.filter(r=>r.route==='/ai/suggestion').length;
+    const changed=await message({type:'GET_AI_SUGGESTION',expectedUserId:'another-user',currentWriting:'Private old draft',mode:'expand_idea'});
+    assert.equal(changed.reason,'account_changed');
+    assert.equal(requests.filter(r=>r.route==='/ai/suggestion').length,generations,'An account change must prevent sending the previous account draft');
     assert.deepEqual(errors,[]);
     console.log('PASS: real popup/background code; all modes; alternatives; Save/reload; current/selected/tab ideas; Spanish; Start/Stop; typed/pasted counts; daily-cap UI; no horizontal overflow.');
   } finally {await browser.close();}

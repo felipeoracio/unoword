@@ -40,6 +40,9 @@ def evidence_catalog(payload: AISuggestionRequest, profile, answers, memories, s
             continue
         title = chunk.source_title or ("Escritura guardada" if es else "Saved writing")
         add(chunk.source_id, title, chunk.source_type, parent)
+    if payload.mode == "expand_idea" and payload.idea_source_id and payload.idea_source_id in catalog:
+        # The draft was loaded from this selected source, not an active tab.
+        catalog["current_writing"] = catalog[payload.idea_source_id]
     return catalog
 
 

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Word Count — Writing Session Tracker",
   "short_name": "Word Count",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "A minimal, private writing session tracker with goals, prompts and progress. Click Start, type anywhere in Chrome, click Stop — see exactly how many words you wrote.",
   "action": {
     "default_popup": "popup/popup.html",

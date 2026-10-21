@@ -96,8 +96,11 @@ def test_mode_and_actual_text_reach_provider(system,mode,language):
     assert len(system.state['ai_usage'])==1 and system.state['ai_usage'][0]['request_type']=='suggestion'
 
 def test_selected_idea_uses_actual_body_and_enforces_ownership(system):
+    system.provider.cited=['current_writing']
     response = system.client.post('/api/ai/suggestion',json=dict(mode='expand_idea',idea_source_id=D1))
     assert response.status_code==200,response.text
+    assert response.json()['inspired_by'][0]['title']=='Solar ferries'
+    assert response.json()['source_ids']==[D1]
     assert TEXT1 in system.calls[-1]['context'].split('Broader shared')[0]
     foreign = system.client.post('/api/ai/suggestion',headers={'x-user':'b'},json=dict(mode='expand_idea',idea_source_id=D1))
     assert foreign.status_code==404
@@ -158,6 +161,14 @@ def test_titles_without_source_content_are_not_treated_as_evidence(system):
     body = system.client.post('/api/ai/suggestion', json={'mode':'connect_dots'}).json()
     assert 'not enough' in body['suggestion'] and not body['inspired_by']
     assert not system.calls
+
+def test_long_titles_do_not_replace_actual_source_text_in_prompt(system):
+    for source in system.state['ai_documents']:
+        source['document_title'] = 'A long title ' * 100
+    response = system.client.post('/api/ai/suggestion', json={'mode':'connect_dots'})
+    assert response.status_code == 200
+    context = system.calls[-1]['context']
+    assert 'measures the tide twice' in context and 'three witness cones' in context
 
 def test_new_routes_keep_authentication_and_entitlement_guards(monkeypatch):
     app=FastAPI()

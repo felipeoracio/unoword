@@ -121,7 +121,9 @@ def _compose_prompt_context(
                 continue
             # Only label IDs actually sent, so output references can be checked.
             prefix = f"[{ids[0]}] " if ids else ""
-            text_budget = max(1, per_item - len(prefix))
+            text_budget = per_item - len(prefix)
+            if text_budget < 20:
+                continue
             lines.append("- " + prefix + (text if len(text) <= text_budget else text[:text_budget - 1] + "…"))
             source_ids.extend(ids[:1])
         parts.append("\n".join(lines))
@@ -149,7 +151,7 @@ def _compose_prompt_context(
         ]
         section("Writer profile and interests:", fields, int(available * 0.17), 8)
     section("Onboarding answers:", [
-        (f'{a.get("question")}: {a.get("answer")}', [a["id"]]) for a in answers
+        (f'{a.get("answer")} (question: {a.get("question")})', [a["id"]]) for a in answers
     ], int(available * 0.08), 4)
     section("Recent suggestions — choose a different topic or angle:", [
         (f'({s.get("status")}) {s.get("title") or ""}: {s.get("suggestion") or ""}', [])
@@ -160,7 +162,7 @@ def _compose_prompt_context(
     passages = []
     for chunk in retrieved:
         label = chunk.source_type + (f' "{chunk.source_title}"' if chunk.source_title else "")
-        passages.append((f"[{label}] {chunk.content[:MAX_CHUNK_CHARS]}", [chunk.source_id]))
+        passages.append((f"{chunk.content[:MAX_CHUNK_CHARS]} (source: {label[:60]})", [chunk.source_id]))
     # Use remaining space for supporting detail after preserving the broader view.
     section("Matching passages (supporting evidence, not the only possible topics):",
             passages, MAX_CONTEXT_CHARS, 6)

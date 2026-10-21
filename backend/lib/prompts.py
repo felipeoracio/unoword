@@ -41,7 +41,9 @@ topics unless you offer a clearly different angle.""",
 or explicitly selected/described idea. Prioritize that idea over other source
 material. Suggest depth, another perspective, an argument, concrete examples,
 or an overlooked implication. Never claim to have read an active document
-unless its actual text is supplied. Use saved material as supporting context.""",
+unless its actual text is supplied. Use saved material as supporting context.
+The ID current_writing is valid evidence: cite it when you develop that draft
+or described idea, unless a more specific supplied source establishes it.""",
     "connect_dots": """Selected mode: CONNECT THE DOTS. Find a meaningful shared
 theme, pattern, tension, or relationship between at least two distinct ideas
 or sources in the supplied content. Explain the specific connection and how

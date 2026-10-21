@@ -527,6 +527,26 @@ let ideaOptions = [];
 let suggestionRequestVersion = 0;
 let suggestionBusy = false;
 
+function updateSuggestionAccount(next) {
+  if (account.userId !== next.userId || account.authenticated !== next.authenticated) {
+    suggestionRequestVersion++;
+    suggestionBusy = false;
+    aiSuggestion = null;
+    aiMode = false;
+    savedIdeas = [];
+    ideaOptions = [];
+    documents = [];
+    links = [];
+    usage = null;
+    els.suggestionIdeaText.value = '';
+    els.suggestionGenerate.disabled = false;
+    els.promptAiCard.hidden = true;
+    renderSavedIdeas();
+    suggestionStatus(null);
+  }
+  account = next;
+}
+
 function suggestionStatus(key) {
   els.promptAiStatus.hidden = !key;
   els.promptAiStatus.textContent = key ? t(key) : '';
@@ -582,7 +602,9 @@ function renderSavedIdeas() {
 }
 
 async function loadIdeaChoices() {
+  const owner = account.userId;
   const response = await sendMessage({ type: 'GET_AI_IDEAS' });
+  if (owner !== account.userId) return;
   if (response.ok) {
     savedIdeas = response.ideas || [];
     ideaOptions = response.options || [];
@@ -636,7 +658,8 @@ async function getNextPrompt({ draft = '', project = '', mode = selectedSuggesti
     const statusKey = (account.authenticated && account.aiAccess && isOffline) ? 'prompt.ai.offline' : null;
     return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey };
   }
-  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId });
+  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId, expectedUserId: account.userId });
+  if (aiResp.account) updateSuggestionAccount(aiResp.account);
   if (aiResp.ok && aiResp.suggestion) {
     return { mode: 'ai', suggestion: aiResp.suggestion };
   }
@@ -830,6 +853,8 @@ function renderOfflineBadge() {
 
 async function renderPrompt() {
   if (!isPro()) return;
+  const refreshed = await sendMessage({ type: 'GET_ACCOUNT' });
+  if (refreshed.ok) updateSuggestionAccount(refreshed.account);
   const canUseAI = !!account.authenticated && !!account.aiAccess;
   els.suggestionControls.hidden = !canUseAI;
   els.promptAnother.hidden = canUseAI;
@@ -1269,7 +1294,7 @@ async function openSettings() {
   renderSettings();
   showPanel('settings');
   const response = await sendMessage({ type: 'GET_ACCOUNT' });
-  if (response.ok) account = response.account;
+  if (response.ok) updateSuggestionAccount(response.account);
   renderOfflineBadge();
   await refreshMemoryQueueStatus();
   if (account.authenticated && account.aiAccess) { await loadDocuments(); await loadUsage(); await loadLinks(); }
@@ -1725,7 +1750,7 @@ async function submitAccount(mode) {
     els.accountError.textContent = t(`account.error.${result.error || 'request_failed'}`);
     return;
   }
-  account = result.account;
+  updateSuggestionAccount(result.account);
   els.accountPassword.value = '';
   if (!account.authenticated) {
     els.accountError.hidden = false;
@@ -1735,9 +1760,10 @@ async function submitAccount(mode) {
   }
   els.accountEditor.hidden = true;
   const refreshed = await sendMessage({ type: 'GET_ACCOUNT' });
-  if (refreshed.ok) account = refreshed.account;
+  if (refreshed.ok) updateSuggestionAccount(refreshed.account);
   await refreshMemoryQueueStatus();
   renderSettings();
+  await renderPrompt();
   if (account.aiAccess && memoryQueue.unclaimed > 0) {
     requestMemoryClaim();
   } else if (account.aiAccess && window.WCAIProfile.hasPersonalization(settings.aiProfileDraft) && !account.profileSyncEnabled) {
@@ -1811,9 +1837,10 @@ async function accountAction() {
   if (els.accountAction.dataset.action === 'signin') { toggleAccountEditor(); return; }
   const result = await sendMessage({ type: 'LOGOUT_ACCOUNT' });
   if (result.ok) {
-    account = result.account;
+    updateSuggestionAccount(result.account);
     els.accountEditor.hidden = true;
     renderSettings();
+    await renderPrompt();
   }
 }
 
