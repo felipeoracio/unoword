@@ -72,6 +72,8 @@ async def call(method, *args, operation="provider", **kwargs):
             raise HTTPException(503, 'billing_key_invalid', headers=headers) from error
         if isinstance(error, stripe.PermissionError):
             raise HTTPException(503, 'billing_permission_denied', headers=headers) from error
+        if isinstance(error, stripe.IdempotencyError) and operation == 'checkout_create':
+            raise HTTPException(409, 'billing_checkout_retry_required', headers=headers) from error
         if isinstance(error, stripe.InvalidRequestError):
             if operation == 'price_lookup':
                 detail = 'billing_price_not_found' if code == 'resource_missing' else 'billing_price_mismatch'
@@ -219,7 +221,7 @@ async def change_plan(user, target_plan):
         if not state['trial_used']:
             subscription_data.update(trial_period_days=7,
                 trial_settings={'end_behavior': {'missing_payment_method': 'cancel'}})
-        session = await call(c.v1.checkout.sessions.create, {
+        checkout_params = {
             'mode': 'subscription', 'customer': customer_id, 'client_reference_id': user.id,
             # This integration uses standard Checkout subscriptions. Do not
             # inherit an account-wide Managed Payments default or its tax-code requirements.
@@ -228,7 +230,35 @@ async def change_plan(user, target_plan):
             'payment_method_collection': 'always', 'subscription_data': subscription_data,
             'success_url': app_url() + '/account?billing=success',
             'cancel_url': app_url() + '/account?plan=pro&billing=canceled',
-        }, options={'idempotency_key': 'unoword-checkout-' + state['checkout_attempt']}, operation='checkout_create')
+        }
+        try:
+            session = await call(c.v1.checkout.sessions.create, checkout_params,
+                options={'idempotency_key': 'unoword-checkout-' + state['checkout_attempt']}, operation='checkout_create')
+        except HTTPException as error:
+            if error.detail != 'billing_checkout_retry_required':
+                raise
+            # Configuration fixes can change parameters on a request whose old
+            # key Stripe retained. Reconcile first; never blindly rotate a key.
+            history = await call(c.v1.checkout.sessions.list,
+                {'customer': customer_id, 'status': 'open', 'limit': 100}, operation='checkout_history')
+            open_sessions = [item for item in history['data'] if item.get('mode') == 'subscription'
+                             and item.get('client_reference_id') == user.id]
+            if history.get('has_more') or len(open_sessions) > 1:
+                raise HTTPException(409, 'billing_history_review_required')
+            if open_sessions:
+                session = open_sessions[0]
+            else:
+                current = await call(c.v1.subscriptions.list,
+                    {'customer': customer_id, 'status': 'all', 'limit': 100}, operation='subscriptions_list')
+                if current.get('has_more') or any(item['status'] not in TERMINAL for item in current['data']):
+                    return await portal(c, customer_id)
+                state['trial_used'] = state['trial_used'] or bool(current['data'])
+                if state['trial_used']:
+                    checkout_params['subscription_data'] = {'metadata': {'unoword_user_id': user.id}}
+                state['checkout_attempt'] = str(uuid4())
+                await commit(state, lease)
+                session = await call(c.v1.checkout.sessions.create, checkout_params,
+                    options={'idempotency_key': 'unoword-checkout-' + state['checkout_attempt']}, operation='checkout_create')
         state['checkout_id'] = session['id']
         await commit(state, lease)
         return {'url': hosted_url(session['url']), 'destination': 'checkout'}

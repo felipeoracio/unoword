@@ -182,7 +182,9 @@ set `PUBLIC_APP_URL` and its own webhook destination to that preview's HTTPS ori
   against this mapping. Only the configured single-seat price can grant access.
 - A durable per-account lease serializes provider operations across Vercel
   instances. Persisted Checkout attempt IDs supply Stripe idempotency keys;
-  open sessions are reused. Subscription history prevents duplicate subscriptions
+  open sessions are reused. When a configuration fix changes a request whose key
+  Stripe retained, the backend checks open owned Checkout sessions and current
+  subscriptions before allowing one fresh attempt. Subscription history prevents duplicate subscriptions
   and repeat trials, including before the first webhook has arrived.
 - Subscription state is fetched **from Stripe under the lease**; stale event
   payloads cannot roll back newer provider state. One database transaction stores

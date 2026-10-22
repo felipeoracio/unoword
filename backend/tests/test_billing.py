@@ -58,6 +58,7 @@ def fixture(monkeypatch):
     provider.v1.customers.create.return_value={'id':'cus_a'}
     provider.v1.subscriptions.list.return_value={'data':[],'has_more':False}
     provider.v1.checkout.sessions.create.return_value={'id':'cs_a','status':'open','url':'https://checkout.stripe.com/c/pay/fixture'}
+    provider.v1.checkout.sessions.list.return_value={'data':[],'has_more':False}
     provider.v1.checkout.sessions.retrieve.return_value=provider.v1.checkout.sessions.create.return_value
     provider.v1.billing_portal.configurations.list.return_value={'data':[{'id':'bpc_fixture','features':{'subscription_cancel':{'enabled':True,'mode':'at_period_end'},'payment_method_update':{'enabled':True},'subscription_update':{'enabled':False}}}]}
     provider.v1.billing_portal.sessions.create.return_value={'url':'https://billing.stripe.com/p/session/fixture'}
@@ -436,3 +437,37 @@ def test_checkout_errors_report_only_safe_request_field_and_correlation_id(fixtu
     assert response.headers['x-billing-parameter']=='subscription_data[trial_settings]'
     assert response.headers['x-billing-stripe-code']=='parameter_unknown'
     assert secret not in response.text and secret not in caplog.text
+
+
+
+def test_cached_failed_checkout_recovers_once_after_reconciling_stripe(fixture):
+    import stripe
+    f=fixture; original=f.state['checkout_attempt']
+    result=f.provider.v1.checkout.sessions.create.return_value
+    f.provider.v1.checkout.sessions.create.side_effect=[stripe.IdempotencyError('old request parameters'), result]
+    assert change(f).status_code==200
+    assert f.state['checkout_attempt']!=original
+    assert f.provider.v1.checkout.sessions.create.call_count==2
+    keys=[c.kwargs['options']['idempotency_key'] for c in f.provider.v1.checkout.sessions.create.call_args_list]
+    assert keys[0]!=keys[1]
+    assert change(f).status_code==200 and f.provider.v1.checkout.sessions.create.call_count==2
+
+
+def test_idempotency_recovery_reuses_an_open_owned_session_instead_of_creating_another(fixture):
+    import stripe
+    f=fixture
+    f.provider.v1.checkout.sessions.create.side_effect=stripe.IdempotencyError('old request parameters')
+    f.provider.v1.checkout.sessions.list.return_value={'data':[{'id':'cs_existing','mode':'subscription','client_reference_id':USER,'url':'https://checkout.stripe.com/c/pay/existing'}]}
+    result=change(f)
+    assert result.status_code==200 and result.json()['url'].endswith('/existing')
+    assert f.provider.v1.checkout.sessions.create.call_count==1
+    assert f.state['checkout_id']=='cs_existing'
+
+
+def test_idempotency_recovery_detects_subscription_completed_during_retry(fixture):
+    import stripe
+    f=fixture;f.state['customer_id']='cus_a'
+    f.provider.v1.subscriptions.list.side_effect=[{'data':[]},{'data':[{'status':'trialing'}]}]
+    f.provider.v1.checkout.sessions.create.side_effect=stripe.IdempotencyError('old request parameters')
+    assert change(f).json()['destination']=='portal'
+    assert f.provider.v1.checkout.sessions.create.call_count==1
