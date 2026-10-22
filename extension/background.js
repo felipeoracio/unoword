@@ -440,7 +440,20 @@ async function appendHistory(session) {
   return next;
 }
 
-async function clearHistory() { await chrome.storage.local.set({ [HISTORY_KEY]: [] }); }
+async function clearHistory() {
+  const state = await getState();
+  // The completed-session card is part of the deleted history. Keep an
+  // in-progress session, but never leave its previous result behind.
+  const next = state.active ? { ...state, lastResult: null } : { ...DEFAULT_STATE };
+  await chrome.storage.local.set({ [HISTORY_KEY]: [], [STATE_KEY]: next });
+  await broadcastState(next);
+  return next;
+}
+
+async function broadcastProgress() {
+  try { await chrome.runtime.sendMessage({ type: 'PROGRESS_UPDATE' }); }
+  catch (_e) { /* no open popup or dashboard */ }
+}
 
 async function applyDelta(delta) {
   const state = await getState();
@@ -518,9 +531,9 @@ async function requestAnotherPrompt() {
  *     sessions: [ ... recent for this range ... ]
  *   }
  */
-async function getStats(range) {
-  const history = await getHistory();
-  const settings = await getSettings();
+async function getStats(range, history = null, settings = null) {
+  history = history || await getHistory();
+  settings = settings || await getSettings();
   const tz = settings.profile.timezone;
   const now = Date.now();
 
@@ -631,8 +644,14 @@ function buildPopupPayload(state, settings) {
 
 // ---------- message router ----------
 
+// Word edits and lifecycle changes must commit in arrival order, otherwise a
+// slower edit/stop can overwrite a deletion or bring cleared history back.
+const SESSION_MUTATIONS = new Set(['START_SESSION', 'STOP_SESSION', 'DELTA', 'CLEAR_HISTORY', 'IMPORT_HISTORY']);
+const PROGRESS_READS = new Set(['GET_PROGRESS', 'GET_STATE', 'GET_HISTORY', 'GET_STREAK', 'GET_STATS']);
+let sessionChanges = Promise.resolve();
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  (async () => {
+  const handle = async () => {
     try {
       switch (msg?.type) {
         case 'GET_STATE': {
@@ -665,6 +684,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'STOP_SESSION': {
           const state = await stopSession();
+          await broadcastProgress();
           let settings = await getSettings();
           let memory = null;
           const account = await getAccount();
@@ -872,6 +892,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, streak });
           return;
         }
+        case 'GET_PROGRESS': {
+          const [state, settings, history] = await Promise.all([getState(), getSettings(), getHistory()]);
+          const range = msg.range || 'today';
+          const visible = self.WCHistory.visibleHistory(history, settings.plan, Date.now());
+          sendResponse({ ok: true, payload: buildPopupPayload(state, settings),
+            today: await getStats('today', history, settings),
+            stats: await getStats(range, history, settings),
+            streak: self.WCHistory.computeStreak(history, settings.profile.timezone, Date.now()),
+            history: visible, plan: settings.plan, hasMore: visible.length < history.length });
+          return;
+        }
         case 'EXPORT_HISTORY': {
           const [full, settings] = await Promise.all([getHistory(), getSettings()]);
           if ((settings.plan || 'free') !== 'pro') { sendResponse({ ok: false, error: 'pro_only' }); return; }
@@ -888,12 +919,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             ? records.slice().sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))
             : self.WCHistory.mergeHistory(existing, records);
           const capped = next.slice(0, HISTORY_MAX);
-          await chrome.storage.local.set({ [HISTORY_KEY]: capped });
+          const state = await getState();
+          const nextState = mode === 'replace' ? (state.active ? { ...state, lastResult: null } : { ...DEFAULT_STATE }) : state;
+          await chrome.storage.local.set({ [HISTORY_KEY]: capped, [STATE_KEY]: nextState });
+          await broadcastProgress();
           sendResponse({ ok: true, history: capped, count: capped.length });
           return;
         }
         case 'CLEAR_HISTORY': {
           await clearHistory();
+          await broadcastProgress();
           sendResponse({ ok: true, history: [] });
           return;
         }
@@ -965,7 +1000,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     } catch (err) {
       sendResponse({ ok: false, error: String(err?.message || err) });
     }
-  })();
+  };
+  if (SESSION_MUTATIONS.has(msg?.type) || PROGRESS_READS.has(msg?.type)) sessionChanges = sessionChanges.then(handle, handle);
+  else handle();
   return true;
 });
 

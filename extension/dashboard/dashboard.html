@@ -14,6 +14,7 @@
         <span class="wd-brand-name" data-i18n="brand.name">Word Count</span>
       </div>
       <div class="wd-header-meta">
+        <button type="button" id="refresh-progress" class="wd-btn" data-i18n="dashboard.refresh">Refresh progress</button>
         <span id="plan-badge" class="wd-badge" data-testid="plan-badge">FREE</span>
       </div>
     </header>
@@ -29,6 +30,7 @@
 
     <main class="wd-main" id="main" data-testid="dashboard-main">
       <h1 class="wd-title" data-i18n="dash.title">Your writing</h1>
+      <p id="refresh-status" role="status" aria-live="polite"></p>
 
       <nav class="wd-tabs" role="tablist" aria-label="Range">
         <button class="wd-tab" data-range="today"  data-testid="tab-today"  data-i18n="dash.tabs.today">Today</button>

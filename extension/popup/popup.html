@@ -163,8 +163,10 @@
         </div>
       </section>
 
+      <p id="progress-refresh-status" class="wc__footnote" role="status" aria-live="polite"></p>
       <!-- ================= MAIN SESSION VIEW ================= -->
       <section class="wc__panel wc__session" id="session-panel" data-testid="session-panel">
+        <div class="wc__progress-tools"><button type="button" class="wc__link-btn" data-refresh-progress data-i18n="dashboard.refresh">Refresh progress</button></div>
         <div class="wc__daily-hero">
           <div><p class="wc__hero-label" data-i18n="dashboard.wordsToday">Words today</p><p id="daily-word-count" class="wc__hero-number">0</p><p id="daily-word-target" class="wc__hero-target"></p></div>
           <div class="wc__goal-visual"><div class="wc__goal-ring" id="daily-goal-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="daily-goal-percent">0%</span></div><p data-i18n="dashboard.dailyGoal">Daily goal</p></div>
@@ -428,7 +430,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           <span data-i18n="nav.back">Back</span>
         </button>
-        <h2 class="wc__eyebrow" data-i18n="progress.title">Your writing progress</h2>
+        <div class="wc__progress-tools"><h2 class="wc__eyebrow" data-i18n="progress.title">Your writing progress</h2><button type="button" class="wc__link-btn" data-refresh-progress data-i18n="dashboard.refresh">Refresh progress</button></div>
 
         <div class="wc__streak" id="progress-streak" data-testid="progress-streak" hidden>
           <svg class="wc__streak-flame" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3-1 5-2 6-1.5 1.5-3 3-3 6a5 5 0 0 0 10 0c0-2-1-3-1-4 2 1 3 3 3 5a7 7 0 1 1-14 0c0-4 3-6 4-8 1-1.5 2-3 3-5z"/></svg>

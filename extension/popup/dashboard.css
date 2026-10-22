@@ -30,6 +30,9 @@ body { background: var(--surface); }
 .wc__page-heading h1, .wc__library h2 { margin: 3px 0 0; font-size: 24px; letter-spacing: -.035em; }
 .wc__page-heading .wc__eyebrow { font-size: 10px; margin: 0; }
 .wc__page-sparkle { font-size: 40px; color: var(--primary); }
+.wc__progress-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.wc__progress-tools:has(> :only-child) { justify-content: flex-end; }
+#progress-refresh-status:empty { display: none; }
 .wc__daily-hero { display: grid; grid-template-columns: minmax(0,1fr) 142px; gap: 18px; align-items: center; padding: 6px 4px; }
 .wc__hero-label { margin: 0 0 8px; font-size: 16px; color: var(--text); }
 .wc__hero-number { margin: 0; font-weight: 780; font-size: 66px; line-height: 1.05; letter-spacing: -.065em; font-variant-numeric: tabular-nums; }

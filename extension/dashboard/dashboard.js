@@ -30,6 +30,7 @@ const els = {
 
 let currentRange = 'today';
 let settings = null;
+let loadRequest = 0;
 
 function sendMessage(msg) {
   return new Promise((resolve) => {
@@ -124,10 +125,11 @@ function renderRecent(sessions) {
 }
 
 async function load(range) {
+  const request = ++loadRequest;
   currentRange = range;
   markActiveTab();
   const r = await sendMessage({ type: 'GET_STATS', range });
-  if (!r.ok) return;
+  if (!r.ok || request !== loadRequest) return false;
   const s = r.stats;
 
   // Hero
@@ -154,6 +156,12 @@ async function load(range) {
 
   renderChart(s.buckets, range);
   renderRecent(s.sessions);
+  const sr = await sendMessage({ type: 'GET_STREAK' });
+  if (request !== loadRequest) return false;
+  const streak = sr.ok ? (sr.streak || 0) : 0;
+  els.heroStreak.textContent = settings?.plan === 'pro' && streak > 0
+    ? `🔥 ${t(streak === 1 ? 'streak.day' : 'streak.days', { n: fmt(streak) })}` : '';
+  return true;
 }
 
 function wireTabs() {
@@ -193,6 +201,28 @@ async function boot() {
   });
 
   await load(currentRange);
+  let refreshTimer;
+  const scheduleRefresh = () => {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => load(currentRange), 60);
+  };
+  document.getElementById('refresh-progress').addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      document.getElementById('refresh-status').textContent = t(await load(currentRange) ? 'dashboard.refreshed' : 'dashboard.refreshFailed');
+    } finally { button.disabled = false; }
+  });
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.wc_history) scheduleRefresh();
+    });
+    chrome.runtime.onMessage.addListener(message => {
+      if (message?.type === 'PROGRESS_UPDATE') scheduleRefresh();
+    });
+  } catch (_e) { /* preview */ }
+  window.addEventListener('focus', scheduleRefresh);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
 }
 
 document.addEventListener('DOMContentLoaded', boot);

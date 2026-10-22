@@ -332,9 +332,44 @@ function renderWriteDashboard() {
 }
 
 async function refreshWriteDashboard() {
-  const response = await sendMessage({ type: 'GET_STATS', range: 'today' });
-  if (response.ok) completedWordsToday = response.stats.totalWords || 0;
-  renderWriteDashboard();
+  return refreshProgress();
+}
+
+let progressRequest = 0;
+let progressRefreshTimer = 0;
+async function refreshProgress(manual = false) {
+  if (!state || !settings) return;
+  clearTimeout(progressRefreshTimer);
+  const request = ++progressRequest;
+  const buttons = document.querySelectorAll('[data-refresh-progress]');
+  if (manual) buttons.forEach(button => { button.disabled = true; });
+  try {
+    const response = await sendMessage({ type: 'GET_PROGRESS', range: progRange });
+    if (request !== progressRequest) return;
+    if (!response.ok) {
+      if (manual) $('progress-refresh-status').textContent = t('dashboard.refreshFailed');
+      return;
+    }
+    state = response.payload;
+    completedWordsToday = response.today.totalWords || 0;
+    streakValue = response.streak || 0;
+    renderSession();
+    renderProgressStats(response.stats, progRange);
+    els.progStreak.hidden = streakValue === 0;
+    els.progStreakText.textContent = streakValue > 0
+      ? t(streakValue === 1 ? 'streak.day' : 'streak.days', { n: fmtNumber(streakValue) }) : '';
+    historyPlan = response.plan;
+    historyHasMore = response.hasMore;
+    if (currentPanel === 'history') renderHistory(response.history);
+    $('progress-refresh-status').textContent = manual ? t('dashboard.refreshed') : '';
+  } finally {
+    if (manual) buttons.forEach(button => { button.disabled = false; });
+  }
+}
+
+function scheduleProgressRefresh() {
+  clearTimeout(progressRefreshTimer);
+  progressRefreshTimer = setTimeout(() => refreshProgress(), 60);
 }
 
 async function openIdeas(mode = null) {
@@ -569,9 +604,10 @@ function renderProgChart(buckets, range) {
 async function loadProgress(range) {
   progRange = range;
   markProgTab();
-  const r = await sendMessage({ type: 'GET_STATS', range });
-  if (!r.ok) return;
-  const s = r.stats;
+  await refreshProgress();
+}
+
+function renderProgressStats(s, range) {
   els.progPrimary.textContent = fmtNumber(s.totalWords);
   els.progPrimarySub.textContent = t(`dash.primarySub.${range}`);
   els.progSessions.textContent = fmtNumber(s.sessionCount);
@@ -1387,7 +1423,7 @@ function clearHistoryAction() {
   showConfirm(t('clear.title'), t('clear.body'), t('clear.ok'), async () => {
     const r = await sendMessage({ type: 'CLEAR_HISTORY' });
     closeDialogs();
-    if (r.ok) { historyHasMore = false; renderHistory(r.history || []); refreshStreak(); }
+    if (r.ok) { historyHasMore = false; renderHistory(r.history || []); await refreshProgress(); }
   });
 }
 
@@ -2173,6 +2209,9 @@ async function onFirstLangChoice(lang) {
 // ---------- wire ----------
 
 function wire() {
+  document.querySelectorAll('[data-refresh-progress]').forEach(button => {
+    button.addEventListener('click', () => refreshProgress(true));
+  });
   document.querySelectorAll('[data-page]').forEach(button => {
     button.addEventListener('click', async () => {
       const page = button.dataset.page;
@@ -2326,9 +2365,16 @@ function wire() {
       if (msg?.type === 'STATE_UPDATE' && msg.payload) {
         state = msg.payload;
         if (els.session.hidden === false) renderSession();
+        scheduleProgressRefresh();
       }
+      if (msg?.type === 'PROGRESS_UPDATE') scheduleProgressRefresh();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && ['wc_state', 'wc_history', 'wc_settings'].some(key => key in changes)) scheduleProgressRefresh();
     });
   } catch (_e) { /* preview */ }
+  window.addEventListener('focus', scheduleProgressRefresh);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleProgressRefresh(); });
 }
 
 async function boot() {
