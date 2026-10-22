@@ -221,6 +221,9 @@ async def change_plan(user, target_plan):
                 trial_settings={'end_behavior': {'missing_payment_method': 'cancel'}})
         session = await call(c.v1.checkout.sessions.create, {
             'mode': 'subscription', 'customer': customer_id, 'client_reference_id': user.id,
+            # This integration uses standard Checkout subscriptions. Do not
+            # inherit an account-wide Managed Payments default or its tax-code requirements.
+            'managed_payments': {'enabled': False},
             'line_items': [{'price': os.environ['STRIPE_PRO_PRICE_ID'], 'quantity': 1}],
             'payment_method_collection': 'always', 'subscription_data': subscription_data,
             'success_url': app_url() + '/account?billing=success',

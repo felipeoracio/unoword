@@ -1,7 +1,11 @@
 # Stripe billing for Uno Word
 
 Uno Word Pro is **$20 USD per month after a 7-day free trial**, once per account.
-Checkout collects a payment method before the trial starts. Users cancel in the
+Checkout collects a payment method before the trial starts. Each session explicitly
+sets `managed_payments.enabled=false` and uses standard Stripe Checkout subscriptions,
+so an account-wide Managed Payments default does not add product tax-code requirements
+to this integration. This does not change the Stripe account-wide setting. Standard
+Checkout does not itself configure tax collection or Stripe Tax for the merchant. Users cancel in the
 Stripe billing portal; cancellation takes effect at the end of the trial or paid
 period. Free tracking, Quick Prompt and the editable Writing Profile stay free.
 Existing independently granted Pro access is preserved and is not automatically
@@ -141,7 +145,7 @@ provider messages/bodies, customer data or hosted session URLs.
 | `billing_key_invalid` | Replace the invalid/revoked sandbox secret key in secure Vercel settings, then redeploy. |
 | `billing_permission_denied` | The configured key lacks permission for the requested Stripe operation. Use an appropriately permitted sandbox key. |
 | `billing_portal_not_configured` | Activate the default sandbox portal with payment-method updates and cancellation at period end, without subscription updates. |
-| `billing_checkout_configuration_invalid` | Inspect the matching request in Stripe Workbench API logs for Checkout configuration requirements. |
+| `billing_checkout_configuration_invalid` | Inspect the matching request in Stripe Workbench API logs for Checkout configuration requirements. Uno Word explicitly disables Managed Payments per session; a Managed Payments tax-code error indicates the deployment predates that fix. |
 | `billing_provider_unavailable` | A transient/network error or another provider error occurred; inspect the bounded `stripe_request_failed` log entry and its operation/request ID. |
 
 ## Read-only readiness check

@@ -91,6 +91,7 @@ def test_new_checkout_is_bound_to_owner_with_one_trial_and_no_client_entitlement
     params=f.provider.v1.checkout.sessions.create.call_args.args[0]
     assert params['mode']=='subscription' and params['customer']=='cus_a' and params['client_reference_id']==USER
     assert params['line_items']==[{'price':'price_pro','quantity':1}]
+    assert params['managed_payments']=={'enabled':False}, 'Standard Checkout must not inherit Managed Payments defaults'
     assert params['subscription_data']['trial_period_days']==7 and params['payment_method_collection']=='always'
     assert params['success_url']=='https://unoword.vercel.app/account?billing=success'
     assert f.entitlement=={}
