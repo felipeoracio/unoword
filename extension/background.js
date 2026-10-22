@@ -27,6 +27,7 @@ const SETTINGS_KEY = 'wc_settings';
 const HISTORY_KEY  = 'wc_history';
 const PROMPT_KEY   = 'wc_prompt';
 const ACCOUNT_KEY  = 'wc_account';
+const EDITOR_CLEAR_KEY = 'wc_editor_history_cleared_at';
 
 const HISTORY_MAX        = 500;   // rich enough to power yearly aggregates
 const PROMPT_HISTORY_MAX = 12;    // avoid immediate repetition
@@ -114,7 +115,11 @@ async function getSettings(){
   delete merged.onboarded;
   return merged;
 }
-async function getHistory() { const { [HISTORY_KEY]: h }  = await chrome.storage.local.get(HISTORY_KEY);  return Array.isArray(h) ? h : []; }
+async function getHistory() {
+  const { [HISTORY_KEY]: h } = await chrome.storage.local.get(HISTORY_KEY);
+  const account = await getAccount();
+  return (Array.isArray(h) ? h : []).filter(row => row.source !== 'editor' || row.ownerId === account.userId);
+}
 async function getPrompt()  { const { [PROMPT_KEY]: p }   = await chrome.storage.local.get(PROMPT_KEY);   return { ...DEFAULT_PROMPT, ...(p || {}) }; }
 async function getAccount() { const { [ACCOUNT_KEY]: a } = await chrome.storage.local.get(ACCOUNT_KEY); return { ...DEFAULT_ACCOUNT, ...(a || {}) }; }
 
@@ -445,7 +450,7 @@ async function clearHistory() {
   // The completed-session card is part of the deleted history. Keep an
   // in-progress session, but never leave its previous result behind.
   const next = state.active ? { ...state, lastResult: null } : { ...DEFAULT_STATE };
-  await chrome.storage.local.set({ [HISTORY_KEY]: [], [STATE_KEY]: next });
+  await chrome.storage.local.set({ [HISTORY_KEY]: [], [STATE_KEY]: next, [EDITOR_CLEAR_KEY]: Date.now() });
   await broadcastState(next);
   return next;
 }
@@ -453,6 +458,36 @@ async function clearHistory() {
 async function broadcastProgress() {
   try { await chrome.runtime.sendMessage({ type: 'PROGRESS_UPDATE' }); }
   catch (_e) { /* no open popup or dashboard */ }
+}
+
+let editorSync = null;
+async function syncEditorActivity() {
+  if (editorSync) return editorSync;
+  editorSync = (async () => {
+    const account = await getAccount();
+    if (!account.authenticated || !account.userId) return { ok: false };
+    const owner = account.userId;
+    try {
+      const rows = await self.WCApi.get('/workspace/activity');
+      if ((await getAccount()).userId !== owner) return { ok: false };
+      const history = await getHistory();
+      const stored = await chrome.storage.local.get(EDITOR_CLEAR_KEY);
+      const clearedAt = Number(stored[EDITOR_CLEAR_KEY] || 0);
+      const imported = rows.filter(row => row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
+        id: `editor:${row.id}`, source: 'editor', ownerId: owner, cloudActivityId: row.id,
+        startedAt: Date.parse(row.started_at), endedAt: Date.parse(row.started_at) + row.duration_seconds * 1000,
+        typedWords: row.typed_words, pastedWords: row.pasted_words, sessionGoal: 0,
+      }));
+      const next = [...history.filter(row => row.source !== 'editor'), ...imported]
+        .sort((a,b) => b.startedAt-a.startedAt).slice(0,HISTORY_MAX);
+      if (JSON.stringify(next) !== JSON.stringify(history)) {
+        await chrome.storage.local.set({ [HISTORY_KEY]: next });
+        await broadcastProgress();
+      }
+      return { ok: true };
+    } catch (_error) { return { ok: false }; } // offline / migration pending: keep local history
+  })();
+  try { return await editorSync; } finally { editorSync = null; }
 }
 
 async function applyDelta(delta) {
@@ -646,8 +681,8 @@ function buildPopupPayload(state, settings) {
 
 // Word edits and lifecycle changes must commit in arrival order, otherwise a
 // slower edit/stop can overwrite a deletion or bring cleared history back.
-const SESSION_MUTATIONS = new Set(['START_SESSION', 'STOP_SESSION', 'DELTA', 'CLEAR_HISTORY', 'IMPORT_HISTORY']);
-const PROGRESS_READS = new Set(['GET_PROGRESS', 'GET_STATE', 'GET_HISTORY', 'GET_STREAK', 'GET_STATS']);
+const SESSION_MUTATIONS = new Set(['START_SESSION', 'STOP_SESSION', 'DELTA', 'CLEAR_HISTORY', 'IMPORT_HISTORY', 'SYNC_EDITOR_ACTIVITY']);
+const PROGRESS_READS = new Set(['GET_PROGRESS', 'GET_STATE', 'GET_HISTORY', 'GET_STREAK', 'GET_STATS', 'GET_LOCAL_WRITING_PROGRESS']);
 let sessionChanges = Promise.resolve();
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -662,6 +697,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'GET_ALL': {
           const account = await refreshAccount();
+          const syncing = sessionChanges.then(syncEditorActivity);
+          sessionChanges = syncing.then(() => {});
+          await syncing;
           const [state, settings, history, prompt] = await Promise.all([
             getState(), getSettings(), getHistory(), getPrompt(),
           ]);
@@ -701,6 +739,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         case 'DELTA': {
+          try {
+            const source = new URL(sender.url || '');
+            if (source.origin === 'https://unoword.vercel.app' && source.pathname === '/editor') { sendResponse({ ok: true }); return; }
+          } catch (_error) { /* ordinary extension / fixture sender */ }
           await applyDelta(msg.delta || {});
           sendResponse({ ok: true });
           return;
@@ -988,6 +1030,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const stats = await getStats(msg.range || 'today');
           sendResponse({ ok: true, stats });
           return;
+        }
+        case 'SYNC_EDITOR_ACTIVITY': {
+          sendResponse(await syncEditorActivity()); return;
+        }
+        case 'GET_LOCAL_WRITING_PROGRESS': {
+          const account=await getAccount();
+          if (!account.authenticated) { sendResponse({ok:false});return; }
+          const history=await getHistory();
+          sendResponse({ok:true,ownerId:account.userId,sessions:history.filter(row => row.source!=='editor').map(row => ({
+            id:String(row.id || row.startedAt),startedAt:row.startedAt,typedWords:row.typedWords || 0,
+          }))});return;
+        }
+        case 'OPEN_WRITING_EDITOR': {
+          const settings = await getSettings();
+          const url = new URL('https://unoword.vercel.app/editor');
+          if (settings.wordGoal) url.searchParams.set('goal', String(settings.wordGoal));
+          if (settings.profile.timezone) url.searchParams.set('timezone', settings.profile.timezone);
+          await chrome.tabs.create({ url: url.href });
+          sendResponse({ ok: true }); return;
         }
         case 'OPEN_DASHBOARD': {
           // Deprecated: Progress now renders inside the popup. Never open a tab.

@@ -21,6 +21,29 @@
   if (window.__wcContentScriptLoaded) return;
   window.__wcContentScriptLoaded = true;
 
+  // The full-page editor records its own metadata-only activity. Never send
+  // ordinary DELTA messages for its canvas (or show a second live counter).
+  if (location.origin === 'https://unoword.vercel.app' && location.pathname === '/editor') {
+    function localProgress() {
+      try {
+        chrome.runtime.sendMessage({ type: 'GET_LOCAL_WRITING_PROGRESS' }, response => {
+          if (!chrome.runtime.lastError && response?.ok) window.postMessage({ type: 'UNO_WORD_LOCAL_PROGRESS', ...response }, location.origin);
+        });
+      } catch (_error) { /* extension reloaded */ }
+    }
+    window.addEventListener('message', event => {
+      if (event.source !== window || event.origin !== location.origin) return;
+      if (event.data?.type === 'UNO_WORD_REQUEST_LOCAL_PROGRESS') { localProgress(); return; }
+      if (event.data?.type !== 'UNO_WORD_ACTIVITY_SAVED') return;
+      // Read the verified server records; never trust counts supplied by a page.
+      try { chrome.runtime.sendMessage({ type: 'SYNC_EDITOR_ACTIVITY' }, () => { void chrome.runtime.lastError; }); }
+      catch (_error) { /* extension reloaded */ }
+    });
+    try { chrome.storage.onChanged.addListener((changes,area) => { if (area==='local' && (changes.wc_history || changes.wc_account)) localProgress(); }); }
+    catch (_error) { /* preview */ }
+    return;
+  }
+
   // =====================================================================
   // Shared state (cached from chrome.storage; kept fresh via onChanged)
   // =====================================================================

@@ -15,6 +15,8 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     const pages = new Set();
     const errors = [];
     let pro = true;
+    let cloudActivity=[];
+    const opened=[];
     const now = Date.now();
     const result = { startedAt: now - 71000, endedAt: now, typedWords: 10, pastedWords: 0, sessionGoal: 250 };
     const storage = {
@@ -44,20 +46,20 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     const chrome = { storage: { local }, runtime: {
       onInstalled: { addListener() {} }, onMessage: { addListener: fn => listener = fn },
       sendMessage: async message => notify('backgroundListeners', [message]),
-    }, tabs: { query: async () => [], sendMessage() {} } };
+    }, tabs: { query: async () => [], sendMessage() {}, create: async item => opened.push(item) } };
     const worker = vm.createContext({ chrome, crypto: webcrypto, Date, Intl, URL, AbortController, FormData, TextEncoder, TextDecoder, console, setTimeout, clearTimeout,
       fetch: async url => {
         const route = new URL(url).pathname;
         const body = route === '/api/auth/me'
           ? { id: storage.wc_account.userId, email: 'fixture@example.com', plan: pro ? 'pro' : 'free', ai_access: pro }
-          : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
+          : route === '/api/workspace/activity' ? cloudActivity : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
         return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
       },
     });
     worker.self = worker;
     worker.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), worker, { filename: file }));
     vm.runInContext(fs.readFileSync(path.join(root, 'background.js'), 'utf8'), worker);
-    const message = msg => new Promise(resolve => listener(msg, {}, resolve));
+    const message = (msg,sender={}) => new Promise(resolve => listener(msg, sender, resolve));
     await context.exposeFunction('backgroundMessage', message);
     await context.exposeFunction('storageGet', local.get);
     await context.addInitScript(() => {
@@ -170,6 +172,22 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await page.locator('#session-panel [data-refresh-progress]').click();
     assert.equal(await page.locator('#daily-word-count').textContent(), '0');
     assert.equal(storage.wc_history.length, 0);
+    // Full-page editor owns its typing; the extension must never count it twice.
+    await message({type:'OPEN_WRITING_EDITOR'});
+    assert.equal(new URL(opened[0].url).pathname,'/editor');
+    await message({type:'START_SESSION'});
+    await message({type:'DELTA',delta:{kind:'typed',words:100}},{url:'https://unoword.vercel.app/editor'});
+    assert.equal((await message({type:'GET_STATE'})).payload.typedWords,0);
+    await message({type:'DELTA',delta:{kind:'typed',words:2}},{url:'https://example.com/draft'});
+    await message({type:'STOP_SESSION'});
+    cloudActivity=[{id:'editor-cloud-session',user_id:storage.wc_account.userId,started_at:new Date().toISOString(),typed_words:8,pasted_words:100,duration_seconds:40}];
+    await message({type:'SYNC_EDITOR_ACTIVITY'});await message({type:'SYNC_EDITOR_ACTIVITY'});
+    assert.equal((await message({type:'GET_STATS',range:'today'})).stats.totalWords,10,'Cloud activity appears once, excluding paste');
+    assert.equal((await message({type:'GET_LOCAL_WRITING_PROGRESS'})).sessions.length,1,'Bridge excludes imported editor rows');
+    cloudActivity[0].typed_words=0;await message({type:'SYNC_EDITOR_ACTIVITY'});
+    assert.equal((await message({type:'GET_STATS',range:'today'})).stats.totalWords,2,'New editor snapshots can reduce progress');
+    await message({type:'CLEAR_HISTORY'});await message({type:'SYNC_EDITOR_ACTIVITY'});
+    assert.equal((await message({type:'GET_STATS',range:'today'})).stats.totalWords,0,'Clear is not undone by resync');
     assert.deepEqual(errors, []);
     console.log('PASS: clear/reopen; real editor deletion; ordered edits; active-session preservation; stop without duplication; popup and dashboard sync; imports; manual refresh; Free/Pro; EN/ES at 320/420px.');
   } finally { await browser.close(); }

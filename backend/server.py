@@ -20,6 +20,7 @@ from routers.links import router as links_router
 from routers.admin import router as admin_router
 from routers.subscriptions import router as subscription_router
 from routers.account_security import router as account_security_router
+from routers.workspace import router as workspace_router
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -35,6 +36,7 @@ api_router.include_router(auth_router)
 api_router.include_router(admin_router)
 api_router.include_router(subscription_router)
 api_router.include_router(account_security_router)
+api_router.include_router(workspace_router)
 
 
 @api_router.get("/")
@@ -61,7 +63,7 @@ logger = logging.getLogger(__name__)
 # Never reflect credential values from malformed request bodies into responses.
 @app.exception_handler(RequestValidationError)
 async def safe_validation_error(request, error):
-    if not request.url.path.startswith(('/api/auth/', '/api/subscription/')):
+    if not request.url.path.startswith(('/api/auth/', '/api/subscription/', '/api/workspace/')):
         return await request_validation_exception_handler(request, error)
     return JSONResponse(status_code=422, content={"detail": [
         {"loc": list(item["loc"]), "type": item["type"], "msg": "Invalid value"}

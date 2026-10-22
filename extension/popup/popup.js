@@ -344,6 +344,7 @@ async function refreshProgress(manual = false) {
   const buttons = document.querySelectorAll('[data-refresh-progress]');
   if (manual) buttons.forEach(button => { button.disabled = true; });
   try {
+    if (manual && account.authenticated) await sendMessage({ type: 'SYNC_EDITOR_ACTIVITY' });
     const response = await sendMessage({ type: 'GET_PROGRESS', range: progRange });
     if (request !== progressRequest) return;
     if (!response.ok) {
@@ -2209,6 +2210,7 @@ async function onFirstLangChoice(lang) {
 // ---------- wire ----------
 
 function wire() {
+  $('open-writing-editor').addEventListener('click', () => sendMessage({ type: 'OPEN_WRITING_EDITOR' }));
   document.querySelectorAll('[data-refresh-progress]').forEach(button => {
     button.addEventListener('click', () => refreshProgress(true));
   });

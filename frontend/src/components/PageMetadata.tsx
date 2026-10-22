@@ -5,6 +5,7 @@ const titles: Record<string, string> = {
   "/": "Uno Word — AI Writing Companion & Word Counter",
   "/account": "Your account — Uno Word",
   "/account/security": "Account & Security — Uno Word",
+  "/editor": "Your writing space — Uno Word",
   "/privacy": "Privacy & data — Uno Word",
   "/terms": "Terms of service — Uno Word",
   "/support": "Support — Uno Word",
@@ -27,6 +28,7 @@ export default function PageMetadata() {
       robots.content =
         robots.dataset.deploymentPolicy?.startsWith("noindex") ||
         pathname.startsWith("/account") ||
+        pathname === "/editor" ||
         pathname.startsWith("/admin") ||
         pathname === "/terms" ||
         !titles[pathname]

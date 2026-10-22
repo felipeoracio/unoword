@@ -456,7 +456,7 @@ async def create_suggestion(
                     "select": "id",
                     "user_id": f"eq.{user.id}",
                     "date": f"eq.{date_key}",
-                    "request_type": "eq.suggestion",
+                    "request_type": "in.(suggestion,workspace_assistant)",
                 },
             )
         except SupabaseAPIError as error:
@@ -782,7 +782,7 @@ async def usage_summary(
     rows = rows or []
     # Only real (non-fallback) suggestions count against the daily limit, matching
     # the enforcement in create_suggestion.
-    used_today = sum(1 for row in rows if row.get("request_type") == "suggestion")
+    used_today = sum(1 for row in rows if row.get("request_type") in {"suggestion", "workspace_assistant"})
     daily_limit = _resolve_daily_limit(entitlement)
     remaining = max(0, daily_limit - used_today) if daily_limit else None
     return AIUsageSummary(

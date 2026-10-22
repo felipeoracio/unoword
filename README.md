@@ -1,5 +1,11 @@
 # farm-ts
 
+Uno Word's writing editor is available at `/editor`. See the
+[writing workspace setup and verification guide](docs/writing-workspace.md),
+including the required additive Supabase migration. The original starter notes
+below describe the repository scaffold; current account, AI and workspace data
+use Supabase.
+
 Minimal split backend/frontend starter: **FastAPI + MongoDB** behind a
 **Vite + React 19 + TypeScript** frontend, joined by a small typed fetch layer
 over `/api`. This is a bare skeleton — no app features are implemented. Build on

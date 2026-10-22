@@ -45,6 +45,23 @@ export default function Information({
               User-scoped API requests and database row-level security limit
               access to account data.
             </p>
+            <h2>Your writing workspace</h2>
+            <p>
+              The web editor saves documents to your authenticated account and
+              keeps account-specific offline copies in this browser’s IndexedDB.
+              The static editor shell may be cached to let you reopen it
+              offline; authentication and private API responses are not stored
+              in that cache. Offline copies remain on this device until browser
+              site data is cleared. Use a trusted browser profile for private
+              writing. Trashed writing documents remain recoverable in Trash.
+            </p>
+            <p>
+              Editor writing statistics synchronize as counts and timings,
+              separate from document text. The Chrome extension reuses those
+              records without counting editor typing twice. Sharing the current
+              draft with AI requires a request-specific choice; using a document
+              for future AI personalization is a separate opt-in setting.
+            </p>
             <h2>AI personalization</h2>
             <p>
               When you request Pro AI suggestions, the app builds bounded
@@ -93,12 +110,12 @@ export default function Information({
             </p>
             <h2>Current availability</h2>
             <p>
-              Uno Word has Free features and account-controlled Pro capabilities.
-              Pro costs $20 USD monthly after a 7-day free trial for eligible
-              accounts. A payment method is required; cancel before your trial
-              ends to avoid a charge. Checkout remains unavailable until
-              configured. Creating a Free account or downloading the extension
-              does not purchase a subscription.
+              Uno Word has Free features and account-controlled Pro
+              capabilities. Pro costs $20 USD monthly after a 7-day free trial
+              for eligible accounts. A payment method is required; cancel before
+              your trial ends to avoid a charge. Checkout remains unavailable
+              until configured. Creating a Free account or downloading the
+              extension does not purchase a subscription.
             </p>
             <h2>Developer release</h2>
             <p>
@@ -147,8 +164,8 @@ export default function Information({
                 <strong>unoword</strong> folder.
               </li>
               <li>
-                Pin the extension. Open Uno Word, choose your language, and start
-                a writing session.
+                Pin the extension. Open Uno Word, choose your language, and
+                start a writing session.
               </li>
               <li>
                 Use Settings → Account &amp; Security to sign in. Pro

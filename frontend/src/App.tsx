@@ -4,6 +4,7 @@ import Home from "@/pages/Home";
 import PageMetadata from "@/components/PageMetadata";
 
 const Account = lazy(() => import("@/pages/Account"));
+const WritingEditor = lazy(() => import("@/pages/WritingEditor"));
 const AccountSecurity = lazy(() => import("@/pages/AccountSecurity"));
 const Information = lazy(() => import("@/pages/Information"));
 const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
@@ -26,6 +27,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/editor" element={<WritingEditor />} />
           <Route path="/account/security" element={<AccountSecurity />} />
           <Route path="/privacy" element={<Information kind="privacy" />} />
           <Route path="/terms" element={<Information kind="terms" />} />
