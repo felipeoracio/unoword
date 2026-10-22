@@ -51,6 +51,10 @@ function messageFor(error: unknown) {
     [
       "billing_storage_unavailable",
       "billing_price_mismatch",
+      "billing_price_not_found",
+      "billing_key_invalid",
+      "billing_permission_denied",
+      "billing_checkout_configuration_invalid",
       "billing_portal_not_configured",
     ].includes(String(detail))
   )

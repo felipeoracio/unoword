@@ -385,3 +385,36 @@ def test_private_billing_status_and_hosted_session_urls_are_not_cacheable(fixtur
     for response in [f.client.get('/api/subscription'),change(f)]:
         assert response.status_code==200
         assert response.headers['cache-control']=='private, no-store'
+
+
+@pytest.mark.parametrize('kind,detail', [('missing_price','billing_price_not_found'),('invalid_key','billing_key_invalid'),('permission','billing_permission_denied')])
+def test_provider_configuration_errors_are_actionable_without_leaking_payloads(fixture,caplog,kind,detail):
+    import stripe
+    f=fixture
+    private='private-provider-payload-sk_test_do_not_log'
+    if kind=='missing_price':
+        error=stripe.InvalidRequestError(private,'price',code='resource_missing',headers={'request-id':'req_fixture'})
+    elif kind=='invalid_key':error=stripe.AuthenticationError(private)
+    else:error=stripe.PermissionError(private)
+    f.provider.v1.prices.retrieve.side_effect=error
+    response=change(f)
+    assert response.status_code==503 and response.json()['detail']==detail
+    assert private not in response.text and private not in caplog.text
+    assert 'price_lookup' in caplog.text
+    if kind=='missing_price':assert 'req_fixture' in caplog.text
+    f.provider.v1.checkout.sessions.create.assert_not_called()
+
+
+def test_product_id_is_rejected_before_stripe_price_lookup(fixture,monkeypatch):
+    f=fixture;monkeypatch.setenv('STRIPE_PRO_PRICE_ID','prod_not_a_price')
+    assert change(f).json()['detail']=='billing_price_mismatch'
+    f.provider.v1.prices.retrieve.assert_not_called()
+
+
+def test_invalid_portal_provider_request_reports_setup_issue(fixture):
+    import stripe
+    f=fixture
+    f.provider.v1.billing_portal.configurations.list.side_effect=stripe.InvalidRequestError('private configuration detail','is_default')
+    result=change(f)
+    assert result.status_code==503 and result.json()['detail']=='billing_portal_not_configured'
+    assert 'private configuration detail' not in result.text

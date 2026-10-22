@@ -1,6 +1,8 @@
 """Stripe is authoritative; redirects and client-supplied plans never grant access."""
 import asyncio
 import os
+import logging
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
@@ -14,6 +16,7 @@ from lib.supabase_client import service_rest, SupabaseAPIError
 PRO_PRICE = {'amount': 2000, 'currency': 'usd', 'interval': 'month', 'trial_days': 7}
 API_VERSION = '2026-09-30.endive'
 TERMINAL = {'canceled', 'incomplete_expired'}
+logger = logging.getLogger(__name__)
 
 
 def require_allowed_mode():
@@ -44,12 +47,31 @@ def client():
                                http_client=stripe.RequestsClient(timeout=20))
 
 
-async def call(method, *args, **kwargs):
+async def call(method, *args, operation="provider", **kwargs):
     try:
         result = await asyncio.to_thread(method, *args, **kwargs)
         return result.to_dict() if isinstance(result, stripe.StripeObject) else result
     except stripe.StripeError as error:
-        # Never send provider payloads, request bodies or credentials to clients.
+        # Log only bounded provider codes and correlation IDs, never error
+        # messages, payloads, paths, keys, customers or hosted session URLs.
+        code = getattr(error, 'code', '') or ''
+        code = code if re.fullmatch(r'[a-z_]{1,64}', str(code)) else 'unknown'
+        request_id = getattr(error, 'request_id', '') or ''
+        request_id = request_id if re.fullmatch(r'req_[A-Za-z0-9]{1,80}', str(request_id)) else 'unavailable'
+        logger.warning('stripe_request_failed operation=%s error_type=%s code=%s request_id=%s',
+                       operation, type(error).__name__, code, request_id)
+        if isinstance(error, stripe.AuthenticationError):
+            raise HTTPException(503, 'billing_key_invalid') from error
+        if isinstance(error, stripe.PermissionError):
+            raise HTTPException(503, 'billing_permission_denied') from error
+        if isinstance(error, stripe.InvalidRequestError):
+            if operation == 'price_lookup':
+                detail = 'billing_price_not_found' if code == 'resource_missing' else 'billing_price_mismatch'
+                raise HTTPException(503, detail) from error
+            if operation in {'portal_configuration', 'portal_session'}:
+                raise HTTPException(503, 'billing_portal_not_configured') from error
+            if operation == 'checkout_create':
+                raise HTTPException(503, 'billing_checkout_configuration_invalid') from error
         raise HTTPException(502, 'billing_provider_unavailable') from error
 
 
@@ -70,7 +92,10 @@ def hosted_url(url, portal=False):
 
 
 async def verified_price(c):
-    price = await call(c.v1.prices.retrieve, os.getenv('STRIPE_PRO_PRICE_ID', ''))
+    price_id = os.getenv('STRIPE_PRO_PRICE_ID', '')
+    if not price_id.startswith('price_'):
+        raise HTTPException(503, 'billing_price_mismatch')
+    price = await call(c.v1.prices.retrieve, price_id, operation='price_lookup')
     recurring = price.get('recurring') or {}
     if not (price.get('active') and price.get('type') == 'recurring'
             and price.get('unit_amount') == PRO_PRICE['amount'] and price.get('currency') == 'usd'
@@ -116,7 +141,7 @@ async def commit(state, lease, entitlement=None, event_id=None):
 
 async def portal_configuration(c):
     result = await call(c.v1.billing_portal.configurations.list,
-                        {'active': True, 'is_default': True, 'limit': 1})
+                        {'active': True, 'is_default': True, 'limit': 1}, operation='portal_configuration')
     configs = result.get('data', [])
     features = configs[0].get('features', {}) if configs else {}
     cancellation = features.get('subscription_cancel', {})
@@ -131,7 +156,7 @@ async def portal(c, customer_id):
     configuration = await portal_configuration(c)
     result = await call(c.v1.billing_portal.sessions.create,
                         {'customer': customer_id, 'configuration': configuration,
-                         'return_url': app_url() + '/account?billing=return'})
+                         'return_url': app_url() + '/account?billing=return'}, operation='portal_session')
     return {'url': hosted_url(result['url'], portal=True), 'destination': 'portal'}
 
 
@@ -150,7 +175,7 @@ async def change_plan(user, target_plan):
         if independent_pro and not customer_id and target_plan == 'pro':
             raise HTTPException(409, 'plan_managed_separately')
         if customer_id:
-            subs = await call(c.v1.subscriptions.list, {'customer': customer_id, 'status': 'all', 'limit': 100})
+            subs = await call(c.v1.subscriptions.list, {'customer': customer_id, 'status': 'all', 'limit': 100}, operation='subscriptions_list')
             # Prevent a second subscription even before the first webhook arrives.
             if target_plan == 'free' or any(s['status'] not in TERMINAL for s in subs['data']):
                 return await portal(c, customer_id)
@@ -164,7 +189,7 @@ async def change_plan(user, target_plan):
             raise HTTPException(409, 'no_paid_subscription')
         else:
             customer = await call(c.v1.customers.create, {'metadata': {'unoword_user_id': user.id}},
-                                  options={'idempotency_key': 'unoword-customer-' + user.id})
+                                  options={'idempotency_key': 'unoword-customer-' + user.id}, operation='customer_create')
             state['livemode'] = livemode
             state['customer_id'] = customer_id = customer['id']
             # Commit the ownership binding before Stripe can send a webhook.
@@ -172,7 +197,7 @@ async def change_plan(user, target_plan):
         await verified_price(c)
         await portal_configuration(c)
         if state.get('checkout_id'):
-            previous = await call(c.v1.checkout.sessions.retrieve, state['checkout_id'])
+            previous = await call(c.v1.checkout.sessions.retrieve, state['checkout_id'], operation='checkout_lookup')
             if previous['status'] == 'open':
                 return {'url': hosted_url(previous['url']), 'destination': 'checkout'}
             if previous['status'] == 'complete':
@@ -192,7 +217,7 @@ async def change_plan(user, target_plan):
             'payment_method_collection': 'always', 'subscription_data': subscription_data,
             'success_url': app_url() + '/account?billing=success',
             'cancel_url': app_url() + '/account?plan=pro&billing=canceled',
-        }, options={'idempotency_key': 'unoword-checkout-' + state['checkout_attempt']})
+        }, options={'idempotency_key': 'unoword-checkout-' + state['checkout_attempt']}, operation='checkout_create')
         state['checkout_id'] = session['id']
         await commit(state, lease)
         return {'url': hosted_url(session['url']), 'destination': 'checkout'}
@@ -233,7 +258,7 @@ async def process_event(event):
         c = client()
         # Fetch CURRENT provider state while holding the account lease. Delayed
         # and out-of-order webhook bodies cannot roll back a newer subscription.
-        sub = await call(c.v1.subscriptions.retrieve, obj['id'])
+        sub = await call(c.v1.subscriptions.retrieve, obj['id'], operation='subscription_lookup')
         if sub.get('customer') != state['customer_id'] or sub.get('metadata', {}).get('unoword_user_id') != user_id:
             raise HTTPException(400, 'billing_owner_mismatch')
         if bool(sub.get('livemode')) != bool(event.get('livemode')) or bool(state.get('livemode')) != bool(event.get('livemode')):

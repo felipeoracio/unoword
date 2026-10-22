@@ -127,6 +127,23 @@ activation and publish the owner's formal terms, privacy contact and refund
 policy. The current `/terms` route still explicitly says formal legal terms have
 not been published. No legal or refund policy was invented by this integration.
 
+## Identifying a failed Stripe setup
+
+Checkout fails closed when Stripe configuration is incomplete. The backend now
+returns stable error labels and logs only the operation, exception class,
+allowlisted Stripe error code and request correlation ID. It does not log keys,
+provider messages/bodies, customer data or hosted session URLs.
+
+| Error label | What to check |
+| --- | --- |
+| `billing_price_mismatch` | `STRIPE_PRO_PRICE_ID` must begin with `price_`, not `prod_`; it must be an active flat licensed price of 20 USD/month in the same sandbox as the key. |
+| `billing_price_not_found` | The price ID is missing from the Stripe sandbox used by the secret key. Copy that sandbox's recurring Price ID and redeploy. |
+| `billing_key_invalid` | Replace the invalid/revoked sandbox secret key in secure Vercel settings, then redeploy. |
+| `billing_permission_denied` | The configured key lacks permission for the requested Stripe operation. Use an appropriately permitted sandbox key. |
+| `billing_portal_not_configured` | Activate the default sandbox portal with payment-method updates and cancellation at period end, without subscription updates. |
+| `billing_checkout_configuration_invalid` | Inspect the matching request in Stripe Workbench API logs for Checkout configuration requirements. |
+| `billing_provider_unavailable` | A transient/network error or another provider error occurred; inspect the bounded `stripe_request_failed` log entry and its operation/request ID. |
+
 ## Read-only readiness check
 
 From the repository root with backend dependencies and secure environment values:
