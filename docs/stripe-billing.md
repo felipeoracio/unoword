@@ -41,19 +41,21 @@ Here is what happens for a subscriber:
    Stripe messages are recorded once in the same database transaction as access
    updates, so retries cannot grant access twice or erase a newer subscription.
 
-**Sandbox only for this rollout.** This environment still has no Stripe secret
-key, webhook signing secret or Pro price ID. New checkout is disabled. Live keys
-are rejected unless a separate `STRIPE_LIVE_BILLING_APPROVED=true` setting is
-explicitly authorized by you in a future step. Do not enable that setting now;
-adding live keys or setting `STRIPE_BILLING_ENABLED=true` alone cannot authorize
-live Checkout, live portal actions or live webhook entitlement changes.
+**Sandbox only for this rollout.** The deployed Vercel sandbox configuration now
+passes hosted Checkout, test-card trial activation, signed webhook delivery,
+Customer Portal access and scheduled cancellation. See the deployed verification
+below. Live keys are rejected unless a separate `STRIPE_LIVE_BILLING_APPROVED=true`
+setting is explicitly authorized by you in a future step. Do not enable that
+setting now; adding live keys or setting `STRIPE_BILLING_ENABLED=true` alone cannot
+authorize live Checkout, live portal actions or live webhook entitlement changes.
 
-Your remaining input is in steps 2–6 below: create/configure the sandbox product,
-portal and webhook in your Stripe account, put their values in secure Vercel
-settings, then redeploy. To let Codex run real sandbox API checks, also make the
-same test values available in secure cloud environment settings. Do not paste
-keys into chat. The read-only checker then verifies setup before the real
-sandbox checkout/cancellation test. No real money is charged in sandbox mode.
+The existing Vercel sandbox setup is complete; do not repeat setup for this
+verified environment. Steps 2–6 below describe configuring another environment or
+replacing settings. Direct Stripe CLI/API checks from Codex additionally require
+secure cloud environment values; its local environment does not automatically
+inherit Vercel secrets. End-to-end tests through the deployed app were completed
+without exposing those backend secrets. Do not paste keys into chat. No real
+money is charged in sandbox mode.
 
 ## Finish configuration (start in a Stripe sandbox)
 
@@ -278,3 +280,43 @@ These isolated tests do not constitute a real Stripe payment or live webhook tes
   `STRIPE_WEBHOOK_SECRET` and `STRIPE_PRO_PRICE_ID` in this environment. Actual
   sandbox Checkout, invoices and signed webhook delivery remain unverified until
   these settings are supplied and the real sandbox checklist is completed.
+
+
+## Deployed sandbox verification — 2026-10-22
+
+A disposable Free QA account was used against `https://unoword.vercel.app` and
+Stripe's actual sandbox Checkout and Customer Portal, using Stripe's public
+`4242` test card. No real charges, AI requests or changes to existing users were made.
+
+The first real request exposed an account-wide Managed Payments default that
+required a product tax code. Sessions now explicitly use
+`managed_payments.enabled=false`. Failed request keys retained by Stripe are
+recovered only after checking open owned sessions and current subscriptions;
+existing usable sessions are reused instead of creating duplicate subscriptions.
+
+Verified results:
+
+- Catalog publishes 20 USD/month with an eligible 7-day trial.
+- Signed-out requests, missing confirmation, different account IDs, untrusted
+  origins and unsigned webhook requests are rejected.
+- Checkout returns an actual `cs_test_` session and a second request reuses it.
+  The account remains Free before Checkout completes.
+- The hosted page displays Sandbox, 7 days free and 20 USD/month afterward.
+- Stripe accepts the test card and returns to the signed-in Uno Word account.
+- A signed subscription webhook creates a bounded `trialing` Pro entitlement,
+  `billing_source=stripe`, sandbox mode, and the 100-request daily limit.
+- The account displays Pro using the verified backend entitlement.
+- The Customer Portal opens and successfully schedules cancellation at trial end.
+  A second verified webhook updates the cancellation flag. The account page
+  displays scheduled cancellation and correctly retains Pro through the trial.
+- The trial's initial $0 invoice is visible in the portal. Renewal after trial
+  end and paid-invoice failure were not exercised against the actual sandbox;
+  lifecycle/status handling remains covered by automated backend tests.
+- 115 billing/product/account-security tests and the frontend production build
+  passed during this troubleshooting pass. No provider error payloads or secret
+  values are exposed in client errors or application diagnostic logs.
+
+Cancellation was confirmed before deleting the temporary Supabase QA account and
+its app billing records. Stripe's sandbox customer/subscription records remain
+available for audit, with cancellation scheduled and a test payment method only.
+No live-billing approval was enabled.
