@@ -52,7 +52,10 @@ const catalog = {
       billingEnabled = false,
       managed = false,
       trialEligible = true,
-      storeUrl = null;
+      storeUrl = null,
+      cancelAtPeriodEnd = false,
+      subscriptionStatus = null,
+      periodEnd = null;
     const user = {
       id: "isolated-fixture-user",
       email: "writer@example.com",
@@ -117,9 +120,10 @@ const catalog = {
             user_id: user.id,
             managed_by_stripe: managed,
             trial_eligible: trialEligible,
-            status: user.ai_access ? "trialing" : "inactive",
-            period_end: null,
-            cancel_at_period_end: false,
+            status:
+              subscriptionStatus || (user.ai_access ? "trialing" : "inactive"),
+            period_end: periodEnd,
+            cancel_at_period_end: cancelAtPeriodEnd,
           };
         } else if (route === "/subscription/change") {
           if (billingEnabled || body.target_plan === "free") {
@@ -534,9 +538,44 @@ const catalog = {
         .target_plan,
       "free",
     );
-    authenticated = false;
+    // Returning from the portal must refresh even when Pro is still active.
+    periodEnd = new Date(Date.now() + 86400000).toISOString();
+    await load("/account?billing=return");
+    await page
+      .getByRole("status")
+      .filter({ hasText: "subscription details have been refreshed" })
+      .waitFor();
+    cancelAtPeriodEnd = true;
+    await page
+      .getByRole("status")
+      .filter({ hasText: "Cancellation is scheduled" })
+      .waitFor({ timeout: 10000 });
+    assert.equal(
+      await page.locator(".uw-account-plan span").textContent(),
+      "Pro",
+      "Scheduled cancellation preserves current access",
+    );
+    assert.ok(
+      (await page.locator(".uw-plan-intent").textContent()).includes("Ends"),
+    );
+    subscriptionStatus = "canceled";
     user.ai_access = false;
     user.plan = "free";
+    cancelAtPeriodEnd = false;
+    await page
+      .getByRole("status")
+      .filter({ hasText: "subscription has ended" })
+      .waitFor({ timeout: 10000 });
+    assert.equal(
+      await page.locator(".uw-account-plan span").textContent(),
+      "Free",
+    );
+    assert.ok(
+      await page
+        .getByRole("button", { name: "Manage subscription" })
+        .isVisible(),
+    );
+    authenticated = false;
     managed = false;
     await load("/account?mode=recovery");
     await page

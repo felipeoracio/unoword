@@ -16,17 +16,31 @@ API_VERSION = '2026-09-30.endive'
 TERMINAL = {'canceled', 'incomplete_expired'}
 
 
+def require_allowed_mode():
+    """Default to sandbox. Live keys need a separately approved deployment setting."""
+    key = os.getenv('STRIPE_SECRET_KEY', '')
+    if key.startswith(('sk_test_', 'rk_test_')):
+        return False
+    if key.startswith(('sk_live_', 'rk_live_')):
+        if os.getenv('STRIPE_LIVE_BILLING_APPROVED', '').lower() != 'true':
+            raise HTTPException(503, 'live_billing_not_approved')
+        return True
+    raise HTTPException(503, 'billing_unavailable')
+
+
 def billing_available():
+    try:
+        require_allowed_mode()
+    except HTTPException:
+        return False
     return os.getenv('STRIPE_BILLING_ENABLED', '').lower() == 'true' and all(
         os.getenv(key, '').strip() for key in
-        ('STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRO_PRICE_ID'))
+        ('STRIPE_WEBHOOK_SECRET', 'STRIPE_PRO_PRICE_ID'))
 
 
 def client():
-    key = os.getenv('STRIPE_SECRET_KEY', '')
-    if not key:
-        raise HTTPException(503, 'billing_unavailable')
-    return stripe.StripeClient(key, stripe_version=API_VERSION, max_network_retries=1,
+    require_allowed_mode()
+    return stripe.StripeClient(os.environ['STRIPE_SECRET_KEY'], stripe_version=API_VERSION, max_network_retries=1,
                                http_client=stripe.RequestsClient(timeout=20))
 
 
@@ -122,6 +136,7 @@ async def portal(c, customer_id):
 
 
 async def change_plan(user, target_plan):
+    require_allowed_mode()
     if target_plan == 'pro' and not billing_available():
         raise HTTPException(503, 'billing_unavailable')
     c = client()
@@ -202,6 +217,8 @@ def subscription_entitlement(sub):
 
 
 async def process_event(event):
+    if bool(event.get('livemode')) != require_allowed_mode():
+        raise HTTPException(400, 'billing_mode_mismatch')
     if not event['type'].startswith('customer.subscription.'):
         return
     obj = event['data']['object']

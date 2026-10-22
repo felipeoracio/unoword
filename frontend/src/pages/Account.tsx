@@ -36,7 +36,10 @@ function messageFor(error: unknown) {
   if (!(error instanceof ApiError))
     return "We couldn’t connect. Please try again.";
   const detail = (error.body as { detail?: unknown })?.detail;
-  if (detail === "billing_unavailable")
+  if (
+    detail === "billing_unavailable" ||
+    detail === "live_billing_not_approved"
+  )
     return "Billing is currently unavailable. Your plan has not changed.";
   if (detail === "plan_managed_separately")
     return "Your Pro access is managed separately. No purchase is needed for your current access.";
@@ -154,11 +157,51 @@ export default function Account() {
             return;
           }
           setUser(fresh);
-          if (fresh.ai_access)
+          if (params.get("billing") === "return") {
+            if (status.status === "canceled")
+              setMessage(
+                "Your Stripe subscription has ended. Your saved writing stays in your account, and Free features remain available.",
+              );
+            else if (status.cancel_at_period_end)
+              setMessage(
+                "Cancellation is scheduled. Pro remains available until the trial or paid period ends.",
+              );
+            else if (
+              [
+                "past_due",
+                "unpaid",
+                "paused",
+                "incomplete",
+                "incomplete_expired",
+              ].includes(status.status)
+            )
+              setMessage(
+                "Your subscription needs attention. Open Manage subscription to review payment details. Your saved writing is preserved.",
+              );
+            else
+              setMessage(
+                "Your subscription details have been refreshed. Recent changes may take a moment to appear.",
+              );
+            // Portal changes can arrive after the browser returns. Continue
+            // reading verified state even while the account still has Pro.
+            if (++attempts < 6) timer = setTimeout(refreshBilling, 5000);
+          } else if (fresh.ai_access) {
             setMessage(
               "Your Pro access is confirmed. Reopen the extension to refresh your account.",
             );
-          else {
+          } else if (
+            [
+              "canceled",
+              "past_due",
+              "unpaid",
+              "paused",
+              "incomplete_expired",
+            ].includes(status.status)
+          ) {
+            setMessage(
+              "Your subscription is not currently active. Open Manage subscription to review its status. Your saved writing and Free features are preserved.",
+            );
+          } else {
             setMessage(
               "Waiting for Stripe verification. Your plan updates only after the subscription is confirmed. You can refresh this page shortly.",
             );
@@ -166,7 +209,15 @@ export default function Account() {
           }
         }
       } catch {
-        /* Account access stays independent of billing availability. */
+        if (
+          !cancelled &&
+          ["success", "return"].includes(params.get("billing") || "")
+        ) {
+          setMessage(
+            "We couldn’t refresh your subscription yet. We’ll retry shortly; your access changes only after verification.",
+          );
+          if (++attempts < 6) timer = setTimeout(refreshBilling, 5000);
+        }
       }
     }
     void refreshBilling();

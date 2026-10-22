@@ -2,7 +2,7 @@
 import os
 from typing import Literal
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict
 from lib import billing
 from lib.request_security import trusted_origin, limit_sensitive
@@ -17,19 +17,28 @@ class PlanChange(BaseModel):
     confirmed: bool = False
     expected_user_id: str
 
+async def require_billing_user(response: Response, user: AuthenticatedUser = Depends(require_user)):
+    # The development-header adapter is useful for AI fixtures, but it is not
+    # a signed-in Supabase session and must never authorize customer billing.
+    if os.getenv('AI_AUTH_MODE', 'supabase').lower() != 'supabase' or not getattr(user, 'access_token', ''):
+        raise HTTPException(401, 'billing_sign_in_required')
+    response.headers['Cache-Control'] = 'private, no-store'
+    return user
+
+
 @router.get('')
-async def subscription(user: AuthenticatedUser = Depends(require_user)):
+async def subscription(user: AuthenticatedUser = Depends(require_billing_user)):
     entitlement = await get_entitlement(user.id)
     state = await billing.account(user.id) if os.getenv('STRIPE_SECRET_KEY') else None
     return {'user_id': user.id, 'plan': 'pro' if entitlement_is_active(entitlement) else 'free',
-            'status': (entitlement or {}).get('status', 'inactive'),
+            'status': state['status'] if state and state.get('subscription_id') else (entitlement or {}).get('status', 'inactive'),
             'billing_available': billing.billing_available(), 'managed_by_stripe': bool(state and state.get('customer_id')),
             'period_end': (state or {}).get('period_end'),
             'cancel_at_period_end': (state or {}).get('cancel_at_period_end', False),
             'trial_eligible': not bool((state or {}).get('trial_used'))}
 
 @router.post('/change', dependencies=[Depends(trusted_origin)])
-async def change_plan(payload: PlanChange, user: AuthenticatedUser = Depends(require_user)):
+async def change_plan(payload: PlanChange, user: AuthenticatedUser = Depends(require_billing_user)):
     if payload.expected_user_id != user.id:
         raise HTTPException(409, 'account_changed')
     if not payload.confirmed:
@@ -52,7 +61,7 @@ async def webhook(request: Request):
         event = stripe.Webhook.construct_event(bytes(body), request.headers.get('stripe-signature', ''), secret, tolerance=300).to_dict()
     except (ValueError, stripe.SignatureVerificationError) as error:
         raise HTTPException(400, 'invalid_billing_signature') from error
-    if bool(event.get('livemode')) != os.getenv('STRIPE_SECRET_KEY', '').startswith(('sk_live_', 'rk_live_')):
+    if bool(event.get('livemode')) != billing.require_allowed_mode():
         raise HTTPException(400, 'billing_mode_mismatch')
     await billing.process_event(event)
     return {'received': True}

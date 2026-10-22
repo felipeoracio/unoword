@@ -19,6 +19,11 @@ async def main():
     if missing:
         print('Missing secure settings: ' + ', '.join(missing))
         return 1
+    try:
+        billing.require_allowed_mode()
+    except HTTPException as error:
+        print('FAIL: ' + str(error.detail) + '. Use sandbox keys; live billing requires explicit owner approval.')
+        return 1
     if not billing.billing_available():
         print('New checkout is disabled: STRIPE_BILLING_ENABLED must be true after configuration.')
         return 1

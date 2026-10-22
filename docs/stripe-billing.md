@@ -8,17 +8,62 @@ Existing independently granted Pro access is preserved and is not automatically
 converted into a paid subscription. Stripe-backed Pro grants have 100 AI requests
 per day; an existing larger entitlement limit is preserved.
 
+## Review and current status — 2026-10-22
+
+The existing integration was reviewed and reused; no second payment system was added.
+
+| Existing part | How billing uses it | Input needed from you |
+| --- | --- | --- |
+| Supabase authentication | The backend verifies the signed-in user's token; development-only identities cannot access billing; billing belongs to the account ID, not a browser-supplied plan or email. Session cookies remain HTTP-only. | No new login system or user migration. |
+| FastAPI backend on Vercel | Creates hosted Checkout/Customer Portal sessions and receives Stripe subscription events. Secret keys stay here. | Add sandbox Stripe settings securely. |
+| Supabase database | Existing entitlements control access. Billing tables, private service-only functions, event receipts and mode fields were confirmed reachable in the current project by read-only checks. | No need to repeat the migration on this project. Apply it only for a different project or if it has not been applied there. |
+| Free plan | Keeps tracking, Quick Prompt, recent history and editable Writing Profile. | None. |
+| Pro plan | Stripe-managed accounts receive access only while their verified subscription is active/trialing and within its period. Previously granted independent Pro access is preserved rather than silently billed or removed. | Price remains your confirmed $20 USD/month, with an eligible 7-day trial. |
+
+Here is what happens for a subscriber:
+
+1. **Sign in.** Uno Word checks who the person is before opening an upgrade.
+2. **Review payment on Stripe.** Checkout shows the trial and monthly price and
+   collects the payment method on Stripe's own page. Uno Word does not collect
+   card details on its own server.
+3. **Confirm access from Stripe.** Stripe sends the backend a signed subscription
+   message (a webhook). The backend verifies it and reads the current Stripe
+   subscription before granting Pro. A browser's success URL cannot grant access.
+4. **Manage or cancel.** The signed-in account opens Stripe's Customer Portal.
+   Cancellation is scheduled for trial/paid-period end. The account page refreshes
+   after returning, including delayed cancellation updates. Saved writing,
+   profiles, documents, website sources and Free features are retained.
+5. **Retry safely.** Repeated checkout requests reuse their session. Duplicate
+   Stripe messages are recorded once in the same database transaction as access
+   updates, so retries cannot grant access twice or erase a newer subscription.
+
+**Sandbox only for this rollout.** This environment still has no Stripe secret
+key, webhook signing secret or Pro price ID. New checkout is disabled. Live keys
+are rejected unless a separate `STRIPE_LIVE_BILLING_APPROVED=true` setting is
+explicitly authorized by you in a future step. Do not enable that setting now;
+adding live keys or setting `STRIPE_BILLING_ENABLED=true` alone cannot authorize
+live Checkout, live portal actions or live webhook entitlement changes.
+
+Your remaining input is in steps 2–6 below: create/configure the sandbox product,
+portal and webhook in your Stripe account, put their values in secure Vercel
+settings, then redeploy. To let Codex run real sandbox API checks, also make the
+same test values available in secure cloud environment settings. Do not paste
+keys into chat. The read-only checker then verifies setup before the real
+sandbox checkout/cancellation test. No real money is charged in sandbox mode.
+
 ## Finish configuration (start in a Stripe sandbox)
 
-Prefer a separate Vercel preview and Supabase test project for sandbox billing.
+Prefer a separate Vercel preview and Supabase test project with the existing
+Uno Word application schema for sandbox billing.
 If testing on the existing production project, use isolated QA accounts only;
 cancel their sandbox subscriptions and delete those QA accounts before switching
 to live keys. Existing sandbox customer IDs are not reused in live mode, and
 sandbox entitlements cannot unlock Pro when the backend uses live keys.
 
 1. In [Supabase SQL Editor](https://supabase.com/dashboard/project/jvcbpnmtnjhftpukgppw/sql/new),
-   run **only** `supabase/migrations/20261021010000_stripe_billing.sql` against the
-   existing project. It is safe to reapply. The application uses Supabase REST/RPC
+   **For this existing project, the billing schema is already present.** For a new
+   project that already has the application tables, run **only**
+   `supabase/migrations/20261021010000_stripe_billing.sql` against that database. It is safe to reapply. The application uses Supabase REST/RPC
    for billing, so billing does not depend on a reachable direct IPv6 DB hostname.
    The migration creates billing state, durable leases and event receipts; it
    adds a nullable entitlement source without changing existing grants.
@@ -52,7 +97,8 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    | `STRIPE_SECRET_KEY` | Sandbox secret key, `sk_test_...` |
    | `STRIPE_PRO_PRICE_ID` | Sandbox recurring `price_...` from step 2 |
    | `STRIPE_WEBHOOK_SECRET` | Endpoint signing secret from step 4 |
-   | `STRIPE_BILLING_ENABLED` | `true` after steps 1–4 |
+   | `STRIPE_BILLING_ENABLED` | `true` after steps 1–4, using sandbox keys |
+   | `STRIPE_LIVE_BILLING_APPROVED` | `false` — leave this disabled |
    | `PUBLIC_APP_URL` | `https://unoword.vercel.app` |
 
    Existing Supabase URL, anonymous key and service-role key remain required.
@@ -72,7 +118,9 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    accounts lose AI access, preserve their writing/profile data and retain Free
    Quick Prompt. A returning subscriber must not get another trial.
 
-**Before accepting real payments:** use the corresponding live product/price,
+**Live billing is not authorized.** Keep `STRIPE_LIVE_BILLING_APPROVED=false`.
+Only after the owner explicitly approves a future launch should that setting be
+enabled alongside the corresponding live product/price,
 portal configuration, live webhook destination/signing secret and `sk_live_...`
 key together; sandbox IDs do not work with live keys. Finish Stripe business
 activation and publish the owner's formal terms, privacy contact and refund
@@ -87,7 +135,7 @@ From the repository root with backend dependencies and secure environment values
 python backend/scripts/check_stripe_billing.py
 ```
 
-It verifies the enabled flag, exact Stripe price, portal settings, billing table
+It verifies allowed sandbox/live mode, the enabled flag, exact Stripe price, portal settings, billing table
 availability and the production webhook destination/events. It does not create
 Stripe objects, modify accounts or print credentials. For a preview environment,
 set `PUBLIC_APP_URL` and its own webhook destination to that preview's HTTPS origin.
@@ -100,6 +148,7 @@ set `PUBLIC_APP_URL` and its own webhook destination to that preview's HTTPS ori
   configuration or a price/portal mismatch fails closed without granting Pro.
 - `GET /api/subscription` returns only the authenticated account's sanitized plan,
   trial eligibility, period end and cancellation state. No Stripe IDs are exposed.
+  Billing status and hosted session responses use private, no-store cache headers.
 - `POST /api/subscription/change` requires authentication, a trusted browser
   origin, explicit confirmation and a matching `expected_user_id`. `pro` starts
   Checkout or opens the portal for an existing subscriber; `free` **opens the
@@ -177,8 +226,32 @@ These isolated tests do not constitute a real Stripe payment or live webhook tes
   The marketing/account accessibility audits passed.
 - Extension unit tests passed; the downloadable release is version 0.14.0 and
   excludes environment files, tests and dependencies.
-- Actual Stripe Checkout, paid invoices, live webhook delivery and remote migration
-  application are **not verified**: Stripe credentials are missing and the cloud
-  database connection could not be established. Complete the setup above and the
-  real sandbox checklist before enabling live payments. Checkout stays disabled
-  by default; the implementation does not fabricate successful billing.
+- At initial implementation, remote migration application and real Stripe delivery
+  were not verified. The 2026-10-22 read-only review confirmed billing tables,
+  entitlement fields and all three RPCs are now available. Actual Stripe Checkout,
+  invoices and webhook delivery still require sandbox credentials and end-to-end
+  testing. New checkout stays disabled by default, and live billing remains locked
+  until explicit owner approval.
+
+## Review verification — 2026-10-22
+
+- 168 selected backend tests passed, covering existing account/profile/AI behavior,
+  authenticated billing, subscription lifecycle, signature verification, duplicate
+  events, development-auth rejection, non-cacheable billing responses, and live
+  requests rejected without explicit approval. Live-approval tests use fake keys
+  and fake API clients; no live Stripe requests or charges were made.
+- The real PostgreSQL/PGlite migration and atomic RPC tests passed, including
+  duplicate receipts, transaction rollback, leases, preservation of manual grants
+  and quotas, and denied access for browser database roles.
+- Read-only checks confirmed the existing Supabase billing tables, entitlement
+  mode/source fields, and all three service RPCs are available. No production user
+  records, subscriptions, data, grants or quota counters were changed by this review.
+- Frontend build/type checks passed; lint has the four existing unrelated warnings.
+  Browser tests passed for Checkout/portal navigation, forged success URLs,
+  delayed cancellation while Pro stays active, canceled-to-Free status updates,
+  mobile layout, and accessibility. The extension account/profile/security browser
+  regression test passed in English and Spanish at popup dimensions.
+- The readiness script still reports missing `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET` and `STRIPE_PRO_PRICE_ID` in this environment. Actual
+  sandbox Checkout, invoices and signed webhook delivery remain unverified until
+  these settings are supplied and the real sandbox checklist is completed.

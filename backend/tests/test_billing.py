@@ -25,7 +25,7 @@ PRICE = {'id': 'price_pro', 'active': True, 'type': 'recurring', 'unit_amount': 
 @pytest.fixture
 def fixture(monkeypatch):
     for key,value in {'STRIPE_SECRET_KEY':'sk_test_fixture', 'STRIPE_WEBHOOK_SECRET':'whsec_fixture',
-        'STRIPE_PRO_PRICE_ID':'price_pro','STRIPE_BILLING_ENABLED':'true','PUBLIC_APP_URL':'https://unoword.vercel.app'}.items():
+        'STRIPE_PRO_PRICE_ID':'price_pro','STRIPE_BILLING_ENABLED':'true','STRIPE_LIVE_BILLING_APPROVED':'false','PUBLIC_APP_URL':'https://unoword.vercel.app'}.items():
         monkeypatch.setenv(key,value)
     state={'user_id':USER,'customer_id':None,'subscription_id':None,'subscription_created':0,
            'status':'inactive','trial_used':False,'checkout_id':None,'checkout_attempt':str(uuid4())}
@@ -65,7 +65,7 @@ def fixture(monkeypatch):
     monkeypatch.setattr(billing,'get_entitlement',get_entitlement)
     monkeypatch.setattr('routers.subscriptions.get_entitlement',get_entitlement)
     monkeypatch.setattr(billing,'client',lambda:provider)
-    app.dependency_overrides[require_user]=lambda:SimpleNamespace(id=USER,email='fixture@example.com')
+    app.dependency_overrides[require_user]=lambda:SimpleNamespace(id=USER,email='fixture@example.com',access_token='verified-fixture-session')
     _bursts.clear()
     with TestClient(app) as client: yield SimpleNamespace(client=client,state=state,entitlement=entitlement,events=events,provider=provider,calls=calls)
     app.dependency_overrides.clear(); _bursts.clear()
@@ -78,9 +78,9 @@ def sub(**kwargs):
             'trial_end':int(time.time())+7*86400,'metadata':{'unoword_user_id':USER},
             'items':{'data':[{'price':{'id':'price_pro'},'quantity':1,'current_period_end':int(time.time())+30*86400}]},**kwargs}
 
-def event(f,body=None,event_id='evt_a',signature=True,age=0):
+def event(f,body=None,event_id='evt_a',signature=True,age=0,livemode=False):
     obj=body or sub()
-    payload=json.dumps({'id':event_id,'type':'customer.subscription.updated','livemode':False,'data':{'object':obj}}).encode()
+    payload=json.dumps({'id':event_id,'type':'customer.subscription.updated','livemode':livemode,'data':{'object':obj}}).encode()
     at=int(time.time())-age
     digest=hmac.new(b'whsec_fixture',str(at).encode()+b'.'+payload,hashlib.sha256).hexdigest()
     return f.client.post('/api/subscription/webhook',content=payload,headers={'stripe-signature':f't={at},v1={digest if signature else "bad"}'})
@@ -308,3 +308,80 @@ def test_sandbox_entitlement_cannot_unlock_pro_under_live_keys(monkeypatch):
     assert entitlement_is_active(entitlement)
     monkeypatch.delenv('STRIPE_SECRET_KEY')
     assert entitlement_is_active(entitlement), 'Temporary key removal preserves verified, unexpired grants'
+
+
+@pytest.mark.parametrize('key',['sk_live_fixture','rk_live_fixture'])
+@pytest.mark.parametrize('target',['pro','free'])
+def test_live_keys_cannot_start_checkout_or_portal_without_owner_approval(fixture,monkeypatch,key,target):
+    f=fixture;monkeypatch.setenv('STRIPE_SECRET_KEY',key)
+    f.state.update(customer_id='cus_live',livemode=True)
+    assert not billing.billing_available()
+    response=change(f,target_plan=target)
+    assert response.status_code==503 and response.json()['detail']=='live_billing_not_approved'
+    assert f.calls==[]
+    f.provider.v1.checkout.sessions.create.assert_not_called()
+    f.provider.v1.billing_portal.sessions.create.assert_not_called()
+
+
+def test_even_valid_live_signature_cannot_grant_pro_before_approval(fixture,monkeypatch):
+    f=fixture;monkeypatch.setenv('STRIPE_SECRET_KEY','sk_live_fixture')
+    f.state.update(customer_id='cus_live',livemode=True)
+    result=event(f,body=sub(customer='cus_live',livemode=True),livemode=True)
+    assert result.status_code==503 and result.json()['detail']=='live_billing_not_approved'
+    assert not f.calls and not f.events and not f.entitlement
+
+
+def test_live_sdk_cannot_be_constructed_without_approval(monkeypatch):
+    import stripe
+    monkeypatch.setenv('STRIPE_SECRET_KEY','sk_live_fixture')
+    monkeypatch.delenv('STRIPE_LIVE_BILLING_APPROVED',raising=False)
+    monkeypatch.setattr(stripe,'StripeClient',lambda *a,**kw:pytest.fail('No live API client is permitted'))
+    with pytest.raises(HTTPException) as error: billing.client()
+    assert error.value.detail=='live_billing_not_approved'
+
+
+def test_future_explicit_approval_gate_requires_true_and_does_not_enable_checkout_alone(monkeypatch):
+    import stripe
+    constructed=[]
+    monkeypatch.setenv('STRIPE_SECRET_KEY','sk_live_fixture')
+    monkeypatch.setenv('STRIPE_LIVE_BILLING_APPROVED','true')
+    monkeypatch.setenv('STRIPE_BILLING_ENABLED','false')
+    monkeypatch.setattr(stripe,'StripeClient',lambda *a,**kw:constructed.append(kw) or object())
+    assert billing.require_allowed_mode() is True
+    assert not billing.billing_available()
+    billing.client()
+    assert len(constructed)==1  # Fake client only; no Stripe network requests.
+
+
+@pytest.mark.parametrize('key',['','not-a-stripe-key','sk_live-invalid'])
+def test_unknown_key_formats_do_not_enable_billing(fixture,monkeypatch,key):
+    monkeypatch.setenv('STRIPE_SECRET_KEY',key)
+    monkeypatch.setenv('STRIPE_LIVE_BILLING_APPROVED','true')
+    assert not billing.billing_available()
+    assert change(fixture).status_code==503
+    assert not fixture.calls
+
+
+def test_subscription_status_shows_provider_cancellation_while_access_remains_trialing(fixture):
+    f=fixture;f.state.update(customer_id='cus_a',subscription_id='sub_a',status='trialing',cancel_at_period_end=True)
+    f.entitlement.update(plan='pro',status='trialing',billing_source='stripe')
+    result=f.client.get('/api/subscription').json()
+    assert result['status']=='trialing' and result['cancel_at_period_end'] and result['plan']=='pro'
+
+
+@pytest.mark.parametrize('mode,token',[('development_header',''),('development_header','fixture-token'),('supabase','')])
+def test_development_identity_and_missing_sessions_cannot_authorize_billing(fixture,monkeypatch,mode,token):
+    f=fixture;monkeypatch.setenv('AI_AUTH_MODE',mode)
+    app.dependency_overrides[require_user]=lambda:SimpleNamespace(id=USER,email='fixture@example.com',access_token=token)
+    for response in [f.client.get('/api/subscription'),change(f)]:
+        assert response.status_code==401 and response.json()['detail']=='billing_sign_in_required'
+    assert not f.calls
+    f.provider.v1.customers.create.assert_not_called()
+
+
+
+def test_private_billing_status_and_hosted_session_urls_are_not_cacheable(fixture):
+    f=fixture
+    for response in [f.client.get('/api/subscription'),change(f)]:
+        assert response.status_code==200
+        assert response.headers['cache-control']=='private, no-store'
