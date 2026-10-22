@@ -58,21 +58,29 @@ async def call(method, *args, operation="provider", **kwargs):
         code = code if re.fullmatch(r'[a-z_]{1,64}', str(code)) else 'unknown'
         request_id = getattr(error, 'request_id', '') or ''
         request_id = request_id if re.fullmatch(r'req_[A-Za-z0-9]{1,80}', str(request_id)) else 'unavailable'
-        logger.warning('stripe_request_failed operation=%s error_type=%s code=%s request_id=%s',
-                       operation, type(error).__name__, code, request_id)
+        field = str(getattr(error, 'param', '') or '')
+        roots = {'customer', 'line_items', 'mode', 'success_url', 'cancel_url',
+                 'payment_method_collection', 'subscription_data', 'price', 'id',
+                 'is_default', 'limit', 'active', 'return_url', 'configuration', 'metadata'}
+        root = re.split(r'[\[.]', field, maxsplit=1)[0]
+        field = field if root in roots and re.fullmatch(r'[A-Za-z0-9_\[\].]{1,120}', field) else 'unknown'
+        headers = {'X-Billing-Operation': operation, 'X-Billing-Stripe-Code': code,
+                   'X-Billing-Parameter': field, 'X-Stripe-Request-ID': request_id}
+        logger.warning('stripe_request_failed operation=%s error_type=%s code=%s parameter=%s request_id=%s',
+                       operation, type(error).__name__, code, field, request_id)
         if isinstance(error, stripe.AuthenticationError):
-            raise HTTPException(503, 'billing_key_invalid') from error
+            raise HTTPException(503, 'billing_key_invalid', headers=headers) from error
         if isinstance(error, stripe.PermissionError):
-            raise HTTPException(503, 'billing_permission_denied') from error
+            raise HTTPException(503, 'billing_permission_denied', headers=headers) from error
         if isinstance(error, stripe.InvalidRequestError):
             if operation == 'price_lookup':
                 detail = 'billing_price_not_found' if code == 'resource_missing' else 'billing_price_mismatch'
-                raise HTTPException(503, detail) from error
+                raise HTTPException(503, detail, headers=headers) from error
             if operation in {'portal_configuration', 'portal_session'}:
-                raise HTTPException(503, 'billing_portal_not_configured') from error
+                raise HTTPException(503, 'billing_portal_not_configured', headers=headers) from error
             if operation == 'checkout_create':
-                raise HTTPException(503, 'billing_checkout_configuration_invalid') from error
-        raise HTTPException(502, 'billing_provider_unavailable') from error
+                raise HTTPException(503, 'billing_checkout_configuration_invalid', headers=headers) from error
+        raise HTTPException(502, 'billing_provider_unavailable', headers=headers) from error
 
 
 def app_url():

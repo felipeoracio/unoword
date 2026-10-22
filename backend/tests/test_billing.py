@@ -401,7 +401,10 @@ def test_provider_configuration_errors_are_actionable_without_leaking_payloads(f
     assert response.status_code==503 and response.json()['detail']==detail
     assert private not in response.text and private not in caplog.text
     assert 'price_lookup' in caplog.text
-    if kind=='missing_price':assert 'req_fixture' in caplog.text
+    if kind=='missing_price':
+        assert 'req_fixture' in caplog.text
+        assert response.headers['x-billing-parameter']=='price'
+        assert response.headers['x-stripe-request-id']=='req_fixture'
     f.provider.v1.checkout.sessions.create.assert_not_called()
 
 
@@ -418,3 +421,17 @@ def test_invalid_portal_provider_request_reports_setup_issue(fixture):
     result=change(f)
     assert result.status_code==503 and result.json()['detail']=='billing_portal_not_configured'
     assert 'private configuration detail' not in result.text
+
+
+
+def test_checkout_errors_report_only_safe_request_field_and_correlation_id(fixture,caplog):
+    import stripe
+    f=fixture
+    secret='secret-message-should-never-be-exposed'
+    f.provider.v1.checkout.sessions.create.side_effect=stripe.InvalidRequestError(secret,'subscription_data[trial_settings]',code='parameter_unknown',headers={'request-id':'req_checkoutFixture'})
+    response=change(f)
+    assert response.json()['detail']=='billing_checkout_configuration_invalid'
+    assert response.headers['x-billing-operation']=='checkout_create'
+    assert response.headers['x-billing-parameter']=='subscription_data[trial_settings]'
+    assert response.headers['x-billing-stripe-code']=='parameter_unknown'
+    assert secret not in response.text and secret not in caplog.text
