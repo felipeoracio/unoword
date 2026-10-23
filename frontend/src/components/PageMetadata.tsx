@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 const titles: Record<string, string> = {
-  "/": "Uno Word — AI Writing Companion & Word Counter",
+  "/": "UnoWord — AI Writing Editor, Word Counter & Writing Companion",
   "/account": "Your account — Uno Word",
   "/account/security": "Account & Security — Uno Word",
   "/editor": "Your writing space — Uno Word",

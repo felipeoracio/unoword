@@ -1,259 +1,291 @@
-import { useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowDown,
   ArrowRight,
-  ArrowUpRight,
   BarChart3,
   BookOpen,
   Check,
+  ChevronDown,
   Chrome,
-  CircleCheck,
-  Feather,
   FileText,
-  Flame,
   FolderOpen,
-  Layers3,
+  Heart,
   Lightbulb,
-  LockKeyhole,
+  Mail,
   Menu,
-  MessageCircle,
-  Minus,
   NotebookPen,
   PencilLine,
   Plus,
   ShieldCheck,
   Sparkles,
-  Sprout,
-  Target,
-  Users,
+  UserRound,
   X,
 } from "lucide-react";
 import Brand from "@/components/marketing/Brand";
-import ProductPreview from "@/components/marketing/ProductPreview";
-import { FREE_START, PRO_START, useProduct } from "@/lib/product";
+import ProductPreview, {
+  FeaturePreview,
+} from "@/components/marketing/ProductPreview";
+import { FREE_START, PRO_START, useProduct, type Product } from "@/lib/product";
 import "@/styles/marketing.css";
+import "@/styles/landing.css";
 
 const navigation = [
   ["Features", "features"],
-  ["How it works", "how-it-works"],
-  ["AI companion", "ai-companion"],
+  ["How It Works", "how-it-works"],
+  ["AI Companion", "ai-companion"],
   ["Pricing", "pricing"],
   ["FAQ", "faq"],
 ];
+const benefits = [
+  { icon: PencilLine, text: "Write in a beautiful text editor" },
+  { icon: Lightbulb, text: "Get personalized AI suggestions" },
+  { icon: BarChart3, text: "Track your progress and build habits" },
+  { icon: FolderOpen, text: "Organize all your writing in one place" },
+];
 const features = [
   {
-    icon: PencilLine,
-    title: "Every word counts.",
-    category: "LIVE WORD TRACKING",
-    text: "Start a session and find your flow. Track the words you type in supported editors, with pasted words counted separately.",
-    extra: "A clearer picture of your own writing.",
+    kind: "editor" as const,
+    title: "Beautiful Writing Editor",
+    text: "Write in a clean, distraction-free environment with powerful formatting tools.",
   },
   {
-    icon: Target,
-    title: "Small steps. Real progress.",
-    category: "GOALS & CONSISTENCY",
-    text: "Set a session word goal with Pro. Follow your streak and make a little space for writing, one day at a time.",
-    extra: "Build a habit that feels like yours.",
+    kind: "ai" as const,
+    title: "Personalized AI Suggestions",
+    text: "Get ideas, continue writing, brainstorm, and improve your text with AI that considers your interests.",
+  },
+  {
+    kind: "progress" as const,
+    title: "Track Your Progress",
+    text: "See your word count, daily goals, streaks, and writing statistics as you write.",
+  },
+  {
+    kind: "library" as const,
+    title: "Stay Organized",
+    text: "Create documents, organize them into folders, search your writing, and access your work.",
+  },
+];
+const steps = [
+  {
+    icon: Chrome,
+    title: "Install UnoWord",
+    text: "Add the Chrome extension and create your free account.",
+  },
+  {
+    icon: FileText,
+    title: "Make it yours",
+    text: "Write in the editor, set goals, choose themes, and build your Writing Profile.",
   },
   {
     icon: Sparkles,
-    title: "A spark when you need it.",
-    category: "WRITING INSPIRATION",
-    text: "Reach for a quick prompt, discover a fresh topic, or find a new direction for an idea you already love.",
-    extra: "Less blank-page staring. More beginnings.",
-  },
-  {
-    icon: Users,
-    title: "Your interests come first.",
-    category: "MY WRITING PROFILE",
-    text: "Share your writing goals, favorite subjects, audience, and style. Your saved preferences help guide Pro AI suggestions.",
-    extra: "Make it personal. Keep it editable.",
-  },
-  {
-    icon: FolderOpen,
-    title: "Give your ideas a home.",
-    category: "YOUR WRITING KNOWLEDGE",
-    text: "With Pro, add supported documents, public website references, and writing you choose to save to memory.",
-    extra: "Your material. More meaningful possibilities.",
-  },
-  {
-    icon: BarChart3,
-    title: "See how far you’ve come.",
-    category: "HISTORY & INSIGHTS",
-    text: "Look back at recent sessions on Free. Explore your longer writing history and progress views with Pro.",
-    extra: "The little wins deserve a little recognition.",
-  },
-];
-const modes = [
-  {
-    id: "original",
-    icon: PencilLine,
-    title: "Quick Prompt",
-    tag: "Free & Pro",
-    text: "A simple spark to get you started.",
-    titleExample: "Start with a small moment.",
-    direction:
-      "Write about an ordinary moment that turned out to matter more than you expected.",
-    questions: [
-      "What detail do you remember most?",
-      "What changed in the way you saw it?",
-      "Where could that moment lead?",
-    ],
-    sources: ["A simple writing prompt"],
-  },
-  {
-    id: "new_topic",
-    icon: Lightbulb,
-    title: "New Topic",
-    tag: "Pro",
-    text: "Something fresh, shaped by your interests.",
-    titleExample: "What a windowsill garden can teach us about starting.",
-    direction:
-      "Explore the parallels between growing a tiny herb garden and beginning a creative practice. Both can start small, thrive on attention, and leave room for a little uncertainty.",
-    questions: [
-      "What did you learn by starting small?",
-      "Which daily practice made a difference?",
-      "What would you tell someone beginning today?",
-    ],
-    sources: ["Writing Profile: personal essays", "Selected theme: nature"],
-  },
-  {
-    id: "expand_idea",
-    icon: BookOpen,
-    title: "Expand an Idea",
-    tag: "Pro",
-    text: "Take a beginning a little further.",
-    titleExample: "Give your morning ritual a bigger story.",
-    direction:
-      "Take your idea about a quiet morning coffee and explore what that ritual makes space for. Begin with a sensory detail, then move into the thought or memory that arrives with it.",
-    questions: [
-      "What makes this morning feel different?",
-      "What does the quiet let you notice?",
-      "How could one small ritual reveal a bigger change?",
-    ],
-    sources: ["Example draft: a quiet morning coffee"],
-  },
-  {
-    id: "connect_dots",
-    icon: Layers3,
-    title: "Connect the Dots",
-    tag: "Pro",
-    text: "Find the thread between different ideas.",
-    titleExample: "The quiet connection between gardens and creative routines.",
-    direction:
-      "Bring together your garden observations and notes on creative routines. Explore how paying attention, rather than chasing immediate results, can change what you grow and what you write.",
-    questions: [
-      "What do both practices ask you to notice?",
-      "When does patience become useful?",
-      "Where does the comparison stop working?",
-    ],
-    sources: [
-      "Example source: garden observations",
-      "Example source: creative routines",
-    ],
+    title: "Keep growing",
+    text: "Track your progress and get personalized AI suggestions whenever you need inspiration.",
   },
 ];
 const audiences = [
-  [NotebookPen, "Bloggers", "Find your next angle. Keep your voice."],
-  [BookOpen, "Authors", "Build worlds, ideas, and a steady practice."],
-  [
-    MessageCircle,
-    "Newsletter writers",
-    "Turn your interests into your next edition.",
-  ],
-  [Feather, "Journal writers", "Make a little room to reflect."],
-  [
-    Lightbulb,
-    "Content creators",
-    "Connect scattered thoughts into something new.",
-  ],
-  [Sprout, "Aspiring writers", "Start with one word. See where it goes."],
+  {
+    icon: NotebookPen,
+    title: "Bloggers",
+    text: "Write better content, more consistently.",
+  },
+  {
+    icon: BookOpen,
+    title: "Authors",
+    text: "Develop your ideas and bring stories to life.",
+  },
+  {
+    icon: Mail,
+    title: "Newsletter writers",
+    text: "Find fresh topics and stay inspired.",
+  },
+  {
+    icon: Heart,
+    title: "Journal writers",
+    text: "Capture your thoughts and personal growth.",
+  },
+  {
+    icon: PencilLine,
+    title: "Content creators",
+    text: "Turn ideas into engaging writing.",
+  },
+  {
+    icon: Sparkles,
+    title: "Anyone who loves to write",
+    text: "Build a habit and make meaningful progress.",
+  },
 ];
 const faqs = [
   [
-    "What is Uno Word?",
-    "Uno Word is a Chrome extension and personal writing companion. It helps you track active writing sessions, follow your progress, and find your next idea with quick prompts or personalized Pro AI suggestions.",
+    "What is UnoWord?",
+    "UnoWord is a writing companion that combines a text editor, writing progress tracking, document organization, and personalized AI suggestions, alongside an integrated Chrome extension.",
   ],
   [
-    "Is Uno Word free?",
-    "Yes. Free includes session tracking, Quick Prompt, recent writing history, and an editable Writing Profile. Pro adds the three AI suggestion modes, knowledge sources, writing goals, and extended history. Pro is $20 USD monthly, with a 7-day free trial for eligible accounts when checkout is available.",
+    "Is UnoWord free?",
+    "Yes. Free includes the writing editor, private document library, session tracking, recent writing history, and Quick Prompt. Pro adds personalized AI tools, knowledge sources, writing goals, and extended history. See the current offer in Pricing.",
   ],
   [
-    "How does Uno Word count words?",
-    "Start a session in the extension and write in a supported text field or editor. Uno Word tracks typed and pasted words separately; pasted text does not count toward your typed-word progress. Deletions and undo are reconciled with the editor. Google Docs’ canvas-based main editor is not currently supported.",
+    "Can I write directly in UnoWord?",
+    "Yes. Open the writing editor to create, format, and organize documents. It saves drafts in your browser and synchronizes them to your account when cloud storage is available. Previously opened documents can be edited offline after an initial online visit.",
+  ],
+  [
+    "How does UnoWord count words?",
+    "The document word count includes all text currently in the document. Writing progress counts new words typed during a session, with deletions and undo reconciled. Pasted text, imports, and inserted AI text do not add to typed-word progress. The extension tracks supported editors separately and reuses editor activity without counting it twice. Google Docs’ canvas-based main editor is not currently supported.",
   ],
   [
     "How are AI suggestions personalized?",
-    "Pro suggestions use your latest saved Writing Profile and selected themes, alongside available documents, website content, writing memory, and relevant previous ideas. You choose what to share. Editing your profile changes the preferences used on your next AI request. AI suggestions need an internet connection.",
+    "Pro AI uses your latest My Writing Profile, selected themes, writing memory, relevant previous ideas, and enabled reference sources. Sharing the current draft for an AI request requires your consent. Using an editor document for future personalization is a separate opt-in choice. You can edit your profile and manage sources. AI requires an internet connection.",
   ],
   [
-    "Can I use Uno Word without AI?",
-    "Absolutely. Word tracking, local writing sessions, and Quick Prompt work without the three Pro AI modes. The original prompt library does not need an AI request.",
+    "Can I use UnoWord without AI?",
+    "Yes. Write, format, organize documents, and track your sessions without Pro AI. Quick Prompt uses the existing prompt library and does not call an AI provider.",
   ],
   [
     "Can I change my subscription later?",
-    "Sign in to your account to open Stripe Checkout or manage an existing Stripe subscription. Pro is $20 USD monthly after a 7-day trial, available once per account; a payment method is required. You can cancel through the billing portal. Scheduled cancellation retains access until the trial or paid period ends. Checkout remains unavailable until billing setup is complete.",
+    "Sign in to your account to start an eligible trial through Stripe Checkout or manage an existing subscription in the Stripe Customer Portal. You can update payment details and schedule cancellation there. Access continues until the end of the trial or paid period for a scheduled cancellation. Checkout is available only when billing is configured.",
   ],
   [
     "Is my writing private?",
-    "Session counts and preferences are stored locally in the extension. The extension observes input in supported editors while a session is active. When you choose to use cloud features, profile information, saved writing, documents, website references, and relevant context can be processed by Supabase and the configured AI provider. Account data uses user-scoped access controls. See Privacy & data for the details and current limitations.",
+    "Documents belong to your signed-in account, with owner checks and database row-level security. Offline drafts remain in this browser’s local storage; use a trusted browser profile. Cloud features use Supabase, and AI requests send the context you authorize to the configured AI provider. Your draft is not sent to AI just because you open this page. See our Privacy Policy for details and current limitations.",
   ],
 ];
 
+const freeFeatures = [
+  ["writing_editor", "Writing editor & document library"],
+  ["quick_prompt", "Quick Prompt — no AI request needed"],
+  ["session_tracking", "Writing session statistics"],
+  ["basic_history", "Recent writing history"],
+];
+const proFeatures = [
+  ["writing_editor", "Everything in Free"],
+  ["editor_ai", "Personalized AI writing assistance"],
+  ["new_topic", "New Topic"],
+  ["expand_idea", "Expand an Idea"],
+  ["connect_dots", "Connect the Dots"],
+  ["editor_ai", "AI text improvement & continuation"],
+  ["knowledge_sources", "Opt-in writing knowledge"],
+  ["goals_analytics", "Goals & extended history"],
+];
+
+function PricingCard({
+  paid,
+  product,
+  failed,
+}: {
+  paid: boolean;
+  product?: Product;
+  failed: boolean;
+}) {
+  const plan = product?.plans.find((p) => p.id === (paid ? "pro" : "free"));
+  const price = plan?.price;
+  const trial =
+    paid && product?.billing_available && price && price.trial_days > 0
+      ? price.trial_days
+      : 0;
+  return (
+    <article className={`lp-price-card${paid ? " lp-price-pro" : ""}`}>
+      {paid && <span className="lp-plan-badge">More possibilities</span>}
+      <h3>{paid ? "Pro" : "Free"}</h3>
+      <p>
+        {paid
+          ? "More personalized inspiration and deeper writing insights."
+          : "Everything you need to begin writing and tracking progress."}
+      </p>
+      <div className="lp-price">
+        {paid ? (
+          price ? (
+            <>
+              <strong>
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: price.currency,
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                }).format(price.amount / 100)}
+              </strong>
+              <span>/{price.interval}</span>
+            </>
+          ) : (
+            <span className="lp-price-pending">
+              See current offer in your account
+            </span>
+          )
+        ) : (
+          <strong>$0</strong>
+        )}
+      </div>
+      {trial > 0 && (
+        <p className="lp-trial">{trial}-day free trial for eligible accounts</p>
+      )}
+      {product && (
+        <ul>
+          {(paid ? proFeatures : freeFeatures)
+            .filter(([id]) => plan?.features[id])
+            .map(([id, label]) => (
+              <li key={id + label}>
+                <Check size={14} />
+                {label}
+              </li>
+            ))}
+        </ul>
+      )}
+      {!product && (
+        <p className="lp-plan-status" role="status">
+          {failed
+            ? "Plan details are temporarily unavailable. Check your account for current access."
+            : "Loading current plan features…"}
+        </p>
+      )}
+      <Link
+        className={`lp-button${paid ? "" : " lp-button-outline"}`}
+        to={paid ? PRO_START : FREE_START}
+      >
+        {paid
+          ? trial > 0
+            ? `Start ${trial}-Day Free Trial`
+            : "View Pro in Your Account"
+          : "Get Started Free"}
+      </Link>
+      {paid && (
+        <small>
+          {trial > 0
+            ? `Then ${new Intl.NumberFormat("en-US", { style: "currency", currency: price!.currency }).format(price!.amount / 100)}/${price!.interval}. Payment method required. Cancel before the trial ends to avoid a charge.`
+            : product?.billing_available
+              ? "Manage your subscription in your account."
+              : "Checkout is currently unavailable."}
+        </small>
+      )}
+    </article>
+  );
+}
+
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeMode, setActiveMode] = useState(1);
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const product = useProduct();
-  const mode = modes[activeMode];
   const freeHref = product.data?.chrome_store_url || FREE_START;
-  function tabKeys(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const keys = [
-      "ArrowRight",
-      "ArrowLeft",
-      "ArrowDown",
-      "ArrowUp",
-      "Home",
-      "End",
-    ];
-    if (!keys.includes(event.key)) return;
-    event.preventDefault();
-    const next =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? 3
-          : (index +
-              (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : 3)) %
-            4;
-    setActiveMode(next);
-    document.getElementById(`mode-tab-${next}`)?.focus();
-  }
   return (
-    <div className="uw-site">
+    <div className="uw-site lp-site">
       <a className="uw-skip" href="#main">
         Skip to content
       </a>
-      <header className="uw-header">
-        <div className="uw-container uw-header-inner">
-          <Brand />
-          <nav className="uw-desktop-nav" aria-label="Main navigation">
-            {navigation.map(([name, id]) => (
+      <header className="lp-header">
+        <div className="lp-container lp-header-inner">
+          <Brand joined />
+          <nav className="lp-desktop-nav" aria-label="Main navigation">
+            {navigation.map(([label, id]) => (
               <a key={id} href={`#${id}`}>
-                {name}
+                {label}
               </a>
             ))}
           </nav>
-          <div className="uw-header-actions">
-            <Link className="uw-sign-in" to="/account?mode=signin">
-              Sign in
+          <div className="lp-header-actions">
+            <Link className="lp-sign-in" to="/account?mode=signin">
+              Sign In
             </Link>
-            <a className="uw-button uw-button-small" href={freeHref}>
-              Get Uno Word Free <ArrowUpRight size={15} />
+            <a className="lp-button lp-header-cta" href={freeHref}>
+              Get UnoWord Free <ArrowRight size={15} />
             </a>
             <button
-              className="uw-menu-button"
+              className="lp-menu-button"
+              type="button"
               aria-label={menuOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation"
@@ -265,641 +297,324 @@ export default function Home() {
         </div>
         {menuOpen && (
           <nav
+            className="lp-mobile-nav lp-container"
             id="mobile-navigation"
-            className="uw-mobile-nav"
             aria-label="Mobile navigation"
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 setMenuOpen(false);
                 document
-                  .querySelector<HTMLButtonElement>(".uw-menu-button")
+                  .querySelector<HTMLButtonElement>(".lp-menu-button")
                   ?.focus();
               }
             }}
           >
-            {navigation.map(([name, id]) => (
+            {navigation.map(([label, id]) => (
               <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)}>
-                {name}
-                <ArrowUpRight size={16} />
+                {label}
+                <ArrowRight size={15} />
               </a>
             ))}
-            <Link to="/account?mode=signin">
-              Sign in <ArrowRight size={16} />
-            </Link>
+            <Link to="/account?mode=signin">Sign In</Link>
           </nav>
         )}
       </header>
       <main id="main">
-        <section className="uw-hero">
-          <div className="uw-container uw-hero-grid">
-            <div className="uw-hero-copy">
-              <p className="uw-eyebrow">
-                <span className="uw-live-dot" /> YOUR PERSONAL WRITING COMPANION
-              </p>
+        <section className="lp-hero">
+          <div className="lp-container lp-hero-grid">
+            <div className="lp-hero-copy">
+              <p className="lp-eyebrow">YOUR COMPLETE WRITING COMPANION</p>
               <h1>
-                Write more.
+                Write. Track. Get Inspired.
                 <br />
-                Stay inspired.
-                <br />
-                <span>Find your next idea.</span>
+                <span>All in One Place.</span>
               </h1>
-              <p className="uw-hero-description">
-                Build your writing habit, track every word, and discover
-                personalized writing ideas with an AI companion that understands
-                your interests and goals.
+              <p className="lp-hero-description">
+                UnoWord combines a beautiful writing editor, personalized AI
+                suggestions, and powerful progress tracking to help you write
+                consistently and bring your ideas to life.
               </p>
-              <div className="uw-hero-buttons">
-                <a href={freeHref} className="uw-button">
-                  Get Uno Word Free <ArrowRight size={19} />
+              <div className="lp-hero-buttons">
+                <a className="lp-button" href={freeHref}>
+                  Get UnoWord Free <ArrowRight size={18} />
                 </a>
-                <a href="#features" className="uw-button uw-button-outline">
-                  Explore features <ArrowDown size={17} />
-                </a>
+                <Link className="lp-button lp-button-outline" to="/editor">
+                  Explore the Editor <ArrowRight size={17} />
+                </Link>
               </div>
-              <p className="uw-hero-footnote">
-                <Chrome size={16} /> Made for Chrome <span>·</span> Start for
-                free
+              <p className="lp-hero-footnote">
+                <span className="lp-chrome-mark" aria-hidden="true" />
+                Chrome extension · Start for free · Upgrade when you’re ready
               </p>
-              <div className="uw-hero-tags">
-                <span>
-                  <CircleCheck size={15} /> Track words
-                </span>
-                <span>
-                  <CircleCheck size={15} /> Discover ideas
-                </span>
-                <span>
-                  <CircleCheck size={15} /> Build habits
-                </span>
-              </div>
             </div>
             <ProductPreview />
-          </div>
-          <div className="uw-container uw-benefit-strip">
-            <p>
-              A little structure.
-              <br />
-              <strong>A lot more possibility.</strong>
-            </p>
-            <div>
-              <PencilLine />
-              <span>
-                Make room
-                <br />
-                <b>for your words.</b>
-              </span>
-            </div>
-            <div>
-              <Lightbulb />
-              <span>
-                Find a spark
-                <br />
-                <b>when you need one.</b>
-              </span>
-            </div>
-            <div>
-              <Flame />
-              <span>
-                Keep showing up.
-                <br />
-                <b>See yourself grow.</b>
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="uw-section uw-container uw-problem">
-          <div>
-            <p className="uw-eyebrow">FOR THE WORDS STILL WAITING</p>
-            <h2>
-              Writing isn’t always
-              <br />
-              the hard part.
-            </h2>
-          </div>
-          <div>
-            <h3>Knowing what to write—and showing up consistently—is.</h3>
-            <p>
-              Some days the words flow. Other days you stare at a blank page,
-              unsure where to begin.
-            </p>
-            <p>
-              Uno Word helps you turn scattered ideas into a sustainable writing
-              practice. Track your progress, celebrate consistency, and discover
-              your next writing direction.
-            </p>
-          </div>
-        </section>
-
-        <section id="features" className="uw-section uw-feature-section">
-          <div className="uw-container">
-            <div className="uw-section-heading">
-              <div>
-                <p className="uw-eyebrow">
-                  A LITTLE HELP, FROM START TO FINISH
-                </p>
-                <h2>
-                  Everything you need
-                  <br />
-                  to keep writing.
-                </h2>
-              </div>
-              <p>
-                For the first sentence, the next chapter,
-                <br className="uw-desktop-break" /> and every little win in
-                between.
-              </p>
-            </div>
-            <div className="uw-feature-grid">
-              {features.map(
-                ({ icon: Icon, title, category, text, extra }, index) => (
-                  <article
-                    className={`uw-feature-card uw-feature-${index}`}
-                    key={title}
-                  >
-                    <span className="uw-icon-tile">
-                      <Icon size={23} />
-                    </span>
-                    <p className="uw-card-eyebrow">{category}</p>
-                    <h3>{title}</h3>
-                    <p>{text}</p>
-                    <span className="uw-feature-extra">{extra}</span>
-                    {index === 0 && (
-                      <div className="uw-mini-bars" aria-hidden="true">
-                        {[28, 46, 37, 64, 53, 81, 96].map((height, i) => (
-                          <i key={i} style={{ height: height + "%" }} />
-                        ))}
-                        <span>One session at a time ↗</span>
-                      </div>
-                    )}
-                  </article>
-                ),
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="ai-companion"
-          className="uw-section uw-container uw-ai-section"
-        >
-          <div className="uw-centered-heading">
-            <p className="uw-eyebrow">
-              <Sparkles size={14} /> MEET YOUR AI WRITING COMPANION
-            </p>
-            <h2>
-              Your ideas deserve more
-              <br />
-              than a generic prompt.
-            </h2>
-            <p>
-              Discover something new. Take an idea further. Find a connection
-              you hadn’t seen.
-              <br className="uw-desktop-break" /> Four ways to move from “what
-              if” to your next words.
-            </p>
-          </div>
-          <div className="uw-ai-showcase">
-            <div
-              className="uw-mode-list"
-              role="tablist"
-              aria-label="Writing suggestion modes"
-            >
-              {modes.map(({ icon: Icon, title, text, tag }, index) => (
-                <button
-                  type="button"
-                  role="tab"
-                  key={title}
-                  id={`mode-tab-${index}`}
-                  aria-controls="mode-example"
-                  aria-selected={activeMode === index}
-                  tabIndex={activeMode === index ? 0 : -1}
-                  onClick={() => setActiveMode(index)}
-                  onKeyDown={(event) => tabKeys(event, index)}
-                  className={`uw-mode-card${activeMode === index ? " is-active" : ""}`}
-                >
-                  <span className="uw-mode-icon">
-                    <Icon size={21} />
+            <div className="lp-benefits">
+              {benefits.map(({ icon: Icon, text }) => (
+                <div key={text}>
+                  <span className="lp-icon-circle">
+                    <Icon size={26} />
                   </span>
-                  <span className="uw-mode-copy">
-                    <span>
-                      <strong>{title}</strong>
-                      <small>{tag}</small>
-                    </span>
-                    <span>{text}</span>
-                  </span>
-                  <ArrowUpRight className="uw-mode-arrow" size={17} />
-                </button>
+                  <p>{text}</p>
+                </div>
               ))}
-              <p className="uw-mode-note">
-                <Check size={15} /> Quick Prompt is on Free and Pro.
-                <br />
-                The three personalized AI modes are Pro features.
-              </p>
-            </div>
-            <div
-              id="mode-example"
-              role="tabpanel"
-              aria-labelledby={`mode-tab-${activeMode}`}
-              tabIndex={0}
-              className="uw-example-panel"
-            >
-              <div className="uw-example-top">
-                <span>
-                  <Sparkles size={16} /> A LITTLE INSPIRATION
-                </span>
-                <span className="uw-example-badge">Fictional example</span>
-              </div>
-              <div key={mode.id} className="uw-example-content">
-                <span className="uw-example-mode">{mode.title}</span>
-                <h3>{mode.titleExample}</h3>
-                <p>{mode.direction}</p>
-                <div className="uw-example-questions">
-                  <span>A few ways in</span>
-                  {mode.questions.map((question) => (
-                    <p key={question}>
-                      <span>↳</span>
-                      {question}
-                    </p>
-                  ))}
-                </div>
-                <div className="uw-example-sources">
-                  {mode.sources.map((source) => (
-                    <span key={source}>
-                      <FileText size={12} />
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <p className="uw-demo-disclosure">
-                An illustrative suggestion, not a live AI response.
-              </p>
             </div>
           </div>
         </section>
-
-        <section className="uw-personalization">
-          <div className="uw-container uw-personalization-grid">
-            <div>
-              <p className="uw-eyebrow">INSPIRED BY WHAT MATTERS TO YOU</p>
-              <h2>
-                A companion that gets
-                <br />
-                to know your interests.
-              </h2>
+        <section className="lp-feature-band" id="features">
+          <div className="lp-container lp-feature-layout">
+            <div className="lp-section-intro">
+              <p className="lp-eyebrow">A MORE COMPLETE WRITING EXPERIENCE</p>
+              <h2>Everything you need to keep writing.</h2>
               <p>
-                The more relevant information you choose to share, the more
-                context Uno Word can use to personalize your next suggestion.
+                UnoWord gives you a distraction-free writing editor,
+                personalized AI support, and the tools to stay organized and
+                make real progress.
               </p>
-              <p className="uw-control-note">
-                <ShieldCheck size={20} />
-                <span>
-                  You choose what to share.
-                  <br />
-                  <strong>
-                    You can edit your profile and manage your sources.
-                  </strong>
-                </span>
-              </p>
-              <Link className="uw-text-link" to={FREE_START}>
-                Make Uno Word yours <ArrowRight size={17} />
+              <Link className="lp-button" to="/editor">
+                Explore All Features <ArrowRight size={16} />
               </Link>
             </div>
-            <div className="uw-personalization-visual">
-              <div className="uw-flow-step">
-                <span className="uw-flow-icon">
-                  <Users />
-                </span>
-                <div>
-                  <small>01 · YOUR INTERESTS</small>
-                  <h3>A little about you</h3>
-                  <p>Writing Profile · Goals · Selected themes</p>
-                  <div className="uw-interest-chips">
-                    <span>Personal essays</span>
-                    <span>Nature</span>
-                    <span>Curiosity</span>
+            <div className="lp-feature-grid">
+              {features.map((feature) => (
+                <article className="lp-feature-card" key={feature.kind}>
+                  <FeaturePreview kind={feature.kind} />
+                  <div>
+                    <h3>{feature.title}</h3>
+                    <p>{feature.text}</p>
                   </div>
-                </div>
-              </div>
-              <span className="uw-flow-connector" aria-hidden="true">
-                ↓
-              </span>
-              <div className="uw-flow-step">
-                <span className="uw-flow-icon">
-                  <FolderOpen />
-                </span>
-                <div>
-                  <small>02 · YOUR WRITING KNOWLEDGE</small>
-                  <h3>The things you choose to share</h3>
-                  <p>Documents · Websites · Writing memory · Ideas</p>
-                </div>
-              </div>
-              <span className="uw-flow-connector" aria-hidden="true">
-                ↓
-              </span>
-              <div className="uw-flow-step uw-flow-result">
-                <span className="uw-flow-icon">
-                  <Sparkles />
-                </span>
-                <div>
-                  <small>03 · PERSONALIZED POSSIBILITIES</small>
-                  <h3>A new direction, with your interests in mind.</h3>
-                  <p>Discover, expand, and connect with Pro.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works" className="uw-section uw-container">
-          <div className="uw-section-heading">
-            <div>
-              <p className="uw-eyebrow">A SIMPLE START</p>
-              <h2>
-                From your first word
-                <br />
-                to your next big idea.
-              </h2>
-            </div>
-            <a href={freeHref} className="uw-text-link">
-              Let’s get you writing <ArrowRight size={18} />
-            </a>
-          </div>
-          <div className="uw-how-grid">
-            {[
-              {
-                icon: Chrome,
-                title: "Install Uno Word",
-                text: "Add the Chrome extension and start a writing session in a supported editor. One click, and you’re on your way.",
-              },
-              {
-                icon: Users,
-                title: "Make it yours",
-                text: "Build your Writing Profile. With Pro, choose themes, set a word goal, and add the sources that inspire you.",
-              },
-              {
-                icon: BarChart3,
-                title: "Keep growing",
-                text: "Follow your progress, return to the ideas you love, and find personalized inspiration whenever you need a nudge.",
-              },
-            ].map(({ icon: Icon, title, text }, i) => (
-              <article className="uw-how-card" key={title}>
-                <div className="uw-how-top">
-                  <span>0{i + 1}</span>
-                  <Icon size={28} />
-                </div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-                {i < 2 && (
-                  <ArrowRight className="uw-how-arrow" aria-hidden="true" />
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="uw-section uw-audience-section">
-          <div className="uw-container">
-            <div className="uw-centered-heading">
-              <p className="uw-eyebrow">
-                THERE’S ROOM FOR YOUR KIND OF WRITING
-              </p>
-              <h2>
-                Whatever you write,
-                <br />
-                Uno Word helps you keep going.
-              </h2>
-              <p>
-                For writers of all kinds. Especially the one you’re becoming.
-              </p>
-            </div>
-            <div className="uw-audience-grid">
-              {audiences.map(([Icon, title, text]) => {
-                const Glyph = Icon as typeof Feather;
-                return (
-                  <article key={String(title)}>
-                    <Glyph size={24} />
-                    <h3>{String(title)}</h3>
-                    <p>{String(text)}</p>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <section id="pricing" className="uw-section uw-container uw-pricing">
-          <div className="uw-centered-heading">
-            <p className="uw-eyebrow">YOUR PACE. YOUR POSSIBILITIES.</p>
-            <h2>
-              Start free.
-              <br />
-              Grow at your own pace.
-            </h2>
-            <p>A simple place to begin. More inspiration when you’re ready.</p>
-          </div>
-          <div className="uw-pricing-grid">
-            {["free", "pro"].map((planId) => {
-              const plan = product.data?.plans.find((p) => p.id === planId);
-              const paid = planId === "pro";
-              return (
-                <article
-                  className={`uw-price-card${paid ? " uw-price-pro" : ""}`}
-                  key={planId}
-                >
-                  {paid && (
-                    <span className="uw-pro-ribbon">
-                      <Sparkles size={13} /> MORE PERSONALIZED POSSIBILITIES
-                    </span>
-                  )}
-                  <div className="uw-price-heading">
-                    <span className="uw-icon-tile">
-                      {paid ? <Sparkles /> : <PencilLine />}
-                    </span>
-                    <h3>{paid ? "Pro" : "Free"}</h3>
-                  </div>
-                  <p>
-                    {paid
-                      ? "More personalized inspiration and deeper writing insights."
-                      : "Everything you need to begin building your writing habit."}
-                  </p>
-                  <div className="uw-price-status">
-                    {paid
-                      ? plan?.price
-                        ? new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: plan.price.currency,
-                          }).format(plan.price.amount / 100) +
-                          " / " +
-                          plan.price.interval
-                        : "More room to grow."
-                      : "Your first word is free."}
-                    <span>
-                      {paid
-                        ? product.data?.billing_available
-                          ? `${plan?.price?.trial_days ?? 7}-day free trial for eligible accounts. Then billed monthly.`
-                          : "Paid plan changes are currently unavailable."
-                        : "No payment required to get started."}
-                    </span>
-                  </div>
-                  <ul>
-                    {product.data?.features
-                      .filter((feature) => plan?.features[feature.id])
-                      .map((feature) => (
-                        <li key={feature.id}>
-                          <Check size={16} />
-                          {feature.label}
-                        </li>
-                      ))}
-                  </ul>
-                  {!product.data && (
-                    <p className="uw-plan-loading" role="status">
-                      {product.isError
-                        ? "Plan details are temporarily unavailable. Check your account for current access."
-                        : "Loading current plan features…"}
-                    </p>
-                  )}
-                  <Link
-                    className={`uw-button${paid ? "" : " uw-button-outline"}`}
-                    to={paid ? PRO_START : FREE_START}
-                  >
-                    {paid
-                      ? product.data?.billing_available
-                        ? "Try Pro free for 7 days"
-                        : "View Pro in your account"
-                      : "Get started free"}
-                    <ArrowRight size={17} />
-                  </Link>
-                  <small>
-                    {paid
-                      ? "Payment method required. Cancel before your trial ends to avoid a charge."
-                      : "Quick Prompt included. No AI subscription needed."}
-                  </small>
                 </article>
-              );
-            })}
+              ))}
+            </div>
           </div>
-          <p className="uw-pricing-note">
-            <LockKeyhole size={14} />{" "}
-            {product.data?.billing_available
-              ? "Secure checkout and subscription management through Stripe."
-              : "No paid plan changes are processed until billing is configured."}{" "}
-            AI allowances are account-specific; check your account for current
-            access and limits.
+          <p className="lp-visual-note">
+            Interface illustrations use fictional example content and progress.
           </p>
         </section>
-
-        <section id="faq" className="uw-section uw-container uw-faq-section">
-          <div>
-            <p className="uw-eyebrow">A FEW THINGS YOU MIGHT BE WONDERING</p>
-            <h2>
-              Good questions.
-              <br />
-              Simple answers.
-            </h2>
-            <p>
-              Getting to know your new
-              <br className="uw-desktop-break" /> writing companion.
-            </p>
-            <Link to="/support" className="uw-text-link">
-              Need a little help? <ArrowUpRight size={17} />
-            </Link>
-          </div>
-          <div className="uw-faq-list">
-            {faqs.map(([question, answer], index) => (
-              <article className="uw-faq-item" key={question}>
-                <h3>
-                  <button
-                    aria-expanded={openFaq === index}
-                    aria-controls={`faq-answer-${index}`}
-                    id={`faq-question-${index}`}
-                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  >
-                    {question}
-                    <span>
-                      {openFaq === index ? (
-                        <Minus size={18} />
+        <section className="lp-how" id="how-it-works">
+          <div className="lp-container lp-how-layout">
+            <div className="lp-section-intro">
+              <h2>From your first word to your next big idea.</h2>
+              <p>Start writing in three simple steps.</p>
+            </div>
+            <div className="lp-steps">
+              {steps.map(({ icon: Icon, title, text }, i) => (
+                <article key={title}>
+                  <div className="lp-step-icon">
+                    <span className="lp-step-number">{i + 1}</span>
+                    <span
+                      className={
+                        i === 0
+                          ? "lp-icon-circle lp-step-chrome"
+                          : "lp-icon-circle"
+                      }
+                    >
+                      {i === 0 ? (
+                        <span className="lp-chrome-mark" aria-hidden="true" />
                       ) : (
-                        <Plus size={18} />
+                        <Icon size={28} />
                       )}
                     </span>
-                  </button>
-                </h3>
-                <div
-                  id={`faq-answer-${index}`}
-                  role="region"
-                  aria-labelledby={`faq-question-${index}`}
-                  hidden={openFaq !== index}
-                >
-                  <p>
-                    {answer}
-                    {index === 6 && (
-                      <>
-                        {" "}
-                        <Link to="/privacy">Read Privacy &amp; data →</Link>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </article>
-            ))}
+                  </div>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </div>
+                  {i < 2 && (
+                    <ArrowRight
+                      className="lp-step-arrow"
+                      size={24}
+                      aria-hidden="true"
+                    />
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
         </section>
-
-        <section className="uw-final-cta">
-          <div className="uw-container">
-            <span className="uw-cta-sparkle" aria-hidden="true">
-              <Sparkles size={30} />
-            </span>
-            <p className="uw-eyebrow">UNO WORD CAN TAKE YOU SOMEWHERE</p>
-            <h2>
-              Your next great idea
-              <br />
-              starts with Uno Word.
-            </h2>
-            <p>
-              Whether you’re writing your first blog post or your next book,
-              <br className="uw-desktop-break" /> find a little structure, a
-              little inspiration, and a reason to keep going.
+        <section className="lp-personalization" id="ai-companion">
+          <div className="lp-container lp-personal-layout">
+            <div className="lp-section-intro">
+              <h2>An AI writing companion that understands you.</h2>
+              <p>
+                The more you choose to share about your interests, goals, and
+                writing materials, the more personalized UnoWord’s suggestions
+                can become.
+              </p>
+              <a className="lp-button" href="#faq">
+                How Personalization Works <ArrowRight size={16} />
+              </a>
+            </div>
+            <div className="lp-flow">
+              {[
+                {
+                  icon: UserRound,
+                  title: "Your Writing Profile",
+                  items: [
+                    "Your interests",
+                    "Writing goals",
+                    "Preferred themes",
+                    "Writing style",
+                  ],
+                },
+                {
+                  icon: FileText,
+                  title: "Your Writing Knowledge",
+                  items: [
+                    "Your documents",
+                    "Saved websites",
+                    "Previous writing",
+                    "Writing memory",
+                  ],
+                },
+                {
+                  icon: Sparkles,
+                  title: "Personalized Ideas",
+                  items: [
+                    "New topics",
+                    "Expand an idea",
+                    "Connect the Dots",
+                    "Continue writing",
+                  ],
+                },
+              ].map(({ icon: Icon, title, items }, i) => (
+                <div className="lp-flow-group" key={title}>
+                  <article
+                    className={
+                      i === 2 ? "lp-flow-card lp-flow-result" : "lp-flow-card"
+                    }
+                  >
+                    <span className="lp-icon-circle">
+                      <Icon size={26} />
+                    </span>
+                    <div>
+                      <h3>{title}</h3>
+                      <ul>
+                        {items.map((item) => (
+                          <li key={item}>
+                            <Check size={13} />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </article>
+                  {i < 2 && (
+                    <span className="lp-flow-connector" aria-hidden="true">
+                      {i === 0 ? <Plus /> : <ArrowRight />}
+                    </span>
+                  )}
+                </div>
+              ))}
+              <p className="lp-handwritten">
+                The more you share,
+                <br />
+                the better the suggestions.
+                <ArrowRight aria-hidden="true" size={36} />
+              </p>
+            </div>
+          </div>
+          <p className="lp-consent-note">
+            <ShieldCheck size={14} /> You choose what to share. Private editor
+            documents are used for AI only with your permission.
+          </p>
+        </section>
+        <div className="lp-container lp-bottom-grid">
+          <section id="pricing" className="lp-pricing">
+            <h2>Start free. Grow at your own pace.</h2>
+            <div className="lp-pricing-grid">
+              <PricingCard
+                paid={false}
+                product={product.data}
+                failed={product.isError}
+              />
+              <PricingCard
+                paid
+                product={product.data}
+                failed={product.isError}
+              />
+            </div>
+            <p className="lp-billing-note">
+              Sign in before starting a subscription. AI usage limits apply; see
+              your account for current allowances.{" "}
+              {product.data?.billing_available
+                ? "Checkout and subscription management are hosted by Stripe."
+                : "Paid plan changes are unavailable until billing is configured."}
             </p>
-            <a className="uw-button uw-button-white" href={freeHref}>
-              Get Uno Word Free <ArrowRight size={18} />
+          </section>
+          <section className="lp-audiences">
+            <h2>Who is UnoWord for?</h2>
+            <div>
+              {audiences.map(({ icon: Icon, title, text }) => (
+                <article key={title}>
+                  <span className="lp-icon-circle">
+                    <Icon size={21} />
+                  </span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="lp-faq" id="faq">
+            <h2>Frequently asked questions</h2>
+            {faqs.map(([question, answer], i) => (
+              <details key={question}>
+                <summary>
+                  {question}
+                  <ChevronDown size={15} aria-hidden="true" />
+                </summary>
+                <div>
+                  <p>{answer}</p>
+                  {i === 7 && (
+                    <Link to="/privacy">
+                      Read our Privacy Policy <ArrowRight size={13} />
+                    </Link>
+                  )}
+                </div>
+              </details>
+            ))}
+            <Link className="lp-support-link" to="/support">
+              Need a hand? Visit Support <ArrowRight size={14} />
+            </Link>
+          </section>
+        </div>
+        <section className="lp-final-cta">
+          <div className="lp-container lp-final-inner">
+            <div>
+              <h2>Your next great idea starts with one word.</h2>
+              <p>
+                Whether you’re writing your first blog post or your next book,
+                UnoWord helps you stay consistent, explore ideas, and make
+                progress.
+              </p>
+            </div>
+            <a className="lp-button lp-button-white" href={freeHref}>
+              Get UnoWord Free <ArrowRight size={17} />
             </a>
-            <small>Every idea starts with Uno Word.</small>
+            <Brand joined light />
           </div>
         </section>
       </main>
-      <footer className="uw-footer">
-        <div className="uw-container">
-          <div className="uw-footer-top">
-            <div>
-              <Brand />
-              <p>
-                A personal writing companion.
-                <br />
-                For more inspired, consistent writing.
-              </p>
-            </div>
-            <nav aria-label="Footer navigation">
-              <a href="#features">Features</a>
-              <a href="#pricing">Pricing</a>
-              <Link to="/account?mode=signin">Sign in</Link>
-              <Link to="/privacy">Privacy &amp; data</Link>
-              <Link to="/terms">Terms of service</Link>
-              <Link to="/support">Support</Link>
-              {product.data?.chrome_store_url && (
-                <a href={product.data.chrome_store_url}>
-                  Chrome Web Store <ArrowUpRight size={13} />
-                </a>
-              )}
-            </nav>
-          </div>
-          <div className="uw-footer-bottom">
-            <span>© {new Date().getFullYear()} Uno Word</span>
-            <span>Every idea starts with Uno Word.</span>
-            <a href="#main">Back to top ↑</a>
-          </div>
+      <footer className="lp-footer lp-container">
+        <div>
+          <Brand joined />
+          <p>
+            Your complete writing companion.
+            <br />
+            Every idea starts with UnoWord.
+          </p>
         </div>
+        <nav aria-label="Footer navigation">
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+          <Link to="/support">Support</Link>
+        </nav>
+        <small>© {new Date().getFullYear()} UnoWord</small>
       </footer>
     </div>
   );
