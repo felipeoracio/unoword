@@ -478,7 +478,9 @@ async function syncEditorActivity() {
         startedAt: Date.parse(row.started_at), endedAt: Date.parse(row.started_at) + row.duration_seconds * 1000,
         typedWords: row.typed_words, pastedWords: row.pasted_words, sessionGoal: 0,
       }));
-      const next = [...history.filter(row => row.source !== 'editor'), ...imported]
+      const merged = new Map(history.filter(row => row.source !== 'editor').map(row => [self.WCHistory.sessionKey(row), row]));
+      imported.forEach(row => merged.set(self.WCHistory.sessionKey(row), row));
+      const next = [...merged.values()]
         .sort((a,b) => b.startedAt-a.startedAt).slice(0,HISTORY_MAX);
       if (JSON.stringify(next) !== JSON.stringify(history)) {
         await chrome.storage.local.set({ [HISTORY_KEY]: next });
@@ -1038,7 +1040,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const account=await getAccount();
           if (!account.authenticated) { sendResponse({ok:false});return; }
           const history=await getHistory();
-          sendResponse({ok:true,ownerId:account.userId,sessions:history.filter(row => row.source!=='editor').map(row => ({
+          sendResponse({ok:true,ownerId:account.userId,sessions:history.filter(row => row.source!=='editor' && !String(row.id).startsWith('editor:')).map(row => ({
             id:String(row.id || row.startedAt),startedAt:row.startedAt,typedWords:row.typedWords || 0,
           }))});return;
         }

@@ -2,7 +2,7 @@
 
 The full-page editor lives at **`/editor`**, alongside the existing marketing,
 account and admin routes. The account page and extension **Open Writing Editor**
-action open the same workspace. The extension release is **0.15.0**.
+action open the same workspace. The extension release is **0.15.1**.
 
 ## Activate cloud saving
 
@@ -123,6 +123,24 @@ DOCX uses existing `python-docx`; PDF uses ReportLab. Unsupported structures,
 unsafe links and oversized documents are rejected or sanitized server-side.
 
 ## Verification and preview
+
+The final verification includes **170 passing backend tests**, the PostgreSQL/RLS
+suite, the production-browser workflow, and WCAG 2/2.1 AA automated checks on
+light/dark desktop and Spanish mobile layouts. Four pre-existing frontend lint
+warnings remain in shared UI/admin files; the editor adds no lint warnings.
+
+Main implementation files:
+
+- `frontend/src/pages/WritingEditor.tsx` and `frontend/src/styles/writing-editor.css`:
+  editor, library, assistant, responsive layouts and dialogs.
+- `frontend/src/lib/use-writing-workspace.ts`, `writing-cache.ts`, `writing.ts`,
+  `writing-markdown.ts`, and `frontend/public/writing-sw.js`: saving, synchronization,
+  shared counting, offline persistence and portable text formats.
+- `backend/routers/workspace.py`, `backend/lib/writing_document.py`, and
+  `backend/lib/workspace_ai.py`: private APIs, safe rich text, exports and assistance.
+- `extension/background.js`, `extension/content.js`, and `extension/popup/*`:
+  workspace launch, activity synchronization and account-change notifications.
+- The additive SQL migration and new backend, PostgreSQL, browser and bridge tests.
 
 - Production build and TypeScript checks.
 - Backend authentication, owner/origin checks, consent, real DOCX/PDF generation,

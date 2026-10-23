@@ -207,7 +207,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.reload();await canvas.waitFor();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Offline draft from the'));
   // A different account never sees cached documents or recovery drafts.
-  currentOwner=other;await page.reload();await page.getByRole('button',{name:'Create a document',exact:true}).waitFor();
+  currentOwner=other;await page.evaluate(()=>window.postMessage({type:'UNO_WORD_ACCOUNT_CHANGED'},location.origin));
+  await page.getByRole('heading',{name:'Sign in to write',exact:true}).waitFor();
+  assert.equal(await page.locator('[contenteditable=true]').count(),0,'Extension account changes evict the previous account writing view');
+  await page.reload();await page.getByRole('button',{name:'Create a document',exact:true}).waitFor();
   assert.equal(await page.locator('.uw-editor-document').count(),0);
   assert.equal(await page.locator('.uw-editor-recovery').count(),0);
   assert.deepEqual(errors,[]);

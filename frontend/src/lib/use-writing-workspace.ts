@@ -64,6 +64,28 @@ export function useWritingWorkspace() {
     activityRows.current = next;
     setActivities(next);
   }, []);
+  const recheckIdentity = useCallback(async () => {
+    const owner = identity.current?.id;
+    if (!owner) return;
+    let changed = false;
+    try {
+      changed = (await currentWriter()).id !== owner;
+    } catch (failure) {
+      changed = failure instanceof ApiError && failure.status === 401;
+    }
+    if (changed && identity.current?.id === owner) {
+      localStorage.removeItem(IDENTITY);
+      identity.current = null;
+      setUser(null);
+      publish([]);
+      publishActivity([]);
+      setRecovery([]);
+      setSelected(null);
+      setError(
+        "Your account changed. Sign in again; your local draft is preserved.",
+      );
+    }
+  }, [publish, publishActivity]);
   const schedule = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -540,5 +562,6 @@ export function useWritingWorkspace() {
     update,
     sync,
     recordActivity,
+    recheckIdentity,
   };
 }

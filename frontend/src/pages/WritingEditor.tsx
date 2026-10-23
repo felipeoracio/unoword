@@ -214,6 +214,7 @@ const toPlain = (content: JSONContent): string =>
 
 export default function WritingEditor() {
   const ws = useWritingWorkspace();
+  const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
   const [language, setLanguage] = useState(
     () =>
@@ -434,6 +435,14 @@ export default function WritingEditor() {
     setExtensionSessions([]);
     const receive = (event: MessageEvent) => {
       if (
+        event.origin === location.origin &&
+        event.source === window &&
+        event.data?.type === "UNO_WORD_ACCOUNT_CHANGED"
+      ) {
+        void recheckIdentity();
+        return;
+      }
+      if (
         event.origin !== location.origin ||
         event.source !== window ||
         event.data?.type !== "UNO_WORD_LOCAL_PROGRESS" ||
@@ -459,7 +468,7 @@ export default function WritingEditor() {
       location.origin,
     );
     return () => window.removeEventListener("message", receive);
-  }, [ws.user?.id]);
+  }, [ws.user?.id, recheckIdentity]);
   useEffect(() => {
     if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
     let cancelled = false;

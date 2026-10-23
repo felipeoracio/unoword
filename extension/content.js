@@ -39,7 +39,11 @@
       try { chrome.runtime.sendMessage({ type: 'SYNC_EDITOR_ACTIVITY' }, () => { void chrome.runtime.lastError; }); }
       catch (_error) { /* extension reloaded */ }
     });
-    try { chrome.storage.onChanged.addListener((changes,area) => { if (area==='local' && (changes.wc_history || changes.wc_account)) localProgress(); }); }
+    try { chrome.storage.onChanged.addListener((changes,area) => {
+      if(area!=='local')return;
+      if(changes.wc_account) window.postMessage({type:'UNO_WORD_ACCOUNT_CHANGED'},location.origin);
+      if(changes.wc_history || changes.wc_account)localProgress();
+    }); }
     catch (_error) { /* preview */ }
     return;
   }
