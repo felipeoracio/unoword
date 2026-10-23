@@ -11,7 +11,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from lib.auth import AuthenticatedUser, require_user
-from lib.ai_access import require_ai_user, get_entitlement
+from lib.ai_access import require_ai_user, get_entitlement, entitlement_is_active
 from lib.request_security import trusted_origin
 from lib.supabase_client import user_rest, service_rest, SupabaseAPIError
 from lib.writing_document import (
@@ -22,6 +22,15 @@ from lib.writing_document import (
     to_pdf,
     import_docx,
 )
+
+
+async def require_workspace_user(
+    user: AuthenticatedUser = Depends(require_user),
+) -> AuthenticatedUser:
+    # Reuse the server's active/trialing, expiry and Stripe-mode checks.
+    if not entitlement_is_active(await get_entitlement(user.id)):
+        raise HTTPException(403, "writing_workspace_pro_required")
+    return user
 
 
 async def private_response(response: Response):
@@ -85,7 +94,7 @@ async def document(document_id, user):
 
 
 @router.get("/config")
-async def config(user: AuthenticatedUser = Depends(require_user)):
+async def config(user: AuthenticatedUser = Depends(require_workspace_user)):
     return limits()
 
 
@@ -93,7 +102,7 @@ async def config(user: AuthenticatedUser = Depends(require_user)):
 async def documents(
     q: str = Query(default="", max_length=200),
     offset: int = Query(default=0, ge=0),
-    user: AuthenticatedUser = Depends(require_user),
+    user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     params = {
         "select": "id,user_id,title,folder_id,favorite,status,ai_allowed,revision,mutation_id,created_at,updated_at",
@@ -111,7 +120,7 @@ async def documents(
 
 @router.get("/documents/{document_id}")
 async def get_document(
-    document_id: UUID, user: AuthenticatedUser = Depends(require_user)
+    document_id: UUID, user: AuthenticatedUser = Depends(require_workspace_user)
 ):
     return await document(document_id, user)
 
@@ -136,7 +145,7 @@ class DocumentSave(Owned):
 async def save_document(
     document_id: UUID,
     payload: DocumentSave,
-    user: AuthenticatedUser = Depends(require_user),
+    user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     owner(payload, user)
     # ai_allowed is opt-in permission, not a grant of paid access. It only allows
@@ -160,7 +169,7 @@ async def save_document(
 
 
 @router.get("/folders")
-async def folders(user: AuthenticatedUser = Depends(require_user)):
+async def folders(user: AuthenticatedUser = Depends(require_workspace_user)):
     return await rows(
         "writing_folders", user, select="*", order="name.asc", limit="1000"
     )
@@ -172,7 +181,7 @@ class FolderCreate(Owned):
 
 @router.post("/folders", dependencies=[Depends(trusted_origin)])
 async def create_folder(
-    payload: FolderCreate, user: AuthenticatedUser = Depends(require_user)
+    payload: FolderCreate, user: AuthenticatedUser = Depends(require_workspace_user)
 ):
     owner(payload, user)
     result = await rest(
@@ -197,7 +206,7 @@ class Activity(Owned):
 
 @router.put("/activity", dependencies=[Depends(trusted_origin)])
 async def save_activity(
-    payload: Activity, user: AuthenticatedUser = Depends(require_user)
+    payload: Activity, user: AuthenticatedUser = Depends(require_workspace_user)
 ):
     owner(payload, user)
     if (
@@ -231,7 +240,7 @@ async def activity(
 
 @router.post("/import", dependencies=[Depends(trusted_origin)])
 async def import_file(
-    file: UploadFile = File(), user: AuthenticatedUser = Depends(require_user)
+    file: UploadFile = File(), user: AuthenticatedUser = Depends(require_workspace_user)
 ):
     data = await file.read(limits()["max_upload_bytes"] + 1)
     await file.close()
@@ -260,7 +269,7 @@ async def import_file(
 async def export_document(
     document_id: UUID,
     format: Literal["txt", "md", "docx", "pdf"],
-    user: AuthenticatedUser = Depends(require_user),
+    user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     item = await document(document_id, user)
     content = clean_document(item["content"])
@@ -296,7 +305,7 @@ class ExportDraft(Owned):
 async def export_draft(
     format: Literal["docx", "pdf"],
     payload: ExportDraft,
-    user: AuthenticatedUser = Depends(require_user),
+    user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     owner(payload, user)
     content = clean_document(payload.content)

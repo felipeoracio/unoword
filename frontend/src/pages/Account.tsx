@@ -257,7 +257,8 @@ export default function Account() {
       beginSession();
       const fresh = await currentUser();
       setUser(fresh);
-      if (fresh && params.get("next") === "/editor") window.location.assign("/editor");
+      if (fresh && params.get("next") === "/editor")
+        window.location.assign("/editor");
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
       setMessage(messageFor(error));
@@ -456,7 +457,15 @@ export default function Account() {
                   </form>
                 )}
               <div className="uw-install-card" id="install">
-                <Link className="uw-button" to="/editor">Open Writing Editor <ArrowRight size={16} /></Link>
+                <Link
+                  className="uw-button"
+                  to={user.ai_access ? "/editor" : "/account?plan=pro"}
+                >
+                  {user.ai_access
+                    ? "Open Writing Editor"
+                    : "Unlock the editor & document library with Pro"}{" "}
+                  <ArrowRight size={16} />
+                </Link>
                 <div>
                   <Chrome size={24} />
                   <h2>Make room for Uno Word in Chrome.</h2>

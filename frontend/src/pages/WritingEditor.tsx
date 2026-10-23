@@ -129,6 +129,12 @@ const spanish: Record<string, string> = {
   "Personalized assistance is included in Pro.":
     "La asistencia personalizada está incluida en Pro.",
   "View plans": "Ver planes",
+  "Your writing workspace is a Pro feature":
+    "Tu espacio de escritura es una función Pro",
+  "Upgrade to Pro to use the writing editor and document library. Your existing documents and local drafts are preserved.":
+    "Mejora a Pro para usar el editor de escritura y la biblioteca de documentos. Tus documentos y borradores locales se conservan.",
+  "View Pro plans": "Ver planes Pro",
+  "Back to home": "Volver al inicio",
   "AI needs an internet connection.": "La IA necesita conexión a internet.",
   "Use this document for future AI personalization":
     "Usar este documento para personalizar futuras sugerencias",
@@ -506,7 +512,7 @@ export default function WritingEditor() {
     };
   }, []);
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !ws.user?.ai_access) {
       setAiItems([]);
       setProfile(null);
       setSources([]);
@@ -539,7 +545,7 @@ export default function WritingEditor() {
           if (ownerRef.current === owner) setGoal(config.daily_goal);
         })
         .catch(() => {});
-  }, [userId, ws.online]);
+  }, [userId, ws.online, ws.user?.ai_access]);
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
@@ -984,6 +990,23 @@ export default function WritingEditor() {
           {t("Sign in to write")} <ArrowRight size={16} />
         </Link>
         <Link to="/">Uno Word</Link>
+      </main>
+    );
+
+  if (!ws.user.ai_access)
+    return (
+      <main className="uw-writing-gate">
+        <Brand />
+        <h1>{t("Your writing workspace is a Pro feature")}</h1>
+        <p>
+          {t(
+            "Upgrade to Pro to use the writing editor and document library. Your existing documents and local drafts are preserved.",
+          )}
+        </p>
+        <Link to="/account?plan=pro">
+          {t("View Pro plans")} <ArrowRight size={16} />
+        </Link>
+        <Link to="/">{t("Back to home")}</Link>
       </main>
     );
 

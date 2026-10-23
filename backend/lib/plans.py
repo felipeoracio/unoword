@@ -5,7 +5,7 @@ Per-account usage remains available only through the authenticated usage API.
 """
 PAID_PLANS = frozenset({'pro', 'premium'})
 FEATURES = (
-    ('writing_editor', 'Full writing editor & private document library', True, True),
+    ('writing_editor', 'Full writing editor & private document library', False, True),
     ('editor_ai', 'Personalized AI writing tools', False, True),
     ('session_tracking', 'Writing session tracking', True, True),
     ('quick_prompt', 'Quick Prompt', True, True),

@@ -80,6 +80,10 @@ def fixture(monkeypatch):
             return [{"id": str(uuid4()), **kwargs["json"]}]
         return []
 
+    async def pro(_):
+        return {"plan": "pro", "status": "active"}
+
+    monkeypatch.setattr(workspace, "get_entitlement", pro)
     monkeypatch.setattr(workspace, "user_rest", provider)
     app.dependency_overrides[require_user] = lambda: SimpleNamespace(
         id=OWNER, access_token="owner-token", email="writer@example.com"
@@ -439,3 +443,80 @@ def test_assistant_never_runs_for_changed_owner_or_missing_selection(fixture):
         == 409
     )
     assert not calls
+
+
+@pytest.mark.parametrize(
+    "entitlement",
+    [
+        None,
+        {"plan": "free", "status": "active"},
+        {"plan": "pro", "status": "canceled"},
+        {"plan": "pro", "status": "past_due"},
+        {"plan": "pro", "status": "active", "valid_until": "2020-01-01T00:00:00Z"},
+    ],
+)
+def test_non_pro_cannot_use_workspace_but_keeps_statistics(
+    fixture, monkeypatch, entitlement
+):
+    client, records, calls = fixture
+
+    async def current(_):
+        return entitlement
+
+    monkeypatch.setattr(workspace, "get_entitlement", current)
+    doc = str(uuid4())
+    for path in [
+        "config",
+        "documents",
+        "folders",
+        f"documents/{doc}",
+        f"documents/{doc}/export/pdf",
+    ]:
+        assert client.get("/api/workspace/" + path).status_code == 403
+    assert (
+        client.put(
+            f"/api/workspace/documents/{doc}", json=payload(), headers=ORIGIN
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/workspace/folders",
+            json={"expected_user_id": OWNER, "name": "Private"},
+            headers=ORIGIN,
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/workspace/import",
+            files={"file": ("test.txt", b"Private words", "text/plain")},
+            headers=ORIGIN,
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/workspace/export/pdf",
+            json={"expected_user_id": OWNER, "title": "Private", "content": CONTENT},
+            headers=ORIGIN,
+        ).status_code
+        == 403
+    )
+    assert (
+        client.put("/api/workspace/activity", json={}, headers=ORIGIN).status_code
+        == 403
+    )
+    assert calls == [] and records == {}
+    assert client.get("/api/workspace/activity").status_code == 200
+
+
+@pytest.mark.parametrize("status", ["active", "trialing"])
+def test_active_pro_and_trial_can_open_workspace(fixture, monkeypatch, status):
+    client, _, _ = fixture
+
+    async def pro(_):
+        return {"plan": "pro", "status": status}
+
+    monkeypatch.setattr(workspace, "get_entitlement", pro)
+    assert client.get("/api/workspace/documents").status_code == 200

@@ -79,7 +79,8 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   // Folder organization, duplication, favorites, archive/trash/restore and search.
   await page.getByRole('button',{name:'New folder',exact:true}).click();
   await page.getByRole('dialog').getByRole('textbox',{name:'Name',exact:true}).fill('Field notes');await page.getByRole('dialog').getByRole('button',{name:'New folder',exact:true}).click();
-  await page.getByLabel('Document folder').selectOption(folders[0].id);
+  await page.getByLabel('Document folder').getByRole('option',{name:'Field notes',exact:true}).waitFor({state:'attached'});
+  await page.getByLabel('Document folder').selectOption({label:'Field notes'});
   await page.getByRole('button',{name:'Favorites',exact:true}).last().click();
   await page.getByRole('button',{name:'Duplicate document',exact:true}).click();
   await page.getByRole('textbox',{name:'Rename document'}).fill('A second draft');
@@ -172,9 +173,16 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
   await page.reload();await canvas.waitFor();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Written offline'));
+  // New documents also save durably offline before any cloud record exists.
+  await page.getByRole('button',{name:'New document',exact:true}).click();
+  await canvas.fill('A new document created entirely offline.');
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
+  await page.reload();await canvas.waitFor();
+  await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('A new document created entirely offline.'));
   offline=false;await context.setOffline(false);
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
   assert.ok([...documents.values()].some(d=>d.plain_text.includes('Written offline')));
+  assert.ok([...documents.values()].some(d=>d.plain_text.includes('A new document created entirely offline.')));
   // Two actual tabs can edit the same document offline without overwriting
   // one another's IndexedDB drafts, then resolve the real server CAS conflict.
   offline=true;await context.setOffline(true);
@@ -198,10 +206,23 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.ok([...documents.values()].some(d=>d.plain_text.trim()==='Offline draft from the first tab.'));
   assert.ok([...documents.values()].some(d=>d.plain_text.trim()==='Offline draft from the second tab.'));
   await second.close();
-  // Free retains editor + original prompt; personalized tools disappear.
-  pro=false;await page.reload();await canvas.waitFor();await page.getByRole('button',{name:'Writing assistant',exact:true}).click();
-  assert.equal(await page.getByRole('button',{name:'Generate',exact:true}).count(),0);
-  await page.getByRole('button',{name:'Another prompt',exact:true}).click();assert.ok(await canvas.isEditable());
+  // Downgrade hides both editor and library without deleting local writing.
+  pro=false;const downgradeCalls=requests.length;await page.reload();
+  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  assert.equal(await page.locator('[contenteditable=true]').count(),0);
+  assert.equal(await page.locator('.uw-editor-document').count(),0);
+  assert.equal(requests.slice(downgradeCalls).some(r=>r.key.startsWith('/workspace/')),false,'Free must not fetch private workspace data');
+  assert.equal(await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const request=open.result.transaction('records').objectStore('records').getAll();request.onsuccess=()=>{resolve(request.result.some(r=>r.kind==='document'||r.kind==='draft'));open.result.close();};};})),true,'Existing writing survives downgrade');
+  // Cached Free identities cannot bypass the gate by reloading offline.
+  await context.setOffline(true);await page.reload();
+  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  assert.equal(await page.locator('[contenteditable=true]').count(),0);
+  pro=true;await context.setOffline(false);await canvas.waitFor();
+  await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Offline draft from the'));
+  // Revocation in an already open tab is detected when focus returns.
+  pro=false;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  pro=true;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await canvas.waitFor();
   // A fresh device cache still opens private cloud metadata on demand.
   await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const tx=open.result.transaction('records','readwrite');tx.objectStore('records').clear();tx.oncomplete=()=>{open.result.close();resolve();};};}));
   await page.reload();await canvas.waitFor();
@@ -214,6 +235,6 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await page.locator('.uw-editor-document').count(),0);
   assert.equal(await page.locator('.uw-editor-recovery').count(),0);
   assert.deepEqual(errors,[]);
-  console.log('PASS: production editor; auth isolation; autosave/reopen; formatting; typed/pasted counts; library/folders/trash; conflicts; consent and AI approval; profile and sources; import/export; focus/themes; 320/390/768/1440px EN/ES; offline reload/reconnect; Free/Pro.');
+  console.log('PASS: production editor; auth isolation; autosave/reopen; formatting; typed/pasted counts; library/folders/trash; conflicts; consent and AI approval; profile and sources; import/export; focus/themes; 320/390/768/1440px EN/ES; offline create/edit/reload/reconnect; Free downgrade/renewal and offline denial; Pro.');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

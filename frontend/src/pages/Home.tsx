@@ -120,11 +120,11 @@ const faqs = [
   ],
   [
     "Is UnoWord free?",
-    "Yes. Free includes the writing editor, private document library, session tracking, recent writing history, and Quick Prompt. Pro adds personalized AI tools, knowledge sources, writing goals, and extended history. See the current offer in Pricing.",
+    "Yes. Free includes Chrome extension session tracking, recent writing history, and Quick Prompt. Pro adds the writing editor and private document library, personalized AI tools, knowledge sources, writing goals, and extended history. See the current offer in Pricing.",
   ],
   [
     "Can I write directly in UnoWord?",
-    "Yes. Open the writing editor to create, format, and organize documents. It saves drafts in your browser and synchronizes them to your account when cloud storage is available. Previously opened documents can be edited offline after an initial online visit.",
+    "Yes. With an active Pro subscription or eligible trial, open the writing editor to create, format, and organize documents. It saves drafts in your browser and synchronizes them to your account when cloud storage is available. Previously opened documents can be edited offline after an initial online visit.",
   ],
   [
     "How does UnoWord count words?",
@@ -136,7 +136,7 @@ const faqs = [
   ],
   [
     "Can I use UnoWord without AI?",
-    "Yes. Write, format, organize documents, and track your sessions without Pro AI. Quick Prompt uses the existing prompt library and does not call an AI provider.",
+    "Yes. Free users can track writing sessions in the Chrome extension and use Quick Prompt without AI. Pro users can also write, format, and organize documents without using the AI assistant. Quick Prompt uses the existing prompt library and does not call an AI provider.",
   ],
   [
     "Can I change my subscription later?",
@@ -149,13 +149,13 @@ const faqs = [
 ];
 
 const freeFeatures = [
-  ["writing_editor", "Writing editor & document library"],
   ["quick_prompt", "Quick Prompt — no AI request needed"],
   ["session_tracking", "Writing session statistics"],
   ["basic_history", "Recent writing history"],
 ];
 const proFeatures = [
-  ["writing_editor", "Everything in Free"],
+  ["session_tracking", "Everything in Free"],
+  ["writing_editor", "Writing editor & document library"],
   ["editor_ai", "Personalized AI writing assistance"],
   ["new_topic", "New Topic"],
   ["expand_idea", "Expand an Idea"],
@@ -187,7 +187,7 @@ function PricingCard({
       <p>
         {paid
           ? "More personalized inspiration and deeper writing insights."
-          : "Everything you need to begin writing and tracking progress."}
+          : "Track your writing in Chrome and build a consistent habit."}
       </p>
       <div className="lp-price">
         {paid ? (
@@ -339,7 +339,7 @@ export default function Home() {
                   Get UnoWord Free <ArrowRight size={18} />
                 </a>
                 <Link className="lp-button lp-button-outline" to="/editor">
-                  Explore the Editor <ArrowRight size={17} />
+                  Explore the Pro Editor <ArrowRight size={17} />
                 </Link>
               </div>
               <p className="lp-hero-footnote">
@@ -380,6 +380,9 @@ export default function Home() {
                   <FeaturePreview kind={feature.kind} />
                   <div>
                     <h3>{feature.title}</h3>
+                    {feature.kind !== "progress" && (
+                      <span className="lp-feature-plan">Pro feature</span>
+                    )}
                     <p>{feature.text}</p>
                   </div>
                 </article>

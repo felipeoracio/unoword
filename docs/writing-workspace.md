@@ -9,7 +9,8 @@ action open the same workspace. The extension release is **0.15.1**.
 1. Open the existing Supabase project `jvcbpnmtnjhftpukgppw`.
 2. Go to **SQL Editor → New query**.
 3. Paste the entire [workspace migration](../supabase/migrations/20261023010000_writing_workspace.sql) and select **Run**.
-4. Reopen `/editor`, or use its refresh/retry button to synchronize local changes.
+4. Run the [Pro workspace access migration](../supabase/migrations/20261023020000_writing_workspace_pro.sql).
+5. Reopen `/editor` with an eligible Pro account, or use its refresh/retry button to synchronize local changes.
 
 The migration is additive and has passed isolated PostgreSQL execution and reapply
 tests. It does not reset accounts, documents, AI usage, billing or extension
@@ -84,9 +85,12 @@ A clear timestamp prevents older imported editor history from reappearing.
 
 ## AI and plan permissions
 
-Free and Pro get the basic editor, document saving, formatting, statistics,
-focus mode, import/export and the original **Quick Prompt** bank. Quick Prompt
-does not call a model or consume AI allowance.
+The editor, document library, cloud saving, formatting, focus mode, and
+import/export require an active Pro subscription or eligible trial. Pro users can
+write offline and sync local drafts after reconnecting. Free retains extension
+tracking, recent history, and the original **Quick Prompt** bank. Quick Prompt
+does not call a model or consume AI allowance. Downgrading preserves existing
+documents and drafts; see [Pro workspace access](pro-writing-workspace.md).
 
 Pro users may request three next-topic directions, continuation, writer's-block
 questions, three brainstorming angles/outlines, or improvements to a selection.

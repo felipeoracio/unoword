@@ -8,7 +8,7 @@ const { chromium } = require(
 const origin = process.env.LANDING_TEST_ORIGIN || "http://localhost:4175";
 const screenshots = process.env.LANDING_SCREENSHOTS;
 const flags = {
-  writing_editor: true,
+  writing_editor: false,
   editor_ai: false,
   session_tracking: true,
   quick_prompt: true,
@@ -140,6 +140,20 @@ const catalog = {
         .getByText("New Topic", { exact: true })
         .count(),
       0,
+    );
+    assert.equal(
+      await page
+        .locator(".lp-price-card:not(.lp-price-pro)")
+        .getByText("Writing editor & document library", { exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await page
+        .locator(".lp-price-pro")
+        .getByText("Writing editor & document library", { exact: true })
+        .count(),
+      1,
     );
     // Every on-page destination exists; account links preserve the established flow.
     for (const href of await page
@@ -312,7 +326,7 @@ const catalog = {
       "Signed-out CTA cannot start a charge or AI request",
     );
     await page.goto(origin);
-    await page.getByRole("link", { name: "Explore the Editor" }).click();
+    await page.getByRole("link", { name: "Explore the Pro Editor" }).click();
     await page.getByRole("heading", { name: "Sign in to write" }).waitFor();
     for (const [route, heading] of [
       ["/privacy", "Privacy & data"],

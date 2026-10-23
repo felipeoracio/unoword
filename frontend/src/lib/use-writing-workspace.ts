@@ -64,12 +64,36 @@ export function useWritingWorkspace() {
     activityRows.current = next;
     setActivities(next);
   }, []);
+  const verifyAccess = useCallback(
+    (writer: AuthUser) => {
+      identity.current = writer;
+      setUser(writer);
+      localStorage.setItem(IDENTITY, JSON.stringify(writer));
+      if (!writer.ai_access) {
+        // Retain account-scoped IndexedDB drafts; a downgrade never deletes writing.
+        publish([]);
+        publishActivity([]);
+        setFolders([]);
+        setRecovery([]);
+        setSelected(null);
+        setConflicts({});
+      }
+      return writer.ai_access;
+    },
+    [publish, publishActivity],
+  );
   const recheckIdentity = useCallback(async () => {
     const owner = identity.current?.id;
     if (!owner) return;
     let changed = false;
     try {
-      changed = (await currentWriter()).id !== owner;
+      const verified = await currentWriter();
+      changed = verified.id !== owner;
+      if (!changed && identity.current?.id === owner) {
+        const upgraded = !identity.current.ai_access && verified.ai_access;
+        verifyAccess(verified);
+        if (upgraded) window.location.reload();
+      }
     } catch (failure) {
       changed = failure instanceof ApiError && failure.status === 401;
     }
@@ -85,7 +109,7 @@ export function useWritingWorkspace() {
         "Your account changed. Sign in again; your local draft is preserved.",
       );
     }
-  }, [publish, publishActivity]);
+  }, [publish, publishActivity, verifyAccess]);
   const schedule = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -127,7 +151,8 @@ export function useWritingWorkspace() {
       if (
         !current ||
         current.content_loaded === false ||
-        current.user_id !== identity.current?.id
+        current.user_id !== identity.current?.id ||
+        !identity.current?.ai_access
       )
         return;
       const next = {
@@ -149,7 +174,7 @@ export function useWritingWorkspace() {
   const create = useCallback(
     async (title?: string, copy?: Partial<Draft>) => {
       const owner = identity.current;
-      if (!owner) return;
+      if (!owner || !owner.ai_access) return;
       const draft = {
         ...newDocument(owner.id, tab, title),
         ...copy,
@@ -173,7 +198,7 @@ export function useWritingWorkspace() {
   const recordActivity = useCallback(
     async (row: Activity) => {
       const owner = identity.current;
-      if (!owner) return;
+      if (!owner || !owner.ai_access) return;
       const next = { ...row, dirty: true };
       publishActivity([
         ...activityRows.current.filter((a) => a.id !== row.id),
@@ -205,11 +230,20 @@ export function useWritingWorkspace() {
       const verified = await currentWriter();
       if (verified.id !== owner || identity.current?.id !== owner)
         throw new ApiError(409, { detail: "account_changed" });
-      setUser(verified);
-      identity.current = verified;
+      if (!identity.current?.ai_access && verified.ai_access) {
+        verifyAccess(verified);
+        window.location.reload();
+        return;
+      }
+      if (!verifyAccess(verified)) return;
       for (const draft of [...docs.current]) {
         if (!draft.dirty || conflictIds.current.has(draft.id)) continue;
-        if (identity.current?.id !== owner || !active.current) return;
+        if (
+          identity.current?.id !== owner ||
+          !identity.current?.ai_access ||
+          !active.current
+        )
+          return;
         setStatus("Saving to your account…");
         try {
           const saved = await apiPut<WritingDocument>(
@@ -226,7 +260,12 @@ export function useWritingWorkspace() {
               ai_allowed: draft.ai_allowed,
             },
           );
-          if (identity.current?.id !== owner || !active.current) return;
+          if (
+            identity.current?.id !== owner ||
+            !identity.current?.ai_access ||
+            !active.current
+          )
+            return;
           await cachePut(owner, "document", saved.id, saved);
           const latest = docs.current.find((d) => d.id === saved.id);
           if (!latest) continue;
@@ -256,7 +295,12 @@ export function useWritingWorkspace() {
             const remote = await apiGet<WritingDocument>(
               `/workspace/documents/${draft.id}`,
             );
-            if (identity.current?.id !== owner || !active.current) return;
+            if (
+              identity.current?.id !== owner ||
+              !identity.current?.ai_access ||
+              !active.current
+            )
+              return;
             conflictIds.current.add(draft.id);
             setConflicts((all) => ({ ...all, [draft.id]: remote }));
             setError(
@@ -273,7 +317,12 @@ export function useWritingWorkspace() {
           !docs.current.some((d) => d.id === row.document_id && d.revision > 0)
         )
           continue;
-        if (identity.current?.id !== owner || !active.current) return;
+        if (
+          identity.current?.id !== owner ||
+          !identity.current?.ai_access ||
+          !active.current
+        )
+          return;
         const { dirty: _, ...body } = row;
         await apiPut("/workspace/activity", {
           ...body,
@@ -301,7 +350,12 @@ export function useWritingWorkspace() {
         );
       }
     } catch (failure) {
-      if (identity.current?.id !== owner || !active.current) return;
+      if (
+        identity.current?.id !== owner ||
+        !identity.current?.ai_access ||
+        !active.current
+      )
+        return;
       if (
         failure instanceof ApiError &&
         (failure.status === 401 ||
@@ -321,7 +375,7 @@ export function useWritingWorkspace() {
       // Edits arriving during a network save get another pass, without polling
       // endlessly when the network or backend is unavailable.
     }
-  }, [tab, publish, publishActivity, persist]);
+  }, [tab, publish, publishActivity, persist, verifyAccess]);
   syncRef.current = sync;
 
   const resolveConflict = useCallback(
@@ -371,7 +425,12 @@ export function useWritingWorkspace() {
     setStatus("Opening document…");
     apiGet<WritingDocument>(`/workspace/documents/${draft.id}`)
       .then(async (saved) => {
-        if (cancelled || identity.current?.id !== writer.id) return;
+        if (
+          cancelled ||
+          identity.current?.id !== writer.id ||
+          !identity.current?.ai_access
+        )
+          return;
         publish(
           docs.current.map((document) =>
             document.id === saved.id && !document.dirty
@@ -405,9 +464,7 @@ export function useWritingWorkspace() {
           else throw failure;
         }
         if (cancelled) return;
-        identity.current = writer;
-        setUser(writer);
-        localStorage.setItem(IDENTITY, JSON.stringify(writer));
+        if (!verifyAccess(writer)) return;
         const cached = await loadWritingCache(writer.id, tab, predecessorTab);
         if (cancelled) return;
         for (const draft of cached.adopted) {
@@ -439,7 +496,12 @@ export function useWritingWorkspace() {
             apiGet<Folder[]>("/workspace/folders"),
             fetchWritingActivity(),
           ]);
-          if (cancelled || identity.current?.id !== writer.id) return;
+          if (
+            cancelled ||
+            identity.current?.id !== writer.id ||
+            !identity.current?.ai_access
+          )
+            return;
           const merged = new Map<string, Draft>(
             remote.map((d) => {
               const cached = docs.current.find(
@@ -502,6 +564,9 @@ export function useWritingWorkspace() {
       setOnline(true);
       void syncRef.current();
     };
+    const regainFocus = () => {
+      if (document.visibilityState === "visible") void recheckIdentity();
+    };
     const offline = () => {
       setOnline(false);
       setStatus("Offline · saved on this device");
@@ -522,6 +587,8 @@ export function useWritingWorkspace() {
         setSelected(null);
       }
     };
+    window.addEventListener("focus", regainFocus);
+    document.addEventListener("visibilitychange", regainFocus);
     window.addEventListener("online", reconnect);
     window.addEventListener("offline", offline);
     window.addEventListener("beforeunload", protect);
@@ -534,12 +601,14 @@ export function useWritingWorkspace() {
       active.current = false;
       clearInterval(retry);
       if (timer.current) clearTimeout(timer.current);
+      window.removeEventListener("focus", regainFocus);
+      document.removeEventListener("visibilitychange", regainFocus);
       window.removeEventListener("online", reconnect);
       window.removeEventListener("offline", offline);
       window.removeEventListener("beforeunload", protect);
       window.removeEventListener("storage", accountChanged);
     };
-  }, [tab, publish, publishActivity]);
+  }, [tab, publish, publishActivity, verifyAccess, recheckIdentity]);
 
   return {
     user,

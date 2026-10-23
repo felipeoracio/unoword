@@ -40,9 +40,10 @@ than invented prices if the catalog is unavailable. It suppresses trial offers
 when checkout or trials are unavailable. Trial eligibility and payment terms
 are shown; AI is never described as unlimited.
 
-Free includes the implemented editor and document library, session statistics,
-recent history, and the original non-AI Quick Prompt. Pro tools use the existing
-feature flags. Every paid CTA leads to `/account?plan=pro`, requiring sign-in and
+Free includes Chrome extension session statistics, recent history, and the
+original non-AI Quick Prompt. The writing editor and document library are
+Pro-only, alongside personalized AI tools, and use the existing feature flags.
+See `docs/pro-writing-workspace.md` for the access and offline-saving update. Every paid CTA leads to `/account?plan=pro`, requiring sign-in and
 the existing Stripe flow. Redirects never grant access. This change does not
 activate live billing or modify sandbox settings.
 

@@ -1912,3 +1912,14 @@
     scroll-behavior: smooth;
   }
 }
+
+.lp-site .lp-feature-plan {
+  display: inline-block;
+  margin-top: 6px;
+  color: #0059e6;
+  background: #e8f1ff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+}

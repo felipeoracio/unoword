@@ -25,6 +25,8 @@ def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch)
         assert plan['features'] == plan_features(plan['id'])
     assert result['plans'][0]['features']['writing_profile'] is True
     assert result['plans'][0]['features']['quick_prompt'] is True
+    assert result['plans'][0]['features']['writing_editor'] is False
+    assert result['plans'][1]['features']['writing_editor'] is True
     assert result['plans'][0]['features']['new_topic'] is False
 
 
