@@ -57,7 +57,6 @@ import {
   editorError,
   type Activity,
   type AssistantItem,
-  type Folder,
 } from "@/lib/writing";
 import { cacheDelete } from "@/lib/writing-cache";
 import { toMarkdown } from "@/lib/writing-markdown";
@@ -266,6 +265,8 @@ export default function WritingEditor() {
     [linkHref, setLinkHref] = useState("");
   const [newFolderOpen, setNewFolderOpen] = useState(false),
     [folderName, setFolderName] = useState("");
+  const [folderError, setFolderError] = useState("");
+  const [folderBusy, setFolderBusy] = useState(false);
   const [toolbarVersion, setToolbarVersion] = useState(0);
   const activeDocument = ws.documents.find((d) => d.id === ws.selected) || null;
   const draftRef = useRef(activeDocument);
@@ -1138,7 +1139,10 @@ export default function WritingEditor() {
               <span>{t("Folders")}</span>
               <button
                 className="uw-editor-icon"
-                onClick={() => setNewFolderOpen(true)}
+                onClick={() => {
+                  setFolderError("");
+                  setNewFolderOpen(true);
+                }}
                 aria-label={t("New folder")}
               >
                 <FolderPlus size={16} />
@@ -2009,27 +2013,42 @@ export default function WritingEditor() {
         ref={folderDialog}
         aria-label={t("New folder")}
         className="uw-editor-dialog"
-        onCancel={() => setNewFolderOpen(false)}
+        onCancel={(event) => {
+          if (folderBusy) event.preventDefault();
+          if (!folderBusy) setNewFolderOpen(false);
+        }}
       >
         <form
           onSubmit={async (event) => {
             event.preventDefault();
-            const owner = ws.user!.id;
+            if (folderBusy) return;
+            setFolderError("");
+            if (!folderName.trim()) {
+              setFolderError(
+                language === "es"
+                  ? "Escribe un nombre para la carpeta."
+                  : "Enter a folder name.",
+              );
+              return;
+            }
+            setFolderBusy(true);
             try {
-              const folder = await apiPost<Folder>("/workspace/folders", {
-                expected_user_id: owner,
-                name: folderName,
-              });
-              if (ownerRef.current !== owner) return;
-              ws.setFolders((all) => [...all, folder]);
+              await ws.createFolder(folderName);
               setFolderName("");
               setNewFolderOpen(false);
-            } catch (failure) {
-              ws.setError(editorError(failure));
+            } catch {
+              setFolderError(
+                language === "es"
+                  ? "No se pudo guardar la carpeta en este dispositivo. Inténtalo de nuevo."
+                  : "Could not save the folder on this device. Please try again.",
+              );
+            } finally {
+              setFolderBusy(false);
             }
           }}
         >
           <h2>{t("New folder")}</h2>
+          {folderError && <p role="alert">{folderError}</p>}
           <label>
             {language === "es" ? "Nombre" : "Name"}
             <input
@@ -2041,10 +2060,18 @@ export default function WritingEditor() {
             />
           </label>
           <div>
-            <button type="button" onClick={() => setNewFolderOpen(false)}>
+            <button
+              type="button"
+              disabled={folderBusy}
+              onClick={() => setNewFolderOpen(false)}
+            >
               {t("Cancel")}
             </button>
-            <button className="uw-editor-primary" type="submit">
+            <button
+              className="uw-editor-primary"
+              type="submit"
+              disabled={folderBusy}
+            >
               {t("New folder")}
             </button>
           </div>

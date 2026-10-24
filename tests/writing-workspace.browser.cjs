@@ -13,7 +13,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
-  let signedIn=false,pro=true,offline=false,failSave=false,conflictNext=false,currentOwner=owner;
+  let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner;
   const documents=new Map(),activity=new Map(),folders=[];const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
@@ -40,6 +40,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     }else{value={...body,content:sorted(body.content),id,user_id:currentOwner,plain_text:plain(body.content),revision:(existing?.revision||0)+1,created_at:existing?.created_at||new Date().toISOString(),updated_at:new Date().toISOString()};delete value.expected_user_id;documents.set(id,structuredClone(value));}
    }else if(key==='/workspace/folders'&&method==='GET')value=folders;
    else if(key==='/workspace/folders'){value={id:crypto.randomUUID(),name:body.name};folders.push(value);}
+   else if(key.startsWith('/workspace/folders/')){
+    if(failFolders){status=503;value={detail:'workspace_storage_unavailable'};}
+    else{const id=key.split('/').pop();value=folders.find(f=>f.id===id)||{id,name:body.name};if(!folders.some(f=>f.id===id))folders.push(value);}
+   }
    else if(key==='/workspace/activity'&&method==='GET')value=[...activity.values()];
    else if(key==='/workspace/activity'){const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
    else if(key==='/workspace/sources')value=sources;
@@ -81,6 +85,26 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.getByRole('dialog').getByRole('textbox',{name:'Name',exact:true}).fill('Field notes');await page.getByRole('dialog').getByRole('button',{name:'New folder',exact:true}).click();
   await page.getByLabel('Document folder').getByRole('option',{name:'Field notes',exact:true}).waitFor({state:'attached'});
   await page.getByLabel('Document folder').selectOption({label:'Field notes'});
+  // Invalid names are explained inside the modal, without closing it.
+  await page.getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByRole('dialog').getByRole('textbox',{name:'Name',exact:true}).fill('   ');
+  await page.getByRole('dialog').getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByRole('dialog').getByRole('alert').getByText('Enter a folder name.').waitFor();
+  await page.getByRole('dialog').getByRole('button',{name:'Cancel',exact:true}).click();
+  // Cloud failures cannot prevent local organization or lose folders on reload.
+  failFolders=true;
+  await page.getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByRole('dialog').getByRole('textbox',{name:'Name',exact:true}).fill('Local only');
+  await page.getByRole('dialog').getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByLabel('Document folder').selectOption({label:'Local only'});
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('sync paused'));
+  await page.reload();await canvas.waitFor();
+  await page.getByLabel('Document folder').getByRole('option',{name:'Local only',exact:true}).waitFor({state:'attached'});
+  failFolders=false;await page.getByRole('button',{name:'Refresh / retry sync',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
+  assert.equal(folders.filter(f=>f.name==='Local only').length,1);
+  assert.ok([...documents.values()].some(d=>d.folder_id===folders.find(f=>f.name==='Local only').id));
+
   await page.getByRole('button',{name:'Favorites',exact:true}).last().click();
   await page.getByRole('button',{name:'Duplicate document',exact:true}).click();
   await page.getByRole('textbox',{name:'Rename document'}).fill('A second draft');
@@ -173,6 +197,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
   await page.reload();await canvas.waitFor();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Written offline'));
+  await page.getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByRole('dialog').getByRole('textbox',{name:'Name',exact:true}).fill('Offline folder');
+  await page.getByRole('dialog').getByRole('button',{name:'New folder',exact:true}).click();
+  await page.getByLabel('Document folder').selectOption({label:'Offline folder'});
   // New documents also save durably offline before any cloud record exists.
   await page.getByRole('button',{name:'New document',exact:true}).click();
   await canvas.fill('A new document created entirely offline.');
@@ -183,6 +211,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
   assert.ok([...documents.values()].some(d=>d.plain_text.includes('Written offline')));
   assert.ok([...documents.values()].some(d=>d.plain_text.includes('A new document created entirely offline.')));
+  assert.equal(folders.filter(f=>f.name==='Offline folder').length,1);
   // Two actual tabs can edit the same document offline without overwriting
   // one another's IndexedDB drafts, then resolve the real server CAS conflict.
   offline=true;await context.setOffline(true);

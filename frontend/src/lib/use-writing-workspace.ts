@@ -36,7 +36,7 @@ export function useWritingWorkspace() {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<Draft[]>([]);
   const [recovery, setRecovery] = useState<Draft[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folders, setFolderState] = useState<Folder[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState("Opening your writing space…");
@@ -56,6 +56,11 @@ export function useWritingWorkspace() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     active = useRef(true);
   const syncRef = useRef<() => Promise<void>>(async () => {});
+  const folderRows = useRef<Folder[]>([]);
+  const setFolders = useCallback((next: Folder[]) => {
+    folderRows.current = next;
+    setFolderState(next);
+  }, []);
   const publish = useCallback((next: Draft[]) => {
     docs.current = next;
     setDocuments(next);
@@ -80,7 +85,7 @@ export function useWritingWorkspace() {
       }
       return writer.ai_access;
     },
-    [publish, publishActivity],
+    [publish, publishActivity, setFolders],
   );
   const recheckIdentity = useCallback(async () => {
     const owner = identity.current?.id;
@@ -216,6 +221,28 @@ export function useWritingWorkspace() {
     [publishActivity, schedule],
   );
 
+  const createFolder = useCallback(
+    async (name: string) => {
+      const owner = identity.current;
+      if (!owner?.ai_access) throw new Error("Pro access is required.");
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Enter a folder name.");
+      const folder: Folder = {
+        id: crypto.randomUUID(),
+        name: trimmed,
+        dirty: true,
+      };
+      // Publish only after IndexedDB commits, so closing the dialog never loses it.
+      await cachePut(owner.id, "folder", folder.id, folder);
+      if (identity.current?.id !== owner.id || !identity.current?.ai_access)
+        return;
+      setFolders([...folderRows.current, folder]);
+      schedule();
+      return folder;
+    },
+    [setFolders, schedule],
+  );
+
   const sync = useCallback(async () => {
     if (
       syncing.current ||
@@ -236,6 +263,25 @@ export function useWritingWorkspace() {
         return;
       }
       if (!verifyAccess(verified)) return;
+      // Folder UUIDs must exist remotely before document foreign keys reference them.
+      for (const folder of [...folderRows.current]) {
+        if (!folder.dirty) continue;
+        const saved = await apiPut<Folder>(`/workspace/folders/${folder.id}`, {
+          expected_user_id: owner,
+          name: folder.name,
+        });
+        if (
+          identity.current?.id !== owner ||
+          !identity.current?.ai_access ||
+          !active.current
+        )
+          return;
+        setFolders(
+          folderRows.current.map((f) => (f.id === folder.id ? saved : f)),
+        );
+        await cachePut(owner, "folders", "all", folderRows.current);
+        await cacheDelete(owner, "folder", folder.id);
+      }
       for (const draft of [...docs.current]) {
         if (!draft.dirty || conflictIds.current.has(draft.id)) continue;
         if (
@@ -375,7 +421,7 @@ export function useWritingWorkspace() {
       // Edits arriving during a network save get another pass, without polling
       // endlessly when the network or backend is unavailable.
     }
-  }, [tab, publish, publishActivity, persist, verifyAccess]);
+  }, [tab, publish, publishActivity, persist, verifyAccess, setFolders]);
   syncRef.current = sync;
 
   const resolveConflict = useCallback(
@@ -528,9 +574,13 @@ export function useWritingWorkspace() {
             .filter((d) => d.dirty)
             .forEach((d) => merged.set(d.id, d));
           publish([...merged.values()]);
-          setFolders(remoteFolders);
+          const mergedFolders = new Map(remoteFolders.map((f) => [f.id, f]));
+          folderRows.current
+            .filter((f) => f.dirty)
+            .forEach((f) => mergedFolders.set(f.id, f));
+          setFolders([...mergedFolders.values()]);
           await cachePut(writer.id, "activity_index", "all", remoteActivity);
-          await cachePut(writer.id, "folders", "all", remoteFolders);
+          await cachePut(writer.id, "folders", "all", folderRows.current);
           const combined = new Map(remoteActivity.map((a) => [a.id, a]));
           activityRows.current
             .filter((a) => a.dirty)
@@ -608,14 +658,21 @@ export function useWritingWorkspace() {
       window.removeEventListener("beforeunload", protect);
       window.removeEventListener("storage", accountChanged);
     };
-  }, [tab, publish, publishActivity, verifyAccess, recheckIdentity]);
+  }, [
+    tab,
+    publish,
+    publishActivity,
+    verifyAccess,
+    recheckIdentity,
+    setFolders,
+  ]);
 
   return {
     user,
     loading,
     documents,
     folders,
-    setFolders,
+    createFolder,
     activities,
     selected,
     setSelected,

@@ -138,8 +138,17 @@ export async function loadWritingCache(
         activity.set(row.id, row);
     });
   return {
-    folders: (records.find((record) => record.kind === "folders")?.value ||
-      []) as Folder[],
+    folders: [
+      ...new Map(
+        [
+          ...((records.find((record) => record.kind === "folders")?.value ||
+            []) as Folder[]),
+          ...records
+            .filter((record) => record.kind === "folder")
+            .map((record) => record.value as Folder),
+        ].map((folder) => [folder.id, folder]),
+      ).values(),
+    ],
     documents: [...merged.values()],
     recovery: drafts.filter(
       (d) => d.tab_id !== tab && d.tab_id !== predecessor && d.dirty,

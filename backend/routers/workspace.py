@@ -194,6 +194,33 @@ async def create_folder(
     return result[0]
 
 
+@router.put("/folders/{folder_id}", dependencies=[Depends(trusted_origin)])
+async def sync_folder(
+    folder_id: UUID,
+    payload: FolderCreate,
+    user: AuthenticatedUser = Depends(require_workspace_user),
+):
+    owner(payload, user)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(422, "folder_name_required")
+    result = await rest(
+        "POST",
+        "writing_folders",
+        user,
+        params={"on_conflict": "id"},
+        json={"id": str(folder_id), "user_id": user.id, "name": name},
+        prefer="resolution=ignore-duplicates,return=representation",
+    )
+    if not result:
+        result = await rows(
+            "writing_folders", user, id=f"eq.{folder_id}", select="*", limit="1"
+        )
+    if not result:
+        raise HTTPException(404, "folder_not_found")
+    return result[0]
+
+
 class Activity(Owned):
     id: UUID
     document_id: UUID

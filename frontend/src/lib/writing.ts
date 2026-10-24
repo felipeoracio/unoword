@@ -87,7 +87,7 @@ export type Draft = WritingDocument & {
   tab_id: string;
   content_loaded?: boolean;
 };
-export type Folder = { id: string; name: string };
+export type Folder = { id: string; name: string; dirty?: boolean };
 export type Activity = {
   id: string;
   document_id: string;

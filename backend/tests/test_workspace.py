@@ -44,6 +44,7 @@ CONTENT = {
 @pytest.fixture
 def fixture(monkeypatch):
     records = {}
+    folder_records = {}
     calls = []
 
     async def provider(method, table, token, **kwargs):
@@ -77,7 +78,18 @@ def fixture(monkeypatch):
         if table == "rpc/workspace_save_activity":
             return kwargs["json"]["p_data"]
         if table == "writing_folders" and method == "POST":
-            return [{"id": str(uuid4()), **kwargs["json"]}]
+            body = kwargs["json"]
+            folder_id = body.get("id", str(uuid4()))
+            if folder_id in folder_records:
+                return []
+            folder_records[folder_id] = {**body, "id": folder_id}
+            return [folder_records[folder_id]]
+        if table == "writing_folders" and method == "GET":
+            return [
+                f
+                for f in folder_records.values()
+                if not params.get("id") or params["id"] == f'eq.{f["id"]}'
+            ]
         return []
 
     async def pro(_):
@@ -507,6 +519,14 @@ def test_non_pro_cannot_use_workspace_but_keeps_statistics(
         client.put("/api/workspace/activity", json={}, headers=ORIGIN).status_code
         == 403
     )
+    assert (
+        client.put(
+            f"/api/workspace/folders/{doc}",
+            json={"expected_user_id": OWNER, "name": "Private"},
+            headers=ORIGIN,
+        ).status_code
+        == 403
+    )
     assert calls == [] and records == {}
     assert client.get("/api/workspace/activity").status_code == 200
 
@@ -520,3 +540,35 @@ def test_active_pro_and_trial_can_open_workspace(fixture, monkeypatch, status):
 
     monkeypatch.setattr(workspace, "get_entitlement", pro)
     assert client.get("/api/workspace/documents").status_code == 200
+
+
+def test_folder_sync_retry_is_idempotent_and_owner_scoped(fixture):
+    client, _, calls = fixture
+    folder_id = str(uuid4())
+    body = {"expected_user_id": OWNER, "name": "  Field notes  "}
+    first = client.put(f"/api/workspace/folders/{folder_id}", json=body, headers=ORIGIN)
+    assert first.status_code == 200
+    assert first.json()["id"] == folder_id and first.json()["name"] == "Field notes"
+    retry = client.put(f"/api/workspace/folders/{folder_id}", json=body, headers=ORIGIN)
+    assert retry.status_code == 200 and retry.json() == first.json()
+    assert len(client.get("/api/workspace/folders").json()) == 1
+    assert (
+        client.put(
+            f"/api/workspace/folders/{folder_id}",
+            json={**body, "expected_user_id": OTHER},
+            headers=ORIGIN,
+        ).status_code
+        == 409
+    )
+    assert (
+        client.put(
+            f"/api/workspace/folders/{folder_id}",
+            json={**body, "name": "   "},
+            headers=ORIGIN,
+        ).status_code
+        == 422
+    )
+    assert (
+        client.put(f"/api/workspace/folders/{folder_id}", json=body).status_code == 403
+    )
+    assert all(call[2] == "owner-token" for call in calls)
