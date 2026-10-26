@@ -1,3 +1,4 @@
+import LifetimeAccount from "@/components/marketing/LifetimeAccount";
 import AccountTour from "@/components/onboarding/AccountTour";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -73,6 +74,7 @@ function messageFor(error: unknown) {
   return "This request could not be completed. Please try again.";
 }
 type Subscription = {
+  access_source?: string | null;
   user_id: string;
   managed_by_stripe: boolean;
   trial_eligible: boolean;
@@ -99,7 +101,8 @@ export default function Account() {
       : requested === "recovery"
         ? "recovery"
         : "signin";
-  const proIntent = params.get("plan") === "pro";
+  const lifetimeIntent = params.get("offer") === "lifetime";
+  const proIntent = !lifetimeIntent && params.get("plan") === "pro";
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -359,6 +362,7 @@ export default function Account() {
               <p className="uw-account-plan">
                 Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
+              {lifetimeIntent && <LifetimeAccount key={user.id} user={user} />}
               <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
               {proIntent && !user.ai_access && (
                 <form
@@ -399,7 +403,7 @@ export default function Account() {
                   </button>
                 </form>
               )}
-              {!proIntent && !user.ai_access && (
+              {!proIntent && !lifetimeIntent && !user.ai_access && (
                 <Link
                   className="uw-button uw-button-outline"
                   to="/account?plan=pro"
@@ -407,7 +411,18 @@ export default function Account() {
                   Explore Pro
                 </Link>
               )}
+              {user.ai_access &&
+                subscription?.access_source === "stripe_lifetime" &&
+                !lifetimeIntent && (
+                  <Link
+                    className="uw-button uw-button-outline"
+                    to="/account?offer=lifetime"
+                  >
+                    Manage lifetime purchase &amp; refunds
+                  </Link>
+                )}
               {subscription?.user_id === user.id &&
+                subscription.access_source !== "stripe_lifetime" &&
                 subscription.managed_by_stripe && (
                   <form
                     className="uw-plan-intent"
@@ -536,13 +551,15 @@ export default function Account() {
                     : "Welcome back to your words."}
               </h1>
               <p>
-                {proIntent
-                  ? "Sign in to review your account and continue your Pro request."
-                  : mode === "signup"
-                    ? "Create your free Uno Word account, then install the Chrome extension."
-                    : mode === "recovery"
-                      ? "Enter your account email to request a secure recovery link."
-                      : "Sign in to your existing Uno Word account."}
+                {lifetimeIntent
+                  ? "Sign in to view the $100 USD lifetime offer. Signing in does not purchase a plan. Test checkout requires your confirmation."
+                  : proIntent
+                    ? "Sign in to review your account and continue your Pro request."
+                    : mode === "signup"
+                      ? "Create your free Uno Word account, then install the Chrome extension."
+                      : mode === "recovery"
+                        ? "Enter your account email to request a secure recovery link."
+                        : "Sign in to your existing Uno Word account."}
               </p>
               <form className="uw-auth-form" onSubmit={authenticate}>
                 <label htmlFor="launch-email">
@@ -617,7 +634,13 @@ export default function Account() {
                 </button>
               </form>
               {mode !== "recovery" && (
-                <Link className="uw-forgot-link" to="/account?mode=recovery">
+                <Link
+                  className="uw-forgot-link"
+                  to={
+                    "/account?mode=recovery" +
+                    (lifetimeIntent ? "&offer=lifetime" : "")
+                  }
+                >
                   Forgot password?
                 </Link>
               )}
@@ -628,8 +651,8 @@ export default function Account() {
                 <Link
                   to={
                     mode === "signup"
-                      ? `/account?mode=signin${proIntent ? "&plan=pro" : ""}`
-                      : `/account?mode=signup${proIntent ? "&plan=pro" : ""}`
+                      ? `/account?mode=signin${lifetimeIntent ? "&offer=lifetime" : proIntent ? "&plan=pro" : ""}`
+                      : `/account?mode=signup${lifetimeIntent ? "&offer=lifetime" : proIntent ? "&plan=pro" : ""}`
                   }
                 >
                   {mode === "signup" ? "Sign in" : "Create a free account"}

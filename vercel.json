@@ -11,6 +11,14 @@
       "framework": "vite",
       "rewrites": [
         {
+          "source": "/lifetime",
+          "destination": "/lifetime/index.html"
+        },
+        {
+          "source": "/lifetime/",
+          "destination": "/lifetime/index.html"
+        },
+        {
           "source": "/(.*)",
           "destination": "/index.html"
         }
@@ -20,11 +28,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": { "service": "backend" }
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": { "service": "frontend" }
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }

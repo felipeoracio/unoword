@@ -29,7 +29,7 @@ def entitlement_is_active(entitlement: dict | None) -> bool:
         return False
     # Sandbox subscriptions must not unlock paid access after a switch to live keys.
     key = os.getenv('STRIPE_SECRET_KEY', '')
-    if entitlement.get('billing_source') == 'stripe' and key and (
+    if entitlement.get('billing_source') in {'stripe', 'stripe_lifetime'} and key and (
         bool(entitlement.get('billing_livemode')) != key.startswith(('sk_live_', 'rk_live_'))
     ):
         return False

@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Home from "@/pages/Home";
 import PageMetadata from "@/components/PageMetadata";
 
+const Lifetime = lazy(() => import("@/pages/Lifetime"));
 const Account = lazy(() => import("@/pages/Account"));
 const WritingEditor = lazy(() => import("@/pages/WritingEditor"));
 const AccountSecurity = lazy(() => import("@/pages/AccountSecurity"));
@@ -26,6 +27,7 @@ export default function App() {
       >
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/lifetime" element={<Lifetime />} />
           <Route path="/account" element={<Account />} />
           <Route path="/editor" element={<WritingEditor />} />
           <Route path="/account/security" element={<AccountSecurity />} />

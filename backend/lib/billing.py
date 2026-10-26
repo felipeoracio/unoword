@@ -176,6 +176,13 @@ async def change_plan(user, target_plan):
         raise HTTPException(503, 'billing_unavailable')
     c = client()
     async with locked(user.id) as (state, lease):
+        if target_plan == 'pro' and os.getenv('STRIPE_LIFETIME_PRICE_ID'):
+            from lib import lifetime
+            pending = await lifetime.order(user.id)
+            if pending and pending['status'] in {'paid','disputed'}:
+                raise HTTPException(409,'lifetime_payment_pending')
+            if pending and pending['status']=='reserved' and not await lifetime.expired(c,pending):
+                raise HTTPException(409,'lifetime_payment_pending')
         entitlement = await get_entitlement(user.id)
         independent_pro = entitlement_is_active(entitlement) and (entitlement or {}).get('billing_source') != 'stripe'
         customer_id = state.get('customer_id')

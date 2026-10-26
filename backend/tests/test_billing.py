@@ -471,3 +471,13 @@ def test_idempotency_recovery_detects_subscription_completed_during_retry(fixtur
     f.provider.v1.checkout.sessions.create.side_effect=stripe.IdempotencyError('old request parameters')
     assert change(f).json()['destination']=='portal'
     assert f.provider.v1.checkout.sessions.create.call_count==1
+
+
+def test_monthly_checkout_does_not_overlap_disputed_lifetime(fixture, monkeypatch):
+    from lib import lifetime
+    monkeypatch.setenv('STRIPE_LIFETIME_PRICE_ID','price_lifetime')
+    async def disputed(_):return {'status':'disputed'}
+    monkeypatch.setattr(lifetime,'order',disputed)
+    r=change(fixture)
+    assert r.status_code==409 and r.json()['detail']=='lifetime_payment_pending'
+    fixture.provider.v1.checkout.sessions.create.assert_not_called()

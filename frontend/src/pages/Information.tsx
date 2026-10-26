@@ -125,6 +125,18 @@ export default function Information({
               release. There is no verified Chrome Web Store listing configured
               at present.
             </p>
+            <h2>Introductory lifetime offer</h2>
+            <p>
+              The separate lifetime Pro offer is $100 USD once for the first 25
+              lifetime purchasers, with a 14-day full-refund window from the
+              verified payment date. Current Pro AI allowances and fair-use
+              limits apply. Lifetime checkout is currently sandbox/test-only; no
+              live lifetime billing is enabled.{" "}
+              <Link to="/lifetime#offer-terms">
+                Read the lifetime offer and refund terms
+              </Link>
+              .
+            </p>
             <h2>AI and editor support</h2>
             <p>
               AI suggestions are generated ideas and can be inaccurate; review
