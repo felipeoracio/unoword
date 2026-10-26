@@ -1,0 +1,231 @@
+.uw-tour-card {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(650px, 75dvh);
+  overflow: auto;
+  z-index: 65;
+  background: #fff;
+  color: #0b1b4d;
+  border: 1px solid #cddffd;
+  box-shadow: 0 12px 45px #153f7730;
+  border-radius: 18px;
+  padding: 22px;
+  font:
+    14px/1.55 "Geist Variable",
+    sans-serif;
+}
+.uw-tour-card h2 {
+  font-size: 23px;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  margin: 12px 0;
+}
+.uw-tour-card p {
+  margin: 10px 0;
+  color: #435978;
+}
+.uw-tour-card button,
+.uw-tour-card a {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #0866ff;
+  background: #0866ff;
+  color: white;
+  border-radius: 7px;
+  padding: 9px 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  text-decoration: none;
+}
+.uw-tour-card button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.uw-tour-card .uw-tour-secondary {
+  background: white;
+  color: #075bdb;
+  border-color: #d2e2fa;
+}
+.uw-tour-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.uw-tour-top > span {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 650;
+  color: #0059df;
+  letter-spacing: 1px;
+}
+.uw-tour-card .uw-tour-top button {
+  padding: 6px;
+  background: transparent;
+  color: #435978;
+  border: 0;
+  margin: 0;
+}
+.uw-tour-card progress {
+  width: 100%;
+  height: 5px;
+  accent-color: #0866ff;
+  margin-top: 12px;
+}
+.uw-tour-card .uw-tour-step {
+  font-size: 11px;
+  color: #526888;
+}
+.uw-tour-actions,
+.uw-tour-goals {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.uw-tour-card .uw-tour-goals button {
+  min-width: 60px;
+}
+.uw-tour-card .uw-tour-achievement {
+  display: flex;
+  gap: 8px;
+  color: #006451;
+  background: #edfaf5;
+  padding: 12px;
+  border-radius: 8px;
+  animation: uw-tour-appear 0.25s ease;
+}
+.uw-tour-card .uw-tour-prompt {
+  padding: 12px;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-style: italic;
+}
+.uw-tour-card .uw-tour-prompt button {
+  border: 0;
+  background: transparent;
+  color: #435978;
+  padding: 2px;
+  margin: 0;
+}
+.uw-tour-card .uw-tour-notice {
+  font-size: 11px;
+}
+.uw-tour-card ul {
+  list-style: none;
+  padding: 0;
+}
+.uw-tour-card li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 7px;
+}
+.uw-tour-card :focus-visible,
+.uw-tour-launch:focus-visible {
+  outline: 3px solid #0866ff;
+  outline-offset: 3px;
+}
+.uw-tour-target {
+  outline: 3px solid #438eff !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px #0866ff18 !important;
+}
+.uw-tour-launch {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 60;
+  border: 1px solid #a8caff;
+  border-radius: 20px;
+  background: white;
+  color: #0059df;
+  padding: 8px 13px;
+  font:
+    12px "Geist Variable",
+    sans-serif;
+  cursor: pointer;
+}
+.uw-account-tour {
+  border: 1px solid #d1e3ff;
+  background: #f2f7ff;
+  padding: 20px;
+  border-radius: 14px;
+  margin: 20px 0;
+}
+.uw-account-tour h2 {
+  font-size: 22px;
+}
+.uw-account-tour p {
+  font-size: 14px;
+}
+.uw-account-tour a,
+.uw-account-tour button {
+  margin-top: 12px;
+  margin-right: 12px;
+}
+@keyframes uw-tour-appear {
+  from {
+    opacity: 0.7;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 640px) {
+  .uw-tour-card {
+    right: 12px;
+    bottom: 58px;
+    width: min(340px, calc(100vw - 24px));
+    max-height: 42dvh;
+    padding: 16px;
+  }
+  .uw-tour-card h2 {
+    font-size: 20px;
+  }
+  .uw-tour-card p {
+    font-size: 13px;
+  }
+  .uw-tour-card {
+    font-size: 13px;
+  }
+  .uw-tour-target {
+    scroll-margin-bottom: 48dvh;
+  }
+  .uw-editor-main:has(.uw-tour-target) {
+    padding-bottom: 40dvh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uw-tour-card * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.uw-tour-card progress {
+  appearance: none;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #e8f0fc;
+}
+.uw-tour-card progress::-webkit-progress-bar {
+  background: #e8f0fc;
+}
+.uw-tour-card progress::-webkit-progress-value {
+  background: #0866ff;
+}
+.uw-tour-card progress::-moz-progress-bar {
+  background: #0866ff;
+}

@@ -181,6 +181,17 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   assert.ok(await frame.locator('html').evaluate(el=>el.scrollWidth<=innerWidth),'Embedded preview has no horizontal overflow');
   assert.equal(await frame.locator('html').getAttribute('data-popup-window'),null,'Embedded host stays responsive');
   if(process.env.DASHBOARD_SCREENSHOTS)await page.locator('iframe').screenshot({path:path.join(process.env.DASHBOARD_SCREENSHOTS,'preview-194-free.png')});
+  await frame.locator('#settings-btn').click();
+  await frame.locator('#take-unoword-tour').click();
+  await frame.locator('.wc-extension-tour').waitFor();
+  assert.equal(await frame.locator('.wc-extension-tour h3').textContent(), 'Make time for your ideas');
+  await frame.locator('.wc-extension-tour').getByRole('button',{name:'Next / Skip',exact:true}).click();
+  assert.equal(await frame.locator('.wc-extension-tour h3').textContent(), 'Every word counts');
+  await frame.locator('.wc-extension-tour').getByRole('button',{name:'Pause',exact:true}).click();
+  assert.equal(await frame.locator('.wc-extension-tour').count(),0);
+  await frame.locator('#take-unoword-tour').click();
+  assert.equal(await frame.locator('.wc-extension-tour h3').textContent(), 'Every word counts');
+  await frame.locator('.wc-extension-tour').getByRole('button',{name:'Pause',exact:true}).click();
   assert.deepEqual(errors,[]);
   console.log('PASS: four views; real session statistics; 180–420px; native intrinsic width; embedded 194px Free preview; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels.');
  }finally{await browser.close();}

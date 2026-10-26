@@ -1,3 +1,4 @@
+import AccountTour from "@/components/onboarding/AccountTour";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -358,6 +359,7 @@ export default function Account() {
               <p className="uw-account-plan">
                 Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
+              <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
               {proIntent && !user.ai_access && (
                 <form
                   className="uw-plan-intent"

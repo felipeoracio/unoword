@@ -1,3 +1,4 @@
+import WritingTour from "@/components/onboarding/WritingTour";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
@@ -310,9 +311,36 @@ export default function WritingEditor() {
     return () => window.removeEventListener("resize", resizeTitle);
   }, [activeDocument?.id, activeDocument?.title, right, focus]);
 
+  const [tourObservation, setTourObservation] = useState({
+    sequence: 0,
+    text: "",
+    documentId: "",
+    words: 0,
+  });
+  function saveWritingGoal(value: number) {
+    const next = Math.max(1, Math.min(1000000, value || 1));
+    setGoal(next);
+    if (ws.user)
+      localStorage.setItem(`uno-writing-goal:${ws.user.id}`, String(next));
+    window.dispatchEvent(
+      new CustomEvent("unoword-tour-action", { detail: "writing_goal_set" }),
+    );
+  }
   function recordEdit(before: string, after: string, kind: string) {
     const document = draftRef.current;
     if (!document || document.status !== "active") return;
+    if (
+      before !== after &&
+      kind.startsWith("insert") &&
+      !["insertFromPaste", "insertFromDrop"].includes(kind)
+    ) {
+      setTourObservation((value) => ({
+        sequence: value.sequence + 1,
+        text: after,
+        documentId: document.id,
+        words: writingEngine.countWords(after),
+      }));
+    }
     const delta = writingEngine.classifyDelta(before, after, kind);
     if (!delta) return;
     const timestamp = Date.now();
@@ -369,6 +397,7 @@ export default function WritingEditor() {
     editorProps: {
       attributes: {
         class: "uw-writing-canvas",
+        "data-tour": "canvas",
         "aria-label": "Document content",
         role: "textbox",
         "aria-multiline": "true",
@@ -783,6 +812,9 @@ export default function WritingEditor() {
       quickHistory,
     );
     setQuickPrompt(picked.text);
+    window.dispatchEvent(
+      new CustomEvent("unoword-tour-action", { detail: "suggestion_explored" }),
+    );
     setQuickHistory((all) => [picked.id, ...all].slice(0, 12));
   }
   async function importFile(file: File) {
@@ -1626,12 +1658,19 @@ export default function WritingEditor() {
               </p>
             </div>
           )}
-          <footer className="uw-editor-stats" aria-label="Writing statistics">
-            <div title={t("Words in document")}>
+          <footer
+            data-tour="stats"
+            className="uw-editor-stats"
+            aria-label="Writing statistics"
+          >
+            <div data-tour="words" title={t("Words in document")}>
               <strong>{totalWords.toLocaleString(language)}</strong>{" "}
               {t("Words in document")}
             </div>
-            <div title="New typed words only; pasted text is excluded">
+            <div
+              data-tour="session"
+              title="New typed words only; pasted text is excluded"
+            >
               <strong>{sessionWords}</strong> {t("Session words")}
             </div>
             <div>
@@ -1697,7 +1736,7 @@ export default function WritingEditor() {
                 <X size={17} />
               </button>
             </div>
-            <div className="uw-editor-prompt">
+            <div data-tour="prompt" className="uw-editor-prompt">
               <p className="uw-editor-eyebrow">
                 {t("Quick Prompt")} <span>FREE + PRO</span>
               </p>
@@ -1707,7 +1746,7 @@ export default function WritingEditor() {
                     "Start with a question, follow a thought, see where it takes you.",
                   )}
               </p>
-              <button onClick={anotherPrompt}>
+              <button data-tour="prompt-action" onClick={anotherPrompt}>
                 <RefreshCw size={14} />
                 {t("Another prompt")}
               </button>
@@ -1823,6 +1862,7 @@ export default function WritingEditor() {
             )}
             <div className="uw-editor-personalize">
               <button
+                data-tour="profile"
                 onClick={() => {
                   if (!profile) return;
                   const values = Object.fromEntries(
@@ -1844,6 +1884,11 @@ export default function WritingEditor() {
                     : "";
                   setProfileEdits(values);
                   setProfileOpen(true);
+                  window.dispatchEvent(
+                    new CustomEvent("unoword-tour-action", {
+                      detail: "ai_profile_started",
+                    }),
+                  );
                 }}
                 disabled={!profile}
               >
@@ -1935,30 +1980,44 @@ export default function WritingEditor() {
                   )}
                 </>
               )}
-              <label className="uw-editor-goal">
+              <label data-tour="goal" className="uw-editor-goal">
                 {t("Daily goal")}
                 <input
                   type="number"
                   min="1"
                   max="1000000"
                   value={goal}
-                  onChange={(event) => {
-                    const value = Math.max(
-                      1,
-                      Math.min(1000000, Number(event.target.value) || 1),
-                    );
-                    setGoal(value);
-                    localStorage.setItem(
-                      `uno-writing-goal:${ws.user!.id}`,
-                      String(value),
-                    );
-                  }}
+                  onChange={(event) =>
+                    saveWritingGoal(Number(event.target.value))
+                  }
                 />
               </label>
             </div>
           </aside>
         )}
       </div>
+      <WritingTour
+        key={ws.user.id}
+        owner={ws.user.id}
+        enabled={ws.user.ai_access}
+        documentId={activeDocument?.id || null}
+        documentIds={ws.documents.map((document) => document.id)}
+        select={ws.setSelected}
+        create={() =>
+          ws.create(
+            language === "es" ? "Mi primera frase" : "My first sentence",
+          )
+        }
+        observation={tourObservation}
+        words={totalWords}
+        sessionActive={Boolean(session.current)}
+        goal={goal}
+        saveGoal={saveWritingGoal}
+        openAssistant={() => {
+          setRight(true);
+          setFocus(false);
+        }}
+      />
       <dialog
         ref={linkDialog}
         aria-label={language === "es" ? "Añadir enlace" : "Add a link"}

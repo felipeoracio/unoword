@@ -59,6 +59,18 @@ const catalog = {
       const req = route.request(),
         endpoint = new URL(req.url()).pathname;
       requests.push({ method: req.method(), endpoint });
+      if (endpoint === "/api/onboarding")
+        return route.fulfill({
+          json: {
+            version: 1,
+            status: "completed",
+            current_step: "summary",
+            completed_actions: {},
+            skipped_steps: [],
+            draft_id: null,
+            words: 0,
+          },
+        });
       if (endpoint === "/api/product")
         return route.fulfill({
           status: unavailable ? 503 : 200,
