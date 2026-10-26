@@ -18,7 +18,7 @@ await c.route(origin+'/api/**',async route=>{const r=route.request(),p=new URL(r
 });
 await c.route('https://checkout.stripe.com/**',r=>{redirects++;return r.fulfill({contentType:'text/html',body:'<h1>Stripe test checkout fixture</h1>'});});
 const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(origin+'/lifetime');await p.getByRole('link',{name:'Get the $100 Lifetime Deal',exact:true}).waitFor();await p.evaluate(()=>document.fonts.ready);
-assert.equal(await p.title(),'UnoWord Pro — $100 Lifetime Deal');assert.equal(await p.locator('h1').count(),1);
+assert.equal(await p.title(),'UnoWord Pro — $100 Lifetime Deal');assert.equal(await p.getByRole('link',{name:'Sign In',exact:true}).getAttribute('href'),'/account?mode=signin&offer=lifetime');assert.equal(await p.locator('h1').count(),1);
 assert.ok((await p.locator('.lt-stock').textContent()).includes('24 of 25 lifetime deals left'));assert.ok((await p.locator('.lt-stock').textContent()).includes('2 held in checkout'));
 await p.getByRole('heading',{name:'AI allowance & fair use'}).waitFor();assert.ok((await p.locator('.lt-terms').innerText()).includes('100 AI requests per day'));assert.ok((await p.locator('.lt-terms').innerText()).includes('14 days'));assert.ok((await p.locator('.lt-terms').innerText()).includes('Refunds do not reopen'));
 if(process.env.LIFETIME_SCREENSHOTS)fs.mkdirSync(process.env.LIFETIME_SCREENSHOTS,{recursive:true});

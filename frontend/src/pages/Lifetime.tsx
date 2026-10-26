@@ -60,7 +60,7 @@ export default function Lifetime() {
           <nav className="lt-nav" aria-label="Promotion navigation">
             <a href="#included">What’s included</a>
             <a href="#offer-faq">Questions?</a>
-            <Link to="/account?mode=signin">Sign In</Link>
+            <Link to="/account?mode=signin&offer=lifetime">Sign In</Link>
           </nav>
           <a className="lp-button" href="#lifetime-offer">
             Explore the Deal <ArrowRight size={16} />
