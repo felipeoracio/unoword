@@ -79,5 +79,11 @@ function setupProfileAndPlans() {
   $('edit-writing-profile').addEventListener('click', () => openLibrary('profile'));
   $('writing-profile-login').addEventListener('click', async () => { await openSettings(); els.accountEditor.hidden = false; els.accountEmail.focus(); });
   $('writing-profile-onboard').addEventListener('click', startProOnboarding);
+  $('account-google').addEventListener('click', () => {
+    els.accountPassword.value = '';
+    $('account-google-note').hidden = false;
+    const url = 'https://unoword.vercel.app/account?mode=signin';
+    try { chrome.tabs.create({url}); } catch (_e) { window.open(url, '_blank', 'noopener,noreferrer'); }
+  });
   setupAccountSecurity();
 }

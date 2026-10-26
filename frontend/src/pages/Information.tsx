@@ -45,6 +45,13 @@ export default function Information({
               User-scoped API requests and database row-level security limit
               access to account data.
             </p>
+            <p>
+              When Google sign-in is enabled and you choose it, Google and
+              Supabase process your sign-in and basic profile information,
+              including your email address. Your Google password stays with
+              Google. This sign-in flow does not request access to Gmail,
+              Google Drive, or your writing documents.
+            </p>
             <h2>Your writing workspace</h2>
             <p>
               The web editor saves documents to your authenticated account and
@@ -206,7 +213,10 @@ export default function Information({
               unavailable until billing is configured. Email changes and
               password recovery require the administrator’s completed Supabase
               email configuration; the app reports when this setup is missing.
-              Existing password sign-in is available.
+              Existing password sign-in is available. When enabled, Continue
+              with Google opens Google’s sign-in through Supabase. From the
+              extension, finish sign-in on the website and reopen the popup to
+              refresh your account. Signing in does not start a subscription.
             </p>
             <Link
               className="uw-button uw-button-outline"

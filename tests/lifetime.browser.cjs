@@ -5,6 +5,7 @@ const origin=process.env.LIFETIME_TEST_ORIGIN||'http://localhost:4175',owner='00
 (async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox']});try{
 const c=await b.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});let signed=false,offer={amount:10000,currency:'usd',capacity:25,test_mode:true,checkout_available:true,purchased:1,remaining:24,reserved:2,available:22,refund_days:14,daily_ai_limit:100},purchaseStatus='none',canCheckout=true,canRefund=false,requests=[],redirects=0,checkoutError='',refundRequests=0;
 await c.route(origin+'/api/**',async route=>{const r=route.request(),p=new URL(r.url()).pathname;requests.push([p,r.method()]);
+ if(p==='/api/auth/google')return route.fulfill({json:{enabled:false}});
  if(p==='/api/product')return route.fulfill({json:{name:'UnoWord',billing_available:true,chrome_store_url:null,plans:[{id:'pro',features:{writing_editor:true,editor_ai:true,knowledge_sources:true,goals_analytics:true}}],features:[]}});
  if(p==='/api/subscription/lifetime/offer')return route.fulfill({json:offer});
  if(!signed)return route.fulfill({status:401,json:{detail:'Authentication required'}});

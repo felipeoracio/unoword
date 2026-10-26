@@ -26,6 +26,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
    else if(key==='/subscription')value={user_id:currentOwner,billing_available:false,status:'inactive',trial_eligible:true};
    else if(key==='/product')value={name:'UnoWord',billing_available:false,chrome_store_url:null,plans:[],features:[]};
+   else if(key==='/auth/google')value={enabled:false};
    else if(key==='/auth/refresh')value={authenticated:true};
    else if(key==='/ai/profile'&&method==='GET')value=profile;
    else if(key==='/ai/profile'&&method==='PUT'){assert.equal(body.expected_user_id,currentOwner);Object.assign(profile,body);value=profile;}

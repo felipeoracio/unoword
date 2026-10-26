@@ -59,6 +59,8 @@ const catalog = {
       const req = route.request(),
         endpoint = new URL(req.url()).pathname;
       requests.push({ method: req.method(), endpoint });
+      if (endpoint === "/api/auth/google")
+        return route.fulfill({ json: { enabled: false } });
       if (endpoint === "/api/onboarding")
         return route.fulfill({
           json: {

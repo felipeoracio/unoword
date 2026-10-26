@@ -202,6 +202,10 @@ local-run instructions above.
 
 ## Stripe billing
 
+Google account sign-in uses the existing Supabase sessions and Stripe upgrade
+flow. See [Google OAuth setup and verification](docs/google-oauth.md) for the
+required Google Cloud credentials and Supabase provider/redirect settings.
+
 Pro is $20 USD monthly with a 7-day trial for eligible accounts. Checkout remains
 disabled until Stripe and the billing migration are configured. See
 [Stripe setup, verification and activation](docs/stripe-billing.md).

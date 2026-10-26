@@ -1,3 +1,4 @@
+import GoogleSignIn from "@/components/GoogleSignIn";
 import LifetimeAccount from "@/components/marketing/LifetimeAccount";
 import AccountTour from "@/components/onboarding/AccountTour";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -114,11 +115,37 @@ export default function Account() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const submitting = useRef(false);
   const product = useProduct();
+  const initialAuthRedirect = useRef({
+    oauth: params.get("oauth"),
+    next: params.get("next"),
+  });
   useEffect(() => {
     let cancelled = false;
+    const { oauth, next } = initialAuthRedirect.current;
+    if (oauth === "success") beginSession();
+    const oauthErrors: Record<string, string> = {
+      expired:
+        "Google sign-in expired or was already used. Please start again.",
+      canceled: "Google sign-in was canceled. You can try again or use email.",
+      failed: "Google sign-in could not be completed. Please try again.",
+    };
+    if (oauth) {
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete("oauth");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        clean.pathname + clean.search + clean.hash,
+      );
+      if (oauthErrors[oauth]) setMessage(oauthErrors[oauth]);
+    }
     currentUser()
       .then((data) => {
-        if (!cancelled) setUser(data);
+        if (!cancelled) {
+          setUser(data);
+          if (data && oauth === "success" && next === "/editor")
+            window.location.replace("/editor");
+        }
       })
       .catch(() => {
         if (!cancelled)
@@ -134,10 +161,10 @@ export default function Account() {
     };
   }, []);
   useEffect(() => {
-    setMessage("");
+    if (!params.get("oauth")) setMessage("");
     setPassword("");
     setShowPassword(false);
-  }, [mode]);
+  }, [mode, params]);
   const billingOwner = user?.id;
   useEffect(() => {
     if (!billingOwner) {
@@ -561,6 +588,22 @@ export default function Account() {
                         ? "Enter your account email to request a secure recovery link."
                         : "Sign in to your existing Uno Word account."}
               </p>
+              {mode !== "recovery" && (
+                <GoogleSignIn
+                  intent={
+                    lifetimeIntent
+                      ? "lifetime"
+                      : proIntent
+                        ? "pro"
+                        : params.get("next") === "/editor"
+                          ? "editor"
+                          : "account"
+                  }
+                  busy={busy}
+                  setBusy={setBusy}
+                  onError={setMessage}
+                />
+              )}
               <form className="uw-auth-form" onSubmit={authenticate}>
                 <label htmlFor="launch-email">
                   Email address

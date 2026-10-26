@@ -192,7 +192,26 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   await frame.locator('#take-unoword-tour').click();
   assert.equal(await frame.locator('.wc-extension-tour h3').textContent(), 'Every word counts');
   await frame.locator('.wc-extension-tour').getByRole('button',{name:'Pause',exact:true}).click();
+  // Google sign-in opens the existing website flow without handling provider tokens.
+  await frame.locator('html').evaluate(()=>{
+    document.querySelector('#account-editor').hidden=false;
+    window.googleDestinations=[];
+    window.chrome.tabs={create:({url})=>window.googleDestinations.push(url)};
+  });
+  for(const lang of ['en','es']){
+    await frame.locator('html').evaluate((_el,lang)=>{WCi18n.setLang(lang);WCi18n.applyI18n(document);},lang);
+    const google=frame.locator('#account-google');
+    assert.equal(await google.textContent(),lang==='en'?'Continue with Google on the website':'Continuar con Google en el sitio web');
+    await frame.locator('#account-password').fill('temporary-browser-fixture');
+    await google.click();
+    assert.equal(await frame.locator('#account-password').inputValue(),'');
+    assert.equal(await frame.locator('#account-google-note').isVisible(),true);
+  }
+  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleDestinations),Array(2).fill('https://unoword.vercel.app/account?mode=signin'));
+  await frame.locator('html').evaluate(()=>{delete window.chrome.tabs;window.open=(url,target,features)=>{window.googleFallback={url,target,features};};});
+  await frame.locator('#account-google').click();
+  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleFallback),{url:'https://unoword.vercel.app/account?mode=signin',target:'_blank',features:'noopener,noreferrer'});
   assert.deepEqual(errors,[]);
-  console.log('PASS: four views; real session statistics; 180–420px; native intrinsic width; embedded 194px Free preview; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels.');
+  console.log('PASS: four views; real session statistics; 180–420px; native intrinsic width; embedded 194px Free preview; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels; Google website sign-in in EN/ES, new tab/fallback, password cleanup.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

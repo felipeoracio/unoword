@@ -11,6 +11,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 ACCESS_COOKIE = "uno_session"
 REFRESH_COOKIE = "uno_refresh"
+GOOGLE_OAUTH_COOKIE = "__Host-uno_google_oauth"
 
 
 def _set_session_cookies(response: Response, session: dict) -> None:
@@ -187,5 +188,6 @@ async def logout(response: Response, uno_session: str | None = Cookie(default=No
             await auth_request("POST", "logout", access_token=uno_session)
         except SupabaseAPIError:
             pass
+    response.delete_cookie(GOOGLE_OAUTH_COOKIE, path="/", secure=True, httponly=True, samesite="lax")
     response.delete_cookie(ACCESS_COOKIE, path="/", secure=True, samesite="none")
     response.delete_cookie(REFRESH_COOKIE, path="/api/auth", secure=True, samesite="none")
