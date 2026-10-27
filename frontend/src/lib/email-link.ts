@@ -1,10 +1,15 @@
 // A provider email returns to the public Site URL. Read only known auth fields;
 // never accept access/refresh tokens from URL fragments or provider error text.
-export function emailConfirmationRequest() {
-  if (typeof window === "undefined" || window.location.pathname !== "/")
-    return { code: "", invalid: false };
-  const query = new URLSearchParams(window.location.search);
-  const fragment = new URLSearchParams(window.location.hash.slice(1));
+export function emailConfirmationRequest(location?: {
+  pathname: string;
+  search: string;
+  hash: string;
+}) {
+  const source =
+    location || (typeof window === "undefined" ? undefined : window.location);
+  if (!source || source.pathname !== "/") return { code: "", invalid: false };
+  const query = new URLSearchParams(source.search);
+  const fragment = new URLSearchParams(source.hash.slice(1));
   return {
     code: query.get("code") || "",
     invalid:

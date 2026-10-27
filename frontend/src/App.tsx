@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { emailConfirmationRequest } from "@/lib/email-link";
 import Home from "@/pages/Home";
@@ -14,8 +14,8 @@ const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("@/admin/AdminDashboard"));
 
 export default function App() {
-  const [confirmation] = useState(emailConfirmationRequest);
   const location = useLocation();
+  const confirmation = emailConfirmationRequest(location);
   return (
     <>
       <PageMetadata />

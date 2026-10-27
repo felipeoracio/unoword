@@ -19,6 +19,11 @@ export default function EmailConfirmation({
   const spanish = navigator.language.startsWith("es");
   const text = (en: string, es: string) => (spanish ? es : en);
   useEffect(() => {
+    const previousTitle = document.title;
+    const robots = document.querySelector<HTMLMetaElement>(
+      'meta[name="robots"]',
+    );
+    const previousRobots = robots?.content;
     const clean = new URL(window.location.href);
     clean.searchParams.delete("code");
     for (const field of [
@@ -40,10 +45,12 @@ export default function EmailConfirmation({
     document.title = spanish
       ? "Confirma tu correo — UnoWord"
       : "Confirm your email — UnoWord";
-    const robots = document.querySelector<HTMLMetaElement>(
-      'meta[name="robots"]',
-    );
     if (robots) robots.content = "noindex, nofollow";
+    return () => {
+      document.title = previousTitle;
+      if (robots && previousRobots !== undefined)
+        robots.content = previousRobots;
+    };
   }, [spanish]);
   async function complete() {
     if (submitting.current) return;
