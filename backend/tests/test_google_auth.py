@@ -306,13 +306,13 @@ def test_unsafe_configured_callback_origin_is_rejected(system, origin):
     r = system.client.post(
         "/api/auth/google/start", json={"intent": "pro"}, headers={"Origin": origin}
     )
-    assert r.status_code == 503
+    assert r.status_code in {403, 503}
     assert not r.headers.get("set-cookie") and not system.calls
 
 
 def test_signout_clears_pending_oauth(system):
     start(system)
-    r = system.client.post("/api/auth/logout")
+    r = system.client.post("/api/auth/logout", headers=ORIGIN)
     assert r.status_code == 204
     assert any(
         google.GOOGLE_OAUTH_COOKIE in c and "Max-Age=0" in c

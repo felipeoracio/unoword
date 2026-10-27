@@ -8,13 +8,16 @@ import os
 import httpx
 import pytest
 
+pytestmark = pytest.mark.skipif(os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1", reason="Live account tests require explicit opt-in and private credentials")
+
+
 API_URL = os.environ.get("BACKEND_URL", "http://localhost:8001") + "/api"
-USER_A = ("unoword.e2e.a@example.com", "UnoWord-E2E-A!2026")
-USER_B = ("unoword.e2e.b@example.com", "UnoWord-E2E-B!2026")
+USER_A = ("unoword.e2e.a@example.com", os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", ""))
+USER_B = ("unoword.e2e.b@example.com", os.environ.get("UNOWORD_TEST_USER_B_PASSWORD", ""))
 
 
 def _token(creds) -> str:
-    r = httpx.post(f"{API_URL}/auth/login", json={"email": creds[0], "password": creds[1]}, timeout=30)
+    r = httpx.post(f"{API_URL}/auth/login", json={"email": creds[0], "password": creds[1]}, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}, timeout=30)
     r.raise_for_status()
     for part in r.headers.get("set-cookie", "").split(","):
         if "uno_session=" in part:

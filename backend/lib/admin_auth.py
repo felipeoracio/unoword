@@ -25,7 +25,9 @@ def _secret() -> str:
     if explicit:
         return explicit
     # Stable across restarts, server-side only, never shipped to clients.
-    base = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "uno-admin-dev-secret")
+    base = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not base:
+        raise HTTPException(503, "Admin authentication is not configured")
     return hashlib.sha256(f"admin-session:{base}".encode()).hexdigest()
 
 

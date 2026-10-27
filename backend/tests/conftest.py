@@ -54,9 +54,9 @@ _load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 
 USER_A_EMAIL = "unoword.e2e.a@example.com"
-USER_A_PASSWORD = "UnoWord-E2E-A!2026"
+USER_A_PASSWORD = os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", "")
 USER_B_EMAIL = "unoword.e2e.b@example.com"
-USER_B_PASSWORD = "UnoWord-E2E-B!2026"
+USER_B_PASSWORD = os.environ.get("UNOWORD_TEST_USER_B_PASSWORD", "")
 
 
 def _login_access_token(email: str, password: str) -> str:
@@ -64,7 +64,9 @@ def _login_access_token(email: str, password: str) -> str:
     access token straight from the login response's httpOnly cookie -- the
     `require_user` dependency accepts the same token via `Authorization: Bearer`.
     """
-    with httpx.Client(base_url=API_URL, timeout=90.0) as c:
+    if os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1" or not password:
+        pytest.skip("Live QA tests require opt-in and private QA credential settings")
+    with httpx.Client(base_url=API_URL, timeout=90.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
         response = c.post("/auth/login", json={"email": email, "password": password})
         response.raise_for_status()
         token = response.cookies.get("uno_session")

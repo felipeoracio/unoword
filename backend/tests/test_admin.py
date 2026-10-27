@@ -3,13 +3,16 @@ import os
 import httpx
 import pytest
 
+pytestmark = pytest.mark.skipif(os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1", reason="Live account tests require explicit opt-in and private credentials")
+
+
 BASE = "http://localhost:8001/api"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "felipe.oracio.gonzalez@gmail.com")
 ADMIN_PW = os.environ.get("ADMIN_INITIAL_PASSWORD", "***ADMIN_PW_REDACTED***")
 
 
 def _login(email, password):
-    return httpx.post(f"{BASE}/admin/login", json={"email": email, "password": password}, timeout=30)
+    return httpx.post(f"{BASE}/admin/login", json={"email": email, "password": password}, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}, timeout=30)
 
 
 def test_admin_login_success_sets_cookie():
@@ -30,8 +33,8 @@ def test_unauthenticated_endpoints_rejected():
 
 def test_ordinary_user_token_cannot_access_admin():
     # An end-user Supabase token must not authorize admin endpoints.
-    login = httpx.post(f"{BASE}/auth/login",
-                       json={"email": "unoword.e2e.a@example.com", "password": "UnoWord-E2E-A!2026"}, timeout=30)
+    login = httpx.post(f"{BASE}/auth/login", headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")},
+                       json={"email": "unoword.e2e.a@example.com", "password": os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", "")}, timeout=30)
     if login.status_code != 200:
         pytest.skip("seeded user unavailable")
     cookie = login.headers.get("set-cookie", "")

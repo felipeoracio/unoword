@@ -78,7 +78,7 @@ def system(monkeypatch):
     def user(x_user:str=Header(default='a')):
         return AuthenticatedUser(id=A if x_user=='a' else B,plan='pro',access_token=f'token-{x_user}')
     app.dependency_overrides[ai.require_ai_user]=user
-    with TestClient(app) as client: yield SimpleNamespace(client=client,state=state,calls=calls,provider=provider)
+    with TestClient(app, headers={'Origin':'https://unoword.vercel.app'}) as client: yield SimpleNamespace(client=client,state=state,calls=calls,provider=provider)
 
 @pytest.mark.parametrize('mode',['new_topic','expand_idea','connect_dots'])
 @pytest.mark.parametrize('language',['en','es'])
@@ -174,7 +174,7 @@ def test_new_routes_keep_authentication_and_entitlement_guards(monkeypatch):
     app=FastAPI()
     app.include_router(ai.router,prefix='/api')
     routes=[('post','/api/ai/suggestion'),('get','/api/ai/ideas'),('get','/api/ai/idea-options'),('put',f'/api/ai/suggestions/{D1}/save'),('post',f'/api/ai/suggestions/{D1}/use')]
-    with TestClient(app) as client:
+    with TestClient(app, headers={'Origin':'https://unoword.vercel.app'}) as client:
         for method,path in routes: assert getattr(client,method)(path).status_code==401
         app.dependency_overrides[require_user]=lambda:AuthenticatedUser(id=A,plan='free',access_token='token-a')
         async def no_plan(_): return {'plan':'free','status':'inactive'}
@@ -204,6 +204,6 @@ def test_each_ai_mode_requires_server_entitlement_even_if_client_claims_pro(monk
     async def free_entitlement(_):
         return {'plan': 'free', 'status': 'inactive'}
     monkeypatch.setattr(ai_access, 'get_entitlement', free_entitlement)
-    with TestClient(app) as client:
+    with TestClient(app, headers={'Origin':'https://unoword.vercel.app'}) as client:
         response = client.post('/api/ai/suggestion', json={'mode': mode, 'current_writing': 'An actual idea.'})
     assert response.status_code == 403

@@ -23,8 +23,11 @@ ANON = os.environ["SUPABASE_ANON_KEY"]
 SERVICE = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 BACKEND = os.environ.get("BACKEND_URL", "http://localhost:8001")
 
-USER_A = ("unoword.e2e.a@example.com", "UnoWord-E2E-A!2026")
-USER_B = ("unoword.e2e.b@example.com", "UnoWord-E2E-B!2026")
+USER_A = ("unoword.e2e.a@example.com", os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", ""))
+USER_B = ("unoword.e2e.b@example.com", os.environ.get("UNOWORD_TEST_USER_B_PASSWORD", ""))
+
+if not USER_A[1] or not USER_B[1]:
+    raise RuntimeError("Configure private QA passwords before running live isolation verification")
 
 failures: list[str] = []
 passes: list[str] = []

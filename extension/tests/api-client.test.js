@@ -46,6 +46,33 @@ test('wrong-current-password responses are never automatically retried', async (
   assert.ok(!calls.some(url => url.endsWith('/auth/refresh')));
 });
 
+test('extension runtime marker covers JSON, uploads, and automatic session refresh without becoming authentication', async () => {
+  const vm = require('node:vm');
+  const fs = require('node:fs');
+  const calls = [];
+  let expired = false;
+  const worker = { self: { chrome: { runtime: { id: 'a'.repeat(32) } } }, AbortController, FormData, setTimeout, clearTimeout };
+  worker.fetch = async (url, options) => {
+    calls.push({url, options});
+    if (url.endsWith('/auth/me') && !expired) { expired = true; return {ok:false,status:401,json:async()=>({detail:'expired'})}; }
+    return {ok:true,status:200,json:async()=>({ok:true})};
+  };
+  vm.runInNewContext(fs.readFileSync(require.resolve('../shared/api-client.js'),'utf8'),worker);
+  const api = worker.self.WCApi;
+  await api.post('/auth/login',{email:'fixture@example.com',password:'fixture-only'});
+  const data = new FormData();data.append('document_title','Fixture');
+  await api.upload('/documents/upload',data);
+  await api.get('/auth/me');
+  assert.ok(calls.some(c=>c.url.endsWith('/auth/refresh')));
+  for (const {options} of calls) {
+    assert.equal(options.headers['X-Uno-Extension-Id'],'a'.repeat(32));
+    assert.equal(options.credentials,'include');
+    assert.equal(options.headers.Authorization,undefined);
+  }
+  assert.equal(calls[0].options.headers['Content-Type'],'application/json');
+  assert.equal(calls[1].options.headers['Content-Type'],undefined);
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const [name, fn] of tests) {

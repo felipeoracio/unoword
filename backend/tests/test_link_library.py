@@ -49,7 +49,7 @@ def library(monkeypatch):
     monkeypatch.setattr(links.knowledge,'rebuild_source_memory',memory)
     app=FastAPI();app.include_router(links.router,prefix='/api')
     app.dependency_overrides[links.require_ai_user]=lambda:AuthenticatedUser(id=USER,plan='pro',access_token='user-token')
-    with TestClient(app) as client:yield SimpleNamespace(client=client,state=state)
+    with TestClient(app, headers={'Origin':'https://unoword.vercel.app'}) as client:yield SimpleNamespace(client=client,state=state)
 
 @pytest.mark.parametrize('total,embedded,status',[(0,0,'not_indexed'),(2,0,'not_indexed'),(2,1,'partial'),(2,2,'indexed')])
 def test_index_evidence(library,total,embedded,status):
@@ -105,7 +105,7 @@ def test_preview_is_bounded(library):
 
 def test_preview_requires_authentication():
     app=FastAPI();app.include_router(links.router,prefix='/api')
-    with TestClient(app) as client:assert client.get(f'/api/links/{LINK}/content').status_code==401
+    with TestClient(app, headers={'Origin':'https://unoword.vercel.app'}) as client:assert client.get(f'/api/links/{LINK}/content').status_code==401
 
 def test_article_extraction_omits_scripts_and_navigation():
     html=f'<html><head><title>Frost records</title></head><body><nav>Menu advertising boilerplate</nav><main><article><h1>Frost records</h1><p>{" ".join([TEXT]*8)}</p></article></main><script>SECRET_SCRIPT_INSTRUCTION</script><footer>Subscribe cookie menu</footer></body></html>'

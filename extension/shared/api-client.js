@@ -11,9 +11,16 @@
     }
   }
 
+  function headers(json = false) {
+    const result = json ? { 'Content-Type': 'application/json' } : {};
+    const id = scope.chrome?.runtime?.id;
+    if (typeof id === 'string' && /^[a-p]{32}$/.test(id)) result['X-Uno-Extension-Id'] = id;
+    return Object.keys(result).length ? result : undefined;
+  }
+
   async function tryRefresh() {
     try {
-      const r = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      const r = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include', headers: headers() });
       return r.ok;
     } catch (_e) {
       return false;
@@ -29,7 +36,7 @@
       const response = await fetch(`${API_BASE}${path}`, {
         method: options.method || 'GET',
         credentials: 'include',
-        headers: options.body === undefined ? undefined : { 'Content-Type': 'application/json' },
+        headers: headers(options.body !== undefined),
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
         signal: controller.signal,
       });
@@ -59,6 +66,7 @@
       const response = await fetch(`${API_BASE}${path}`, {
         method: 'POST',
         credentials: 'include',
+        headers: headers(),
         body: formData,
         signal: controller.signal,
       });

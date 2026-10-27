@@ -17,9 +17,12 @@ headers = {
     "Content-Type": "application/json",
 }
 accounts = [
-    ("unoword.e2e.a@example.com", "UnoWord-E2E-A!2026"),
-    ("unoword.e2e.b@example.com", "UnoWord-E2E-B!2026"),
+    ("unoword.e2e.a@example.com", os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", "")),
+    ("unoword.e2e.b@example.com", os.environ.get("UNOWORD_TEST_USER_B_PASSWORD", "")),
 ]
+
+if not all(password for _, password in accounts):
+    raise RuntimeError("Configure both QA passwords in private environment settings before seeding")
 
 with httpx.Client(timeout=30.0) as client:
     listed = client.get(f"{url}/auth/v1/admin/users", headers=headers, params={"page": "1", "per_page": "1000"})

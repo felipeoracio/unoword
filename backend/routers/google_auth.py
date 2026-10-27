@@ -1,10 +1,5 @@
 """Supabase-hosted Google OAuth with backend-only PKCE and browser-bound state."""
 
-import base64
-import hashlib
-import json
-import os
-import secrets
 import time
 from typing import Literal
 from urllib.parse import urlencode, urlsplit
@@ -17,32 +12,19 @@ from lib.request_security import trusted_origin, limit_sensitive
 from lib.supabase_config import get_supabase_config
 from lib.supabase_client import auth_request, SupabaseAPIError
 from routers.auth import GOOGLE_OAUTH_COOKIE, _set_session_cookies
+from lib.browser_auth import (
+    DESTINATIONS,
+    app_origin,
+    private,
+    issue_flow,
+    read_flow,
+    clear_flow,
+    verified_code_session,
+)
 
 router = APIRouter(prefix="/auth/google", tags=["auth"])
 TTL = 600
-DESTINATIONS = {
-    "account": "/account",
-    "pro": "/account?plan=pro",
-    "lifetime": "/account?offer=lifetime",
-    "editor": "/editor",
-}
 _settings_cache = (0.0, False)
-
-
-def app_origin():
-    value = os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app").rstrip("/")
-    p = urlsplit(value)
-    if (
-        p.scheme != "https"
-        or not p.hostname
-        or p.username
-        or p.password
-        or p.path
-        or p.query
-        or p.fragment
-    ):
-        raise HTTPException(503, "google_oauth_unavailable")
-    return value
 
 
 def provider_origin():
@@ -74,12 +56,6 @@ async def enabled():
     return value
 
 
-def private(response):
-    response.headers["Cache-Control"] = "private, no-store"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    return response
-
-
 class Start(BaseModel):
     model_config = ConfigDict(extra="forbid")
     intent: Literal["account", "pro", "lifetime", "editor"] = "account"
@@ -100,12 +76,7 @@ async def start(payload: Start, request: Request, response: Response):
     )
     if not await enabled():
         raise HTTPException(503, "google_oauth_not_configured")
-    nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(48)
-    challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-        .decode()
-        .rstrip("=")
-    )
+    nonce, challenge = issue_flow(response, GOOGLE_OAUTH_COOKIE, payload.intent, TTL)
     callback = app_origin() + "/api/auth/google/callback?" + urlencode({"flow": nonce})
     url = (
         provider_origin()
@@ -120,28 +91,6 @@ async def start(payload: Start, request: Request, response: Response):
                 "prompt": "select_account",
             }
         )
-    )
-    state = base64.urlsafe_b64encode(
-        json.dumps(
-            {
-                "nonce": nonce,
-                "verifier": verifier,
-                "intent": payload.intent,
-                "issued": int(time.time()),
-            },
-            separators=(",", ":"),
-        ).encode()
-    ).decode()
-    # __Host- prevents subdomain cookie tossing. Lax permits the provider's
-    # top-level GET callback; no session/access token appears in this cookie.
-    response.set_cookie(
-        GOOGLE_OAUTH_COOKIE,
-        state,
-        max_age=TTL,
-        path="/",
-        secure=True,
-        httponly=True,
-        samesite="lax",
     )
     private(response)
     return {"url": url}
@@ -158,9 +107,7 @@ def finish(intent, outcome):
         + urlencode({"oauth": outcome})
     )
     result = private(RedirectResponse(location, status_code=303))
-    result.delete_cookie(
-        GOOGLE_OAUTH_COOKIE, path="/", secure=True, httponly=True, samesite="lax"
-    )
+    clear_flow(result, GOOGLE_OAUTH_COOKIE)
     return result
 
 
@@ -168,32 +115,15 @@ def finish(intent, outcome):
 async def callback(request: Request):
     intent = "account"
     try:
-        raw = request.cookies.get(GOOGLE_OAUTH_COOKIE, "")
-        if not raw or len(raw) > 2048:
-            raise ValueError()
-        saved = json.loads(base64.urlsafe_b64decode(raw.encode()))
-        if not isinstance(saved, dict):
-            raise ValueError()
-        flow = request.query_params.get("flow", "")
-        issued = saved.get("issued")
-        if (
-            not isinstance(issued, int)
-            or issued > time.time() + 30
-            or issued < time.time() - TTL
-        ):
-            raise ValueError()
-        if (
-            saved.get("intent") not in DESTINATIONS
-            or not isinstance(saved.get("nonce"), str)
-            or not 32 <= len(saved["nonce"]) <= 128
-            or not secrets.compare_digest(saved["nonce"], flow)
-        ):
-            raise ValueError()
-        verifier = saved.get("verifier", "")
-        if not isinstance(verifier, str) or not 43 <= len(verifier) <= 128:
-            raise ValueError()
+        saved = read_flow(
+            request,
+            GOOGLE_OAUTH_COOKIE,
+            TTL,
+            nonce=request.query_params.get("flow", ""),
+        )
+        verifier = saved["verifier"]
         intent = saved["intent"]
-    except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+    except (ValueError, TypeError, KeyError):
         return finish("account", "expired")
     if request.query_params.get("error"):
         # Never reflect a provider error description or authorization code.
@@ -202,31 +132,7 @@ async def callback(request: Request):
     if not code or len(code) > 4096:
         return finish(intent, "failed")
     try:
-        session = await auth_request(
-            "POST",
-            "token?grant_type=pkce",
-            json={"auth_code": code, "code_verifier": verifier},
-        )
-        if not isinstance(session, dict):
-            raise ValueError()
-        access, refresh = session.get("access_token"), session.get("refresh_token")
-        if (
-            not isinstance(access, str)
-            or not access
-            or not isinstance(refresh, str)
-            or not refresh
-        ):
-            raise ValueError()
-        identity = await auth_request("GET", "user", access_token=access)
-        if not isinstance(identity, dict):
-            raise ValueError()
-        session_user = session.get("user")
-        if (
-            not isinstance(session_user, dict)
-            or not identity.get("id")
-            or identity.get("id") != session_user.get("id")
-        ):
-            raise ValueError()
+        session, _identity = await verified_code_session(auth_request, code, verifier)
         result = finish(intent, "success")
         _set_session_cookies(result, session)
         return result

@@ -3,11 +3,21 @@
   "backend_issues": {
     "critical": [],
     "minor": [
-      {"endpoint": "POST /api/auth/login", "issue": "Wrong-password path returns HTTP 400 (propagated from Supabase GoTrue) instead of 401. Body is {'detail':'Invalid login credentials'}. Consider mapping upstream 400 'invalid_credentials' to 401 in lib/supabase_client.raise_http or in the login handler."}
+      {
+        "endpoint": "POST /api/auth/login",
+        "issue": "Wrong-password path returns HTTP 400 (propagated from Supabase GoTrue) instead of 401. Body is {'detail':'Invalid login credentials'}. Consider mapping upstream 400 'invalid_credentials' to 401 in lib/supabase_client.raise_http or in the login handler."
+      }
     ]
   },
-  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
-  "test_report_links": ["/app/backend/tests/test_auth_signup_signin.py", "/app/test_reports/pytest/auth_signup_signin.xml"],
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_signup_signin.py",
+    "/app/test_reports/pytest/auth_signup_signin.xml"
+  ],
   "action_items": [
     "Optional: normalize Supabase 400 'Invalid login credentials' to HTTP 401 for the login endpoint to match REST conventions and the review spec."
   ],
@@ -16,9 +26,14 @@
     "Access token is not returned in the JSON body (only via httpOnly cookie). Callers that need Bearer auth must parse Set-Cookie — acceptable for browser sessions but forces API/E2E clients to read the header. Consider optionally returning access_token in the JSON for programmatic clients if that ever becomes a use case.",
     "raise_http currently forwards Supabase's HTTP status verbatim; 400 'Invalid login credentials' would be more correctly surfaced as 401 to clients."
   ],
-  "updated_files": ["/app/backend/tests/test_auth_signup_signin.py"],
-  "success_rate": {"backend": "86% (6/7)", "frontend": "n/a"},
-  "test_credentials": "Seeded from /app/memory/test_credentials.md (unoword.e2e.a@example.com / UnoWord-E2E-A!2026 and unoword.e2e.b@example.com / UnoWord-E2E-B!2026). New signup used uno.qa.<timestamp>@gmail.com per run.",
+  "updated_files": [
+    "/app/backend/tests/test_auth_signup_signin.py"
+  ],
+  "success_rate": {
+    "backend": "86% (6/7)",
+    "frontend": "n/a"
+  },
+  "test_credentials": "[REDACTED: configure QA credentials in private environment settings]",
   "seed_data_creation": "None beyond a single ephemeral uno.qa.<ts>@gmail.com Supabase auth user per run (created via existing /api/auth/signup). Not cleaned up — Supabase project is a QA project.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

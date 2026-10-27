@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.tsx";
 import { queryClient } from "./lib/queryClient";
+import { emailConfirmationRequest } from "./lib/email-link";
 
 const root = document.getElementById("root")!;
 const app = (
@@ -17,6 +18,13 @@ const app = (
   </StrictMode>
 );
 
-if (window.location.pathname === "/" && root.dataset.prerendered === "true")
+// Email confirmation has different content from the public prerendered home.
+const confirmation = emailConfirmationRequest();
+if (
+  window.location.pathname === "/" &&
+  root.dataset.prerendered === "true" &&
+  !confirmation.code &&
+  !confirmation.invalid
+)
   hydrateRoot(root, app);
 else createRoot(root).render(app);

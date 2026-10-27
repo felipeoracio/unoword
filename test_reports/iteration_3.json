@@ -1,7 +1,14 @@
 {
   "summary": "Phase 17 backend verification: shorter suggestions + daily cap reduced to 25. Wrote /app/backend/tests/test_phase17_shorter_and_cap.py (4 tests). Results: 3 passed, 1 skipped (429 enforcement skipped because neither seeded user is currently at cap — covered by summary math). daily_limit==25 confirmed for both User A and User B via GET /api/ai/usage/summary, proving env cap AI_DAILY_REQUEST_LIMIT=25 correctly wins over the entitlement value 100 in _resolve_daily_limit. Made exactly ONE real /api/ai/suggestion call (cost control): returned 200 with suggestion length within 400 chars and reason length within 300 chars, confirming the shorter-suggestion prompt + JSON schema caps are in effect. used_today/remaining math is consistent (remaining == max(0, daily_limit - used_today), never negative).",
-  "backend_issues": {"critical": [], "minor": []},
-  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
   "test_report_links": [
     "/app/backend/tests/test_phase17_shorter_and_cap.py",
     "/app/test_reports/pytest/phase17.xml"
@@ -12,9 +19,14 @@
     "usage_summary() only counts request_type=='suggestion' (excludes fallbacks) against the limit; enforcement in create_suggestion() also queries request_type=eq.suggestion, so counting is consistent end-to-end.",
     "AISuggestion JSON schema maxLength suggestion=400, why=300 combined with the UNO_WORD_COACH_SYSTEM_PROMPT brevity instruction (<=2 short sentences) produced a compliant response in the live call."
   ],
-  "updated_files": ["/app/backend/tests/test_phase17_shorter_and_cap.py"],
-  "success_rate": {"backend": "100% (3/3 executed, 1 conditionally skipped)", "frontend": "N/A (out of scope)"},
-  "test_credentials": "Used seeded Pro users from /app/memory/test_credentials.md (User A + User B).",
+  "updated_files": [
+    "/app/backend/tests/test_phase17_shorter_and_cap.py"
+  ],
+  "success_rate": {
+    "backend": "100% (3/3 executed, 1 conditionally skipped)",
+    "frontend": "N/A (out of scope)"
+  },
+  "test_credentials": "[REDACTED: configure QA credentials in private environment settings]",
   "seed_data_creation": "None — reused existing seeded Supabase Pro users.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

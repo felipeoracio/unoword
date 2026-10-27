@@ -39,6 +39,14 @@ function messageFor(error: unknown) {
   if (!(error instanceof ApiError))
     return "We couldn’t connect. Please try again.";
   const detail = (error.body as { detail?: unknown })?.detail;
+  if (detail === "email_confirmation_required")
+    return "Confirm your email before signing in. Check your inbox and spam folder, or use Continue with Google.";
+  if (
+    ["email_signup_unavailable", "email_confirmation_not_configured"].includes(
+      String(detail),
+    )
+  )
+    return "Email signup is temporarily unavailable. Please use Continue with Google or try again later.";
   if (
     detail === "billing_unavailable" ||
     detail === "live_billing_not_approved"
@@ -277,11 +285,26 @@ export default function Account() {
       }
       const result = await apiPost<AuthResult>(
         mode === "signup" ? "/auth/signup" : "/auth/login",
-        { email, password },
+        {
+          email,
+          password,
+          ...(mode === "signup"
+            ? {
+                intent: lifetimeIntent
+                  ? "lifetime"
+                  : proIntent
+                    ? "pro"
+                    : params.get("next") === "/editor"
+                      ? "editor"
+                      : "account",
+              }
+            : {}),
+        },
       );
       if (!result.authenticated) {
         setMessage(
-          "Check your email or sign in to finish setting up your account.",
+          result.message ||
+            "Check your email to confirm your account, then sign in. You can submit Create free account again to request another confirmation.",
         );
         return;
       }

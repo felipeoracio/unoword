@@ -162,6 +162,9 @@ async function setAccount(next) {
 function apiErrorCode(error) {
   if (!error || !error.body) return 'offline';
   const detail = error.body.detail;
+  if (detail === 'email_confirmation_required') return 'confirmation_required';
+  if (['email_signup_unavailable', 'email_confirmation_not_configured'].includes(detail)) return 'signup_unavailable';
+  if (error.status === 429) return 'rate_limited';
   if (error.status === 401 || error.status === 400) return 'invalid_credentials';
   if (detail === 'offline' || error.status === 0) return 'offline';
   return 'request_failed';

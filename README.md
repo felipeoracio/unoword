@@ -1,5 +1,9 @@
 # UnoWord
 
+The [account security foundation](docs/security-foundation.md) documents trusted
+browser origins, verified email signup, Google compatibility, and private QA
+credential configuration. Existing accounts and writing retain their IDs.
+
 Product copy, logos, metadata, localization, and documentation use **UnoWord**.
 Run `node frontend/scripts/check-branding.mjs` to scan the project; the production
 build runs this check too. Add `--artifacts` to include built frontend assets.

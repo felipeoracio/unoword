@@ -7,14 +7,17 @@ import os
 import httpx
 import pytest
 
+pytestmark = pytest.mark.skipif(os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1", reason="Live account tests require explicit opt-in and private credentials")
+
+
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://uno-word-build.preview.emergentagent.com").rstrip("/")
 API_URL = f"{BASE_URL}/api"
-USER_A = ("unoword.e2e.a@example.com", "UnoWord-E2E-A!2026")
-USER_B = ("unoword.e2e.b@example.com", "UnoWord-E2E-B!2026")
+USER_A = ("unoword.e2e.a@example.com", os.environ.get("UNOWORD_TEST_USER_A_PASSWORD", ""))
+USER_B = ("unoword.e2e.b@example.com", os.environ.get("UNOWORD_TEST_USER_B_PASSWORD", ""))
 
 
 def _login(creds) -> httpx.Response:
-    with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+    with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
         return c.post("/auth/login", json={"email": creds[0], "password": creds[1]})
 
 
@@ -53,7 +56,7 @@ class TestAuth:
         r = _login(USER_A)
         refresh = _refresh_from_cookies(r)
         # Send ONLY the refresh cookie, no access token.
-        with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+        with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
             rr = c.post("/auth/refresh", cookies={"uno_refresh": refresh})
         assert rr.status_code == 200, rr.text
         body = rr.json()
@@ -61,7 +64,7 @@ class TestAuth:
         assert rr.cookies.get("uno_session"), "refresh did not set a new uno_session cookie"
 
     def test_refresh_without_cookie_returns_401(self):
-        with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+        with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
             rr = c.post("/auth/refresh")
         assert rr.status_code == 401, rr.text
 
@@ -79,7 +82,7 @@ class TestAuth:
     def test_logout_204_and_clears_cookies(self):
         r = _login(USER_A)
         tok = _token_from_cookies(r)
-        with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+        with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
             lo = c.post("/auth/logout", cookies={"uno_session": tok})
         assert lo.status_code == 204, lo.text
         # delete_cookie emits Set-Cookie with Max-Age=0 / expires in past
@@ -109,7 +112,7 @@ def test_links_ssrf_blocked(url):
 
 
 def test_links_requires_auth():
-    with httpx.Client(base_url=API_URL, timeout=30.0) as c:
+    with httpx.Client(base_url=API_URL, timeout=30.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
         assert c.get("/links").status_code == 401
         assert c.post("/links", json={"url": "https://example.com"}).status_code == 401
 
