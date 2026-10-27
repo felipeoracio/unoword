@@ -316,7 +316,7 @@ async def export_document(
         data,
         media_type=mime,
         headers={
-            "Content-Disposition": f'attachment; filename="uno-word-document.{format}"',
+            "Content-Disposition": f'attachment; filename="UnoWord-document.{format}"',
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
         },
@@ -350,7 +350,7 @@ async def export_draft(
         data,
         media_type=mime,
         headers={
-            "Content-Disposition": f'attachment; filename="uno-word-document.{format}"',
+            "Content-Disposition": f'attachment; filename="UnoWord-document.{format}"',
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
         },

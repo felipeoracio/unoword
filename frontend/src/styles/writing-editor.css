@@ -616,6 +616,9 @@
   color: var(--we-blue);
   text-transform: uppercase;
 }
+.uw-editor-empty > .uw-editor-eyebrow {
+  text-transform: none;
+}
 .uw-editor-prompt .uw-editor-eyebrow {
   display: flex;
   gap: 8px;

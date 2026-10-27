@@ -21,7 +21,7 @@ export default function App() {
             style={{ padding: 40, fontFamily: "sans-serif", color: "#52698c" }}
             role="status"
           >
-            Loading Uno Word…
+            Loading UnoWord…
           </main>
         }
       >

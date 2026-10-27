@@ -1,4 +1,4 @@
-/** Uno Word backend client for the extension service worker. */
+/** UnoWord backend client for the extension service worker. */
 (function attach(scope) {
   const API_BASE = 'https://unoword.vercel.app/api';
 

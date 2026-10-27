@@ -313,7 +313,7 @@ def to_pdf(content, title):
 
     block(content)
     output = BytesIO()
-    SimpleDocTemplate(output, title=title, author="Uno Word").build(story)
+    SimpleDocTemplate(output, title=title, author="UnoWord").build(story)
     return output.getvalue()
 
 

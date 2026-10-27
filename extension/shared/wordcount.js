@@ -1,5 +1,5 @@
 /**
- * Word Count Extension — Centralized word-counting engine.
+ * UnoWord — Centralized word-counting engine.
  *
  * Single source of truth for tokenization and session word-count math.
  * Loaded by:

@@ -16,6 +16,7 @@ def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch)
     response = TestClient(app).get('/api/product')
     assert response.status_code == 200
     result = response.json()
+    assert result['name'] == 'UnoWord'
     assert result['billing_available'] is False
     assert result['plans'][0]['price'] is None
     assert result['plans'][1]['price'] == {'amount': 2000, 'currency': 'usd', 'interval': 'month', 'trial_days': 7}

@@ -1,5 +1,5 @@
 /**
- * Word Count — Static prompt library (English + Spanish)
+ * UnoWord — Static prompt library (English + Spanish)
  *
  * Themes match `theme.<slug>` keys in i18n.js. Each theme has 3-5 prompts
  * per language. `Surprise Me` is a virtual theme that pulls from all

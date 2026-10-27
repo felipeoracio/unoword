@@ -72,7 +72,7 @@ async def _entitlement(user_id: str) -> dict:
     if not entitlement:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="An eligible Uno Word AI plan is required",
+            detail="An eligible UnoWord AI plan is required",
         )
     return entitlement
 

@@ -161,9 +161,6 @@
   display: block;
   border-radius: 9px;
 }
-.uw-brand-dot {
-  color: var(--uw-blue);
-}
 .uw-desktop-nav {
   display: flex;
   gap: 25px;

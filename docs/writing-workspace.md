@@ -1,4 +1,4 @@
-# Uno Word writing workspace
+# UnoWord writing workspace
 
 The full-page editor lives at **`/editor`**, alongside the existing marketing,
 account and admin routes. The account page and extension **Open Writing Editor**
@@ -176,4 +176,4 @@ After deployment, visit `/editor`. For Chrome, download the extension ZIP, extra
 over the existing unpacked extension directory, reload on `chrome://extensions`,
 and reload writing tabs. Keep the same directory to preserve local history/settings.
 
-**Every idea starts with Uno Word.**
+**Every idea starts with UnoWord.**

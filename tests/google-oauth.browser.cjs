@@ -28,6 +28,7 @@ const origin=process.env.GOOGLE_TEST_ORIGIN||'http://localhost:4175',owner='0000
  const p=await c.newPage();p.on('pageerror',e=>errors.push(e.message));
  for(const [query,expected] of [['?mode=signin','account'],['?mode=signup&plan=pro','pro'],['?offer=lifetime','lifetime']]){
   signed=false;await p.goto(origin+'/account'+query);await p.getByRole('button',{name:'Continue with Google',exact:true}).waitFor();
+  assert.equal(await p.locator('.uw-brand').innerText(),'UnoWord');assert.equal(await p.locator('.uw-brand').getAttribute('aria-label'),'UnoWord home');assert.equal(await p.title(),'Your account — UnoWord');
   await p.evaluate(()=>localStorage.setItem('uno-writing-identity',JSON.stringify({id:'old-account'})));
   await p.getByRole('button',{name:'Continue with Google',exact:true}).click();await p.getByRole('link',{name:'Complete Google sign-in'}).click();await p.getByText('Signed in as',{exact:false}).waitFor();
   assert.equal(intent,expected);assert.equal(await p.evaluate(()=>localStorage.getItem('uno-writing-identity')),null,'New identity clears the previous cache boundary');assert.ok(!p.url().includes('oauth=')&&!p.url().includes('code='));assert.ok((await p.locator('.uw-account-plan').innerText()).includes('Free'),'Google sign-in does not grant Pro');

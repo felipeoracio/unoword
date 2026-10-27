@@ -4,12 +4,12 @@ import { useLocation } from "react-router-dom";
 const titles: Record<string, string> = {
   "/lifetime": "UnoWord Pro — $100 Lifetime Deal",
   "/": "UnoWord — AI Writing Editor, Word Counter & Writing Companion",
-  "/account": "Your account — Uno Word",
-  "/account/security": "Account & Security — Uno Word",
-  "/editor": "Your writing space — Uno Word",
-  "/privacy": "Privacy & data — Uno Word",
-  "/terms": "Terms of service — Uno Word",
-  "/support": "Support — Uno Word",
+  "/account": "Your account — UnoWord",
+  "/account/security": "Account & Security — UnoWord",
+  "/editor": "Your writing space — UnoWord",
+  "/privacy": "Privacy & data — UnoWord",
+  "/terms": "Terms of service — UnoWord",
+  "/support": "Support — UnoWord",
 };
 export default function PageMetadata() {
   const location = useLocation();
@@ -18,8 +18,8 @@ export default function PageMetadata() {
     document.title =
       titles[pathname] ||
       (pathname.startsWith("/admin")
-        ? "Admin — Uno Word"
-        : "Page not found — Uno Word");
+        ? "Admin — UnoWord"
+        : "Page not found — UnoWord");
     const publicDescription =
       pathname === "/lifetime"
         ? "Explore UnoWord Pro’s $100 USD lifetime offer for the first 25 purchasers. Includes Pro writing tools, daily AI limits, and a 14-day refund policy."

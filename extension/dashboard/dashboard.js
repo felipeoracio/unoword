@@ -1,5 +1,5 @@
 /**
- * Word Count — Dashboard controller
+ * UnoWord — Dashboard controller
  *
  * Renders progress for Today / Week / Month / Year / All time from the
  * background service worker's aggregated stats. Reactive to language

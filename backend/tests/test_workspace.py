@@ -305,11 +305,13 @@ def test_real_docx_pdf_exports_and_docx_import(fixture):
             result.status_code == 200
             and result.headers["Cache-Control"] == "private, no-store"
         )
+        assert result.headers["Content-Disposition"] == f'attachment; filename="UnoWord-document.{format}"'
         if format == "docx":
             assert "A quiet beginning" in "\n".join(
                 p.text for p in Document(BytesIO(result.content)).paragraphs
             )
         else:
+            assert PdfReader(BytesIO(result.content)).metadata.author == "UnoWord"
             assert (
                 "A quiet beginning"
                 in PdfReader(BytesIO(result.content)).pages[0].extract_text()

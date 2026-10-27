@@ -65,7 +65,7 @@ import "@/styles/writing-editor.css";
 
 const spanish: Record<string, string> = {
   "Your writing space": "Tu espacio de escritura",
-  "Every idea starts with Uno Word.": "Cada idea empieza con Uno Word.",
+  "Every idea starts with UnoWord.": "Cada idea empieza con UnoWord.",
   Library: "Biblioteca",
   "New document": "Nuevo documento",
   "New folder": "Nueva carpeta",
@@ -1022,7 +1022,7 @@ export default function WritingEditor() {
         <Link to="/account?next=%2Feditor">
           {t("Sign in to write")} <ArrowRight size={16} />
         </Link>
-        <Link to="/">Uno Word</Link>
+        <Link to="/">UnoWord</Link>
       </main>
     );
 
@@ -1273,7 +1273,7 @@ export default function WritingEditor() {
               }}
             />
             <p className="uw-editor-tagline">
-              {t("Every idea starts with Uno Word.")}
+              {t("Every idea starts with UnoWord.")}
             </p>
           </aside>
         )}
@@ -1637,7 +1637,7 @@ export default function WritingEditor() {
                 <FileText size={34} />
               </span>
               <p className="uw-editor-eyebrow">
-                UNO WORD ·{" "}
+                UnoWord ·{" "}
                 {language === "es"
                   ? "TU PRÓXIMO CAPÍTULO"
                   : "YOUR NEXT CHAPTER"}

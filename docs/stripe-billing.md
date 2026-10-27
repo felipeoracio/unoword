@@ -1,6 +1,6 @@
-# Stripe billing for Uno Word
+# Stripe billing for UnoWord
 
-Uno Word Pro is **$20 USD per month after a 7-day free trial**, once per account.
+UnoWord Pro is **$20 USD per month after a 7-day free trial**, once per account.
 Checkout collects a payment method before the trial starts. Each session explicitly
 sets `managed_payments.enabled=false` and uses standard Stripe Checkout subscriptions,
 so an account-wide Managed Payments default does not add product tax-code requirements
@@ -26,9 +26,9 @@ The existing integration was reviewed and reused; no second payment system was a
 
 Here is what happens for a subscriber:
 
-1. **Sign in.** Uno Word checks who the person is before opening an upgrade.
+1. **Sign in.** UnoWord checks who the person is before opening an upgrade.
 2. **Review payment on Stripe.** Checkout shows the trial and monthly price and
-   collects the payment method on Stripe's own page. Uno Word does not collect
+   collects the payment method on Stripe's own page. UnoWord does not collect
    card details on its own server.
 3. **Confirm access from Stripe.** Stripe sends the backend a signed subscription
    message (a webhook). The backend verifies it and reads the current Stripe
@@ -60,7 +60,7 @@ money is charged in sandbox mode.
 ## Finish configuration (start in a Stripe sandbox)
 
 Prefer a separate Vercel preview and Supabase test project with the existing
-Uno Word application schema for sandbox billing.
+UnoWord application schema for sandbox billing.
 If testing on the existing production project, use isolated QA accounts only;
 cancel their sandbox subscriptions and delete those QA accounts before switching
 to live keys. Existing sandbox customer IDs are not reused in live mode, and
@@ -73,7 +73,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    for billing, so billing does not depend on a reachable direct IPv6 DB hostname.
    The migration creates billing state, durable leases and event receipts; it
    adds a nullable entitlement source without changing existing grants.
-2. In the Stripe sandbox Product catalog, create **Uno Word Pro** with a flat,
+2. In the Stripe sandbox Product catalog, create **UnoWord Pro** with a flat,
    recurring, licensed price of **20.00 USD every month**, quantity 1. Copy the
    `price_...` identifier. Trials are configured by the backend when creating
    Checkout; do not create a separate trial price.
@@ -95,7 +95,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    scheduled cancellation and final cancellation. No invoice or checkout redirect
    grants access. Copy this endpoint's signing secret (`whsec_...`), not an API key
    or a Stripe CLI forwarding secret from a different endpoint.
-5. In Vercel → Uno Word project → Settings → Environment Variables, configure the
+5. In Vercel → UnoWord project → Settings → Environment Variables, configure the
    backend/server environment, **never a VITE_ variable**:
 
    | Variable | Value |
@@ -147,7 +147,7 @@ provider messages/bodies, customer data or hosted session URLs.
 | `billing_key_invalid` | Replace the invalid/revoked sandbox secret key in secure Vercel settings, then redeploy. |
 | `billing_permission_denied` | The configured key lacks permission for the requested Stripe operation. Use an appropriately permitted sandbox key. |
 | `billing_portal_not_configured` | Activate the default sandbox portal with payment-method updates and cancellation at period end, without subscription updates. |
-| `billing_checkout_configuration_invalid` | Inspect the matching request in Stripe Workbench API logs for Checkout configuration requirements. Uno Word explicitly disables Managed Payments per session; a Managed Payments tax-code error indicates the deployment predates that fix. |
+| `billing_checkout_configuration_invalid` | Inspect the matching request in Stripe Workbench API logs for Checkout configuration requirements. UnoWord explicitly disables Managed Payments per session; a Managed Payments tax-code error indicates the deployment predates that fix. |
 | `billing_provider_unavailable` | A transient/network error or another provider error occurred; inspect the bounded `stripe_request_failed` log entry and its operation/request ID. |
 
 ## Read-only readiness check
@@ -302,7 +302,7 @@ Verified results:
 - Checkout returns an actual `cs_test_` session and a second request reuses it.
   The account remains Free before Checkout completes.
 - The hosted page displays Sandbox, 7 days free and 20 USD/month afterward.
-- Stripe accepts the test card and returns to the signed-in Uno Word account.
+- Stripe accepts the test card and returns to the signed-in UnoWord account.
 - A signed subscription webhook creates a bounded `trialing` Pro entitlement,
   `billing_source=stripe`, sandbox mode, and the 100-request daily limit.
 - The account displays Pro using the verified backend entitlement.

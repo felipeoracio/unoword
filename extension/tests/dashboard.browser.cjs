@@ -60,6 +60,9 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   async function capture(name){await layout(name);await page.evaluate(()=>scrollTo(0,0));if(process.env.DASHBOARD_SCREENSHOTS){fs.mkdirSync(process.env.DASHBOARD_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.DASHBOARD_SCREENSHOTS,name+'.png'),fullPage:true});}}
   await page.goto('http://popup.test/popup/popup.html');
   await page.waitForFunction(()=>document.querySelector('#daily-word-count').textContent==='748');
+  assert.equal(await page.title(),'UnoWord — Writing Assistant');
+  assert.equal(await page.locator('.wc__brand-name').innerText(),'UnoWord');
+  assert.equal(await page.getByRole('tablist',{name:'UnoWord',exact:true}).count(),1);
   assert.equal(await page.locator('#daily-goal-percent').textContent(),'75%');
   assert.equal(await page.locator('#dashboard-streak').textContent(),'5 days');
   assert.equal(requests.filter(r=>r.route==='/ai/suggestion').length,0);
@@ -105,6 +108,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    await page.setViewportSize({width,height:600});
    for(const lang of ['en','es']){
     await page.evaluate(async({lang,links})=>{settings.language=lang;WCi18n.setLang(lang);WCi18n.applyI18n(document);}, {lang,links});
+    assert.equal(await page.evaluate(()=>WCi18n.t('brand.name')),'UnoWord');
     await page.evaluate(async items=>{links=items;renderLinks();},links);
     await page.waitForFunction(()=>document.querySelector('#library-panel').getAttribute('aria-busy')==='false');
     await layout(`links ${width} ${lang}`);
@@ -173,7 +177,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   assert.ok(await page.locator('#library-access').isVisible());
   // Real embedded host at the screenshot's width, with a zero-word Free account.
   storage.wc_state={active:false,typedWords:0,pastedWords:0};storage.wc_history=[];
-  await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="Uno Word preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
+  await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="UnoWord preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
   await page.goto('http://popup.test/sizing-host');
   const frame=page.frameLocator('iframe');await frame.locator('#nav-write').click();
   await frame.locator('#primary-btn').waitFor({state:'visible'});

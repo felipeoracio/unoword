@@ -56,7 +56,7 @@ export default function Lifetime() {
       </a>
       <header className="lp-header">
         <div className="lp-container lp-header-inner">
-          <Brand joined />
+          <Brand />
           <nav className="lt-nav" aria-label="Promotion navigation">
             <a href="#included">What’s included</a>
             <a href="#offer-faq">Questions?</a>
@@ -384,7 +384,7 @@ export default function Lifetime() {
       </main>
       <footer className="lp-footer lp-container">
         <div>
-          <Brand joined />
+          <Brand />
           <p>Your complete writing companion.</p>
         </div>
         <nav aria-label="Footer navigation">

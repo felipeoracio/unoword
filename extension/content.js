@@ -1,5 +1,5 @@
 /**
- * Word Count Extension — Content Script
+ * UnoWord — Content Script
  *
  * Two responsibilities on every allowed page:
  *

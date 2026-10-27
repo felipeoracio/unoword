@@ -1,5 +1,5 @@
 /**
- * Word Count — Popup Controller
+ * UnoWord — Popup Controller
  *
  * Renders the correct panel and keeps everything in sync with the
  * background service worker. All strings flow through WCi18n so the UI
@@ -1502,7 +1502,7 @@ function sendFeedback() {
   const msg = (els.feedbackMessage.value || '').trim();
   if (!msg) { els.feedbackError.hidden = false; els.feedbackError.textContent = t('feedback.empty'); return; }
   const typeLabel = feedbackType ? t(`feedback.${feedbackType}`) : t('feedback.other');
-  const subject = `Uno Word Feedback — ${typeLabel}`;
+  const subject = `UnoWord Feedback — ${typeLabel}`;
   let version = '';
   try { version = chrome.runtime.getManifest().version; } catch (_e) { /* preview */ }
   const bodyLines = [

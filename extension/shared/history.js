@@ -1,5 +1,5 @@
 /**
- * Word Count — History, Streak & CSV engine (pure functions).
+ * UnoWord — History, Streak & CSV engine (pure functions).
  *
  * Centralizes everything that reasons about completed sessions so the popup,
  * dashboard, service worker and tests share one implementation:
@@ -140,9 +140,9 @@
   }
 
   /**
-   * Parse a Uno Word CSV export.
+   * Parse a UnoWord CSV export.
    * @returns {{ok, records, validCount, invalidCount, total, error?}}
-   *   ok=false with `error` when the file is not a valid Uno Word CSV at all.
+   *   ok=false with `error` when the file is not a valid UnoWord CSV at all.
    *   Otherwise `records` holds the valid session objects; invalid rows are
    *   counted but never partially applied by the caller.
    */

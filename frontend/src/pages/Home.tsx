@@ -268,7 +268,7 @@ export default function Home() {
       </a>
       <header className="lp-header">
         <div className="lp-container lp-header-inner">
-          <Brand joined />
+          <Brand />
           <nav className="lp-desktop-nav" aria-label="Main navigation">
             {navigation.map(([label, id]) => (
               <a key={id} href={`#${id}`}>
@@ -596,13 +596,13 @@ export default function Home() {
             <a className="lp-button lp-button-white" href={freeHref}>
               Get UnoWord Free <ArrowRight size={17} />
             </a>
-            <Brand joined light />
+            <Brand light />
           </div>
         </section>
       </main>
       <footer className="lp-footer lp-container">
         <div>
-          <Brand joined />
+          <Brand />
           <p>
             Your complete writing companion.
             <br />

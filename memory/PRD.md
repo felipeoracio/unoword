@@ -1,4 +1,4 @@
-# Uno Word — PRD
+# UnoWord — PRD
 
 ## Source
 - Repo cloned from https://github.com/felipeoracio/unowordv2.git into `/app` on 2026-09-29.

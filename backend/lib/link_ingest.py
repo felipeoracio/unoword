@@ -151,7 +151,7 @@ def _extract(html: str, url: str) -> dict:
     if len(text.split()) < 80 and any(marker in text.lower() for marker in (
         "sign in to continue", "subscribe to continue", "log in to read", "verify you are human", "checking your browser",
     )):
-        raise LinkIngestError("restricted_content", "Only a sign-in, subscription, or access-check page was available. Uno Word cannot read the protected article.")
+        raise LinkIngestError("restricted_content", "Only a sign-in, subscription, or access-check page was available. UnoWord cannot read the protected article.")
     title = author = published_at = canonical = None
     try:
         meta = trafilatura.extract_metadata(html, default_url=url)

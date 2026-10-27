@@ -21,7 +21,7 @@ const flags = {
   goals_analytics: false,
 };
 const catalog = {
-  name: "Uno Word",
+  name: "UnoWord",
   billing_available: true,
   chrome_store_url: null,
   plans: [
@@ -134,7 +134,7 @@ const catalog = {
         document.title,
     );
     assert.ok(
-      !/Uno Word|Uno word|Unoword/.test(branding),
+      !/Uno\s+[Ww]ord|Uno(?:word)/.test(branding),
       "Landing branding must always be UnoWord, even if API brand is legacy",
     );
     assert.match(

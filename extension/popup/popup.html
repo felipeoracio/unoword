@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Uno Word — Writing Assistant</title>
+    <title>UnoWord — Writing Assistant</title>
     <script src="viewport.js"></script>
     <link rel="stylesheet" href="popup.css" />
     <link rel="stylesheet" href="dashboard.css" />
@@ -15,7 +15,7 @@
       <header class="wc__header">
         <div class="wc__brand" data-testid="wc-brand">
           <img class="wc__brand-mark" src="../icons/unoword.svg" width="42" height="42" alt="" />
-          <span class="wc__brand-name">Uno <span>Word</span></span>
+          <span class="wc__brand-name">Uno<span>Word</span></span>
           <span class="wc__pro-badge" id="pro-badge" data-testid="pro-badge" data-i18n="badge.pro" hidden>PRO</span>
           <span class="wc__offline-badge" id="offline-badge" data-testid="offline-badge" data-i18n="header.offline" data-i18n-title="header.offlineTitle" title="You're offline" hidden>Offline</span>
         </div>
@@ -41,7 +41,7 @@
         </div>
       </header>
 
-      <nav class="wc__main-nav" id="main-nav" aria-label="Uno Word" role="tablist">
+      <nav class="wc__main-nav" id="main-nav" aria-label="UnoWord" role="tablist">
         <button id="nav-write" data-page="session" role="tab" aria-controls="session-panel" aria-selected="true" data-i18n="nav.write">Write</button>
         <button id="nav-ideas" data-page="ideas" role="tab" aria-controls="prompt-panel" aria-selected="false" data-i18n="nav.ideas">Ideas</button>
         <button id="nav-progress" data-page="progress" role="tab" aria-controls="progress-panel" aria-selected="false" data-i18n="nav.progress">Progress</button>
@@ -52,7 +52,7 @@
       <section class="wc__panel wc__onboarding" id="firstlaunch-panel" data-testid="firstlaunch-panel" hidden>
         <h2 class="wc__eyebrow" data-i18n="first.eyebrow">Welcome</h2>
         <p class="wc__title" data-i18n="first.title">Choose your language</p>
-        <p class="wc__helper" data-i18n="first.sub">Select the language you'd like to use in Uno Word.</p>
+        <p class="wc__helper" data-i18n="first.sub">Select the language you'd like to use in UnoWord.</p>
         <div class="wc__choices" id="first-lang-choices">
           <button class="wc__choice" data-lang="en" data-testid="first-lang-en">
             <span class="wc__choice-title">English</span>
@@ -251,7 +251,7 @@
             <button data-library-filter="saved" aria-selected="false" role="tab" data-i18n="library.saved">Saved ideas</button>
           </nav>
           <section id="library-profile" class="wc__library-pane">
-            <h2 data-i18n="profile.title">My Writing Profile</h2><p class="wc__helper" data-i18n="profile.subtitle">Help Uno Word understand what you love to write about.</p>
+            <h2 data-i18n="profile.title">My Writing Profile</h2><p class="wc__helper" data-i18n="profile.subtitle">Help UnoWord understand what you love to write about.</p>
             <p id="writing-profile-status" class="wc__helper" role="status"></p>
             <button id="writing-profile-login" class="wc__btn wc__btn--primary" data-i18n="account.signIn" hidden>Sign in</button>
             <form id="writing-profile-form" hidden><div id="writing-profile-fields" class="wc__library-pane"></div>
@@ -363,7 +363,7 @@
         </div>
 
         <div class="wc__pro-onboard-step" data-step="ai" id="pro-step-ai" data-testid="pro-step-ai" hidden>
-          <h2 class="wc__title" data-i18n="onboard.ai.title" data-testid="onboard-ai-title">Welcome to Uno Word AI</h2>
+          <h2 class="wc__title" data-i18n="onboard.ai.title" data-testid="onboard-ai-title">Welcome to UnoWord AI</h2>
           <p class="wc__helper" data-i18n="onboard.ai.sub" data-testid="onboard-ai-subtitle">Let's get to know your writing. Share only what you'd like — it's optional.</p>
           <div class="wc__ai-form" data-testid="onboard-ai-form">
             <label class="wc__field" for="onboard-ai-goal" data-testid="onboard-ai-goal-field">
@@ -379,7 +379,7 @@
               <input id="onboard-ai-projects" maxlength="2000" data-testid="onboard-ai-projects" data-i18n-placeholder="onboard.ai.projectsPlaceholder" />
             </label>
             <label class="wc__field" for="onboard-ai-avoid" data-testid="onboard-ai-avoid-field">
-              <span data-i18n="onboard.ai.avoid" data-testid="onboard-ai-avoid-label">Any subjects Uno Word should avoid?</span>
+              <span data-i18n="onboard.ai.avoid" data-testid="onboard-ai-avoid-label">Any subjects UnoWord should avoid?</span>
               <input id="onboard-ai-avoid" maxlength="1000" data-testid="onboard-ai-avoid" data-i18n-placeholder="onboard.ai.avoidPlaceholder" />
             </label>
             <label class="wc__field" for="onboard-ai-style" data-testid="onboard-ai-style-field">
@@ -395,7 +395,7 @@
               <input id="onboard-ai-subjects" maxlength="2000" data-testid="onboard-ai-subjects" data-i18n-placeholder="onboard.ai.subjectsPlaceholder" />
             </label>
             <label class="wc__field" for="onboard-ai-context" data-testid="onboard-ai-context-field">
-              <span data-i18n="onboard.ai.context" data-testid="onboard-ai-context-label">What experiences have shaped your perspective — or anything else Uno Word should understand?</span>
+              <span data-i18n="onboard.ai.context" data-testid="onboard-ai-context-label">What experiences have shaped your perspective — or anything else UnoWord should understand?</span>
               <textarea id="onboard-ai-context" rows="2" maxlength="5000" data-testid="onboard-ai-context" data-i18n-placeholder="onboard.ai.contextPlaceholder"></textarea>
             </label>
           </div>
@@ -403,14 +403,14 @@
             <span class="wc__privacy-icon" aria-hidden="true">＋</span>
             <div>
               <p class="wc__privacy-title" data-i18n="onboard.ai.uploadTitle" data-testid="onboard-ai-upload-title">Add context with your own documents</p>
-              <p class="wc__privacy-copy" data-i18n="onboard.ai.upload" data-testid="onboard-ai-upload-copy">After setup, you can upload documents (PDF, Word, text, or Markdown) in AI settings so Uno Word has more of your writing to draw from.</p>
+              <p class="wc__privacy-copy" data-i18n="onboard.ai.upload" data-testid="onboard-ai-upload-copy">After setup, you can upload documents (PDF, Word, text, or Markdown) in AI settings so UnoWord has more of your writing to draw from.</p>
             </div>
           </div>
           <div class="wc__privacy-note" data-testid="onboard-ai-privacy-note">
             <span class="wc__privacy-icon" aria-hidden="true">◎</span>
             <div>
               <p class="wc__privacy-title" data-i18n="onboard.ai.privacyTitle" data-testid="onboard-ai-privacy-title">Private context, not model training</p>
-              <p class="wc__privacy-copy" data-i18n="onboard.ai.privacy" data-testid="onboard-ai-privacy-copy">Uno Word uses what you provide to build your private writing context. This draft stays on this device until you choose to sync it.</p>
+              <p class="wc__privacy-copy" data-i18n="onboard.ai.privacy" data-testid="onboard-ai-privacy-copy">UnoWord uses what you provide to build your private writing context. This draft stays on this device until you choose to sync it.</p>
             </div>
           </div>
           <button class="wc__link-btn wc__ai-skip" id="onboard-ai-skip" type="button" data-testid="onboard-ai-skip" data-i18n="onboard.ai.skip">Skip for now</button>
@@ -604,13 +604,13 @@
           <p class="wc__setting-group-title" data-i18n="security.title">Account &amp; Security</p>
           <div class="wc__setting-row" data-testid="account-status-row">
             <div class="wc__setting-row-main">
-              <p class="wc__setting-label" data-i18n="account.aiTitle" data-testid="account-ai-title">Uno Word AI</p>
+              <p class="wc__setting-label" data-i18n="account.aiTitle" data-testid="account-ai-title">UnoWord AI</p>
               <p class="wc__setting-meta" id="account-meta" data-testid="account-meta"></p>
             </div>
             <button class="wc__link-btn" id="account-action" data-testid="account-action"></button>
           </div>
           <div class="wc__setting-editor wc__auth-editor" id="account-editor" data-testid="account-editor" hidden>
-            <p class="wc__helper" data-i18n="account.required" data-testid="account-required">You need to sign in and have an eligible plan to access Uno Word AI.</p>
+            <p class="wc__helper" data-i18n="account.required" data-testid="account-required">You need to sign in and have an eligible plan to access UnoWord AI.</p>
             <label class="wc__field" for="account-email" data-testid="account-email-field">
               <span data-i18n="account.email" data-testid="account-email-label">Email</span>
               <input type="email" id="account-email" autocomplete="email" data-testid="account-email" data-i18n-placeholder="account.emailPlaceholder" />
@@ -626,7 +626,7 @@
             </div>
             <button type="button" id="account-google" class="wc__btn wc__btn--outline wc__btn--sm" data-i18n="account.google">Continue with Google on the website</button>
             <p class="wc__helper" id="account-google-note" data-i18n="account.googleNote" hidden></p>
-            <p class="wc__footnote" data-i18n="account.cookiePrivacy" data-testid="account-cookie-privacy">Your session is kept in a secure cookie. Uno Word never stores your password.</p>
+            <p class="wc__footnote" data-i18n="account.cookiePrivacy" data-testid="account-cookie-privacy">Your session is kept in a secure cookie. UnoWord never stores your password.</p>
           </div>
           <div id="account-security" class="wc__setting-editor" hidden>
             <p id="security-email" class="wc__helper"></p><p id="security-verified" class="wc__helper"></p>
@@ -690,7 +690,7 @@
             <button class="wc__link-btn" id="ai-documents-manage" data-testid="ai-documents-manage" data-i18n="settings.manage">Manage</button>
           </div>
           <div class="wc__setting-editor wc__documents-manager" id="ai-documents-editor" data-testid="ai-documents-editor" hidden>
-            <p class="wc__helper" data-i18n="documents.helper" data-testid="documents-helper">Upload TXT, Markdown, PDF, or DOCX files. Uno Word extracts text privately; scanned PDFs are not supported yet.</p>
+            <p class="wc__helper" data-i18n="documents.helper" data-testid="documents-helper">Upload TXT, Markdown, PDF, or DOCX files. UnoWord extracts text privately; scanned PDFs are not supported yet.</p>
             <p class="wc__setting-label" data-i18n="documents.uploadedTitle" data-testid="documents-uploaded-label">Uploaded documents</p>
             <input type="file" id="document-file" data-testid="document-file" accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
             <label class="wc__field" for="document-title" data-testid="document-title-field">
@@ -718,7 +718,7 @@
             <p class="wc__memory-manager-note" id="document-empty" data-testid="document-empty" data-i18n="documents.empty">No private documents uploaded yet.</p>
             <hr style="border:none;border-top:1px solid rgba(128,128,128,.2);margin:16px 0;" />
             <p class="wc__setting-label" data-i18n="links.title" data-testid="links-label">Website links</p>
-            <p class="wc__helper" data-i18n="links.helper" data-testid="links-helper">Save articles, blog posts, or online documents. Uno Word privately reads the page text to understand your writing. It never signs in or bypasses paywalls.</p>
+            <p class="wc__helper" data-i18n="links.helper" data-testid="links-helper">Save articles, blog posts, or online documents. UnoWord privately reads the page text to understand your writing. It never signs in or bypasses paywalls.</p>
             <label class="wc__field" for="link-url" data-testid="link-url-field">
               <span data-i18n="links.url" data-testid="link-url-label">Website URL</span>
               <input id="link-url" type="url" maxlength="2000" data-testid="link-url" data-i18n-placeholder="links.urlPlaceholder" />

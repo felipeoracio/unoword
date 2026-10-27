@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Word Count core engine.
+ * Unit tests for the UnoWord core engine.
  *
  * These tests exercise the same pure functions used by background.js —
  * countWords() and the applyDelta reducer — without needing a real Chrome

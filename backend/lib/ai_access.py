@@ -1,4 +1,4 @@
-"""Server-authoritative Uno Word AI entitlement checks."""
+"""Server-authoritative UnoWord AI entitlement checks."""
 
 import os
 from datetime import datetime, timezone
@@ -39,5 +39,5 @@ def entitlement_is_active(entitlement: dict | None) -> bool:
 
 async def require_ai_user(user: AuthenticatedUser = Depends(require_user)) -> AuthenticatedUser:
     if not entitlement_is_active(await get_entitlement(user.id)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="An eligible Uno Word AI plan is required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="An eligible UnoWord AI plan is required")
     return user

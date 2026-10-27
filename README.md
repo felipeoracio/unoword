@@ -1,6 +1,12 @@
-# farm-ts
+# UnoWord
 
-Uno Word's writing editor is available at `/editor`. See the
+Product copy, logos, metadata, localization, and documentation use **UnoWord**.
+Run `node frontend/scripts/check-branding.mjs` to scan the project; the production
+build runs this check too. Add `--artifacts` to include built frontend assets.
+Existing lowercase URLs, archive paths, storage keys, database names, and extension
+message identifiers remain stable for compatibility with saved writing and releases.
+
+UnoWord's writing editor is available at `/editor`. See the
 [writing workspace setup and verification guide](docs/writing-workspace.md),
 including the required additive Supabase migration. The original starter notes
 below describe the repository scaffold; current account, AI and workspace data

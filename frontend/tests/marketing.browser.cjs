@@ -19,7 +19,7 @@ const features = [
   ["goals_analytics", "Writing goals & extended history", false],
 ];
 const catalog = {
-  name: "Uno Word",
+  name: "UnoWord",
   billing_available: false,
   chrome_store_url: null,
   features: features.map(([id, label]) => ({ id, label })),
@@ -424,7 +424,7 @@ const catalog = {
     await capture("account-install");
     const download = page.waitForEvent("download");
     await page
-      .getByRole("link", { name: "Download Uno Word for Chrome" })
+      .getByRole("link", { name: "Download UnoWord for Chrome" })
       .click();
     assert.equal((await download).suggestedFilename(), "unoword-extension.zip");
     await page.getByRole("button", { name: "Sign out", exact: true }).click();

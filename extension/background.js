@@ -1,5 +1,5 @@
 /**
- * Word Count Extension — Background Service Worker
+ * UnoWord — Background Service Worker
  *
  * Single source of truth for session, settings, history and prompt state.
  * Everything lives in chrome.storage.local so:

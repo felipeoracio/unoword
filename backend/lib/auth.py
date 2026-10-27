@@ -1,4 +1,4 @@
-"""Supabase access-token verification for protected Uno Word routes."""
+"""Supabase access-token verification for protected UnoWord routes."""
 
 import asyncio
 import os
@@ -86,4 +86,4 @@ async def require_user(
 
 def require_subscription(user: AuthenticatedUser) -> None:
     if os.environ.get("AI_REQUIRE_SUBSCRIPTION", "true").lower() == "true" and user.plan not in {"pro", "premium"}:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="An eligible Uno Word plan is required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="An eligible UnoWord plan is required")

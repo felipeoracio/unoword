@@ -1,4 +1,4 @@
-# Word Count — Chrome Extension (Phase 2)
+# UnoWord — Chrome Extension (Phase 2)
 
 > **Editor support & limitations (word counting).** Counting is driven by
 > `input` events + `inputType`, reconciled against the editor's actual text
@@ -57,13 +57,13 @@ device.
   topics to avoid. The draft stays in `chrome.storage.local` with
   `syncStatus: "local_only"`; no network request or model training occurs.
 - **Supabase account bridge** — Settings now supports email/password sign-in
-  through the Uno Word backend. Session tokens stay in secure httpOnly cookies,
+  through the UnoWord backend. Session tokens stay in secure httpOnly cookies,
   never `chrome.storage`. AI controls remain hidden until the backend confirms
   both authentication and an active AI entitlement. The first profile sync
   requires confirmation; later profile edits auto-sync and writing sessions
   remain local unless the user separately chooses to save them.
 - **Consent-based AI Memory** — After Stop, users can choose Save, Don't Save,
-  or confirm Always Save. Uno Word reads only the active editor at that event;
+  or confirm Always Save. UnoWord reads only the active editor at that event;
   normal keystroke counting still sends word deltas, never writing text. Saved
   writing is AES-GCM encrypted with a non-extractable device key in IndexedDB
   and queued as ciphertext (maximum 100 sessions, no expiry). Pre-login items
@@ -296,7 +296,7 @@ Full behavior is validated in `tests/engine.test.js`.
 
 ## Permissions
 
-The manifest requests `storage` and `activeTab`, plus access to the Uno Word backend origin. Content scripts run on supported pages (excluding browser/Chrome Web Store pages). `activeTab` supports explicit actions such as using current writing for an idea. The extension does not request browsing history or bookmarks permissions.
+The manifest requests `storage` and `activeTab`, plus access to the UnoWord backend origin. Content scripts run on supported pages (excluding browser/Chrome Web Store pages). `activeTab` supports explicit actions such as using current writing for an idea. The extension does not request browsing history or bookmarks permissions.
 
 ---
 
@@ -493,7 +493,7 @@ backend. The mode, questions and validated attribution are versioned in the
 existing suggestion context column, with older records supported; no database
 schema migration or client-side model key is required.
 
-### Uno Word dashboard (0.11.0)
+### UnoWord dashboard (0.11.0)
 
 The popup has one navigation bar: Write, Ideas, Progress, Library. Write combines
 completed typed words today with the current session (pasted text is excluded).
