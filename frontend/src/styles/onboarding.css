@@ -57,6 +57,11 @@
   justify-content: space-between;
   gap: 12px;
 }
+.uw-tour-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .uw-tour-top > span {
   display: flex;
   gap: 7px;
@@ -130,7 +135,7 @@
   margin-top: 7px;
 }
 .uw-tour-card :focus-visible,
-.uw-tour-launch:focus-visible {
+.uw-tour-launch button:focus-visible {
   outline: 3px solid #0866ff;
   outline-offset: 3px;
 }
@@ -148,11 +153,31 @@
   border-radius: 20px;
   background: white;
   color: #0059df;
+  display: flex;
+  align-items: stretch;
+}
+.uw-tour-launch button {
+  border: 0;
+  border-radius: 20px 0 0 20px;
   padding: 8px 13px;
+  min-height: 40px;
+  background: transparent;
+  color: inherit;
   font:
     12px "Geist Variable",
     sans-serif;
   cursor: pointer;
+}
+.uw-tour-launch .uw-tour-hide {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  min-width: 40px;
+  border-left: 1px solid #d2e2fa;
+  border-radius: 0 20px 20px 0;
+}
+.uw-tour-launch button:hover {
+  background: #eff6ff;
 }
 .uw-account-tour {
   border: 1px solid #d1e3ff;

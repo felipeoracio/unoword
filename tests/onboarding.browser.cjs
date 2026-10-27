@@ -109,6 +109,26 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await panel.getByRole('button',{name:'Pause tour'}).click();assert.equal(await panel.count(),0);
   await page.reload();assert.equal(await panel.count(),0);await page.getByRole('button',{name:'Resume UnoWord Tour'}).click();
   await page.keyboard.press('Escape');assert.equal(await panel.count(),0);
+  // Dismiss the floating launcher with the keyboard; keep the saved step and draft.
+  await page.setViewportSize({width:320,height:900});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),320);
+  const hide=page.getByRole('button',{name:'Hide tutorial tour',exact:true});
+  assert.ok((await hide.boundingBox()).width>=40);
+  await hide.focus();await page.keyboard.press('Enter');
+  assert.equal(await page.locator('.uw-tour-launch').count(),0);
+  await page.reload();await page.waitForLoadState('networkidle');
+  assert.equal(await page.locator('.uw-tour-launch').count(),0);
+  assert.equal(await panel.count(),0);
+  assert.ok((await canvas.textContent()).includes('Today I begin'));
+  // Existing account navigation explicitly restores the tutorial, without resetting it.
+  await page.goto(origin+'/account');
+  await page.getByRole('region',{name:'UnoWord onboarding'}).getByRole('link',{name:'Resume UnoWord Tour'}).click();
+  await panel.getByRole('heading',{name:'You Did It. You Started.'}).waitFor();
+  assert.equal(new URL(page.url()).searchParams.has('tour'),false);
+  await panel.getByRole('button',{name:'Hide tutorial tour',exact:true}).click();
+  await page.reload();await page.waitForLoadState('networkidle');
+  assert.equal(await panel.count(),0);assert.equal(await page.locator('.uw-tour-launch').count(),0);
+  await page.setViewportSize({width:1440,height:1000});
   // A fresh tour may skip every action without fabricating any achievements.
   await page.close();currentOwner=other;
   tour={version:1,status:'not_started',current_step:'welcome',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
@@ -130,6 +150,6 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.goto(origin+'/account');await page.getByRole('region',{name:'UnoWord onboarding'}).getByText('The full writing editor is a Pro feature.',{exact:false}).waitFor();
   pro=true;await page.reload();await page.getByRole('region',{name:'UnoWord onboarding'}).getByRole('link',{name:/Write My First Sentence|Resume UnoWord Tour|Take the UnoWord Tour/}).click();
   await panel.getByRole('heading',{name:'One Sentence Down. Endless Possibilities Ahead.'}).waitFor();
-  assert.deepEqual(errors,[]);console.log('PASS onboarding: real typing without punctuation; paste exclusion; no focus theft; refresh/resume; counter/session/goal/prompt/profile actions; real achievements; skipped steps; replay; 320–1440px; WCAG; Free restriction; no AI calls.');
+  assert.deepEqual(errors,[]);console.log('PASS onboarding: real typing without punctuation; paste exclusion; no focus theft; refresh/resume; counter/session/goal/prompt/profile actions; real achievements; skipped steps; replay; 320–1440px; WCAG; Free restriction; dismiss launcher/card, keyboard access, refresh persistence, account restore, account isolation; no AI calls.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

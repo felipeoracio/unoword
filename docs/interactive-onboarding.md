@@ -15,6 +15,13 @@ replay controls. Reduced motion disables the celebration animation. Unavailable
 or asynchronously rendered spotlight targets do not prevent skipping a step.
 The real editor and counter remain the only writing and tracking systems.
 
+The editor's tour launcher and open tour card have an **X** to hide the tutorial.
+Dismissal is remembered per account in this browser, including after refresh or
+offline reopen. It preserves the saved tour step, achievements, and writing.
+Users can reopen it from the existing account-page tour action; explicitly opening
+`/editor?tour=1` restores the launcher and resumes the saved tour. The one-use tour
+query is removed so that hiding it afterward survives another refresh.
+
 The rest of the tour follows the requested progression: word counting, writing
 sessions, goals, progress, Quick Prompt, the existing Writing Profile, Chrome
 installation instructions, and a summary of actual completed actions. The tour

@@ -114,6 +114,14 @@ export default function WritingTour({
   openAssistant: () => void;
 }) {
   const { progress, update, notice } = useTourProgress(owner);
+  const launcherKey = `uno-tour-launch-hidden:${owner}`;
+  const [launcherHidden, setLauncherHidden] = useState(() => {
+    try {
+      return localStorage.getItem(launcherKey) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [promptVisible, setPromptVisible] = useState(true);
@@ -137,12 +145,29 @@ export default function WritingTour({
   useEffect(() => {
     if (!progress || ready.current) return;
     ready.current = true;
+    const url = new URL(location.href);
+    const requested = url.searchParams.get("tour") === "1";
+    if (requested) {
+      setLauncherHidden(false);
+      try {
+        localStorage.removeItem(launcherKey);
+      } catch {
+        /* The tour still opens when browser storage is unavailable. */
+      }
+      url.searchParams.delete("tour");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    }
     setOpen(
-      progress.status === "not_started" ||
-        progress.status === "in_progress" ||
-        new URLSearchParams(location.search).get("tour") === "1",
+      requested ||
+        (!launcherHidden &&
+          (progress.status === "not_started" ||
+            progress.status === "in_progress")),
     );
-  }, [progress]);
+  }, [progress, launcherHidden, launcherKey]);
   useEffect(() => {
     if (!open || !context.current.progress) return;
     if (step !== stepRef.current) {
@@ -298,25 +323,46 @@ export default function WritingTour({
     setOpen(false);
     update({ status: "paused" });
   }
+  function hideTour() {
+    setLauncherHidden(true);
+    if (open) pause();
+    try {
+      localStorage.setItem(launcherKey, "1");
+    } catch {
+      /* Hiding remains available for this page without local storage. */
+    }
+  }
   return (
     <>
-      <button
-        className="uw-tour-launch"
-        type="button"
-        onClick={() => {
-          setOpen(true);
-          update({
-            status: "in_progress",
-            ...(progress.status === "completed"
-              ? { current_step: "welcome" }
-              : {}),
-          });
-        }}
-      >
-        {progress.status === "paused"
-          ? "Resume UnoWord Tour"
-          : "Take the UnoWord Tour"}
-      </button>
+      {!launcherHidden && !open && (
+        <div className="uw-tour-launch">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(true);
+              update({
+                status: "in_progress",
+                ...(progress.status === "completed"
+                  ? { current_step: "welcome" }
+                  : {}),
+              });
+            }}
+          >
+            {progress.status === "paused"
+              ? "Resume UnoWord Tour"
+              : "Take the UnoWord Tour"}
+          </button>
+          <button
+            type="button"
+            className="uw-tour-hide"
+            onClick={hideTour}
+            aria-label="Hide tutorial tour"
+            title="Hide tutorial tour. Reopen it from your account."
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {open && (
         <aside
           className="uw-tour-card"
@@ -327,9 +373,19 @@ export default function WritingTour({
             <span>
               <Sparkles size={16} /> YOUR FIRST WORDS
             </span>
-            <button type="button" onClick={pause} aria-label="Pause tour">
-              <Pause size={16} />
-            </button>
+            <div className="uw-tour-top-actions">
+              <button type="button" onClick={pause} aria-label="Pause tour">
+                <Pause size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={hideTour}
+                aria-label="Hide tutorial tour"
+                title="Hide tutorial tour. Reopen it from your account."
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <progress
             max={steps.length}
