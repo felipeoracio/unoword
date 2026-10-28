@@ -70,7 +70,7 @@ def test_less_recently_surfaced_sources_rotate_into_bounded_overview():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("focused", [False, True])
-async def test_suggestion_route_includes_library_and_only_this_users_enabled_context(monkeypatch, focused):
+async def test_suggestion_route_includes_library_and_only_this_users_enabled_context(monkeypatch, focused, quota_store):
     user = SimpleNamespace(id="writer-a", access_token="test-token")
     captured = {}
     records = {
@@ -125,7 +125,7 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
 
     monkeypatch.setattr(ai, "_user_rows", rows)
     monkeypatch.setattr(ai, "_entitlement", noop)
-    monkeypatch.setattr(ai, "_resolve_daily_limit", lambda _: 0)
+    monkeypatch.setattr(ai, "_resolve_daily_limit", lambda _: 100)
     monkeypatch.setattr(ai, "_record_usage", noop)
     monkeypatch.setattr(ai, "user_rest", store)
     monkeypatch.setattr(ai.knowledge, "disabled_source_ids", disabled)

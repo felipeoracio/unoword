@@ -46,6 +46,57 @@ async def aclient():
 
 # --- app-specific fixtures below this line ---
 
+@pytest.fixture
+def quota_store(monkeypatch):
+    """Local RPC fixture only; never touches Supabase or a paid AI provider."""
+    import asyncio
+    from types import SimpleNamespace
+    from lib import ai_quota
+    from lib.supabase_client import SupabaseAPIError
+
+    state = SimpleNamespace(rows=[], reservations={}, calls=[], fail=None)
+    lock = asyncio.Lock()
+
+    async def rpc(method, path, *, json):
+        assert method == "POST"
+        state.calls.append((path, json))
+        if state.fail and path.endswith(state.fail):
+            raise SupabaseAPIError(503, "private database detail")
+        async with lock:
+            owner = json["p_user"]
+            rows = [row for row in state.rows if row["user_id"] == owner]
+            pending = [r for r in state.reservations.values() if r["user_id"] == owner and r["state"] == "pending"]
+            used = sum(r["request_type"] in {"suggestion", "workspace_assistant"} for r in rows)
+            if path == "rpc/ai_usage_summary":
+                from datetime import datetime, timezone
+                return dict(date=datetime.now(timezone.utc).date().isoformat(), used_today=used,
+                            pending_today=len(pending), total_today=len(rows))
+            request = json["p_request"]
+            if path == "rpc/ai_reserve_request":
+                if request in state.reservations or used + len(pending) >= json["p_limit"]:
+                    return False
+                state.reservations[request] = dict(user_id=owner, state="pending", request_type=json["p_type"])
+                return True
+            reservation = state.reservations.get(request)
+            if not reservation or reservation["user_id"] != owner:
+                return False
+            if path == "rpc/ai_complete_request":
+                if reservation["state"] != "done":
+                    state.rows.append(dict(id=request, user_id=owner, request_type=reservation["request_type"],
+                                           input_tokens=json["p_input_tokens"], output_tokens=json["p_output_tokens"]))
+                    reservation["state"] = "done"
+                return True
+            if path == "rpc/ai_release_request":
+                if reservation["state"] == "pending":
+                    del state.reservations[request]
+                return None
+            raise AssertionError(path)
+
+    monkeypatch.setattr(ai_quota, "service_rest", rpc)
+    state.rpc = rpc
+    monkeypatch.setenv("AI_DAILY_REQUEST_LIMIT", "0")
+    return state
+
 # Load backend/.env so tests use the same configuration as the running server
 # (e.g. the rotated ADMIN_INITIAL_PASSWORD) instead of any hard-coded default.
 from dotenv import load_dotenv as _load_dotenv

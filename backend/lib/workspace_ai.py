@@ -4,9 +4,10 @@ import json
 from uuid import uuid4
 from fastapi import HTTPException
 from lib.ai_access import get_entitlement
+from lib.ai_quota import AIRequest, resolve_daily_limit
 from lib.ai_provider import get_suggestion_provider, MockSuggestionProvider
 from lib.personalization import effective_profile, contextual_answers
-from lib.supabase_client import service_rest, user_rest, SupabaseAPIError
+from lib.supabase_client import user_rest
 from lib.retrieval import retrieve_user_chunks
 from lib import knowledge
 from models.ai import AISuggestionRequest
@@ -21,22 +22,18 @@ ACTIONS = {
 
 
 async def generate_assistance(payload, user):
-    from routers.ai import (
-        _user_rows,
-        _compose_prompt_context,
-        _resolve_daily_limit,
-        _record_usage,
-    )
-
     provider = get_suggestion_provider()
     if isinstance(provider, MockSuggestionProvider):
         raise HTTPException(503, "ai_provider_unavailable")
     entitlement = await get_entitlement(user.id)
-    limit = _resolve_daily_limit(entitlement or {})
-    # Existing plans with no cap configured fail closed rather than allow
-    # unbounded new tools. No pricing or existing account limits are modified.
-    if not limit:
-        raise HTTPException(503, "ai_limit_not_configured")
+    limit = resolve_daily_limit(entitlement or {})
+    async with AIRequest(user.id, limit, "workspace_assistant") as quota:
+        return await _generate_assistance(payload, user, provider, quota)
+
+
+async def _generate_assistance(payload, user, provider, quota):
+    from routers.ai import _user_rows, _compose_prompt_context
+
     profile = await _user_rows("ai_profiles", user, extra={"limit": "1"})
     answers = await _user_rows(
         "ai_onboarding_answers", user, extra={"limit": "20", "order": "updated_at.desc"}
@@ -125,17 +122,6 @@ async def generate_assistance(payload, user):
     count = 3 if payload.action in {"next", "brainstorm", "block"} else 1
     # One provider request returns three directions and consumes one shared AI
     # request, matching the plan's request-based usage allowance.
-    request_id = str(uuid4())
-    try:
-        granted = await service_rest(
-            "POST",
-            "rpc/workspace_reserve_ai",
-            json={"p_user": user.id, "p_request": request_id, "p_limit": limit},
-        )
-    except SupabaseAPIError as error:
-        raise HTTPException(503, "ai_usage_unavailable") from error
-    if not granted:
-        raise HTTPException(429, "Daily AI suggestion limit reached")
     try:
         schema = {
             "type": "object",
@@ -214,36 +200,13 @@ async def generate_assistance(payload, user):
             json=saved,
             prefer="return=minimal",
         )
-        await service_rest(
-            "PATCH",
-            "workspace_ai_requests",
-            params={"id": f"eq.{request_id}", "user_id": f"eq.{user.id}"},
-            json={"state": "done"},
-            prefer="return=minimal",
-        )
         usage = result.usage
-        await _record_usage(
-            user.id,
-            request_type="workspace_assistant",
-            model=provider.model,
-            provider=provider.name,
-            input_tokens=getattr(usage, "prompt_tokens", None),
-            output_tokens=getattr(usage, "completion_tokens", None),
+        await quota.complete(
+            getattr(usage, "prompt_tokens", None),
+            getattr(usage, "completion_tokens", None),
         )
-        return {"items": items, "request_id": request_id}
+        return {"items": items, "request_id": quota.id}
+    except HTTPException:
+        raise
     except Exception as error:
-        # A failed provider call must not consume the user's allowance.
-        try:
-            await service_rest(
-                "DELETE",
-                "workspace_ai_requests",
-                params={
-                    "id": f"eq.{request_id}",
-                    "user_id": f"eq.{user.id}",
-                    "state": "eq.pending",
-                },
-                prefer="return=minimal",
-            )
-        except SupabaseAPIError:
-            pass
         raise HTTPException(502, "ai_assistance_unavailable") from error

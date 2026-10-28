@@ -18,8 +18,9 @@ TEXT2 = 'Fictional: Ivo tests clay kiln temperatures with three witness cones be
 QUESTIONS = ['What observation changes the decision?', 'What does the second test reveal?', 'How could this matter to a reader?']
 
 @pytest.fixture
-def system(monkeypatch):
+def system(monkeypatch, quota_store):
     state = {name:[] for name in ('ai_profiles','ai_onboarding_answers','ai_memories','ai_suggestions','ai_usage','ai_feedback')}
+    quota_store.rows = state['ai_usage']
     state['ai_documents'] = [dict(id=sid,user_id=A,source_kind='file',document_title=title,summary=text,enabled=True,processing_status='ready')
         for sid,title,text in [(D1,'Solar ferries',TEXT1),(D2,'Clay workshop',TEXT2)]]
     state['ai_document_chunks'] = [dict(id=str(uuid4()),user_id=A,document_id=sid,content=text) for sid,text in [(D1,TEXT1),(D2,TEXT2)]]
@@ -125,6 +126,7 @@ def test_one_cited_source_cannot_masquerade_as_a_connection(system):
     system.provider.cited=[D1]
     body=system.client.post('/api/ai/suggestion',json={'mode':'connect_dots'}).json()
     assert 'not enough' in body['suggestion'] and not body['inspired_by']
+    assert system.state['ai_usage'][0]['request_type']=='suggestion_fallback_insufficient_evidence'
 
 def test_save_use_reload_and_user_isolation(system):
     body=system.client.post('/api/ai/suggestion',json={'mode':'connect_dots'}).json()
@@ -144,7 +146,7 @@ def test_save_use_reload_and_user_isolation(system):
 @pytest.mark.parametrize('mode',['new_topic','expand_idea','connect_dots'])
 def test_existing_daily_cap_applies_to_all_modes(system,mode):
     from lib.dates import today_iso
-    system.state['ai_usage']=[dict(user_id=A,date=today_iso(),request_type='suggestion',id=str(i)) for i in range(100)]
+    system.state['ai_usage'].extend(dict(user_id=A,date=today_iso(),request_type='suggestion',id=str(i)) for i in range(100))
     assert system.client.post('/api/ai/suggestion',json=dict(mode=mode,current_writing='An idea')).status_code==429
     assert not system.calls
 
@@ -153,6 +155,19 @@ def test_empty_context_has_localized_useful_fallback(system):
     body=system.client.post('/api/ai/suggestion',json=dict(mode='new_topic',language='es')).json()
     assert 'Observa' in body['title'] and len(body['questions'])==3
     assert not body['inspired_by'] and not system.calls
+
+def test_provider_failure_returns_basic_prompt_without_consuming_shared_quota(system, monkeypatch):
+    async def broken(*args, **kwargs):
+        raise RuntimeError('provider-private-detail')
+    monkeypatch.setattr(system.provider, 'generate_suggestion', broken)
+    response = system.client.post('/api/ai/suggestion', json={'mode':'new_topic'})
+    assert response.status_code == 200
+    assert 'provider-private-detail' not in response.text
+    usage_response = system.client.get('/api/ai/usage/summary')
+    assert usage_response.headers['Cache-Control'] == 'private, no-store'
+    summary = usage_response.json()
+    assert (summary['used_today'], summary['pending_today'], summary['remaining']) == (0, 0, 100)
+    assert system.state['ai_usage'][0]['request_type'] == 'suggestion_fallback_provider_error'
 
 def test_titles_without_source_content_are_not_treated_as_evidence(system):
     for source in system.state['ai_documents']:

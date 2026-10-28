@@ -312,11 +312,13 @@ class AIUsageEvent(AIModel):
 
 
 class AIUsageSummary(AIModel):
+    user_id: str
     date: str
     plan: str
     daily_limit: int = 0
     used_today: int = 0
     total_today: int = 0
+    pending_today: int = 0
     remaining: int | None = None
 
 

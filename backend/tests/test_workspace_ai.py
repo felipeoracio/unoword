@@ -8,7 +8,7 @@ from routers import ai
 
 
 @pytest.fixture
-def system(monkeypatch):
+def system(monkeypatch, quota_store):
     user = SimpleNamespace(id="writer", access_token="user-token")
     state = {
         "ai_profiles": [
@@ -61,8 +61,7 @@ def system(monkeypatch):
         ],
     }
     calls = []
-    reservations = {}
-    used = 0
+    reservations = quota_store.reservations
 
     async def rows(table, owner, *, extra):
         assert owner is user
@@ -72,21 +71,6 @@ def system(monkeypatch):
 
     async def entitlement(_):
         return {"daily_request_limit": 2, "plan": "pro"}
-
-    async def service(method, table, **kwargs):
-        nonlocal used
-        if table == "rpc/workspace_reserve_ai":
-            body = kwargs["json"]
-            assert body["p_user"] == user.id and body["p_limit"] == 2
-            if len(reservations) >= 2:
-                return False
-            reservations[body["p_request"]] = "pending"
-            return True
-        request = kwargs["params"]["id"].removeprefix("eq.")
-        if method == "PATCH":
-            reservations[request] = "done"
-        elif method == "DELETE":
-            reservations.pop(request, None)
 
     async def disabled(*_):
         return {"revoked"}
@@ -140,7 +124,6 @@ def system(monkeypatch):
     monkeypatch.setattr(ai, "_record_usage", record)
     monkeypatch.setattr(workspace_ai, "get_entitlement", entitlement)
     monkeypatch.setattr(workspace_ai, "get_suggestion_provider", lambda: provider)
-    monkeypatch.setattr(workspace_ai, "service_rest", service)
     monkeypatch.setattr(workspace_ai, "user_rest", save)
     monkeypatch.setattr(workspace_ai.knowledge, "disabled_source_ids", disabled)
     monkeypatch.setattr(workspace_ai, "retrieve_user_chunks", retrieval)
@@ -178,7 +161,7 @@ async def test_three_directions_use_current_profile_and_authorized_context(syste
         "Contemporary astronomy"
         in [call[1] for call in system.calls if call[0] == "model"][-1]
     )
-    assert all(value == "done" for value in system.reservations.values())
+    assert all(value["state"] == "done" for value in system.reservations.values())
 
 
 async def test_quota_stops_model_before_a_third_call(system):

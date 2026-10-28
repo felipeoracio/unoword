@@ -703,6 +703,7 @@ function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
     documents = [];
     links = [];
     usage = null;
+    usageVersion++;
     cloudMemories = [];
     [els.documentList, els.linkList, $('library-memory-list')].forEach(list => list.replaceChildren());
     $('link-content-dialog').close();
@@ -1016,6 +1017,7 @@ async function refreshAiSuggestion() {
       suggestionBusy = false;
       els.suggestionGenerate.disabled = false;
       els.promptAiAgain.disabled = false;
+      void refreshUsage();
     }
   }
 }
@@ -1617,14 +1619,26 @@ async function loadDocuments() {
 }
 
 let usage = null;
+let usageVersion = 0;
 async function loadUsage() {
-  try { usage = await window.WCApi.get('/ai/usage/summary'); }
-  catch (_error) { usage = null; }
+  const owner = account.userId, version = ++usageVersion;
+  if (!owner || !account.authenticated || !account.aiAccess || account.online === false) { usage = null; return; }
+  try {
+    const summary = await window.WCApi.get('/ai/usage/summary');
+    if (version === usageVersion && owner === account.userId && account.authenticated && account.aiAccess) usage = summary.user_id === owner ? summary : null;
+  } catch (_error) {
+    if (version === usageVersion && owner === account.userId) usage = null;
+  }
+}
+
+async function refreshUsage() {
+  await loadUsage();
+  renderUsage();
 }
 
 function renderUsage() {
   if (!els.aiUsageMeta) return;
-  if (!usage) {
+  if (!usage || account.online === false || usage.date !== new Date().toISOString().slice(0, 10)) {
     els.aiUsageMeta.textContent = t('aiSettings.usageUnavailable');
     els.aiUsageBar.hidden = true;
     return;
@@ -1635,13 +1649,15 @@ function renderUsage() {
       limit: fmtNumber(usage.daily_limit),
       remaining: fmtNumber(usage.remaining),
     });
+    if (usage.pending_today > 0) els.aiUsageMeta.textContent += ' · ' + t('aiSettings.usagePending', { n: fmtNumber(usage.pending_today) });
+    els.aiUsageMeta.textContent += ' ' + t('aiSettings.usageShared');
     const pct = Math.max(0, Math.min(100, Math.round((usage.used_today / usage.daily_limit) * 100)));
     els.aiUsageBar.hidden = false;
     els.aiUsageBar.style.cssText = 'height:6px;border-radius:999px;background:rgba(128,128,128,.18);overflow:hidden;margin-top:6px;';
     const full = usage.remaining === 0;
     els.aiUsageBarFill.style.cssText = `display:block;height:100%;border-radius:999px;width:${pct}%;transition:width .3s ease;background:${full ? '#d9534f' : '#5b8def'};`;
   } else {
-    els.aiUsageMeta.textContent = t('aiSettings.usageUnlimited', { used: fmtNumber(usage.used_today) });
+    els.aiUsageMeta.textContent = t('aiSettings.usageUnavailable');
     els.aiUsageBar.hidden = true;
   }
 }
@@ -2354,8 +2370,8 @@ function wire() {
   // counting, sessions and progress stay fully local; only AI requests surface
   // the "internet required" notice.
   if (typeof window !== 'undefined') {
-    window.addEventListener('offline', () => { account.online = false; renderOfflineBadge(); renderPrompt(); });
-    window.addEventListener('online', () => { account.online = true; renderOfflineBadge(); renderPrompt(); });
+    window.addEventListener('offline', () => { account.online = false; renderOfflineBadge(); renderPrompt(); renderUsage(); });
+    window.addEventListener('online', () => { account.online = true; renderOfflineBadge(); renderPrompt(); void refreshUsage(); });
   }
   els.promptAiReasons.querySelectorAll('.wc__chip').forEach((chip) => {
     chip.addEventListener('click', () => onAiReasonPick(chip.dataset.reason, chip));
@@ -2376,7 +2392,10 @@ function wire() {
     });
   } catch (_e) { /* preview */ }
   window.addEventListener('focus', scheduleProgressRefresh);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleProgressRefresh(); });
+  window.addEventListener('focus', () => void refreshUsage());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { scheduleProgressRefresh(); void refreshUsage(); } });
+  const usageTicker = setInterval(() => { if (!document.hidden) void refreshUsage(); }, 30000);
+  window.addEventListener('unload', () => clearInterval(usageTicker));
 }
 
 async function boot() {

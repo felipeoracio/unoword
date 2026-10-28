@@ -48,6 +48,7 @@ import {
 import Brand from "@/components/marketing/Brand";
 import { apiGet, apiPost, apiPut, apiPatch, ApiError } from "@/lib/api";
 import { useWritingWorkspace } from "@/lib/use-writing-workspace";
+import { useAIUsage } from "@/lib/use-ai-usage";
 import {
   EMPTY_DOCUMENT,
   fetchDocumentIndex,
@@ -222,6 +223,13 @@ export default function WritingEditor() {
   const ws = useWritingWorkspace();
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
+  const aiUsage = useAIUsage(userId, Boolean(ws.user?.ai_access && ws.online));
+  const usage =
+    ws.online &&
+    !aiUsage.isError &&
+    aiUsage.data?.date === new Date().toISOString().slice(0, 10)
+      ? aiUsage.data
+      : null;
   const [language, setLanguage] = useState(
     () =>
       localStorage.getItem("uno-writing-language") ||
@@ -751,6 +759,7 @@ export default function WritingEditor() {
       )
         setAiError(editorError(failure));
     } finally {
+      if (ownerRef.current === owner) void aiUsage.refetch();
       if (request === aiRequest.current) setAiBusy(false);
     }
   }
@@ -1766,6 +1775,39 @@ export default function WritingEditor() {
             </div>
             {ws.user.ai_access ? (
               <>
+                <div
+                  className="uw-editor-ai-usage"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {usage ? (
+                    <>
+                      <strong>
+                        {language === "es"
+                          ? `${usage.used_today} de ${usage.daily_limit} solicitudes de IA usadas · ${usage.remaining} disponibles`
+                          : `${usage.used_today} of ${usage.daily_limit} AI requests used · ${usage.remaining} left`}
+                      </strong>
+                      {usage.pending_today > 0 && (
+                        <span>
+                          {language === "es"
+                            ? `${usage.pending_today} en curso`
+                            : `${usage.pending_today} in progress`}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <strong>
+                      {language === "es"
+                        ? "Uso de IA no disponible"
+                        : "AI usage unavailable"}
+                    </strong>
+                  )}
+                  <span>
+                    {language === "es"
+                      ? "Compartido con la extensión. Se restablece a medianoche UTC."
+                      : "Shared with the extension. Resets at midnight UTC."}
+                  </span>
+                </div>
                 <label className="uw-editor-tool-label">
                   {t("Writing assistant")}
                   <select
@@ -1808,6 +1850,7 @@ export default function WritingEditor() {
                     ws.documents.some((document) => document.dirty) ||
                     sourceBusy.size > 0 ||
                     aiBusy ||
+                    usage?.remaining === 0 ||
                     !ws.online
                   }
                   onClick={() => void generate()}

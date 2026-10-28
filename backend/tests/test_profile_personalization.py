@@ -17,7 +17,7 @@ def test_onboarding_reused_until_explicit_edits_and_clears():
     assert contextual_answers(edited, answers) == []
 
 @pytest.mark.parametrize('mode', ['new_topic','expand_idea','connect_dots'])
-async def test_each_request_uses_latest_profile_at_provider_boundary(monkeypatch, mode):
+async def test_each_request_uses_latest_profile_at_provider_boundary(monkeypatch, mode, quota_store):
     user = SimpleNamespace(id='writer-a',access_token='a-token')
     profile = {'id':'profile','writing_goal':'Educational gardening posts','writing_style':'encouraging', 'audience':'apartment gardeners', 'primary_topics':['urban gardening'], 'ai_preferences':{'prompt_themes':['sustainability'],'profile_edited':True},'updated_at':'2026-10-21T00:00:00Z'}
     records = {'ai_profiles':[profile], 'ai_onboarding_answers':[{'id':'old','question_id':'writingGoal','answer':'OBSOLETE_PREFERENCE'}],
@@ -36,7 +36,7 @@ async def test_each_request_uses_latest_profile_at_provider_boundary(monkeypatch
         async def generate_suggestion(self, context, **kwargs):
             contexts.append(context)
             return SuggestionProviderResponse(AISuggestionResult(title='A topic',suggestion='A direction',why='Personal interests',source_ids=['profile','a','b']),SuggestionUsage(1,1))
-    for key,value in {'_user_rows':rows,'_entitlement':noop,'_resolve_daily_limit':lambda _:0,'_record_usage':noop,'user_rest':store,'retrieve_user_chunks':passages,'diverse_passages':passages,'get_suggestion_provider':Provider}.items(): monkeypatch.setattr(ai,key,value)
+    for key,value in {'_user_rows':rows,'_entitlement':noop,'_resolve_daily_limit':lambda _:100,'_record_usage':noop,'user_rest':store,'retrieve_user_chunks':passages,'diverse_passages':passages,'get_suggestion_provider':Provider}.items(): monkeypatch.setattr(ai,key,value)
     monkeypatch.setattr(ai.knowledge,'disabled_source_ids',disabled)
     monkeypatch.setattr(ai.knowledge,'heal_missing_embeddings',noop)
     payload=AISuggestionRequest(mode=mode,current_writing='My current draft about community science.' if mode=='expand_idea' else None)
