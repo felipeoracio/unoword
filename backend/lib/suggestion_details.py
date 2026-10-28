@@ -5,10 +5,11 @@ import json
 from models.ai import AISuggestionRequest, SuggestionInspiration
 
 
-def encode_details(context: str, mode: str, questions: list[str], inspired_by: list[SuggestionInspiration]) -> str:
+def encode_details(context: str, mode: str, questions: list[str], inspired_by: list[SuggestionInspiration], writing_task=None) -> str:
     return json.dumps({
         "unoword_suggestion_version": 1, "context": context[:2000], "mode": mode,
         "questions": questions, "inspired_by": [source.model_dump() for source in inspired_by],
+        **({"writing_task": writing_task.model_dump()} if writing_task is not None else {}),
     }, ensure_ascii=False)
 
 

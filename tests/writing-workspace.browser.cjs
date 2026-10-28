@@ -57,6 +57,12 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
     aiUsed++;
     value={items:body.action==='improve'?[{title:'A clearer passage',text:'Keeps your thought and simplifies its rhythm.',replacement:'A careful first step makes room for a better idea.'}]:Array.from({length:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'An angle grounded in your interests in craft and community.',replacement:null}))};
+    if(body.action!=='improve')for(const [index,item] of value.items.entries()){
+     const p=body.writing_progress,remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
+     const sizes=[10,25,25,25].map(percent=>Math.floor(target*percent/100));sizes.push(target-sizes.reduce((a,b)=>a+b,0));
+     item.id='task-'+requests.filter(r=>r.key==='/workspace/assistant').length+'-'+index;
+     item.writing_task={...p,remaining_words:remaining,target_words:target,goal_reached:remaining===0,outline:target>=750?['Opening','Observation','Questions','Perspective','Conclusion'].map((title,i)=>({title,words:sizes[i]})):[]};
+    }
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
   });
@@ -140,6 +146,19 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await canvas.textContent(),before,'AI generation never overwrites writing');
   assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,1);
   await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('1 of 100 AI requests used'));
+  const progress=requests.find(r=>r.key==='/workspace/assistant').body.writing_progress;
+  assert.equal(progress.daily_goal,250);assert.ok(progress.words_written_today>0);
+  assert.ok((await page.locator('.uw-writing-task').first().textContent()).includes('words'));
+  const aiCalls=requests.filter(r=>r.key==='/workspace/assistant').length;
+  await page.locator('.uw-editor-goal input').fill('2000');
+  assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,aiCalls,'Goal edits do not call AI');
+  await generate.click();await page.waitForFunction(()=>document.querySelector('.uw-writing-task-sections input'));
+  assert.equal(await page.locator('.uw-writing-task-sections').first().locator('input').count(),5);
+  await page.locator('.uw-writing-task-sections input').first().check();
+  await accessibility('goal-based task and checklist');
+  for(const width of [390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Task checklist fits mobile');}
+  await page.setViewportSize({width:1440,height:1000});
+  await page.locator('.uw-editor-goal input').fill('250');
   // A request from the extension is reflected when returning to the editor.
   aiUsed=99;aiPending=1;
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));

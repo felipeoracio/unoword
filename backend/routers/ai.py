@@ -31,6 +31,7 @@ from lib.writing_context import library_overview
 from lib.request_security import trusted_origin
 from lib.personalization import effective_profile, contextual_answers, prompt_themes
 from lib.suggestion_details import encode_details, evidence_catalog, attributed_sources
+from lib.writing_goal import task_budget, budget_context, with_outline
 from lib.suggestion_knowledge import selected_idea_text, diverse_passages, available_saved_memories
 from models.ai import (
     AIFeedback,
@@ -94,16 +95,18 @@ def _compose_prompt_context(
     previous: list[dict],
     retrieved: list[RetrievedChunk],
     sources: list[dict] | None = None,
+    reserved_chars: int = 0,
 ) -> tuple[str, list[str]]:
     """Balance breadth, focused evidence, and novelty within the context budget."""
     parts: list[str] = []
+    context_limit = max(1000, MAX_CONTEXT_CHARS - reserved_chars)
     source_ids: list[str] = []
 
     def section(heading: str, items: list[tuple[str, list[str]]], budget: int, count: int) -> None:
         items = items[:count]
         if not items:
             return
-        remaining = min(budget, MAX_CONTEXT_CHARS - sum(len(p) + 1 for p in parts))
+        remaining = min(budget, context_limit - sum(len(p) + 1 for p in parts))
         per_item = (remaining - len(heading) - 1) // len(items) - 3
         if per_item < 30:
             return
@@ -125,7 +128,7 @@ def _compose_prompt_context(
         parts.append(f"Current writing draft [current_writing]:\n{payload.current_writing[:MAX_DRAFT_CHARS]}")
     if payload.current_project:
         parts.append(f"Current project focus: {payload.current_project[:300]}")
-    available = max(0, MAX_CONTEXT_CHARS - sum(len(p) + 1 for p in parts))
+    available = max(0, context_limit - sum(len(p) + 1 for p in parts))
     if profile:
         item = profile[0]
         fields = [
@@ -162,7 +165,7 @@ def _compose_prompt_context(
     # Use remaining space for supporting detail after preserving the broader view.
     section("Matching passages (supporting evidence, not the only possible topics):",
             passages, MAX_CONTEXT_CHARS, 6)
-    joined = "\n".join(parts)[:MAX_CONTEXT_CHARS]
+    joined = "\n".join(parts)[:context_limit]
     return joined or "No saved user context is available yet.", list(dict.fromkeys(source_ids))
 
 
@@ -436,6 +439,7 @@ async def create_suggestion(
     user: AuthenticatedUser = Depends(require_ai_user),
 ) -> AISuggestion:
     entitlement = await _entitlement(user.id)
+    task_budget(getattr(payload, "writing_progress", None))  # Reject stale snapshots before reserving quota.
     async with AIRequest(user.id, _resolve_daily_limit(entitlement), "suggestion") as quota:
         return await _generate_suggestion(payload, user, quota)
 
@@ -528,9 +532,12 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
                 set(item["source_ids"]).issubset(catalog) and not (
                     profile and profile[0]["id"] in item["source_ids"] and
                     str(item.get("created_at") or "") < str(profile[0].get("updated_at") or ""))]
+    task = task_budget(payload.writing_progress)
+    budget = budget_context(task)
     context, source_ids = _compose_prompt_context(
-        payload, profile, answers, memories, previous, retrieved, sources
+        payload, profile, answers, memories, previous, retrieved, sources, reserved_chars=len(budget)
     )
+    context += budget
     allowed_ids = set(source_ids) | ({"current_writing"} if payload.current_writing else set())
     _, available_parents = attributed_sources(allowed_ids, allowed_ids, catalog)
 
@@ -574,6 +581,11 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
         inspirations = []
         used_fallback, fallback_reason = True, "insufficient_evidence"
     source_ids = [item.source_id for item in inspirations if item.source_id != "current_writing"]
+    if used_fallback:
+        response.result.suggestion += ((" Tu meta diaria está cumplida; continuar es opcional." if payload.language == "es"
+                                        else " Your daily goal is complete; continuing is optional.") if task.goal_reached else
+                                       (f" Escribe aproximadamente {task.target_words} palabras." if payload.language == "es"
+                                        else f" Aim for approximately {task.target_words} words."))
 
     try:
         rows = await user_rest(
@@ -585,7 +597,8 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
                 "title": response.result.title,
                 "suggestion": response.result.suggestion,
                 "reason": response.result.why if inspirations else "",
-                "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations),
+                "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations,
+                    with_outline(task, response.result.outline, payload.language)),
                 "related_topics": response.result.related_topics,
                 "source_ids": source_ids,
                 "status": "shown",

@@ -7,6 +7,7 @@
     <script src="viewport.js"></script>
     <link rel="stylesheet" href="popup.css" />
     <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="../shared/writing-task.css" />
   </head>
   <body data-theme="auto">
     <main class="wc" data-testid="wc-popup">
@@ -118,6 +119,7 @@
           <p class="wc__prompt-ai-title" id="prompt-ai-title" data-testid="prompt-ai-title"></p>
           <p class="wc__eyebrow" data-i18n="suggestion.direction">Writing Direction</p>
           <p class="wc__prompt-ai-suggestion" id="prompt-ai-suggestion" data-testid="prompt-ai-suggestion"></p>
+          <div id="suggestion-writing-task" hidden></div>
           <p class="wc__eyebrow" data-i18n="suggestion.questions">Questions to Explore</p>
           <ol id="suggestion-questions" class="wc__suggestion-questions"></ol>
           <div id="suggestion-inspiration-group" hidden><p class="wc__eyebrow" data-i18n="suggestion.inspiredBy">Inspired By</p><ul id="suggestion-inspirations" class="wc__suggestion-inspirations"></ul></div>
@@ -803,6 +805,8 @@
     <script src="../shared/api-client.js"></script>
     <script src="../shared/resource-state.js"></script>
   <script src="../shared/dates.js"></script>
+  <script src="../shared/writing-progress.js"></script>
+  <script src="../shared/writing-task.js"></script>
     <script src="popup.js"></script>
     <script src="preferences.js"></script>
     <script src="security.js"></script>

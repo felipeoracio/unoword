@@ -26,7 +26,7 @@ _SUGGESTION_JSON_SCHEMA = {
     "schema": {
         "type": "object",
         "additionalProperties": False,
-        "required": ["title", "suggestion", "why", "related_topics", "questions", "source_ids"],
+        "required": ["title", "suggestion", "why", "related_topics", "questions", "source_ids", "outline"],
         "properties": {
             "title": {"type": "string", "minLength": 1, "maxLength": 120},
             "suggestion": {"type": "string", "minLength": 1, "maxLength": 400},
@@ -38,6 +38,7 @@ _SUGGESTION_JSON_SCHEMA = {
             },
             "questions": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 240}, "minItems": 3, "maxItems": 3},
             "source_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
+            "outline": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 100}, "maxItems": 5},
         },
     },
     "strict": True,

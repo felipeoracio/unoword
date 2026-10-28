@@ -17,6 +17,7 @@
 importScripts('shared/wordcount.js');
 importScripts('shared/history.js');
 importScripts('shared/dates.js');
+importScripts('shared/writing-progress.js');
 importScripts('shared/prompts.js');
 importScripts('shared/ai-profile.js');
 importScripts('shared/api-client.js');
@@ -380,6 +381,14 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
     return { ok: false, reason, account };
   }
   const payload = { mode, language };
+  const progressRead = sessionChanges.then(() => Promise.all([getSettings(), getHistory(), getState()]));
+  sessionChanges = progressRead.then(() => {}, () => {});
+  const [settings, history, state] = await progressRead;
+  const now = Date.now(), timezone = settings.profile.timezone;
+  const completed = self.WCWritingProgress.total(history, now, timezone);
+  payload.writing_progress = self.WCWritingProgress.snapshot(settings.wordGoal,
+    self.WCWritingProgress.withActive(completed, state, timezone, now), timezone, now);
+  if ((await getAccount()).userId !== account.userId) return { ok: false, reason: 'account_changed', account: await getAccount() };
   if (ideaSourceId) payload.idea_source_id = ideaSourceId;
   const draft = (currentWriting || '').trim().slice(0, 20000);
   if (draft) payload.current_writing = draft;
@@ -394,6 +403,7 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
       return { ok: false, reason: status === 401 ? 'auth_required' : 'plan_required', account: await refreshAccount() };
     }
     if (status === 429) return { ok: false, reason: 'rate_limited' };
+    if (status === 409) return { ok: false, reason: 'progress_stale' };
     if (status === 422) return { ok: false, reason: 'idea_required' };
     return { ok: false, reason: status === 0 ? 'offline' : 'request_failed' };
   }
@@ -577,7 +587,7 @@ async function getStats(range, history = null, settings = null) {
   const tz = settings.profile.timezone;
   const now = Date.now();
 
-  const withWords = history.map((s) => ({
+  const withWords = self.WCWritingProgress.unique(history).map((s) => ({
     ...s,
     _words: self.WCHistory.sessionWords(s),   // typed only; pasted never counts
     _duration: Math.max(0, (s.endedAt || 0) - (s.startedAt || 0)),
@@ -944,6 +954,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const range = msg.range || 'today';
           const visible = self.WCHistory.visibleHistory(history, settings.plan, Date.now());
           sendResponse({ ok: true, payload: buildPopupPayload(state, settings),
+            settings,
             today: await getStats('today', history, settings),
             stats: await getStats(range, history, settings),
             streak: self.WCHistory.computeStreak(history, settings.profile.timezone, Date.now()),
@@ -1043,9 +1054,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const account=await getAccount();
           if (!account.authenticated) { sendResponse({ok:false});return; }
           const history=await getHistory();
-          sendResponse({ok:true,ownerId:account.userId,sessions:history.filter(row => row.source!=='editor' && !String(row.id).startsWith('editor:')).map(row => ({
+          const state = await getState();
+          const local = history.filter(row => row.source!=='editor' && !String(row.id).startsWith('editor:')).map(row => ({
             id:String(row.id || row.startedAt),startedAt:row.startedAt,typedWords:row.typedWords || 0,
-          }))});return;
+          }));
+          if (state.active) local.push({id:String(state.startedAt),startedAt:state.startedAt,typedWords:state.typedWords || 0});
+          sendResponse({ok:true,ownerId:account.userId,sessions:local});return;
         }
         case 'OPEN_WRITING_EDITOR': {
           const settings = await getSettings();

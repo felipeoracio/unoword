@@ -11,6 +11,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from lib.auth import AuthenticatedUser, require_user
+from models.writing_goal import WritingProgress
 from lib.ai_access import require_ai_user, get_entitlement, entitlement_is_active
 from lib.request_security import trusted_origin
 from lib.supabase_client import user_rest, service_rest, SupabaseAPIError
@@ -393,6 +394,7 @@ async def source_permission(
 
 
 class Assistance(Owned):
+    writing_progress: WritingProgress | None = None
     document_id: UUID
     action: Literal["next", "continue", "block", "brainstorm", "improve"]
     consent: bool = False

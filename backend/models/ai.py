@@ -6,6 +6,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from models.writing_goal import WritingProgress, WritingTask
 
 
 def utc_now() -> datetime:
@@ -223,7 +224,6 @@ class AIMemoryCreate(AIModel):
 SuggestionStatus = Literal["shown", "accepted", "rejected", "ignored", "written"]
 SuggestionMode = Literal["new_topic", "expand_idea", "connect_dots"]
 
-
 class SuggestionInspiration(AIModel):
     source_id: str
     title: str
@@ -231,6 +231,7 @@ class SuggestionInspiration(AIModel):
 
 
 class AISuggestion(AIModel):
+    writing_task: WritingTask | None = None
     id: str = Field(default_factory=lambda: str(uuid4()))
     user_id: str
     title: str
@@ -257,11 +258,12 @@ class AISuggestion(AIModel):
                 return data
             if isinstance(details, dict) and details.get("unoword_suggestion_version") == 1:
                 return {**data, "context_summary": details.get("context", ""),
-                        **{key: details[key] for key in ("mode", "questions", "inspired_by") if key in details}}
+                        **{key: details[key] for key in ("mode", "questions", "inspired_by", "writing_task") if key in details}}
         return data
 
 
 class AISuggestionRequest(AIModel):
+    writing_progress: WritingProgress | None = None
     current_writing: str | None = Field(default=None, max_length=20_000)
     current_project: str | None = Field(default=None, max_length=2_000)
     mode: SuggestionMode = "new_topic"
@@ -270,6 +272,7 @@ class AISuggestionRequest(AIModel):
 
 
 class AISuggestionResult(AIModel):
+    outline: list[str] = Field(default_factory=list, max_length=5)
     title: str = Field(min_length=1, max_length=300)
     suggestion: str = Field(min_length=1, max_length=5_000)
     why: str = Field(min_length=1, max_length=5_000)

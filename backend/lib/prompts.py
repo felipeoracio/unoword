@@ -38,6 +38,14 @@ URLs alone are not evidence. If no sources contributed, return an empty list.
 Keep it short: the title is a brief phrase, the suggestion is at most two short
 sentences (about 40 words or fewer), and the why is a single short sentence. Be
 concise and concrete — no preamble or filler.
+The Writing-task budget is numeric planning data from the existing tracker.
+Match task complexity to target_words and remaining_words, not the full goal.
+The word target describes the AUTHOR'S future writing, never the length of your
+response. When the goal is achieved, say further writing is optional and do not
+pressure the author. Return outline as five short, topic-specific section titles
+for a target of at least 750 words; otherwise return an empty outline array.
+The interface displays the numeric estimate and section sizes; do not invent a
+different word target. Keep the description short even for a long writing task.
 """
 
 SUGGESTION_MODE_PROMPTS = {
