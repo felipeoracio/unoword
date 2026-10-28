@@ -1,5 +1,8 @@
 # UnoWord
 
+See [durable source processing](docs/source-processing.md) for upload/website
+jobs, retries, privacy boundaries and the required migration/scheduler setup.
+
 See [shared AI usage](docs/shared-ai-usage.md) for editor/extension quota rules,
 the required database migration, rollout order and verification commands.
 

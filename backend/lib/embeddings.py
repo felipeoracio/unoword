@@ -105,7 +105,46 @@ class EmbeddingsService:
         return EmbeddingResult(embedding=list(vector), model=self._model, version=self._version)
 
     async def embed_many(self, texts: list[str]) -> list[EmbeddingResult | None]:
-        return [await self.embed(text) for text in texts]
+        """Batch bounded inputs in one provider call, preserving order and cache."""
+        if len(texts) > 32:
+            raise ValueError("Embedding batches are limited to 32 passages")
+        values = [(text or "").strip()[:8000] for text in texts]
+        results: list[EmbeddingResult | None] = [None] * len(values)
+        missing: dict[str, str] = {}
+        for index, value in enumerate(values):
+            if not value or not self._client:
+                continue
+            key = self._cache_key(value)
+            if key in self._cache:
+                self._cache.move_to_end(key)
+                self.cache_hits += 1
+                results[index] = EmbeddingResult(list(self._cache[key]), self._model, self._version)
+            else:
+                missing[key] = value
+        if not missing:
+            return results
+        try:
+            response = await self._client.embeddings.create(
+                model=self._model, input=list(missing.values()), encoding_format="float", timeout=25.0,
+            )
+            by_index = {item.index: item.embedding for item in response.data}
+            if set(by_index) != set(range(len(missing))) or any(len(v) != EMBEDDING_DIMENSIONS for v in by_index.values()):
+                return results
+        except OpenAIError:
+            logger.warning("embedding_batch_failed model=%s", self._model)
+            return results
+        vectors = dict(zip(missing, (by_index[i] for i in range(len(missing)))))
+        for index, value in enumerate(values):
+            if results[index] is None and value and self._cache_key(value) in vectors:
+                vector = vectors[self._cache_key(value)]
+                results[index] = EmbeddingResult(list(vector), self._model, self._version)
+        self.cache_misses += len(missing)
+        if self._cache_size:
+            for key, vector in vectors.items():
+                self._cache[key] = list(vector)
+            while len(self._cache) > self._cache_size:
+                self._cache.popitem(last=False)
+        return results
 
 
 _service: EmbeddingsService | None = None

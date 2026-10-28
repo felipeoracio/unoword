@@ -26,16 +26,28 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
  try {
   const page=await browser.newPage({viewport:{width:420,height:600},timezoneId:'UTC',colorScheme:'light'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const requests=[];let freeAccount=false,unsafePreview=false;
+  const requests=[];let freeAccount=false,unsafePreview=false,processingTicks=0;
   const storage={wc_settings:{langChosen:true,plan:'pro',language:'en',wordGoal:1000,themes:['ideas'],profile:{timezone:'America/Chicago'},aiSuggestionMode:'connect_dots'},wc_state:{active:true,typedWords:438,pastedWords:500,startedAt:now-42*60000-15000,sessionGoal:1000},wc_account:{authenticated:true,userId,email:'qa@example.com',aiAccess:true,plan:'pro',online:true},wc_history:Array.from({length:5},(_,i)=>({id:i,typedWords:i===0?310:242,pastedWords:100,startedAt:now-(i*86400000)-120000,endedAt:now-i*86400000-60000}))};
   let listener;
   const chrome={storage:{local:{get:async k=>({[k]:storage[k]}),set:async v=>Object.assign(storage,v)}},runtime:{onInstalled:{addListener(){}},onMessage:{addListener:l=>listener=l},sendMessage:async m=>page.evaluate(m=>(window.backgroundListeners||[]).forEach(l=>l(m)),m).catch(()=>{})},tabs:{query:async()=>[{id:7}],sendMessage:(_id,_msg,cb)=>cb({ok:true,text:'An actual draft.'})}};
   async function fixture(url,options={}){
-   const route=new URL(url).pathname.replace('/api',''),method=options.method||'GET',payload=options.body?JSON.parse(options.body):null;
+   const route=new URL(url).pathname.replace('/api',''),method=options.method||'GET',payload=options.body&&String(options.body).startsWith('{')?JSON.parse(options.body):null;
    requests.push({route,method,payload});let body,status=200;
    if(route==='/auth/me')body={id:userId,email:'qa@example.com',plan:freeAccount?'free':'pro',ai_access:!freeAccount};
    else if(route==='/ai/profile')body={id:'profile',user_id:userId,ai_preferences:{prompt_themes:['ideas']}};
    else if(route==='/documents')body=docs;
+   else if(route==='/documents/upload'){body={id:'queued-document',document_title:'A safely saved source',source_kind:'file',processing_status:'pending',processing_phase:'queued',processing_progress:0,word_count:0,enabled:true};docs.push(body);processingTicks=0;}
+   else if(route==='/processing/run'){
+    processingTicks++;
+    for(const source of [...docs,...links].filter(s=>['pending','processing'].includes(s.processing_status))){
+     Object.assign(source,processingTicks>=2?{processing_status:'ready',processing_phase:'complete',processing_progress:100,word_count:45}:{processing_status:'processing',processing_phase:'indexing',processing_progress:50});
+    }
+    body={accepted:true};
+   }
+   else if(/^\/processing\/[^/]+\/retry$/.test(route)){
+    const source=[...docs,...links].find(s=>s.id===route.split('/')[2]);
+    Object.assign(source,{processing_status:'pending',processing_phase:'queued',processing_progress:0,processing_error:null});processingTicks=0;body={accepted:true};
+   }
    else if(route==='/links'&&method==='GET')body=links;
    else if(route==='/links'&&method==='POST'){body={...ready,id:'added',source_url:payload.url,document_title:payload.title};links.unshift(body);}
    else if(/^\/links\/[^/]+\/content$/.test(route)){const id=route.split('/')[2];body=id==='failed'?{detail:'Refresh this source to extract readable text.'}:{content:(unsafePreview?'Readable article text. <script>window.injected=true</script>':'Readable article text.')+'\nThe pilot measures the tide twice before making a decision.\n'+('Observation is a promise to the community. '.repeat(30)),truncated:false};if(id==='failed')status=409;}
@@ -45,6 +57,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    else if(route==='/ai/ideas')body=[suggestion];
    else if(route==='/ai/idea-options')body=[...docs,...links].filter(l=>l.enabled).map(l=>({id:l.id,title:l.document_title,kind:l.source_kind}));
    else if(route==='/ai/suggestion')body=suggestion;
+   else if(route==='/ai/usage/summary')body={user_id:userId,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:1,pending_today:0,remaining:99};
    else throw Error(`Unexpected ${method} ${route}`);
    return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
   }
@@ -102,6 +115,33 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   await page.click('[data-testid="link-delete-missing"]');await page.click('#confirm-ok');
   await page.waitForFunction(()=>!document.querySelector('[data-testid="link-item-missing"]'));
   assert.ok(requests.some(r=>r.method==='DELETE'&&r.route==='/links/missing'));
+  // Queued uploads survive closing/reopening the popup and show real stages.
+  const paidBefore=requests.filter(r=>r.route==='/ai/suggestion').length;
+  await page.locator('[data-library-filter="documents"]').click();
+  await page.locator('#document-file').setInputFiles({name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('A fictional reference about careful observation.')});
+  await page.fill('#document-title','A safely saved source');await page.click('#document-upload');
+  await page.waitForFunction(()=>document.querySelector('#document-upload-status').textContent.includes('Saved. Processing'));
+  assert.equal(await page.locator('[data-testid="document-item-queued-document"] progress').getAttribute('value'),'0');
+  await page.reload();await page.click('#nav-library');await page.locator('[data-library-filter="documents"]').click();
+  await page.locator('[data-testid="document-item-queued-document"]').waitFor();
+  await page.evaluate(()=>pollSourceProcessing());
+  assert.equal(await page.locator('[data-testid="document-item-queued-document"] progress').getAttribute('value'),'50');
+  await capture('source-indexing');
+  await page.waitForFunction(()=>document.querySelector('[data-testid="document-meta-queued-document"]').textContent.includes('Ready'),null,{timeout:20000});
+  assert.equal(await page.locator('[data-testid="document-item-queued-document"] progress').count(),0);
+  const queued=docs.find(d=>d.id==='queued-document');Object.assign(queued,{processing_status:'failed',processing_phase:'failed',processing_error:'A safe processing error.'});
+  await page.evaluate(async()=>{await loadDocuments();renderDocuments();});
+  await page.click('[data-testid="document-retry-queued-document"]');
+  await page.waitForFunction(()=>document.querySelector('[data-testid="document-item-queued-document"] progress'));
+  assert.ok(requests.some(r=>r.route==='/processing/queued-document/retry'));
+  for(const lang of ['en','es']){
+   await page.evaluate(lang=>{WCi18n.setLang(lang);renderDocuments();},lang);
+   for(const width of [194,320,420]){await page.setViewportSize({width,height:600});await layout(`source progress ${lang} ${width}`);}
+  }
+  await page.setViewportSize({width:420,height:600});await page.evaluate(()=>WCi18n.setLang('en'));
+  assert.equal(requests.filter(r=>r.route==='/ai/suggestion').length,paidBefore,'Source processing does not request writing suggestions');
+  Object.assign(queued,{processing_status:'ready',processing_phase:'complete',processing_error:null,processing_progress:100});
+  await page.locator('[data-library-filter="links"]').click();
   // Deliberately stress every form and title at each practical width, in both languages.
   links[0].source_url='https://example.com/'+('long-url-segment/'.repeat(80));links[0].document_title=longTitle;
   for(const width of [320,360,420]){

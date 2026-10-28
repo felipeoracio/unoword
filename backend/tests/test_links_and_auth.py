@@ -131,7 +131,7 @@ def test_links_full_flow_and_isolation():
         link_id = link["id"]
         assert link["source_kind"] == "link"
         assert link["enabled"] is True
-        assert link["processing_status"] in {"ready", "failed"}, link
+        assert link["processing_status"] in {"pending", "processing", "ready", "failed"}, link
 
         # Appears in /links but NOT in /documents
         listed = a.get("/links").json()

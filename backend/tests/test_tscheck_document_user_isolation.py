@@ -34,4 +34,4 @@ def test_user_b_cannot_delete_user_a_document(client_a, client_b):
 
     still_there = client_a.get(f"/documents/status/{document_id}")
     assert still_there.status_code == 200, still_there.text
-    assert still_there.json()["processing_status"] == "ready"
+    assert still_there.json()["processing_status"] in {"pending", "processing", "ready"}

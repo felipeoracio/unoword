@@ -362,7 +362,7 @@ async def sources(user: AuthenticatedUser = Depends(require_ai_user)):
     return await rows(
         "ai_documents",
         user,
-        select="id,document_title,enabled,source_kind,processing_status",
+        select="id,document_title,enabled,source_kind,processing_status,processing_phase,processing_progress",
         order="updated_at.desc",
         limit="200",
     )

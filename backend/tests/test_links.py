@@ -62,7 +62,7 @@ def test_add_list_toggle_refresh_delete_and_isolation():
         link_id = link["id"]
         assert link["source_kind"] == "link"
         assert link["enabled"] is True
-        assert link["processing_status"] in {"ready", "failed"}
+        assert link["processing_status"] in {"pending", "processing", "ready", "failed"}
 
         # appears in /links but NOT in the uploaded-files list
         listed = a.get("/links").json()

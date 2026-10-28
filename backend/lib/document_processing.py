@@ -174,6 +174,23 @@ register_processor(PdfProcessor())
 register_processor(DocxProcessor())
 
 
+def validate_upload(filename: str, data: bytes) -> tuple[str, str]:
+    """Reject unsafe envelopes before storage; extract text in the durable worker."""
+    name = Path(filename or "").name
+    extension = Path(name).suffix.lower()
+    if extension not in MIME_BY_EXTENSION:
+        raise DocumentProcessingError("Supported formats are TXT, Markdown, PDF and DOCX.")
+    if not data or len(data) > MAX_UPLOAD_BYTES:
+        raise DocumentProcessingError("Choose a nonempty file up to 5 MB.")
+    if extension in {".txt", ".md", ".markdown"} and not _extract_text(data).replace("\x00", "").strip():
+        raise DocumentProcessingError("The uploaded file has no readable text.")
+    if extension == ".pdf" and not data.startswith(b"%PDF-"):
+        raise DocumentProcessingError("The file does not contain a valid PDF header")
+    if extension == ".docx":
+        _validate_docx_archive(data)
+    return name, MIME_BY_EXTENSION[extension]
+
+
 def extract_document(filename: str, data: bytes) -> ExtractedDocument:
     safe_filename = Path(filename or "").name
     extension = Path(safe_filename).suffix.lower()

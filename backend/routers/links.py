@@ -13,11 +13,11 @@ from collections import Counter
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from lib.ai_access import require_ai_user
 from lib.auth import AuthenticatedUser
-from lib import knowledge
+from lib import knowledge, source_processing
 from lib.link_ingest import LinkIngestError, _check_host_not_internal, fetch_and_extract, validate_url
 from lib.supabase_client import SupabaseAPIError, raise_http, user_rest
 from models.ai import AIDocument, AILinkCreate, AILinkUpdate
@@ -86,64 +86,6 @@ async def _with_index_state(user: AuthenticatedUser, rows: list[dict]) -> list[A
             for row in rows]
 
 
-async def _reprocess(user: AuthenticatedUser, link_id: str, url: str, *,
-                     keep_title: bool, previous_hash: str | None) -> dict:
-    """Fetch + extract + (re)embed. Updates the row in place — never duplicates it."""
-    try:
-        data = await fetch_and_extract(url)
-    except LinkIngestError as error:
-        return await _patch(user, link_id, {
-            "processing_status": "failed",
-            "processing_error": error.message,
-        })
-
-    # Nothing changed since last time → skip re-embedding (caching rule).
-    if previous_hash and data["content_hash"] == previous_hash:
-        index = (await _index_state(user, [link_id]))[link_id]
-        memories = await user_rest(
-            "GET", "ai_memories", user.access_token,
-            params={"select": "id", "user_id": f"eq.{user.id}", "source_id": f"eq.{link_id}", "limit": "1"},
-        )
-        if not memories and index["chunk_count"]:
-            link = await _owned_link(user, link_id)
-            await knowledge.rebuild_source_memory(
-                user.id, user.access_token, link_id,
-                title=link.get("document_title") or url, text=data["text"], kind="saved link",
-            )
-        if index["chunk_count"] and index["indexing_status"] == "indexed":
-            return await _patch(user, link_id, {
-                "processing_status": "ready", "processing_error": None, "last_processed_at": _now(),
-            })
-        # A matching hash does not prove chunks/vectors survived. Rebuild this
-        # source from the fetched text rather than healing unrelated sources.
-
-    try:
-        chunk_count, embedded = await knowledge.index_source(
-            user.id, user.access_token, link_id, data["text"],
-            {"source": "link", "url": url, "title": data.get("title")},
-        )
-        if not chunk_count:
-            return await _patch(user, link_id, {"processing_status": "failed", "word_count": 0,
-                                                "processing_error": "No readable passages were stored. Refresh to try again."})
-        title = data.get("title") or url
-        if keep_title:
-            title = (await _owned_link(user, link_id)).get("document_title") or title
-        await knowledge.rebuild_source_memory(
-            user.id, user.access_token, link_id, title=title, text=data["text"], kind="saved link",
-        )
-        patch = {
-            "processing_status": "ready", "processing_error": knowledge.index_note(chunk_count, embedded),
-            "canonical_url": data.get("canonical_url"), "author": data.get("author"),
-            "published_at": data.get("published_at"), "content_hash": data["content_hash"],
-            "word_count": data["word_count"], "last_processed_at": _now(),
-        }
-        if not keep_title and data.get("title"):
-            patch["document_title"] = data["title"]
-        return await _patch(user, link_id, patch)
-    except SupabaseAPIError as error:
-        raise_http(error)
-
-
 @router.get("", response_model=list[AIDocument])
 async def list_links(user: AuthenticatedUser = Depends(require_ai_user)) -> list[AIDocument]:
     try:
@@ -161,13 +103,13 @@ async def list_links(user: AuthenticatedUser = Depends(require_ai_user)) -> list
 
 
 @router.post("", response_model=AIDocument, status_code=status.HTTP_201_CREATED)
-async def add_link(payload: AILinkCreate, user: AuthenticatedUser = Depends(require_ai_user)) -> AIDocument:
+async def add_link(payload: AILinkCreate, background_tasks: BackgroundTasks, user: AuthenticatedUser = Depends(require_ai_user)) -> AIDocument:
     try:
         normalized, host = validate_url(payload.url)
     except LinkIngestError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error.message)
     try:
-        _check_host_not_internal(host)
+        await asyncio.to_thread(_check_host_not_internal, host)
     except LinkIngestError as error:
         if error.reason == "blocked":
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error.message)
@@ -194,15 +136,20 @@ async def add_link(payload: AILinkCreate, user: AuthenticatedUser = Depends(requ
                 "storage_path": None, "document_title": (payload.title or normalized)[:300],
                 "document_type": "reference", "description": payload.description,
                 "category": payload.category, "enabled": True,
-                "processing_status": "processing", "processing_error": None, "word_count": 0,
+                "processing_status": "pending", "processing_error": None, "word_count": 0,
             },
             prefer="return=minimal",
         )
     except SupabaseAPIError as error:
         raise_http(error)
 
-    processed = await _reprocess(user, link_id, normalized, keep_title=bool(payload.title), previous_hash=None)
-    return (await _with_index_state(user, [processed]))[0]
+    try:
+        await source_processing.enqueue(user.id, link_id)
+    except HTTPException:
+        await _patch(user, link_id, {"processing_status": "failed", "processing_error": "Processing could not be queued. Retry from your Library."})
+        raise
+    background_tasks.add_task(source_processing.drain, user.id)
+    return (await _with_index_state(user, [await _owned_link(user, link_id)]))[0]
 
 
 @router.patch("/{link_id}", response_model=AIDocument)
@@ -229,14 +176,11 @@ async def update_link(link_id: str, payload: AILinkUpdate,
 
 
 @router.post("/{link_id}/refresh", response_model=AIDocument)
-async def refresh_link(link_id: str, user: AuthenticatedUser = Depends(require_ai_user)) -> AIDocument:
-    link = await _owned_link(user, link_id)
-    await _patch(user, link_id, {"processing_status": "processing"})
-    processed = await _reprocess(
-        user, link_id, link["source_url"],
-        keep_title=True, previous_hash=link.get("content_hash"),
-    )
-    return (await _with_index_state(user, [processed]))[0]
+async def refresh_link(link_id: str, background_tasks: BackgroundTasks, user: AuthenticatedUser = Depends(require_ai_user)) -> AIDocument:
+    await _owned_link(user, link_id)
+    await source_processing.enqueue(user.id, link_id, restart=True)
+    background_tasks.add_task(source_processing.drain, user.id)
+    return (await _with_index_state(user, [await _owned_link(user, link_id)]))[0]
 
 
 @router.get("/{link_id}/content")
