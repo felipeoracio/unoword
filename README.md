@@ -1,5 +1,8 @@
 # UnoWord
 
+See [shared AI usage](docs/shared-ai-usage.md) for editor/extension quota rules,
+the required database migration, rollout order and verification commands.
+
 The [account security foundation](docs/security-foundation.md) documents trusted
 browser origins, verified email signup, Google compatibility, and private QA
 credential configuration. Existing accounts and writing retain their IDs.

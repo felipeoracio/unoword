@@ -45,6 +45,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       else if (['/documents','/links','/ai/memories'].includes(route)) body=[];
       else if (route==='/ai/ideas') body=saved;
       else if (route==='/ai/idea-options') body=[{id:sourceId,title:'Solar ferry notes',kind:'file'}];
+      else if (route==='/ai/usage/summary') body={user_id:userId,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:suggestions.length,pending_today:0,remaining:100-suggestions.length};
       else if (route==='/ai/suggestion') {
         if(generationGate)await generationGate;
         status=generationStatus;
@@ -107,6 +108,8 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       assert.equal(await page.locator('#suggestion-inspirations li').count(),1);
     }
     await generate('new_topic');
+    await page.waitForFunction(()=>document.querySelector('#ai-usage-meta').textContent.includes('1 of 100 AI requests used'));
+    assert.ok((await page.locator('#ai-usage-meta').textContent()).includes('Shared with the editor'));
     await page.click('#prompt-ai-again');
     await page.waitForFunction(()=>!document.querySelector('#prompt-ai-again').disabled);
     assert.equal(suggestions.at(-1).mode,'new_topic');

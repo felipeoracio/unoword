@@ -10,7 +10,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from lib.ai_provider import (
     MockSuggestionProvider,
@@ -18,6 +18,7 @@ from lib.ai_provider import (
     get_suggestion_provider,
 )
 from lib.ai_access import get_entitlement, require_ai_user, entitlement_is_active
+from lib.ai_quota import AIRequest, resolve_daily_limit as _resolve_daily_limit, usage_counts
 from lib.auth import AuthenticatedUser, auth_is_configured, require_user
 from lib import knowledge
 from lib.dates import today_iso
@@ -83,16 +84,6 @@ async def _entitlement(user_id: str) -> dict:
 MAX_DRAFT_CHARS = int(os.environ.get("AI_MAX_DRAFT_CHARS", "2000"))
 MAX_CONTEXT_CHARS = int(os.environ.get("AI_MAX_CONTEXT_CHARS", "6000"))
 MAX_CHUNK_CHARS = int(os.environ.get("AI_MAX_CHUNK_CHARS", "900"))
-
-
-def _resolve_daily_limit(entitlement: dict) -> int:
-    """Effective per-user daily suggestion cap. An env cap (>0) is authoritative
-    and, combined with a per-user entitlement limit, the stricter (lower) wins."""
-    env_cap = int(os.environ.get("AI_DAILY_REQUEST_LIMIT", "0") or 0)
-    ent = int(entitlement.get("daily_request_limit") or 0)
-    if env_cap and ent:
-        return min(env_cap, ent)
-    return env_cap or ent
 
 
 def _compose_prompt_context(
@@ -445,28 +436,11 @@ async def create_suggestion(
     user: AuthenticatedUser = Depends(require_ai_user),
 ) -> AISuggestion:
     entitlement = await _entitlement(user.id)
-    date_key = today_iso()
-    daily_limit = _resolve_daily_limit(entitlement)
-    if daily_limit:
-        try:
-            used = await service_rest(
-                "GET",
-                "ai_usage",
-                params={
-                    "select": "id",
-                    "user_id": f"eq.{user.id}",
-                    "date": f"eq.{date_key}",
-                    "request_type": "in.(suggestion,workspace_assistant)",
-                },
-            )
-        except SupabaseAPIError as error:
-            raise_http(error)
-        if len(used) >= daily_limit:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Daily AI suggestion limit reached",
-            )
+    async with AIRequest(user.id, _resolve_daily_limit(entitlement), "suggestion") as quota:
+        return await _generate_suggestion(payload, user, quota)
 
+
+async def _generate_suggestion(payload: AISuggestionRequest, user: AuthenticatedUser, quota: AIRequest) -> AISuggestion:
     if payload.mode == "expand_idea":
         if payload.idea_source_id:
             try:
@@ -598,6 +572,7 @@ async def create_suggestion(
         basic = await MockSuggestionProvider(provider.model).generate_suggestion(context, mode=payload.mode, language=payload.language)
         response.result = basic.result
         inspirations = []
+        used_fallback, fallback_reason = True, "insufficient_evidence"
     source_ids = [item.source_id for item in inspirations if item.source_id != "current_writing"]
 
     try:
@@ -621,17 +596,16 @@ async def create_suggestion(
         raise_http(error)
 
     if used_fallback:
-        request_type = f"suggestion_fallback_{fallback_reason}" if fallback_reason else "suggestion_fallback"
+        await _record_usage(
+            user.id,
+            request_type=f"suggestion_fallback_{fallback_reason}" if fallback_reason else "suggestion_fallback",
+            model=provider.model,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            provider="mock",
+        )
     else:
-        request_type = "suggestion"
-    await _record_usage(
-        user.id,
-        request_type=request_type,
-        model=provider.model,
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
-        provider="mock" if used_fallback else provider.name,
-    )
+        await quota.complete(response.usage.input_tokens, response.usage.output_tokens)
     return AISuggestion(**rows[0])
 
 
@@ -763,33 +737,22 @@ async def list_usage(
 
 @router.get("/usage/summary", response_model=AIUsageSummary)
 async def usage_summary(
+    response: Response,
     user: AuthenticatedUser = Depends(require_ai_user),
 ) -> AIUsageSummary:
+    response.headers["Cache-Control"] = "private, no-store"
     entitlement = await _entitlement(user.id)
-    date_key = today_iso()
-    try:
-        rows = await service_rest(
-            "GET",
-            "ai_usage",
-            params={
-                "select": "request_type",
-                "user_id": f"eq.{user.id}",
-                "date": f"eq.{date_key}",
-            },
-        )
-    except SupabaseAPIError as error:
-        raise_http(error)
-    rows = rows or []
-    # Only real (non-fallback) suggestions count against the daily limit, matching
-    # the enforcement in create_suggestion.
-    used_today = sum(1 for row in rows if row.get("request_type") in {"suggestion", "workspace_assistant"})
+    counts = await usage_counts(user.id)
     daily_limit = _resolve_daily_limit(entitlement)
-    remaining = max(0, daily_limit - used_today) if daily_limit else None
+    used_today = counts["used_today"]
+    pending_today = counts["pending_today"]
     return AIUsageSummary(
-        date=date_key,
+        user_id=user.id,
+        date=counts["date"],
         plan=entitlement.get("plan") or "free",
         daily_limit=daily_limit,
         used_today=used_today,
-        total_today=len(rows),
-        remaining=remaining,
+        pending_today=pending_today,
+        total_today=counts["total_today"],
+        remaining=max(0, daily_limit - used_today - pending_today) if daily_limit else 0,
     )

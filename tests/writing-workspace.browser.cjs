@@ -13,7 +13,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
-  let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner;
+  let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0;
   const documents=new Map(),activity=new Map(),folders=[];const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
@@ -25,6 +25,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
    else if(key==='/auth/refresh')value={authenticated:true};
    else if(key==='/ai/profile'&&method==='GET')value=profile;
+   else if(key==='/ai/usage/summary')value={user_id:currentOwner,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:aiUsed,pending_today:aiPending,remaining:Math.max(0,100-aiUsed-aiPending)};
    else if(key==='/ai/profile'&&method==='PUT'){assert.equal(body.expected_user_id,currentOwner);Object.assign(profile,body);value=profile;}
    else if(key==='/onboarding')value={version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
    else if(key==='/workspace/config')value={daily_goal:250,max_document_chars:200000,max_upload_bytes:5242880,ai_batch_size:3};
@@ -51,6 +52,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key.startsWith('/workspace/sources/')){Object.assign(sources[0],body);value=sources[0];}
    else if(key==='/workspace/assistant'){
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
+    aiUsed++;
     value={items:body.action==='improve'?[{title:'A clearer passage',text:'Keeps your thought and simplifies its rhythm.',replacement:'A careful first step makes room for a better idea.'}]:Array.from({length:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'An angle grounded in your interests in craft and community.',replacement:null}))};
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
@@ -134,6 +136,18 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const before=await canvas.textContent();await generate.click();await page.locator('.uw-editor-ai-results article').nth(2).waitFor();
   assert.equal(await canvas.textContent(),before,'AI generation never overwrites writing');
   assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,1);
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('1 of 100 AI requests used'));
+  // A request from the extension is reflected when returning to the editor.
+  aiUsed=99;aiPending=1;
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('99 of 100'));
+  assert.ok((await page.locator('.uw-editor-ai-usage').textContent()).includes('1 in progress'));
+  assert.equal(await generate.isEnabled(),false,'Pending requests reserve the last shared slot');
+  aiPending=0;
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('1 left'));
+  aiUsed=1;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('99 left'));
   await page.locator('.uw-editor-ai-results article button').first().click();
   assert.ok((await canvas.textContent()).includes('The quiet value of practice'));
   await canvas.click();await canvas.press('ControlOrMeta+a');
