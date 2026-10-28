@@ -313,7 +313,7 @@ function mountLibraryResources() {
 function renderWriteDashboard() {
   if (!settings) return;
   const activeWords = state?.active && dayKey(state.startedAt) === dayKey(Date.now()) ? (state.typedWords || 0) : 0;
-  const words = completedWordsToday + activeWords;
+  const words = window.WCWritingProgress.withActive(completedWordsToday, state, settings.profile?.timezone);
   const goal = isPro() ? Number(settings.wordGoal || 0) : 0;
   const percent = goal > 0 ? Math.min(100, Math.max(0, Math.round(words / goal * 100))) : 0;
   $('daily-word-count').textContent = fmtNumber(words);
@@ -352,6 +352,7 @@ async function refreshProgress(manual = false) {
       return;
     }
     state = response.payload;
+    if (response.settings) settings = response.settings;
     completedWordsToday = response.today.totalWords || 0;
     streakValue = response.streak || 0;
     renderSession();
@@ -916,6 +917,7 @@ function renderAISuggestion(sug) {
   els.promptAiCard.hidden = false;
   els.promptAiTitle.textContent = sug.title || '';
   els.promptAiSuggestion.textContent = sug.suggestion || '';
+  window.WCWritingTask.render($('suggestion-writing-task'), sug.writing_task, { language: getLang(), owner: account.userId, id: sug.id });
   els.suggestionQuestions.replaceChildren();
   (sug.questions || []).forEach(question => {
     const item = document.createElement('li'); item.textContent = question; els.suggestionQuestions.appendChild(item);
@@ -1011,7 +1013,7 @@ async function refreshAiSuggestion() {
     const result = await getNextPrompt({ mode, draft, ideaSourceId, requestVersion: version });
     if (version !== suggestionRequestVersion) return;
     if (result.mode === 'ai') { renderAISuggestion(result.suggestion); return; }
-    const errors = { rate_limited: 'suggestion.rateLimited', idea_required: 'suggestion.ideaRequired', offline: 'prompt.ai.offline' };
+    const errors = { rate_limited: 'suggestion.rateLimited', idea_required: 'suggestion.ideaRequired', offline: 'prompt.ai.offline', progress_stale: 'suggestion.progressStale' };
     suggestionStatus(errors[result.reason] || 'suggestion.error');
   } finally {
     if (version === suggestionRequestVersion) {

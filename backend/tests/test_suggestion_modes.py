@@ -169,6 +169,27 @@ def test_provider_failure_returns_basic_prompt_without_consuming_shared_quota(sy
     assert (summary['used_today'], summary['pending_today'], summary['remaining']) == (0, 0, 100)
     assert system.state['ai_usage'][0]['request_type'] == 'suggestion_fallback_provider_error'
 
+@pytest.mark.parametrize('goal,written,target',[(100,0,100),(1000,750,250),(2000,500,1500),(1000,1000,0)])
+@pytest.mark.parametrize('mode',['new_topic','expand_idea','connect_dots'])
+def test_goal_progress_reaches_model_and_saved_task(system,goal,written,target,mode):
+    from datetime import datetime,timezone
+    now=datetime.now(timezone.utc)
+    snapshot=dict(daily_goal=goal,words_written_today=written,timezone='UTC',date=now.date().isoformat(),captured_at=now.isoformat())
+    response=system.client.post('/api/ai/suggestion',json=dict(mode=mode,writing_progress=snapshot,current_writing='My idea about patient observation.' if mode=='expand_idea' else None))
+    assert response.status_code==200,response.text
+    task=response.json()['writing_task']
+    assert task['target_words']==target and task['remaining_words']==max(0,goal-written)
+    assert f'"target_words": {target}' in system.calls[-1]['context']
+    if target>=750:assert sum(x['words'] for x in task['outline'])==target
+    if target==0:assert task['goal_reached'] and not task['outline']
+
+def test_stale_goal_snapshot_does_not_call_provider_or_reserve_quota(system,quota_store):
+    from datetime import datetime,timezone,timedelta
+    old=datetime.now(timezone.utc)-timedelta(minutes=10)
+    snapshot=dict(daily_goal=1000,words_written_today=750,timezone='UTC',date=old.date().isoformat(),captured_at=old.isoformat())
+    response=system.client.post('/api/ai/suggestion',json=dict(writing_progress=snapshot))
+    assert response.status_code==409 and not system.calls and not quota_store.calls
+
 def test_titles_without_source_content_are_not_treated_as_evidence(system):
     for source in system.state['ai_documents']:
         source['summary'] = None

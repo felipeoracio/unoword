@@ -11,6 +11,7 @@ from lib.supabase_client import user_rest
 from lib.retrieval import retrieve_user_chunks
 from lib import knowledge
 from models.ai import AISuggestionRequest
+from lib.writing_goal import task_budget, budget_context, with_outline
 
 ACTIONS = {
     "next": "Return exactly three DISTINCT personalized writing directions, each grounded in the author’s interests. Do not repeat earlier ideas.",
@@ -22,6 +23,7 @@ ACTIONS = {
 
 
 async def generate_assistance(payload, user):
+    task_budget(getattr(payload, "writing_progress", None))
     provider = get_suggestion_provider()
     if isinstance(provider, MockSuggestionProvider):
         raise HTTPException(503, "ai_provider_unavailable")
@@ -120,6 +122,9 @@ async def _generate_assistance(payload, user, provider, quota):
     if payload.selected_text:
         context += "\nSelected passage:\n" + payload.selected_text
     count = 3 if payload.action in {"next", "brainstorm", "block"} else 1
+    task = task_budget(getattr(payload, "writing_progress", None)) if payload.action != "improve" else None
+    if task is not None:
+        context += budget_context(task)
     # One provider request returns three directions and consumes one shared AI
     # request, matching the plan's request-based usage allowance.
     try:
@@ -136,8 +141,9 @@ async def _generate_assistance(payload, user, provider, quota):
                             "title": {"type": "string"},
                             "text": {"type": "string"},
                             "replacement": {"type": ["string", "null"]},
+                            "outline": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
                         },
-                        "required": ["title", "text", "replacement"],
+                        "required": ["title", "text", "replacement", "outline"],
                         "additionalProperties": False,
                     },
                 }
@@ -175,6 +181,9 @@ async def _generate_assistance(payload, user, provider, quota):
         saved = []
         for item in items:
             item["id"] = str(uuid4())
+            item_task = with_outline(task, item.get("outline"), payload.language) if task is not None else None
+            if item_task is not None:
+                item["writing_task"] = item_task.model_dump()
             saved.append(
                 {
                     "id": item["id"],
@@ -187,6 +196,7 @@ async def _generate_assistance(payload, user, provider, quota):
                         "new_topic" if payload.action == "next" else "expand_idea",
                         [],
                         [],
+                        writing_task=item_task,
                     ),
                     "related_topics": [],
                     "source_ids": dependencies,

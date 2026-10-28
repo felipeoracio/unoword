@@ -42,7 +42,7 @@
     try { chrome.storage.onChanged.addListener((changes,area) => {
       if(area!=='local')return;
       if(changes.wc_account) window.postMessage({type:'UNO_WORD_ACCOUNT_CHANGED'},location.origin);
-      if(changes.wc_history || changes.wc_account)localProgress();
+      if(changes.wc_history || changes.wc_account || changes.wc_state)localProgress();
     }); }
     catch (_error) { /* preview */ }
     return;

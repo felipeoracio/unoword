@@ -1,0 +1,7 @@
+.uw-writing-task { margin:12px 0;padding:12px;border:1px solid #8bb7ff66;border-radius:12px;font-size:12px;line-height:1.6;min-width:0;overflow-wrap:anywhere; }
+.uw-writing-task > strong { display:block;font-size:13px; }
+.uw-writing-task p { margin:6px 0;font-size:12px; }
+.uw-writing-task-sections { display:grid;gap:8px;margin:10px 0; }
+.uw-writing-task-sections label { display:flex;align-items:flex-start;gap:8px;cursor:pointer; }
+.uw-writing-task-sections input { flex:0 0 auto;width:16px;height:16px;margin:2px 0;accent-color:#2563eb; }
+.uw-writing-task-sections input:checked + span { text-decoration:line-through; }

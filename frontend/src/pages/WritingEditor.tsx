@@ -1,4 +1,5 @@
 import WritingTour from "@/components/onboarding/WritingTour";
+import WritingTask from "@/components/WritingTask";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
@@ -55,6 +56,7 @@ import {
   writingEngine,
   writingDates,
   writingHistory,
+  writingProgress,
   prompts,
   editorError,
   type Activity,
@@ -720,19 +722,15 @@ export default function WritingEditor() {
         .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
     [ws.documents, search, filter, serverMatches],
   );
-  const today = writingDates.dayKey(now, timeZone);
-  const todayWords =
-    ws.activities
-      .filter(
-        (a) =>
-          writingDates.dayKey(Date.parse(a.started_at), timeZone) === today,
-      )
-      .reduce((sum, a) => sum + a.typed_words, 0) +
-    extensionSessions
-      .filter(
-        (session) => writingDates.dayKey(session.startedAt, timeZone) === today,
-      )
-      .reduce((sum, session) => sum + session.typedWords, 0);
+  const progressSessions = [
+    ...ws.activities.map((a) => ({
+      id: `editor:${a.id}`,
+      startedAt: Date.parse(a.started_at),
+      typedWords: a.typed_words,
+    })),
+    ...extensionSessions,
+  ];
+  const todayWords = writingProgress.total(progressSessions, now, timeZone);
   const streak = writingHistory.computeStreak(
     [
       ...extensionSessions,
@@ -773,6 +771,7 @@ export default function WritingEditor() {
     setAiError("");
     setAiItems([]);
     try {
+      const progressTime = Date.now();
       const result = await apiPost<{ items: AssistantItem[] }>(
         "/workspace/assistant",
         {
@@ -783,6 +782,12 @@ export default function WritingEditor() {
           current_text: editor.getText({ blockSeparator: "\n" }),
           selected_text: action === "improve" ? text : "",
           language,
+          writing_progress: writingProgress.snapshot(
+            goal,
+            writingProgress.total(progressSessions, progressTime, timeZone),
+            timeZone,
+            progressTime,
+          ),
         },
       );
       if (
@@ -1913,10 +1918,19 @@ export default function WritingEditor() {
                   </p>
                 )}
                 <div className="uw-editor-ai-results" aria-live="polite">
+                  {aiItems.length > 1 && aiItems.some(item => item.writing_task) && <p className="uw-editor-muted">
+                    {language === "es" ? "Elige una dirección. Son alternativas para la misma meta pendiente." : "Choose one direction. These are alternatives for the same remaining goal."}
+                  </p>}
                   {aiItems.map((item, index) => (
                     <article key={index}>
                       <h3>{item.title}</h3>
                       <p>{item.text}</p>
+                      <WritingTask
+                        task={item.writing_task}
+                        owner={ws.user!.id}
+                        id={item.id || `${index}`}
+                        language={language}
+                      />
                       {item.replacement && (
                         <blockquote>{item.replacement}</blockquote>
                       )}

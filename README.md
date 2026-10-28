@@ -1,5 +1,8 @@
 # UnoWord
 
+[Goal-based suggestions](docs/goal-based-suggestions.md) explains how the existing
+daily tracker sizes AI tasks, estimated word counts and saved section checklists.
+
 See [durable source processing](docs/source-processing.md) for upload/website
 jobs, retries, privacy boundaries and the required migration/scheduler setup.
 

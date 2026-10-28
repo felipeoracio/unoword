@@ -59,6 +59,11 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
           inspired_by:[{source_id:sourceId,title:'Solar ferry notes',kind:'file'}],related_topics:[],source_ids:[sourceId],
         } : {detail:'Daily AI suggestion limit reached'};
         if (status===200) suggestions.push(body);
+        if (status===200 && payload.writing_progress) {
+          const p=payload.writing_progress,remaining=Math.max(0,(p.daily_goal||250)-p.words_written_today),target=Math.min(2000,remaining);
+          body.writing_task={daily_goal:p.daily_goal,words_written_today:p.words_written_today,remaining_words:remaining,target_words:target,goal_reached:remaining===0,timezone:p.timezone,date:p.date,
+            outline:target>=750?['Introduction','A first lesson','A second lesson','A third lesson','Conclusion'].map((title,i)=>({title,words:[200,500,500,500,300][i]*target/2000})):[]};
+        }
       } else if (/\/suggestions\/.+\/save$/.test(route)) {
         body=suggestions.find(s=>route.includes(s.id));
         if (!saved.some(s=>s.id===body.id)) saved.unshift(body);
@@ -108,11 +113,29 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       assert.equal(await page.locator('#suggestion-inspirations li').count(),1);
     }
     await generate('new_topic');
+    assert.ok((await page.locator('#suggestion-writing-task').textContent()).includes('About 250 words'));
     await page.waitForFunction(()=>document.querySelector('#ai-usage-meta').textContent.includes('1 of 100 AI requests used'));
     assert.ok((await page.locator('#ai-usage-meta').textContent()).includes('Shared with the editor'));
+    await message({type:'SET_SETTINGS',settings:{wordGoal:1000}});
+    storage.wc_history=[{id:'today',startedAt:Date.now()-1000,typedWords:750,pastedWords:500}];
+    await generate('new_topic');
+    const progressPayload=requests.filter(r=>r.route==='/ai/suggestion').at(-1).payload.writing_progress;
+    assert.equal(progressPayload.daily_goal,1000);assert.equal(progressPayload.words_written_today,750,'Pasted words are excluded');
+    assert.equal(suggestions.at(-1).writing_task.target_words,250);
+    await message({type:'SET_SETTINGS',settings:{wordGoal:2000}});storage.wc_history=[];
+    await generate('new_topic');
+    assert.equal(await page.locator('#suggestion-writing-task input[type=checkbox]').count(),5);
+    await page.locator('#suggestion-writing-task input').first().check();
+    const generated=suggestions.length;
+    storage.wc_history=[{id:'new-progress',startedAt:Date.now()-1000,typedWords:1000}];
+    await page.evaluate(()=>refreshProgress());
+    assert.equal(suggestions.length,generated,'Progress updates do not call AI or replace the active task');
+    assert.equal(suggestions.at(-1).writing_task.target_words,2000,'Task snapshot remains fixed while writing');
+    await capture('goal-task-2000');
     await page.click('#prompt-ai-again');
     await page.waitForFunction(()=>!document.querySelector('#prompt-ai-again').disabled);
     assert.equal(suggestions.at(-1).mode,'new_topic');
+    await page.locator('#suggestion-writing-task input').first().check();
     await page.click('#suggestion-save');
     await page.waitForFunction(()=>document.querySelector('#suggestion-save').textContent==='Saved');
     await page.reload();
@@ -120,6 +143,11 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     await page.locator('[data-library-filter="saved"]').click();
     await page.locator('#suggestion-saved-list button').first().click();
     assert.equal(await page.locator('#suggestion-save').textContent(),'Saved');
+    assert.equal(await page.locator('#suggestion-writing-task input').first().isChecked(),true,'Saved task checklist survives reopen');
+    await message({type:'SET_SETTINGS',settings:{wordGoal:1000}});
+    await generate('new_topic');
+    assert.ok((await page.locator('#suggestion-writing-task').textContent()).includes('Goal complete'));
+    assert.equal(await page.locator('#suggestion-writing-task input').count(),0);
     await choose('expand_idea');
     const before=suggestions.length;
     await page.click('#suggestion-generate');

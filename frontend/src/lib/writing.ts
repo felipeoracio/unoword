@@ -2,6 +2,7 @@
 import "../../../extension/shared/wordcount.js";
 import "../../../extension/shared/history.js";
 import "../../../extension/shared/dates.js";
+import "../../../extension/shared/writing-progress.js";
 import "../../../extension/shared/prompts.js";
 import type { JSONContent } from "@tiptap/react";
 import { apiGet, apiPost, ApiError } from "./api";
@@ -99,11 +100,23 @@ export type Activity = {
   dirty?: boolean;
 };
 export type AssistantItem = {
+  writing_task?: WritingTask;
   id?: string;
   title: string;
   text: string;
   replacement: string | null;
 };
+export type WritingTask = {
+  daily_goal: number | null; words_written_today: number; remaining_words: number | null;
+  target_words: number; goal_reached: boolean; timezone: string; date: string;
+  outline: { title: string; words: number }[];
+};
+export const writingProgress = (globalThis as unknown as {
+  WCWritingProgress: {
+    total(sessions: {id: string; startedAt: number; typedWords: number}[], now: number, timezone: string): number;
+    snapshot(goal: number, written: number, timezone: string, now?: number): unknown;
+  };
+}).WCWritingProgress;
 export async function fetchWritingActivity(): Promise<Activity[]> {
   const all: Activity[] = [];
   for (let offset = 0; ; offset += 1000) {
@@ -154,6 +167,8 @@ export function newDocument(
 export function editorError(error: unknown): string {
   if (error instanceof ApiError) {
     const code = (error.body as { detail?: unknown })?.detail;
+    if (code === "writing_progress_stale")
+      return "Your writing day changed or progress is out of date. Refresh progress and generate again.";
     if (code === "account_changed")
       return "Your account changed. Sign in again to continue; your local draft is preserved.";
     if (
