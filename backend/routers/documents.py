@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
 from lib.ai_access import require_ai_user
 from lib.auth import AuthenticatedUser
-from lib import knowledge
-from lib.document_processing import DocumentProcessingError, MAX_UPLOAD_BYTES, extract_document
+from lib import knowledge, source_processing
+from lib.document_processing import DocumentProcessingError, MAX_UPLOAD_BYTES, validate_upload
 from lib.supabase_client import (
     SupabaseAPIError,
     raise_http,
@@ -40,6 +40,7 @@ async def list_documents(user: AuthenticatedUser = Depends(require_ai_user)) -> 
 
 @router.post("/upload", response_model=AIDocument, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     document_title: Annotated[str, Form(min_length=1, max_length=300)],
     document_type: Annotated[DocumentType, Form()] = "other",
@@ -50,10 +51,10 @@ async def upload_document(
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Files are limited to 5 MB")
     try:
-        extracted = extract_document(file.filename or "document", data)
+        filename, file_type = validate_upload(file.filename or "document", data)
         metadata = AIDocumentUpload(
-            filename=extracted.filename,
-            file_type=extracted.file_type,
+            filename=filename,
+            file_type=file_type,
             document_title=document_title,
             document_type=document_type,
         )
@@ -74,33 +75,17 @@ async def upload_document(
                 "user_id": user.id,
                 **metadata.model_dump(),
                 "storage_path": storage_path,
-                "processing_status": "processing",
+                "processing_status": "pending",
                 "processing_error": None,
                 "word_count": 0,
             },
             prefer="return=representation",
         )
         metadata_created = bool(created)
-        chunk_count, embedded = await knowledge.index_source(
-            user.id, user.access_token, document_id, extracted.text,
-            {"filename": metadata.filename, "file_type": metadata.file_type},
-        )
-        await knowledge.rebuild_source_memory(
-            user.id, user.access_token, document_id,
-            title=metadata.document_title, text=extracted.text, kind="document",
-        )
-        ready = await user_rest(
-            "PATCH", "ai_documents", user.access_token,
-            params={"id": f"eq.{document_id}", "user_id": f"eq.{user.id}"},
-            json={
-                "processing_status": "ready",
-                "processing_error": knowledge.index_note(chunk_count, embedded),
-                "word_count": extracted.word_count,
-            },
-            prefer="return=representation",
-        )
-        return AIDocument(**ready[0])
-    except SupabaseAPIError as error:
+        await source_processing.enqueue(user.id, document_id)
+        background_tasks.add_task(source_processing.drain, user.id)
+        return AIDocument(**{**created[0], "processing_phase": "queued"})
+    except (SupabaseAPIError, HTTPException) as error:
         if uploaded:
             if metadata_created:
                 try:
@@ -117,6 +102,8 @@ async def upload_document(
                     await user_storage_delete(storage_path, user.access_token)
                 except SupabaseAPIError:
                     pass
+        if isinstance(error, HTTPException):
+            raise
         raise_http(error)
 
 

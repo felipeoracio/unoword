@@ -25,6 +25,7 @@ from routers.subscriptions import router as subscription_router
 from routers.account_security import router as account_security_router
 from routers.workspace import router as workspace_router
 from routers.onboarding import router as onboarding_router
+from routers.processing import router as processing_router
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -44,6 +45,7 @@ api_router.include_router(subscription_router)
 api_router.include_router(account_security_router)
 api_router.include_router(workspace_router)
 api_router.include_router(onboarding_router)
+api_router.include_router(processing_router)
 
 
 @api_router.get("/")

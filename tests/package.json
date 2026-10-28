@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.1",
   "devDependencies": {
-    "@electric-sql/pglite": "0.3.14",
+    "@electric-sql/pglite": "0.5.12",
+    "@electric-sql/pglite-pgvector": "0.0.13",
     "@playwright/test": "1.62.0",
     "axe-core": "4.14.0"
   }

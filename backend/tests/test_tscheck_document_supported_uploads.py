@@ -10,6 +10,7 @@ import io
 import pytest
 
 from tests._file_fixtures import docx_bytes, text_pdf_bytes
+from tests.source_helpers import wait_for_source
 
 
 @pytest.mark.parametrize(
@@ -32,7 +33,7 @@ def test_supported_file_type_uploads_and_processes(client_a, suffix, filename, c
         files={"file": (resolved_name, io.BytesIO(data), content_type)},
     )
     assert response.status_code == 201, response.text
-    body = response.json()
+    body = wait_for_source(client_a, response.json())
     assert body["processing_status"] == "ready", body
     assert body["word_count"] > 0, body
     document_id = body["id"]

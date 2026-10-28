@@ -85,6 +85,8 @@ class AIDocument(AIModel):
     document_type: DocumentType = "other"
     processing_status: ProcessingStatus = "pending"
     processing_error: str | None = None
+    processing_phase: str | None = None
+    processing_progress: int = Field(default=0, ge=0, le=100)
     summary: str | None = None
     word_count: int = Field(default=0, ge=0)
     source_kind: Literal["file", "link"] = "file"

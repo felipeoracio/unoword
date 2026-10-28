@@ -187,6 +187,9 @@ type Source = {
   document_title: string;
   enabled: boolean;
   source_kind: string;
+  processing_status?: string;
+  processing_phase?: string;
+  processing_progress?: number;
 };
 const profileFields = [
   ["writing_goal", "What do you want to write?", false],
@@ -270,6 +273,44 @@ export default function WritingEditor() {
   const [sources, setSources] = useState<Source[]>([]),
     [sourcesOpen, setSourcesOpen] = useState(false);
   const [sourceBusy, setSourceBusy] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!sourcesOpen || !userId || !ws.online || !ws.user?.ai_access) return;
+    let cancelled = false;
+    const refresh = async () => {
+      if (
+        document.hidden ||
+        !sources.some((source) =>
+          ["pending", "processing"].includes(source.processing_status || ""),
+        )
+      )
+        return;
+      try {
+        await apiPost("/processing/run", {});
+        const fresh = await apiGet<Source[]>("/workspace/sources");
+        if (cancelled) return;
+        setSources((current) =>
+          current.map((source) => {
+            const status = fresh.find((item) => item.id === source.id);
+            return status
+              ? {
+                  ...source,
+                  processing_status: status.processing_status,
+                  processing_phase: status.processing_phase,
+                  processing_progress: status.processing_progress,
+                }
+              : source;
+          }),
+        );
+      } catch {
+        /* Pending sources remain private and can resume after reconnect. */
+      }
+    };
+    const timer = window.setInterval(() => void refresh(), 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [sourcesOpen, userId, ws.online, ws.user?.ai_access, sources]);
   const [linkOpen, setLinkOpen] = useState(false),
     [linkHref, setLinkHref] = useState("");
   const [newFolderOpen, setNewFolderOpen] = useState(false),
@@ -1998,6 +2039,17 @@ export default function WritingEditor() {
                             }}
                           />
                           {source.document_title}
+                          {["pending", "processing", "failed"].includes(
+                            source.processing_status || "",
+                          ) && (
+                            <span className="uw-editor-muted">
+                              {source.processing_status === "failed"
+                                ? language === "es"
+                                  ? "No se pudo procesar. Reintenta desde la extensión."
+                                  : "Processing failed. Retry from the extension."
+                                : `${language === "es" ? "Procesando" : "Processing"} · ${source.processing_progress || 0}%`}
+                            </span>
+                          )}
                         </label>
                       ))}
                       <p className="uw-editor-muted">

@@ -43,6 +43,16 @@ def library(monkeypatch):
     async def memory(*args,**kwargs):
         assert kwargs['text']==TEXT
         state['ai_memories']=[dict(id=str(uuid4()),user_id=USER,source_id=LINK)]
+    state['queued']=[]
+    async def enqueue(user_id,source_id,**kwargs):
+        assert user_id==USER
+        state['queued'].append((source_id,kwargs))
+        for row in state['ai_documents']:
+            if row['id']==source_id:row.update(processing_status='pending',processing_phase='queued')
+        return str(uuid4())
+    async def drain(*args,**kwargs):return 0
+    monkeypatch.setattr(links.source_processing,'enqueue',enqueue)
+    monkeypatch.setattr(links.source_processing,'drain',drain)
     monkeypatch.setattr(links,'user_rest',rest)
     monkeypatch.setattr(links,'fetch_and_extract',fetch)
     monkeypatch.setattr(links.knowledge,'index_source',index)
@@ -59,33 +69,34 @@ def test_index_evidence(library,total,embedded,status):
     assert (row['chunk_count'],row['embedded_chunk_count'],row['indexing_status'])==(total,embedded,status)
 
 @pytest.mark.parametrize('existing',[[],[dict(id='partial',document_id=LINK,user_id=USER,embedding=None)]])
-def test_matching_hash_with_missing_index_is_repaired(library,existing):
+def test_refresh_queues_repair_without_changing_published_passages(library,existing):
     library.state['ai_document_chunks']=existing
     response=library.client.post(f'/api/links/{LINK}/refresh');assert response.status_code==200,response.text
     row=response.json()
-    assert row['indexing_status']=='indexed' and library.state['indexed']==1
+    assert row['processing_status']=='pending' and library.state['indexed']==0
+    assert library.state['ai_document_chunks']==existing and library.state['queued']
     assert row['id']==LINK and row['document_title']=='Frost notebook'
-    assert len(library.state['ai_documents'])==1 and library.state['ai_memories']
+    assert len(library.state['ai_documents'])==1
 
-def test_complete_cached_page_skips_embeddings_and_repairs_memory(library):
+def test_refresh_preserves_complete_index_until_worker_publication(library):
     library.state['ai_document_chunks']=[dict(id='good',document_id=LINK,user_id=USER,embedding=[0.1])]
     response=library.client.post(f'/api/links/{LINK}/refresh')
     assert response.status_code==200 and response.json()['indexing_status']=='indexed'
-    assert library.state['indexed']==0 and library.state['ai_memories']
+    assert library.state['indexed']==0 and library.state['queued']
 
-def test_failed_refresh_keeps_successful_read_time(library,monkeypatch):
+def test_queued_refresh_keeps_previous_successful_read_time(library,monkeypatch):
     async def fail(url):raise link_ingest.LinkIngestError('blocked_by_site','This site requires sign-in.')
     monkeypatch.setattr(links,'fetch_and_extract',fail)
     row=library.client.post(f'/api/links/{LINK}/refresh').json()
-    assert row['processing_status']=='failed' and 'sign-in' in row['processing_error']
+    assert row['processing_status']=='pending' and row['processing_error'] is None
     assert row['last_processed_at'].startswith('2026-10-20T12:00:00')
     assert row['last_successful_processed_at'] is None
 
-def test_zero_stored_chunks_is_failed(library,monkeypatch):
+def test_queued_source_with_no_chunks_is_never_reported_ready(library,monkeypatch):
     async def empty(*args):return 0,0
     monkeypatch.setattr(links.knowledge,'index_source',empty)
     row=library.client.post(f'/api/links/{LINK}/refresh').json()
-    assert row['processing_status']=='failed' and row['word_count']==0
+    assert row['processing_status']=='pending' and row['indexing_status']=='not_indexed'
 
 def test_preview_joins_stored_text_and_keeps_ownership(library):
     library.state['ai_document_chunks']=[dict(document_id=LINK,user_id=USER,content='A story about careful observation.'),dict(document_id=LINK,user_id=USER,content='careful observation. A second idea.')]
@@ -161,7 +172,7 @@ def test_resolver_failures_are_closed_and_actionable(monkeypatch, failure):
     assert error.value.reason == 'unreachable'
 
 
-def test_unreachable_link_can_be_saved_as_failed_and_retried(library, monkeypatch):
+def test_unreachable_link_is_saved_for_durable_worker_retry(library, monkeypatch):
     def fail_host(host):
         raise link_ingest.LinkIngestError('unreachable', "Could not resolve that website's address.")
     async def fail_fetch(url):
@@ -171,7 +182,7 @@ def test_unreachable_link_can_be_saved_as_failed_and_retried(library, monkeypatc
     response = library.client.post('/api/links', json={'url': 'https://unreachable.example/story'})
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body['processing_status'] == 'failed' and body['indexing_status'] == 'not_indexed'
-    assert 'resolve' in body['processing_error']
+    assert body['processing_status'] == 'pending' and body['indexing_status'] == 'not_indexed'
+    assert library.state['queued']
     retry = library.client.post(f"/api/links/{body['id']}/refresh")
-    assert retry.status_code == 200 and retry.json()['processing_status'] == 'failed'
+    assert retry.status_code == 200 and retry.json()['processing_status'] == 'pending'

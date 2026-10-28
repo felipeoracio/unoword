@@ -704,6 +704,7 @@ function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
     links = [];
     usage = null;
     usageVersion++;
+    processingVersion++;
     cloudMemories = [];
     [els.documentList, els.linkList, $('library-memory-list')].forEach(list => list.replaceChildren());
     $('link-content-dialog').close();
@@ -1664,8 +1665,62 @@ function renderUsage() {
 
 function documentErrorMessage(error) {
   const detail = error && error.body && error.body.detail;
+  if (detail === 'processing_queue_full') return t('processing.queueFull');
+  if (detail === 'source_processing_unavailable') return t('processing.unavailable');
   if (typeof detail === 'string' && detail !== 'offline') return detail;
   return detail === 'offline' ? t('documents.error.offline') : t('documents.error.generic');
+}
+
+function sourceProcessingMessage(source, readyKey) {
+  if (['pending', 'processing'].includes(source.processing_status)) return t('processing.saved');
+  return window.WCResourceState.websiteStatus(source) === 'ready' ? t(readyKey) : (source.processing_error || t('library.indexNote'));
+}
+
+function appendProcessingProgress(parent, source) {
+  if (!['pending', 'processing'].includes(source.processing_status)) return;
+  const phase = ['queued','extracting','indexing','summarizing','publishing','retry'].includes(source.processing_phase)
+    ? source.processing_phase : 'queued';
+  const label = document.createElement('p'); label.className = 'wc__helper';
+  label.textContent = t('processing.phase.' + phase);
+  const progress = document.createElement('progress');
+  progress.max = 100; progress.value = Number(source.processing_progress) || 0;
+  progress.style.cssText = 'display:block;width:100%;height:6px;margin:6px 0;accent-color:var(--primary);';
+  progress.setAttribute('aria-label', t('processing.progress'));
+  parent.append(label, progress);
+}
+
+let processingBusy = false, processingVersion = 0;
+const processingRetries = new Set();
+async function pollSourceProcessing() {
+  if (processingBusy || document.hidden || !account.authenticated || !account.aiAccess || account.online === false) return;
+  if (![...documents, ...links].some(source => ['pending', 'processing'].includes(source.processing_status))) return;
+  const owner = account.userId, version = processingVersion;
+  processingBusy = true;
+  try {
+    await window.WCApi.post('/processing/run', {});
+    if (owner !== account.userId || version !== processingVersion) return;
+    await Promise.all([loadDocuments(), loadLinks()]);
+    if (owner !== account.userId || version !== processingVersion) return;
+    renderDocuments(); renderLinks();
+  } catch (_error) { /* Durable jobs remain saved; reconnect/cron can resume. */ }
+  finally { processingBusy = false; }
+}
+
+async function retryProcessing(sourceId) {
+  if (processingRetries.has(sourceId)) return;
+  const owner = account.userId, version = processingVersion;
+  processingRetries.add(sourceId);
+  try {
+    await window.WCApi.post(`/processing/${sourceId}/retry`, {});
+    if (owner !== account.userId || version !== processingVersion) return;
+    await Promise.all([loadDocuments(), loadLinks()]);
+    if (owner !== account.userId || version !== processingVersion) return;
+    renderDocuments(); renderLinks();
+  } catch (error) {
+    if (owner !== account.userId || version !== processingVersion) return;
+    els.documentError.hidden = false;
+    els.documentError.textContent = documentErrorMessage(error);
+  } finally { processingRetries.delete(sourceId); }
 }
 
 function renderDocumentsSummary() {
@@ -1698,6 +1753,7 @@ function renderDocuments() {
     meta.setAttribute('data-testid', `document-meta-${doc.id}`);
     main.appendChild(title);
     main.appendChild(meta);
+    appendProcessingProgress(main, doc);
     if (doc.processing_error) {
       const error = window.document.createElement('p');
       error.className = 'wc__error';
@@ -1711,6 +1767,14 @@ function renderDocuments() {
     remove.textContent = t('documents.delete');
     remove.setAttribute('data-testid', `document-delete-${doc.id}`);
     remove.addEventListener('click', () => confirmDeleteDocument(doc));
+    if (doc.processing_status === 'failed' || (doc.processing_status === 'pending' && !doc.processing_phase)) {
+      const retry = window.document.createElement('button');
+      retry.className = 'wc__link-btn'; retry.type = 'button';
+      retry.textContent = t('processing.retry');
+      retry.dataset.testid = `document-retry-${doc.id}`;
+      retry.addEventListener('click', () => retryProcessing(doc.id));
+      main.appendChild(retry);
+    }
     item.appendChild(main);
     item.appendChild(remove);
     els.documentList.appendChild(item);
@@ -1763,7 +1827,7 @@ async function uploadDocument() {
     els.documentFile.value = '';
     els.documentTitle.value = '';
     els.documentType.value = 'other';
-    els.documentUploadStatus.textContent = t('documents.uploaded');
+    els.documentUploadStatus.textContent = t(['pending', 'processing'].includes(saved.processing_status) ? 'processing.saved' : 'documents.uploaded');
     renderSettings();
     els.aiDocumentsEditor.hidden = false;
   } catch (error) {
@@ -1846,6 +1910,7 @@ function renderLinks() {
     }
     meta.textContent = facts.join(' · ');
     main.append(title, url, badge, meta);
+    appendProcessingProgress(main, link);
     if (link.processing_error) {
       const error = document.createElement('p'); error.className = 'wc__error';
       error.textContent = link.processing_error; error.dataset.testid = `link-processing-error-${link.id}`;
@@ -1871,6 +1936,7 @@ function renderLinks() {
     addAction(link.enabled ? 'links.disable' : 'links.enable', `link-toggle-${link.id}`, () => updateLink(link.id, { enabled: !link.enabled }));
     addAction('links.edit', `link-edit-${link.id}`, () => editLink(link));
     addAction('links.refresh', `link-refresh-${link.id}`, () => refreshLink(link.id));
+    if (link.processing_status === 'failed') addAction('processing.retry', `link-retry-${link.id}`, () => retryProcessing(link.id));
     addAction('documents.delete', `link-delete-${link.id}`, () => confirmDeleteLink(link));
     actions.append(summary, buttons); item.append(main, actions); els.linkList.appendChild(item);
   });
@@ -1919,7 +1985,7 @@ async function addLink() {
     els.linkUrl.value = '';
     els.linkTitle.value = '';
     els.linkCategory.value = 'other';
-    els.linkStatus.textContent = window.WCResourceState.websiteStatus(saved) === 'ready' ? t('links.added') : (saved.processing_error || t('library.indexNote'));
+    els.linkStatus.textContent = sourceProcessingMessage(saved, 'links.added');
     renderLinks();
   } catch (error) {
     if (owner !== account.userId) return;
@@ -1973,7 +2039,7 @@ async function refreshLink(linkId) {
     const saved = await window.WCApi.post(`/links/${linkId}/refresh`, {}, { timeout: 90000 });
     if (owner !== account.userId) return;
     links = links.map((l) => (l.id === linkId ? saved : l));
-    els.linkStatus.textContent = window.WCResourceState.websiteStatus(saved) === 'ready' ? t('links.refreshed') : (saved.processing_error || t('library.indexNote'));
+    els.linkStatus.textContent = sourceProcessingMessage(saved, 'links.refreshed');
     renderLinks();
   } catch (error) {
     if (owner !== account.userId) return;
@@ -2396,6 +2462,10 @@ function wire() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { scheduleProgressRefresh(); void refreshUsage(); } });
   const usageTicker = setInterval(() => { if (!document.hidden) void refreshUsage(); }, 30000);
   window.addEventListener('unload', () => clearInterval(usageTicker));
+  const processingTicker = setInterval(() => void pollSourceProcessing(), 8000);
+  window.addEventListener('focus', () => void pollSourceProcessing());
+  window.addEventListener('online', () => void pollSourceProcessing());
+  window.addEventListener('unload', () => clearInterval(processingTicker));
 }
 
 async function boot() {

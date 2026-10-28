@@ -49,6 +49,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/workspace/activity'&&method==='GET')value=[...activity.values()];
    else if(key==='/workspace/activity'){const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
    else if(key==='/workspace/sources')value=sources;
+   else if(key==='/processing/run'){
+    assert.equal(pro,true);Object.assign(sources[0],{processing_status:'ready',processing_phase:'complete',processing_progress:100});status=202;value={accepted:true};
+   }
    else if(key.startsWith('/workspace/sources/')){Object.assign(sources[0],body);value=sources[0];}
    else if(key==='/workspace/assistant'){
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
@@ -167,7 +170,12 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await profileDialog.getByLabel('What do you want to write?').inputValue(),'Essays about craft and community');
   await profileDialog.getByLabel('What do you want to write?').fill('Patient observation and practical craft');
   await profileDialog.getByRole('button',{name:'Save profile',exact:true}).click();assert.equal(profile.writing_goal,'Patient observation and practical craft');
-  await page.getByRole('button',{name:'Writing knowledge',exact:true}).click();await page.getByLabel('Notes on building a garden').uncheck();
+  Object.assign(sources[0],{processing_status:'processing',processing_phase:'indexing',processing_progress:50});
+  await page.getByRole('button',{name:'Writing knowledge',exact:true}).click();
+  await page.getByText('Processing · 50%',{exact:true}).waitFor();
+  await page.getByText('Processing · 50%',{exact:true}).waitFor({state:'hidden',timeout:20000});
+  assert.ok(requests.some(r=>r.key==='/processing/run'),'Pending knowledge refreshes through the authenticated worker');
+  await page.getByLabel('Notes on building a garden').uncheck();
   assert.equal(sources[0].enabled,false);
   await page.getByLabel('Use this document for future AI personalization').check();
   await page.getByRole('button',{name:'Another prompt',exact:true}).click();assert.ok((await page.locator('.uw-editor-prompt').textContent()).length>35);

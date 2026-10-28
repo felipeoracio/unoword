@@ -151,6 +151,29 @@ async def user_storage_delete(path: str, access_token: str) -> Any:
     )
 
 
+async def source_storage_download(user_id: str, path: str, max_bytes: int) -> bytes:
+    """Worker-only bounded download; the persisted owner must own the path."""
+    if not path.startswith(user_id + "/") or ".." in path.split("/"):
+        raise SupabaseAPIError(403, "Invalid private source path")
+    config = require_supabase_runtime()
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            async with client.stream(
+                "GET", f"{config.url.rstrip('/')}/storage/v1/object/authenticated/ai-documents/{quote(path, safe='/')}",
+                headers={"apikey": config.service_role_key, "Authorization": f"Bearer {config.service_role_key}"},
+            ) as response:
+                if response.status_code >= 400:
+                    raise SupabaseAPIError(response.status_code, "Private source download failed")
+                content = bytearray()
+                async for part in response.aiter_bytes():
+                    content.extend(part)
+                    if len(content) > max_bytes:
+                        raise SupabaseAPIError(413, "Private source exceeds the upload limit")
+                return bytes(content)
+    except httpx.HTTPError as error:
+        raise SupabaseAPIError(502, "Private source is temporarily unreachable") from error
+
+
 def raise_http(error: SupabaseAPIError) -> None:
     if error.response_status in {400, 401, 403, 404, 409, 422, 429}:
         raise HTTPException(status_code=error.response_status, detail=error.detail)
