@@ -17,6 +17,17 @@ const {PGlite}=require(root+'/@electric-sql/pglite');const {vector}=require(root
  for(const user of [old,a,b,free])await db.query('insert into auth.users values($1)',[user]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',100)",[old]);
  await db.exec(migration);await db.exec(migration);
+ const protectedTables=['ai_allowance_versions','ai_allowance_releases','ai_allowance_assignments','ai_allowance_audit','ai_model_prices','ai_response_cache','ai_cost_events'];
+ for(const table of protectedTables){
+  const catalog=await db.query('select relrowsecurity from pg_class where oid=$1::regclass',['public.'+table]);
+  assert.equal(catalog.rows[0].relrowsecurity,true,table+' enables RLS');
+  for(const role of ['anon','authenticated']){
+   const acl=await db.query("select has_table_privilege($1,$2,'SELECT,INSERT,UPDATE,DELETE') allowed",[role,'public.'+table]);
+   assert.equal(acl.rows[0].allowed,false,role+' cannot access '+table);
+  }
+  assert.equal((await db.query("select has_table_privilege('service_role',$1,'SELECT,INSERT,UPDATE,DELETE') allowed",['public.'+table])).rows[0].allowed,true);
+ }
+
  for(const user of [a,b])await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',100)",[user]);
  const state=(u,tz='America/Chicago')=>db.query('select ai_coach_state($1,$2) s',[u,tz]).then(r=>r.rows[0].s);
  const reserve=(u,id=randomUUID(),feature='suggestion',hash='a'.repeat(64))=>db.query('select ai_coach_reserve($1,$2,$3,$4,$5) s',[u,id,feature,hash,'America/Chicago']).then(r=>r.rows[0].s);

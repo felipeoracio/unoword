@@ -1,5 +1,8 @@
 -- Versioned writing-coach allowances. Preserves writing, billing and historical
 -- usage. Existing paid accounts keep their legacy shared daily pool.
+-- Run the complete transaction. The trigger replacements and runtime cleanup
+-- definitions may prompt a generic destructive-operation warning; this migration
+-- does not drop data tables or delete writing, user, or subscription records.
 begin;
 create table if not exists public.ai_allowance_versions (
  id uuid primary key default gen_random_uuid(), name text not null check(length(name) between 1 and 100),
@@ -12,6 +15,10 @@ create table if not exists public.ai_allowance_versions (
  created_at timestamptz not null default now(), created_by text not null,
  check(legacy_shared_daily or (suggestions_daily is not null and suggestions_monthly is not null and guidance_monthly is not null))
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_allowance_versions enable row level security;
+revoke all on public.ai_allowance_versions from public,anon,authenticated;
+grant all on public.ai_allowance_versions to service_role;
 insert into public.ai_allowance_versions(id,name,suggestions_daily,legacy_shared_daily,created_by)
  values('00000000-0000-4000-8000-000000000001','Protected legacy shared allowance',100,true,'migration') on conflict do nothing;
 insert into public.ai_allowance_versions(id,name,suggestions_daily,suggestions_monthly,guidance_monthly,created_by)
@@ -20,6 +27,10 @@ create table if not exists public.ai_allowance_releases (
  id uuid primary key default gen_random_uuid(), version_id uuid not null references public.ai_allowance_versions,
  effective_at timestamptz not null unique, published_at timestamptz not null default now(), published_by text not null
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_allowance_releases enable row level security;
+revoke all on public.ai_allowance_releases from public,anon,authenticated;
+grant all on public.ai_allowance_releases to service_role;
 insert into public.ai_allowance_releases(id,version_id,effective_at,published_by)
  values('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002',now(),'migration') on conflict(id) do nothing;
 create table if not exists public.ai_allowance_assignments (
@@ -28,6 +39,10 @@ create table if not exists public.ai_allowance_assignments (
  legacy_daily integer check(legacy_daily>0), timezone text,
  timezone_set_at timestamptz, created_at timestamptz not null default now()
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_allowance_assignments enable row level security;
+revoke all on public.ai_allowance_assignments from public,anon,authenticated;
+grant all on public.ai_allowance_assignments to service_role;
 insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
  select user_id,'00000000-0000-4000-8000-000000000001',greatest(daily_request_limit,100)
  from public.ai_entitlements where plan in ('pro','premium')
@@ -57,6 +72,10 @@ create table if not exists public.ai_allowance_audit (
  id bigint generated always as identity primary key, admin_id text not null, action text not null,
  version_id uuid references public.ai_allowance_versions, detail jsonb not null default '{}', created_at timestamptz not null default now()
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_allowance_audit enable row level security;
+revoke all on public.ai_allowance_audit from public,anon,authenticated;
+grant all on public.ai_allowance_audit to service_role;
 create table if not exists public.ai_model_prices (
  id uuid primary key default gen_random_uuid(), model text not null, input_per_million numeric(12,6) not null check(input_per_million>=0),
  cached_input_per_million numeric(12,6) not null check(cached_input_per_million>=0),
@@ -64,6 +83,10 @@ create table if not exists public.ai_model_prices (
  effective_at timestamptz not null default now(), source_url text not null, created_by text not null,
  unique(model,effective_at)
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_model_prices enable row level security;
+revoke all on public.ai_model_prices from public,anon,authenticated;
+grant all on public.ai_model_prices to service_role;
 -- Verified on the model's official pricing page, 2026-10-28. Unknown models are
 -- reported as unpriced, never assigned an invented price or zero cost.
 insert into public.ai_model_prices(id,model,input_per_million,cached_input_per_million,output_per_million,effective_at,source_url,created_by)
@@ -89,6 +112,10 @@ create table if not exists public.ai_response_cache (
  user_id uuid not null references auth.users on delete cascade, response jsonb not null,
  expires_at timestamptz not null default now()+interval '24 hours'
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_response_cache enable row level security;
+revoke all on public.ai_response_cache from public,anon,authenticated;
+grant all on public.ai_response_cache to service_role;
 create index if not exists ai_response_cache_expiry on public.ai_response_cache(expires_at);
 create table if not exists public.ai_cost_events (
  id uuid primary key default gen_random_uuid(), request_id uuid, user_id uuid not null references auth.users on delete cascade,
@@ -97,18 +124,15 @@ create table if not exists public.ai_cost_events (
  status text not null check(status in ('succeeded','failed','rejected','fallback','released')),
  created_at timestamptz not null default now()
 );
+-- Backend-only: explicit protection for Supabase security review.
+alter table public.ai_cost_events enable row level security;
+revoke all on public.ai_cost_events from public,anon,authenticated;
+grant all on public.ai_cost_events to service_role;
 create index if not exists ai_cost_events_month on public.ai_cost_events(created_at,user_id);
 create index if not exists ai_usage_feature_time on public.ai_usage(user_id,created_at,feature);
 create index if not exists ai_pending_feature_time on public.workspace_ai_requests(user_id,created_at,feature) where state='pending';
 
--- Service-only management; usage RLS continues to expose only one's own records.
-do $$ declare t text; begin
- foreach t in array array['ai_allowance_versions','ai_allowance_releases','ai_allowance_assignments','ai_allowance_audit','ai_model_prices','ai_response_cache','ai_cost_events'] loop
- execute format('alter table public.%I enable row level security',t);
- execute format('revoke all on public.%I from public,anon,authenticated',t);
- execute format('grant all on public.%I to service_role',t);
- end loop;
-end $$;
+-- All seven new tables have explicit RLS and backend-only grants above.
 grant usage, select on sequence public.ai_allowance_audit_id_seq to service_role;
 
 create or replace function public.ai_public_allowance()
