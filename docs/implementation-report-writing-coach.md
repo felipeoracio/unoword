@@ -1,6 +1,6 @@
 # UnoWord writing coach, plans, streaks, and marketing delivery
 
-Implemented in the existing project. Production deployment is held until the two database migrations are applied. Stripe remains sandbox/test; no live campaigns or prices/products were changed.
+Merged in [PR #4](https://github.com/felipeoracio/unoword/pull/4) and deployed to [unoword.vercel.app](https://unoword.vercel.app/). The owner applied the database migrations; live schema and permission checks passed. Vercel confirmed production deployments for merge `a338d03` and coaching reliability follow-up `ce0a717`. No Stripe mode, prices/products, subscriber terms, or live campaigns were changed.
 
 ## Delivered behavior
 
@@ -25,6 +25,23 @@ The [architecture and complete permission matrix](writing-coach-plans-and-streak
 - Responsive layouts checked from **320 to 1440px**, plus existing Lifetime viewport cases. Landing, editor, and Lifetime accessibility checks passed; keyboard navigation, consent, CTAs, auth redirects, sold-out/error states, offline edits/conflicts, and preserved drafts were exercised.
 - Production build, TypeScript, branding guard and lint passed. Lint reports four pre-existing warnings; existing bundle-size/SSR build warnings remain. Python compilation and whitespace checks pass.
 - Extension ZIP version **0.18.0**, SHA-256, every distributable source file, secret/test exclusions, and built public ZIP were verified.
+- **32 focused backend checks passed after the live-test follow-up**, including two new cases for rejected coaching responses: one bounded retry shares a single reservation/credit, each model call retains cost telemetry, and a second rejection saves nothing and releases the credit. Diagnostics exclude private generated text. The editor prompt now explicitly uses its multi-item contract and short coaching labels.
+
+## Production verification after the migrations
+
+These checks used real production HTTP, Supabase, model calls, and Chromium, with dedicated QA accounts and temporary fictional documents/activity. They are separate from the isolated regression suites above.
+
+- Confirmed all required Lifetime and AI allowance tables and streak functions exist. Published defaults are **10 suggestions/day, 200/calendar month, and 30 Writing Guidance requests/calendar month**. An existing QA subscriber retained its protected shared allowance.
+- Anonymous and authenticated browser roles were denied direct reads of all seven private AI management tables. Signed-out admin, editor, usage and streak endpoints require authentication.
+- A temporary Free account was denied editor configuration, document/folder management, personalized profile, AI usage, and premium history. Owner-only read-only recovery/export remained available for a seeded historical document; another account could not export a Pro document.
+- Synced 15 fictional qualifying days for Free and Pro accounts and repeated the identical batch: exactly 15 rows remained per account. Free displayed seven days without full-streak/history fields; Pro displayed the actual qualifying streak. Folder creation, document save/reopen, save replay and activity sequence updates passed without duplicate records.
+- Four successful real AI requests covered editor guidance, three personalized directions in one generation, optional guidance after goal completion, and an extension-style suggestion. Targets followed 250, zero, and 100 remaining words. Exactly four credits were used; replaying an identical completed request used none. Guidance/suggestion monthly counters increased by two each. Consent and removed rewrite actions were enforced, with actual model cost records retained.
+- An initial live editor response failed the coaching/output boundary without charging a credit. Follow-up `ce0a717` added explicit output instructions, safe diagnostics and one guarded retry; subsequent live coaching checks passed. This does not promise that model/provider failures can never occur.
+- Live Chromium checks passed for the landing page and editor at **1440, 768, 390 and 320px**, with no horizontal overflow, JavaScript exceptions or automatic AI calls. All three pricing plans and the protected usage display rendered correctly.
+- A temporary document was edited offline, reopened after an offline page reload, then synchronized successfully after reconnecting; its cloud text matched. The first browser attempt was blocked by this execution environment's HTTPS proxy certificate when registering the service worker. Allowing that proxy certificate in the test browser resolved the test-environment issue; application TLS/security settings were unchanged.
+- Public extension **0.18.0** downloaded successfully and matched the published SHA-256.
+
+Temporary accounts, folders, documents, synthetic activity, and generated QA suggestions/response caches were removed. Existing users, documents and entitlements were preserved. Real AI usage and model-cost history were retained. No checkout, payment, quota reset, administrator publication or advertising publication was performed. Authenticated administrator publishing and a new Stripe purchase were not exercised in this production smoke check.
 
 ## Screenshots and preview
 
@@ -33,20 +50,24 @@ Captured local, fixture-backed desktop/mobile screenshots are available in the c
 - `/workspace/.onboarding/unoword/coach-plans/landing-1440.png`
 - `/workspace/.onboarding/unoword/coach-plans/landing-390.png`
 
-The tracked `frontend/public/brand/social-card.svg` and `.png` provide the updated 1200×630 sharing preview. To reproduce the site locally, build and preview `frontend`; run the browser tests with Playwright/Chromium and axe-core installed from the existing test dependencies. Tests do not authenticate against production.
+Additional screenshots captured from the deployed production site:
 
-## Required owner action before deployment
+- `/workspace/.onboarding/unoword/coach-plans/production-landing-1440.png`
+- `/workspace/.onboarding/unoword/coach-plans/production-landing-390.png`
 
-In Supabase → SQL Editor → New query, run these files **in order**, one at a time:
+The tracked `frontend/public/brand/social-card.svg` and `.png` provide the updated 1200×630 sharing preview. To reproduce the site locally, build and preview `frontend`; run the browser tests with Playwright/Chromium and axe-core installed from the existing test dependencies. Those repository browser suites use isolated fixtures; the production smoke checks described above were run separately.
 
-1. [Writing coach allowances](../supabase/migrations/20261028030000_writing_coach_allowances.sql)
-2. [Verified streak presentation](../supabase/migrations/20261028040000_verified_streak_presentation.sql)
+## Applied migrations and extension update
 
-Both are transactional and repeatable. Core AI/editor/quota migrations must already be applied. If the database lacks `lifetime_orders`, first apply `20261026010000_lifetime_offer.sql` after monthly Stripe setup, then rerun the allowance migration and run the streak migration. The allowance migration also tolerates absent billing modules, without creating incomplete placeholder tables; missing modules need their real setup before their checkout can work. No new secret is required. The workspace's configured database host is IPv6-only/unreachable here, and the supplied pooler credentials also could not connect, so live DDL could not be applied from this environment.
+The owner applied the following setup in Supabase, and the resulting schema was verified against the app's configured database:
 
-After both succeed, merge/deploy the reviewed build, run live smoke checks, and update/reload the extension to 0.18.0 (adds the Chrome alarms permission for reliable queued retries). Existing unassigned local history needs the explicit **Sync this device’s writing history** action. Any activity already missing from both the old bounded local cache and cloud cannot be reconstructed; no days are invented. Live billing stays off without separate owner approval. No new Meta pixel or campaign was installed; no existing tracked frontend Meta pixel was found.
+1. [Lifetime offer prerequisite](../supabase/migrations/20261026010000_lifetime_offer.sql)
+2. [Writing coach allowances](../supabase/migrations/20261028030000_writing_coach_allowances.sql)
+3. [Verified streak presentation](../supabase/migrations/20261028040000_verified_streak_presentation.sql)
 
-Live migration/deployment/model-generation validation for this build is **pending**. Isolated passing tests do not prove that production has received the changes.
+The migrations are transactional and repeatable. On another database, core AI/editor/quota migrations and monthly Stripe setup must already be applied. The allowance migration also tolerates absent billing modules without creating incomplete placeholder tables; missing modules need their real setup before their checkout can work. No new secret is required. Direct PostgreSQL connections from this workspace were unavailable, so the owner applied SQL and live verification used Supabase REST/RPC plus the deployed APIs.
+
+The remaining user action is to update/reload the extension to **0.18.0** (adds the Chrome alarms permission for reliable queued retries). Existing unassigned local history needs the explicit **Sync this device’s writing history** action. Any activity already missing from both the old bounded local cache and cloud cannot be reconstructed; no days are invented. Live billing still requires separate owner approval. No new Meta pixel or campaign was installed; no existing tracked frontend Meta pixel was found.
 
 ## Files modified
 
