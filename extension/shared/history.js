@@ -14,6 +14,7 @@
  */
 
 (function (root) {
+  const clock=root.WCSessionClock || (typeof module!=='undefined'?require('./session-clock.js'):null);
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   // Local (or timezone-aware) YYYY-MM-DD key for a timestamp.
@@ -78,7 +79,7 @@
 
   const CSV_COLUMNS = [
     'session_id', 'date', 'start_time', 'end_time',
-    'words_written', 'session_goal', 'goal_reached', 'timezone',
+    'words_written', 'session_goal', 'goal_reached', 'timezone', 'active_ms', 'paused_ms',
   ];
 
   function csvEscape(v) {
@@ -94,6 +95,7 @@
       const reached = goal > 0 ? (words >= goal ? 'true' : 'false') : '';
       const start = new Date(s.startedAt);
       const end = s.endedAt ? new Date(s.endedAt) : null;
+      const timing=clock.read(clock.forSession(s));
       rows.push([
         s.id != null ? s.id : s.startedAt,
         dayKeyOf(s.startedAt, s.timezone),
@@ -103,6 +105,7 @@
         goal,
         reached,
         s.timezone || '',
+        timing.active_ms, timing.paused_ms,
       ].map(csvEscape).join(','));
     });
     return rows.join('\r\n');
@@ -175,7 +178,14 @@
       const goal = idx('session_goal') >= 0 ? Math.max(0, Math.floor(Number(cells[idx('session_goal')]) || 0)) : 0;
       const idCell = idx('session_id') >= 0 ? cells[idx('session_id')] : '';
       const id = idCell && /^\d+$/.test(idCell.trim()) ? Number(idCell) : (idCell || startedAt);
+      let timer;
+      if(idx('active_ms')>=0 && cells[idx('active_ms')]!==''){
+        const active=Number(cells[idx('active_ms')]),paused=Number(cells[idx('paused_ms')]||0);
+        if(!Number.isSafeInteger(active)||!Number.isSafeInteger(paused)||active<0||paused<0){invalid++;continue;}
+        timer={status:'ended',active_ms:active,paused_ms:paused,changed_at:endedAt!=null?endedAt:startedAt};
+      }
       records.push({
+        ...(timer?{timer}:{}),
         id,
         startedAt,
         endedAt: endedAt != null ? endedAt : startedAt,

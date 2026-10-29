@@ -156,7 +156,7 @@
 
     const curr = getElementText(t);
 
-    if (!sessionState.active) {
+    if (!sessionState.active || sessionState.timer?.status === 'paused') {
       prevValues.set(t, curr);
       return;
     }
@@ -394,6 +394,7 @@
       if (!numEl) return;
       const d = computeDisplay();
       numEl.textContent = d.text;
+      if(sessionState.timer?.status==='paused')d.label=(settings.language==='es'?'En pausa':'Paused')+' · '+d.label;
       labelEl.textContent = d.label;
       const secEl = root.getElementById('secondary');
       if (d.secondary) { secEl.textContent = d.secondary; secEl.hidden = false; }

@@ -1,5 +1,6 @@
 // Use the extension's exact tokenizer/reducer instead of a second word counter.
 import "../../../extension/shared/wordcount.js";
+import "../../../extension/shared/session-clock.js";
 import "../../../extension/shared/history.js";
 import "../../../extension/shared/dates.js";
 import "../../../extension/shared/writing-progress.js";
@@ -65,6 +66,8 @@ export type WritingDocument = {
   folder_id: string | null;
   favorite: boolean;
   status: "active" | "archived" | "trashed";
+  completion_status?: "draft" | "completed";
+  completed_at?: string | null;
   ai_allowed: boolean;
   revision: number;
   mutation_id: string;
@@ -91,39 +94,105 @@ export type Draft = WritingDocument & {
 export type Folder = { id: string; name: string; dirty?: boolean };
 export type Activity = {
   id: string;
-  document_id: string;
+  document_id: string | null;
   started_at: string;
   typed_words: number;
   pasted_words: number;
   duration_seconds: number;
   sequence: number;
+  timer?: SessionTimer | null;
   dirty?: boolean;
 };
+export function activitySnapshot(row: Activity): Activity {
+  return {
+    id: row.id,
+    document_id: row.document_id,
+    started_at: row.started_at,
+    typed_words: row.typed_words,
+    pasted_words: row.pasted_words,
+    duration_seconds: row.duration_seconds,
+    sequence: row.sequence,
+    ...(row.timer ? { timer: row.timer } : {}),
+  };
+}
+export type SessionTimer = {
+  status: "active" | "paused" | "ended";
+  active_ms: number;
+  paused_ms: number;
+  changed_at: number;
+};
+export const sessionClock = (
+  globalThis as unknown as {
+    WCSessionClock: {
+      start(now?: number): SessionTimer;
+      read(
+        timer?: SessionTimer | null,
+        now?: number,
+      ): { active_ms: number; paused_ms: number; elapsed_ms: number };
+      transition(
+        timer: SessionTimer,
+        status: SessionTimer["status"],
+        now?: number,
+      ): SessionTimer;
+    };
+  }
+).WCSessionClock;
+
+export const FRESH_DOCUMENT = "__new__";
+export function documentToReopen(
+  documents: WritingDocument[],
+  previous: string | null,
+): string | null {
+  if (previous === FRESH_DOCUMENT) return null;
+  const last = documents.find((d) => d.id === previous);
+  if (last?.completion_status === "completed") return null;
+  if (last?.status === "active") return last.id;
+  return (
+    documents.find(
+      (d) => d.status === "active" && d.completion_status !== "completed",
+    )?.id || null
+  );
+}
 export type AssistantItem = {
   writing_task?: WritingTask;
   id?: string;
   title: string;
   text: string;
-
 };
 export type WritingTask = {
-  daily_goal: number | null; words_written_today: number; remaining_words: number | null;
-  target_words: number; goal_reached: boolean; timezone: string; date: string;
+  daily_goal: number | null;
+  words_written_today: number;
+  remaining_words: number | null;
+  target_words: number;
+  goal_reached: boolean;
+  timezone: string;
+  date: string;
   outline: { title: string; words: number }[];
 };
-export const writingProgress = (globalThis as unknown as {
-  WCWritingProgress: {
-    total(sessions: {id: string; startedAt: number; typedWords: number}[], now: number, timezone: string): number;
-    snapshot(goal: number, written: number, timezone: string, now?: number): unknown;
-  };
-}).WCWritingProgress;
+export const writingProgress = (
+  globalThis as unknown as {
+    WCWritingProgress: {
+      total(
+        sessions: { id: string; startedAt: number; typedWords: number }[],
+        now: number,
+        timezone: string,
+      ): number;
+      snapshot(
+        goal: number,
+        written: number,
+        timezone: string,
+        now?: number,
+      ): unknown;
+    };
+  }
+).WCWritingProgress;
 export async function fetchWritingActivity(): Promise<Activity[]> {
   const all: Activity[] = [];
   for (let offset = 0; ; offset += 1000) {
     const page = await apiGet<Activity[]>(
       `/workspace/activity?offset=${offset}`,
     );
-    all.push(...page);
+    all.push(...page.map(activitySnapshot));
     if (page.length < 1000) return all;
   }
 }
@@ -153,6 +222,8 @@ export function newDocument(
     folder_id: null,
     favorite: false,
     status: "active",
+    completion_status: "draft",
+    completed_at: null,
     ai_allowed: false,
     revision: 0,
     mutation_id: crypto.randomUUID(),

@@ -15,6 +15,7 @@
  */
 
 importScripts('shared/wordcount.js');
+importScripts('shared/session-clock.js');
 importScripts('shared/history.js');
 importScripts('shared/dates.js');
 importScripts('shared/writing-progress.js');
@@ -36,6 +37,7 @@ const PROMPT_HISTORY_MAX = 12;    // avoid immediate repetition
 
 const DEFAULT_STATE = {
   active: false,
+  timer: null,
   startedAt: null,
   endedAt: null,
   typedText: '',
@@ -342,7 +344,7 @@ async function captureAndQueueMemory(lastResult, preferredTabId = null) {
   const payload = {
     existing_session_ref: String(lastResult.startedAt),
     word_count: (lastResult.typedWords || 0) + (lastResult.pastedWords || 0),
-    writing_duration_seconds: Math.max(0, Math.floor(((lastResult.endedAt || 0) - (lastResult.startedAt || 0)) / 1000)),
+    writing_duration_seconds: Math.min(86400, Math.floor(self.WCSessionClock.read(self.WCSessionClock.forSession(lastResult)).active_ms / 1000)),
     content: text,
     save_to_memory: true,
   };
@@ -427,6 +429,8 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
 // ---------- session lifecycle ----------
 
 async function startSession(idea = null) {
+  const existing=await getState();
+  if(existing.active) return existing; // Starting twice never replaces an open or paused session.
   const account = await getAccount();
   const settings = await getSettings();
   const startedAt=Date.now();
@@ -436,6 +440,7 @@ async function startSession(idea = null) {
     ownerId: account.authenticated ? account.userId : null,
     progressKey: "session:"+startedAt,
     startedAt,
+    timer: self.WCSessionClock.start(startedAt),
     sessionGoal: Math.max(0, Number(settings.wordGoal) || 0),
     idea: idea ? { id: idea.id, title: idea.title, suggestion: idea.suggestion, mode: idea.mode, questions: idea.questions } : null,
   };
@@ -457,6 +462,7 @@ async function stopSession() {
     progressVersion: Date.now(),
     startedAt: state.startedAt,
     endedAt,
+    timer: self.WCSessionClock.transition(self.WCSessionClock.forSession(state,endedAt),"ended",endedAt),
     typedWords,
     pastedWords,
     sessionGoal: goal,                       // historical goal snapshot
@@ -464,10 +470,19 @@ async function stopSession() {
     timezone: settings.profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || null,
     idea: state.idea || null,
   };
-  const next = { ...state, active: false, endedAt, lastResult };
+  const next = { ...state, active: false, timer:lastResult.timer, endedAt, lastResult };
   await setState(next);
   await appendHistory(lastResult);
   if (lastResult.ownerId) await queueWritingMetadata(lastResult);
+  return next;
+}
+
+async function pauseOrResumeSession(status) {
+  const state=await getState();
+  if (!state.active) return state;
+  const timer=self.WCSessionClock.transition(self.WCSessionClock.forSession(state),status);
+  const next={...state,timer};
+  await setState(next);
   return next;
 }
 
@@ -521,6 +536,7 @@ async function syncEditorActivity() {
       const imported = rows.filter(row => row.source !== 'extension' && row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
         id: `editor:${row.id}`, source: 'editor', ownerId: owner, cloudActivityId: row.id,
         startedAt: Date.parse(row.started_at), endedAt: Date.parse(row.started_at) + row.duration_seconds * 1000,
+        ...(row.timer?{timer:self.WCSessionClock.transition(row.timer,'ended')}:{}),
         typedWords: row.typed_words, pastedWords: row.pasted_words, sessionGoal: 0,
       }));
       const rawHistory=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
@@ -540,15 +556,15 @@ async function syncEditorActivity() {
 
 async function applyDelta(delta) {
   let state = await getState();
-  if (!state.active) return;
+  if (!state.active || state.timer?.status === "paused") return;
   const settings=await getSettings(),now=Date.now();
   if(dayKey(state.startedAt,settings.profile.timezone)!==dayKey(now,settings.profile.timezone)){
     // Activity, not the streak calculator, changes calendar days. Archive only
     // observed words; never invent writing for intervening missed days.
-    const finished={...state,active:false,endedAt:now,progressVersion:Math.max(now,Number(state.progressVersion||0)+1),timezone:settings.profile.timezone};
+    const finished={...state,active:false,timer:self.WCSessionClock.transition(self.WCSessionClock.forSession(state,now),"ended",now),endedAt:now,progressVersion:Math.max(now,Number(state.progressVersion||0)+1),timezone:settings.profile.timezone};
     await appendHistory(finished);
     if(finished.ownerId)try{await queueWritingMetadata(finished);}catch(_){/* The archived local session is retained. */}
-    state={...DEFAULT_STATE,active:true,ownerId:state.ownerId,startedAt:now,progressKey:'session:'+now,sessionGoal:Math.max(0,Number(settings.wordGoal)||0),idea:state.idea,lastResult:null};
+    state={...DEFAULT_STATE,active:true,timer:self.WCSessionClock.start(now),ownerId:state.ownerId,startedAt:now,progressKey:'session:'+now,sessionGoal:Math.max(0,Number(settings.wordGoal)||0),idea:state.idea,lastResult:null};
   }
   const { typedWords, pastedWords } = self.WCWordCount.applyDelta(state, delta || {});
   await setState({ ...state, typedWords, pastedWords });
@@ -721,6 +737,7 @@ function buildPopupPayload(state, settings) {
   return {
     idea: state.idea || null,
     active: state.active,
+    timer: self.WCSessionClock.forSession(state),
     startedAt: state.startedAt,
     endedAt: state.endedAt,
     typedWords,
@@ -739,7 +756,7 @@ function buildPopupPayload(state, settings) {
 
 // Word edits and lifecycle changes must commit in arrival order, otherwise a
 // slower edit/stop can overwrite a deletion or bring cleared history back.
-const SESSION_MUTATIONS = new Set(['START_SESSION', 'STOP_SESSION', 'DELTA', 'CLEAR_HISTORY', 'IMPORT_HISTORY', 'SYNC_EDITOR_ACTIVITY']);
+const SESSION_MUTATIONS = new Set(['START_SESSION', 'STOP_SESSION', 'PAUSE_SESSION', 'RESUME_SESSION', 'DELTA', 'CLEAR_HISTORY', 'IMPORT_HISTORY', 'SYNC_EDITOR_ACTIVITY']);
 const PROGRESS_READS = new Set(['GET_PROGRESS', 'GET_STATE', 'GET_HISTORY', 'GET_STREAK', 'GET_STATS', 'GET_LOCAL_WRITING_PROGRESS']);
 let sessionChanges = Promise.resolve();
 
@@ -776,6 +793,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const state = await startSession(idea);
           const settings = await getSettings();
           sendResponse({ ok: true, payload: buildPopupPayload(state, settings) });
+          return;
+        }
+        case 'PAUSE_SESSION':
+        case 'RESUME_SESSION': {
+          const state=await pauseOrResumeSession(msg.type==='PAUSE_SESSION'?'paused':'active');
+          sendResponse({ok:true,payload:buildPopupPayload(state,await getSettings())});
           return;
         }
         case 'STOP_SESSION': {

@@ -29,7 +29,8 @@ device.
 
 **Free** (works out of the box)
 
-- **One-click session** — Start / Stop with a single button.
+- **Persistent sessions** — Start, Pause, Resume, and End. Breaks are excluded
+  from active duration; paused state survives closing and reopening the popup.
 - **On-screen floating counter** — Draggable pill shows `● N words` on
   every supported page. Click for Stop button.
 - **Session history** — Local log of your last 500 completed sessions,

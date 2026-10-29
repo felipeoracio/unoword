@@ -1,5 +1,6 @@
 /** Metadata-only activity sync helpers. No writing content and no streak math. */
 (function (root) {
+  const clock=root.WCSessionClock || (typeof module!=='undefined'?require('./session-clock.js'):null);
   function session(row, now) {
     if (!row?.startedAt || !row.ownerId || row.source === "editor") return null;
     return {
@@ -9,7 +10,7 @@
       pasted_words: Math.max(0, Math.floor(row.pastedWords || 0)),
       duration_seconds: Math.min(
         86400,
-        Math.max(0, Math.floor(((row.endedAt || now) - row.startedAt) / 1000)),
+        Math.max(0, Math.floor((row.timer && clock ? clock.read(row.timer,now).active_ms : ((row.endedAt || now) - row.startedAt)) / 1000)),
       ),
       sequence: row.progressVersion || now,
     };

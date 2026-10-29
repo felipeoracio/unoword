@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, apiGet, apiPut } from "./api";
+import { ApiError, apiGet, apiPut, apiPost } from "./api";
 import type { AuthUser } from "./auth-types";
 import {
   cachePut,
   cacheDelete,
   loadWritingCache,
   cacheDeleteIfMutation,
+  cacheRemoveDocuments,
 } from "./writing-cache";
 import {
   currentWriter,
@@ -18,6 +19,9 @@ import {
   EMPTY_DOCUMENT,
   fetchDocumentIndex,
   fetchWritingActivity,
+  documentToReopen,
+  FRESH_DOCUMENT,
+  activitySnapshot,
 } from "./writing";
 
 const IDENTITY = "uno-writing-identity";
@@ -45,6 +49,14 @@ export function useWritingWorkspace() {
     {},
   );
   const [online, setOnline] = useState(navigator.onLine);
+  const [completionBusy, setCompletionBusy] = useState(false);
+  const completionLock = useRef<string | null>(null);
+  const [trashBusy, setTrashBusy] = useState(false);
+  const trashOperation = useRef(false);
+  const trashLocks = useRef(new Set<string>());
+  const completionAttempts = useRef(
+    new Map<string, { revision: number; state: string; mutation: string }>(),
+  );
   const tab = pageTab;
   const adoptedSnapshots = useRef<Map<string, string>>(new Map());
   const docs = useRef<Draft[]>([]),
@@ -155,6 +167,8 @@ export function useWritingWorkspace() {
       const current = docs.current.find((d) => d.id === id);
       if (
         !current ||
+        completionLock.current === id ||
+        trashLocks.current.has(id) ||
         current.content_loaded === false ||
         current.user_id !== identity.current?.id ||
         !identity.current?.ai_access
@@ -183,6 +197,8 @@ export function useWritingWorkspace() {
       const draft = {
         ...newDocument(owner.id, tab, title),
         ...copy,
+        completion_status: "draft" as const,
+        completed_at: null,
         id: crypto.randomUUID(),
         user_id: owner.id,
         tab_id: tab,
@@ -204,18 +220,22 @@ export function useWritingWorkspace() {
     async (row: Activity) => {
       const owner = identity.current;
       if (!owner || !owner.ai_access) return;
-      const next = { ...row, dirty: true };
+      const next = { ...activitySnapshot(row), dirty: true };
       publishActivity([
         ...activityRows.current.filter((a) => a.id !== row.id),
         next,
       ]);
+      pendingLocal.current++;
       try {
         await cachePut(owner.id, "activity", row.id, next);
         schedule();
       } catch {
+        pendingLocal.current++;
         setError(
           "Writing statistics could not be stored locally. Keep this page open and retry.",
         );
+      } finally {
+        pendingLocal.current--;
       }
     },
     [publishActivity, schedule],
@@ -303,6 +323,9 @@ export function useWritingWorkspace() {
               folder_id: draft.folder_id,
               favorite: draft.favorite,
               status: draft.status,
+              ...(draft.completion_status
+                ? { completion_status: draft.completion_status }
+                : {}),
               ai_allowed: draft.ai_allowed,
             },
           );
@@ -369,9 +392,8 @@ export function useWritingWorkspace() {
           !active.current
         )
           return;
-        const { dirty: _, ...body } = row;
         await apiPut("/workspace/activity", {
-          ...body,
+          ...activitySnapshot(row),
           expected_user_id: owner,
         });
         const latest = activityRows.current.find((a) => a.id === row.id);
@@ -424,6 +446,198 @@ export function useWritingWorkspace() {
   }, [tab, publish, publishActivity, persist, verifyAccess, setFolders]);
   syncRef.current = sync;
 
+  const changeCompletion = useCallback(
+    async (id: string, state: "draft" | "completed") => {
+      const owner = identity.current;
+      if (!owner?.ai_access || completionLock.current || trashOperation.current)
+        return false;
+      if (!navigator.onLine) {
+        setError(
+          "Connect to the internet to confirm document completion. Your draft stays saved on this device.",
+        );
+        return false;
+      }
+      completionLock.current = id;
+      setCompletionBusy(true);
+      try {
+        // Finish the existing autosave before changing status. Never claim success
+        // for a local-only save, a failed save, a conflict, or an account switch.
+        const deadline = Date.now() + 30000;
+        while (syncing.current || pendingLocal.current) {
+          if (Date.now() > deadline) throw new Error("save_pending");
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        await syncRef.current();
+        const draft = docs.current.find((d) => d.id === id);
+        if (
+          !draft ||
+          draft.dirty ||
+          (draft.content_loaded === false && state === "completed") ||
+          conflictIds.current.has(id) ||
+          identity.current?.id !== owner.id
+        )
+          throw new Error("save_pending");
+        const prior = completionAttempts.current.get(id);
+        const attempt =
+          prior?.revision === draft.revision && prior.state === state
+            ? prior
+            : {
+                revision: draft.revision,
+                state,
+                mutation: crypto.randomUUID(),
+              };
+        completionAttempts.current.set(id, attempt);
+        const saved = await apiPost<WritingDocument>(
+          `/workspace/documents/${id}/completion`,
+          {
+            expected_user_id: owner.id,
+            revision: draft.revision,
+            mutation_id: attempt.mutation,
+            completion_status: state,
+          },
+        );
+        if (
+          identity.current?.id !== owner.id ||
+          !identity.current.ai_access ||
+          !active.current
+        )
+          return false;
+        if (
+          saved.completion_status !== state ||
+          (state === "completed" && !saved.completed_at)
+        )
+          throw new Error("completion_unconfirmed");
+        await cachePut(owner.id, "document", saved.id, saved);
+        publish(
+          docs.current.map((d) =>
+            d.id === id
+              ? { ...saved, dirty: false, content_loaded: true, tab_id: tab }
+              : d,
+          ),
+        );
+        completionAttempts.current.delete(id);
+        if (state === "completed") {
+          localStorage.setItem(
+            `uno-writing-selected:${owner.id}`,
+            FRESH_DOCUMENT,
+          );
+          sessionStorage.removeItem(`uno-writing-selected:${owner.id}`);
+          setSelected(null);
+        }
+        setError("");
+        return true;
+      } catch (failure) {
+        setError(
+          failure instanceof ApiError
+            ? editorError(failure)
+            : "Document status was not confirmed. Keep this page open, resolve any save errors, and try again.",
+        );
+        return false;
+      } finally {
+        completionLock.current = null;
+        setCompletionBusy(false);
+      }
+    },
+    [publish, tab],
+  );
+
+  const emptyTrash = useCallback(
+    async (confirmedIds: string[]) => {
+      const owner = identity.current;
+      if (!owner?.ai_access || trashOperation.current || completionLock.current)
+        return false;
+      if (!navigator.onLine) {
+        setError(
+          "Connect to the internet to empty Trash. No documents were deleted.",
+        );
+        return false;
+      }
+      trashOperation.current = true;
+      setTrashBusy(true);
+      trashLocks.current = new Set(confirmedIds);
+      try {
+        const deadline = Date.now() + 30000;
+        while (syncing.current || pendingLocal.current) {
+          if (Date.now() > deadline) throw new Error("save_pending");
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        await syncRef.current();
+        if (identity.current?.id !== owner.id || !identity.current.ai_access)
+          throw new Error("account_changed");
+        const snapshot = docs.current.filter(
+          (d) => confirmedIds.includes(d.id) && d.status === "trashed",
+        );
+        if (
+          snapshot.some(
+            (d) => d.dirty || !d.revision || conflictIds.current.has(d.id),
+          ) ||
+          activityRows.current.some(
+            (a) =>
+              a.dirty && a.document_id && confirmedIds.includes(a.document_id),
+          )
+        )
+          throw new Error("save_pending");
+        let skipped = false;
+        for (let offset = 0; offset < snapshot.length; offset += 1000) {
+          const batch = snapshot.slice(offset, offset + 1000);
+          const result = await apiPost<{
+            removed_ids: string[];
+            deleted_ids: string[];
+            activities: Activity[];
+          }>("/workspace/trash/empty", {
+            expected_user_id: owner.id,
+            confirm: true,
+            documents: batch.map((d) => ({ id: d.id, revision: d.revision })),
+          });
+          if (identity.current?.id !== owner.id || !identity.current.ai_access)
+            return false;
+          const removed = new Set(result.removed_ids);
+          await cacheRemoveDocuments(owner.id, result.removed_ids);
+          publish(docs.current.filter((d) => !removed.has(d.id)));
+          setRecovery((all) => all.filter((d) => !removed.has(d.id)));
+          setSelected((id) => (id && removed.has(id) ? null : id));
+          const changed = new Map(
+            result.activities.map((a) => [a.id, activitySnapshot(a)]),
+          );
+          const activities = activityRows.current.map(
+            (a) =>
+              changed.get(a.id) ||
+              (a.document_id && removed.has(a.document_id)
+                ? { ...a, document_id: null, dirty: false }
+                : a),
+          );
+          publishActivity(activities);
+          for (const activity of activities.filter((a) => changed.has(a.id)))
+            await cachePut(owner.id, "activity", activity.id, activity);
+          await cachePut(owner.id, "activity_index", "all", activities);
+          localStorage.setItem(
+            `uno-writing-trash:${owner.id}`,
+            JSON.stringify({ ids: result.removed_ids, at: Date.now() }),
+          );
+          skipped ||= result.removed_ids.length < batch.length;
+        }
+        setError(
+          skipped
+            ? "Some documents changed or were restored in another tab, so they were kept. Review Trash before trying again."
+            : "",
+        );
+        return !skipped;
+      } catch (failure) {
+        setError(
+          failure instanceof ApiError
+            ? editorError(failure)
+            : "Trash was not fully emptied. Resolve any pending saves and try again. Writing activity remains saved.",
+        );
+        return false;
+      } finally {
+        trashOperation.current = false;
+        trashLocks.current.clear();
+        setTrashBusy(false);
+      }
+    },
+    [publish, publishActivity],
+  );
+
   const resolveConflict = useCallback(
     async (id: string, keepLocal: boolean) => {
       const local = docs.current.find((d) => d.id === id),
@@ -452,9 +666,9 @@ export function useWritingWorkspace() {
   );
 
   useEffect(() => {
-    if (userId && selected)
-      sessionStorage.setItem(`uno-writing-selected:${userId}`, selected);
-  }, [userId, selected]);
+    if (userId && !loading && user?.ai_access && selected)
+      localStorage.setItem(`uno-writing-selected:${userId}`, selected);
+  }, [userId, selected, loading, user?.ai_access]);
 
   const selectedLoaded = documents.find(
     (document) => document.id === selected,
@@ -522,15 +736,10 @@ export function useWritingWorkspace() {
         setFolders(cached.folders);
         publishActivity(cached.activities);
         setRecovery(cached.recovery);
-        const previousSelection = sessionStorage.getItem(
-          `uno-writing-selected:${writer.id}`,
-        );
-        setSelected(
-          cached.documents.find((d) => d.id === previousSelection)?.id ||
-            cached.documents.find((d) => d.status === "active")?.id ||
-            cached.documents[0]?.id ||
-            null,
-        );
+        const previousSelection =
+          localStorage.getItem(`uno-writing-selected:${writer.id}`) ??
+          sessionStorage.getItem(`uno-writing-selected:${writer.id}`);
+        setSelected(documentToReopen(cached.documents, previousSelection));
         setStatus(
           navigator.onLine
             ? "Saved on this device"
@@ -591,12 +800,11 @@ export function useWritingWorkspace() {
               .filter((d) => Boolean(d.content))
               .map((d) => cachePut(writer.id, "document", d.id, d)),
           );
-          setSelected(
-            (current) =>
-              current ||
-              remote.find((d) => d.id === previousSelection)?.id ||
-              remote.find((d) => d.status === "active")?.id ||
-              null,
+          setSelected((current) =>
+            documentToReopen(
+              [...merged.values()],
+              current || previousSelection,
+            ),
           );
         }
         await syncRef.current();
@@ -628,6 +836,22 @@ export function useWritingWorkspace() {
       }
     };
     const accountChanged = (event: StorageEvent) => {
+      if (
+        identity.current &&
+        event.key === `uno-writing-trash:${identity.current.id}` &&
+        event.newValue
+      ) {
+        try {
+          const removed = new Set<string>(JSON.parse(event.newValue).ids);
+          publish(docs.current.filter((d) => !removed.has(d.id)));
+          setSelected((id) => (id && removed.has(id) ? null : id));
+          setError(
+            "Trash was emptied in another tab. Any unsaved writing is available in Recovered drafts after reopening the editor.",
+          );
+        } catch {
+          /* Ignore unrelated or malformed browser messages. */
+        }
+      }
       if (event.key === IDENTITY && event.newValue === null) {
         identity.current = null;
         setUser(null);
@@ -689,5 +913,9 @@ export function useWritingWorkspace() {
     sync,
     recordActivity,
     recheckIdentity,
+    completionBusy,
+    changeCompletion,
+    emptyTrash,
+    trashBusy,
   };
 }

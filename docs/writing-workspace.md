@@ -72,7 +72,10 @@ reduces the current session using the existing reducer.
 
 Each editor activity has one UUID and increasing snapshot sequence: retries update
 the same record and late snapshots cannot restore deleted words. Only metadata is
-stored in `writing_activity`. Sessions split on document changes or calendar days.
+stored in `writing_activity`. Sessions can be paused/resumed with persistent timing. Document navigation pauses
+the previous open session; existing calendar-day rollover still separates activity.
+See [session controls, completion, and Empty Trash](session-controls-and-completion.md)
+for the additional migration and document lifecycle controls.
 
 The extension skips ordinary typing tracking on the official `/editor` page. It
 reads authenticated activity records and merges them by stable IDs into its

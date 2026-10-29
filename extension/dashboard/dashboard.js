@@ -103,7 +103,7 @@ function renderRecent(sessions) {
     item.setAttribute('data-testid', 'recent-item');
     const d = new Date(s.startedAt);
     let hh = d.getHours(); const mm = pad2(d.getMinutes()); const ampm = hh >= 12 ? 'PM' : 'AM'; hh = hh % 12 || 12;
-    const dur = Math.max(0, (s.endedAt || 0) - (s.startedAt || 0));
+    const dur = self.WCSessionClock.read(self.WCSessionClock.forSession(s)).active_ms;
     const durS = Math.floor(dur / 1000);
     const durTxt = durS < 60 ? `${durS}s` :
                    durS < 3600 ? `${Math.floor(durS/60)}m ${pad2(durS%60)}s` :

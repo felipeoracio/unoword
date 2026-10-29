@@ -712,3 +712,8 @@ html:has(body.wc--wide), body.wc--wide { width: 720px; }
 .wc__session-idea p { font-size: 12px; line-height: 1.5; }
 
 .wc-extension-tour{position:fixed;z-index:200;bottom:10px;left:10px;right:10px;padding:16px;border:1px solid #99bfff;border-radius:14px;background:#fff;color:#0b1b4d;box-shadow:0 8px 35px #153f7730;font:13px/1.5 sans-serif;max-height:55vh;overflow:auto}.wc-extension-tour h3{font-size:18px;margin:8px 0}.wc-extension-tour button{background:#0866ff;color:white;border:0;border-radius:6px;padding:9px;margin-right:8px;cursor:pointer}.wc-extension-tour button:focus-visible{outline:3px solid #0b1b4d;outline-offset:2px}.wc-tour-target{outline:2px solid #0866ff!important;outline-offset:2px}
+
+#pause-btn {margin-bottom:8px;}
+#session-paused {color:#2563eb;font-weight:600;font-size:13px;}
+#session-timing-details {font-size:12px;margin:8px 0;color:inherit;}
+#session-timing-details summary {cursor:pointer;}

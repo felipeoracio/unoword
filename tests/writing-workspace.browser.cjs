@@ -31,6 +31,15 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/onboarding')value={version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
    else if(key==='/workspace/config')value={daily_goal:250,max_document_chars:200000,max_upload_bytes:5242880,ai_batch_size:3};
    else if(key==='/workspace/documents')value=[...documents.values()].filter(d=>d.user_id===currentOwner && (!url.searchParams.get('q') || (d.title+' '+d.plain_text).toLowerCase().includes(url.searchParams.get('q').toLowerCase()))).slice(Number(url.searchParams.get('offset')||0),Number(url.searchParams.get('offset')||0)+200).map(({content,plain_text,...metadata})=>metadata);
+   else if(/^\/workspace\/documents\/[^/]+\/completion$/.test(key)){
+    const existing=documents.get(key.split('/')[3]);
+    if(!pro){status=403;value={detail:'writing_workspace_pro_required'};}
+    else if(failSave){status=503;value={detail:'workspace_storage_unavailable'};}
+    else if(!existing||existing.user_id!==currentOwner){status=404;value={detail:'not_found'};}
+    else if(existing.mutation_id===body.mutation_id)value=existing;
+    else if(existing.revision!==body.revision){status=409;value={detail:'revision_conflict'};}
+    else{value={...existing,completion_status:body.completion_status,completed_at:body.completion_status==='completed'?new Date().toISOString():null,revision:existing.revision+1,mutation_id:body.mutation_id};documents.set(existing.id,structuredClone(value));}
+   }
    else if(/^\/workspace\/documents\/[^/]+$/.test(key)){
     const id=key.split('/').pop(),existing=documents.get(id);
     if(method==='GET'){value=existing?.user_id===currentOwner?existing:{detail:'not_found'};if(!existing)status=404;}
@@ -47,8 +56,17 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     if(failFolders){status=503;value={detail:'workspace_storage_unavailable'};}
     else{const id=key.split('/').pop();value=folders.find(f=>f.id===id)||{id,name:body.name};if(!folders.some(f=>f.id===id))folders.push(value);}
    }
-   else if(key==='/workspace/activity'&&method==='GET')value=[...activity.values()];
-   else if(key==='/workspace/activity'){const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
+   else if(key==='/workspace/trash/empty'){
+    if(!pro||!body.confirm){status=403;value={detail:'forbidden'};}
+    else if(failSave){status=503;value={detail:'workspace_storage_unavailable'};}
+    else{
+     const removed=[],deleted=[],changed=[];
+     for(const item of body.documents){const d=documents.get(item.id);if(d?.user_id===currentOwner&&d.status==='trashed'&&d.revision===item.revision){documents.delete(d.id);deleted.push(d.id);for(const [id,a] of activity)if(a.document_id===d.id){const next={...a,document_id:null,timer:a.timer?{...a.timer,status:'ended'}:undefined};activity.set(id,next);changed.push(next);}}if(!documents.has(item.id))removed.push(item.id);}
+     value={deleted_ids:deleted,removed_ids:removed,activities:changed};
+    }
+   }
+   else if(key==='/workspace/activity'&&method==='GET')value=[...activity.values()].map(a=>({...a,user_id:currentOwner,source:'editor',updated_at:new Date().toISOString()}));
+   else if(key==='/workspace/activity'){assert.ok(Object.keys(body).every(k=>['id','document_id','expected_user_id','started_at','typed_words','pasted_words','duration_seconds','sequence','timer'].includes(k)),'Restored sessions strip database-only fields');const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
    else if(key==='/workspace/sources')value=sources;
    else if(key==='/processing/run'){
     assert.equal(pro,true);Object.assign(sources[0],{processing_status:'ready',processing_phase:'complete',processing_progress:100});status=202;value={accepted:true};
@@ -70,12 +88,114 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const page=await context.newPage();page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
-  signedIn=true;await page.reload();await page.getByRole('button',{name:'Create a document',exact:true}).click();
+  signedIn=true;await page.reload();await page.getByRole('button',{name:'Start New Document',exact:true}).click();
   await page.getByRole('textbox',{name:'Rename document'}).fill('The practice of paying attention');
   const canvas=page.getByRole('textbox',{name:'Document content'});
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.WRITING_SESSION_COMPLETION_ONLY==='1'){
+   const snap=async name=>{if(process.env.WRITING_SCREENSHOTS){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,name+'.png'),fullPage:true});}};
+   const checkA11y=async()=>{if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});const result=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(result.violations.map(v=>v.id),[]);}};
+
+   const until=async(check)=>{for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,50));}throw Error('Timed out waiting for fixture persistence');};
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();
+   await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
+   await until(()=>[...activity.values()].some(a=>a.timer?.status==='paused'));
+   const paused=[...activity.values()].find(a=>a.timer?.status==='paused');assert.ok(paused);
+   const sessionId=paused.id,activeMs=paused.timer.active_ms,typed=paused.typed_words;await snap('session-paused-desktop');await checkA11y();
+   await page.reload();await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
+   assert.equal([...activity.values()].find(a=>a.id===sessionId).timer.active_ms,activeMs,'Refresh does not restart paused time');
+   await canvas.fill('Words added while paused stay in the document but not session progress.');
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
+   assert.equal(activity.get(sessionId).typed_words,typed);
+   const reopened=await context.newPage();await reopened.goto(origin+'/editor');
+   await reopened.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
+   assert.equal(await reopened.getByRole('textbox',{name:'Rename document'}).inputValue(),'The practice of paying attention');
+   await reopened.close();
+   await page.getByRole('button',{name:'Resume Session',exact:true}).click();
+   await page.getByRole('button',{name:'Pause Session',exact:true}).waitFor();
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();
+   await page.getByRole('button',{name:'End Session',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
+   await until(()=>activity.get(sessionId)?.timer?.status==='ended');
+   assert.equal(activity.get(sessionId).timer.status,'ended');assert.equal(activity.size,1);
+   // Ending a session never completes a document.
+   assert.notEqual(documents.get(saved.id).completion_status,'completed');
+   await page.getByRole('button',{name:'Start Session',exact:true}).click();
+   await page.getByRole('button',{name:'Mark Document as Complete',exact:true}).click();
+   await page.getByRole('dialog',{name:'Mark Document as Complete'}).waitFor();
+   await page.getByRole('button',{name:'Keep Writing',exact:true}).click();
+   // Fail the pending save: completion must not be confirmed or end the session.
+   failSave=true;await canvas.fill('The newest unsaved words must be preserved before completion.');
+   await page.getByRole('button',{name:'Mark Document as Complete',exact:true}).click();
+   await page.getByRole('button',{name:'Complete & End Session',exact:true}).click();
+   await page.locator('.uw-editor-notice').waitFor();
+   assert.notEqual(documents.get(saved.id).completion_status,'completed');
+   assert.equal(await page.getByRole('heading',{name:'Document Completed!'}).count(),0);
+   failSave=false;await page.getByRole('button',{name:'Complete & End Session',exact:true}).click();
+   await page.getByRole('heading',{name:'Document Completed!'}).waitFor();await snap('document-completed-desktop');await checkA11y();
+   let completed=documents.get(saved.id);assert.equal(completed.completion_status,'completed');assert.ok(completed.completed_at);
+   assert.equal(completed.status,'active');assert.ok(completed.plain_text.includes('newest unsaved words'));
+   await until(()=>[...activity.values()].every(a=>a.timer?.status==='ended'));
+   assert.ok([...activity.values()].every(a=>a.timer?.status==='ended'));
+   await page.reload();await page.getByRole('heading',{name:'Ready for Your Next Idea?',exact:true}).waitFor();
+   assert.equal(await page.getByRole('textbox',{name:'Document content'}).count(),0,'A completed last document never automatically reopens');
+   await page.getByLabel('Completion status',{exact:true}).selectOption('completed');
+   assert.equal(await page.locator('.uw-editor-document').count(),1);
+   await page.locator('.uw-editor-document').filter({hasText:'The practice of paying attention'}).click();
+   await canvas.waitFor();assert.equal(await canvas.getAttribute('contenteditable'),'false');
+   assert.equal(await page.getByRole('button',{name:'Mark as Draft',exact:true}).count(),1);
+   for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Completed view fits ${width}`);}await page.setViewportSize({width:1440,height:1000});
+   await page.getByRole('button',{name:'Mark as Draft',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Document content"]')?.getAttribute('contenteditable')==='true');
+   assert.equal(documents.get(saved.id).completion_status,'draft');assert.equal(documents.get(saved.id).completed_at,null);
+   await page.getByLabel('Completion status',{exact:true}).selectOption('draft');
+   assert.equal(await page.locator('.uw-editor-document').count(),1);
+   await page.reload();await canvas.waitFor();assert.ok((await canvas.textContent()).includes('newest unsaved words'));
+   // Empty Trash preserves unrelated writing and divergent offline drafts.
+   const unsavedTab=await context.newPage();await unsavedTab.goto(origin+'/editor');
+   await unsavedTab.getByRole('textbox',{name:'Document content'}).waitFor();
+   await unsavedTab.route(origin+'/api/**',route=>route.abort('internetdisconnected'));
+   await unsavedTab.getByRole('textbox',{name:'Document content'}).fill('Unsaved words from another tab must survive Empty Trash.');
+   await unsavedTab.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('sync paused'));
+   page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Move to trash',exact:true}).click();
+   await until(()=>documents.get(saved.id)?.status==='trashed');
+   await page.getByRole('button',{name:'New document',exact:true}).click();
+   await page.getByRole('textbox',{name:'Rename document'}).fill('Keep this active document');
+   await canvas.fill('This active writing should remain safe.');
+   await until(()=>[...documents.values()].some(d=>d.title==='Keep this active document'));
+   const keeper=[...documents.values()].find(d=>d.title==='Keep this active document');
+   await page.getByRole('button',{name:/^Trash/}).click();
+   const empty=page.getByRole('button',{name:'Empty Trash',exact:true});await empty.click();
+   const trashDialog=page.getByRole('dialog',{name:'Empty Trash',exact:true});
+   await trashDialog.getByText('Permanently delete 1 document(s)?',{exact:true}).waitFor();await snap('empty-trash-desktop');await checkA11y();await page.setViewportSize({width:390,height:900});await snap('empty-trash-mobile');await checkA11y();await page.setViewportSize({width:1440,height:1000});
+   await trashDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+   assert.ok(documents.has(saved.id),'Cancel never deletes documents');
+   offline=true;await context.setOffline(true);await page.waitForFunction(()=>document.querySelector('.uw-editor-empty-trash').disabled);assert.equal(await empty.isEnabled(),false);
+   offline=false;await context.setOffline(false);
+   await empty.click();await trashDialog.getByRole('button',{name:'Permanently Delete',exact:true}).click();
+   await page.getByText('Trash emptied.',{exact:true}).waitFor();
+   assert.ok(!documents.has(saved.id));assert.ok(documents.has(keeper.id));
+   assert.ok([...activity.values()].some(a=>a.document_id===null),'Writing history survives permanent deletion');
+   await unsavedTab.unroute(origin+'/api/**');await unsavedTab.reload();
+   await unsavedTab.getByText(/Recovered drafts/).waitFor();
+   const recovery=await unsavedTab.evaluate(()=>new Promise(resolve=>{const q=indexedDB.open('uno-word-writing',1);q.onsuccess=()=>{const r=q.result.transaction('records').objectStore('records').getAll();r.onsuccess=()=>resolve(r.result.some(e=>e.kind==='draft'&&e.value.plain_text.includes('Unsaved words from another tab')));};}));
+   assert.equal(recovery,true,'Divergent unsaved writing becomes a recovery copy');
+   await unsavedTab.locator('.uw-editor-recovery summary').click();
+   await unsavedTab.getByRole('button',{name:/Recover as a new document/}).click();
+   await until(()=>[...documents.values()].some(d=>d.plain_text.includes('Unsaved words from another tab')));
+   assert.ok(!documents.has(saved.id),'Recovery creates a new ID instead of resurrecting deleted cloud content');
+   await unsavedTab.close();
+   // Fresh-document behavior and responsive controls do not consume AI credits.
+   for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`No overflow at ${width}`);}
+   assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,0);
+   assert.deepEqual(errors,[]);
+   console.log('PASS editor sessions/completion: persistent pause, new-tab restore, same identity, paused input excluded, end while paused, independent document lifecycle, pending-save failure/retry, confirmed completion, fresh reopening, manual read-only reopen/revert, status filters, preserved content, responsive 320–1440px; Empty Trash confirmation/cancel/offline guard; unrelated documents/history preserved; divergent offline draft recovery; no AI calls.');
+   return;
+  }
+
   const originalId=saved.id;
   assert.equal([...activity.values()].reduce((s,a)=>s+a.typed_words,0),8);
   await canvas.fill('');await page.waitForFunction(()=>document.querySelector('.uw-editor-stats').textContent.includes('0 Session words'));
@@ -298,7 +418,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   currentOwner=other;await page.evaluate(()=>window.postMessage({type:'UNO_WORD_ACCOUNT_CHANGED'},location.origin));
   await page.getByRole('heading',{name:'Sign in to write',exact:true}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Extension account changes evict the previous account writing view');
-  await page.reload();await page.getByRole('button',{name:'Create a document',exact:true}).waitFor();
+  await page.reload();await page.getByRole('button',{name:'Start New Document',exact:true}).waitFor();
   assert.equal(await page.locator('.uw-editor-document').count(),0);
   assert.equal(await page.locator('.uw-editor-recovery').count(),0);
   assert.deepEqual(errors,[]);

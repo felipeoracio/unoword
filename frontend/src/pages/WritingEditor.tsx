@@ -46,6 +46,10 @@ import {
   RefreshCw,
   Copy,
   Check,
+  Pause,
+  Play,
+  Square,
+  CheckCircle2,
   WifiOff,
   Settings2,
 } from "lucide-react";
@@ -59,6 +63,8 @@ import {
   writingEngine,
   writingDates,
   writingProgress,
+  sessionClock,
+  type SessionTimer,
   prompts,
   editorError,
   type Activity,
@@ -83,6 +89,37 @@ const spanish: Record<string, string> = {
   Untitled: "Sin título",
   "Open library": "Abrir biblioteca",
   "Close library": "Cerrar biblioteca",
+  "Pause Session": "Pausar sesión",
+  "Resume Session": "Reanudar sesión",
+  "End Session": "Finalizar sesión",
+  "Start Session": "Iniciar sesión de escritura",
+  Active: "Activa",
+  Paused: "En pausa",
+  Ended: "Finalizada",
+  Draft: "Borrador",
+  Drafts: "Borradores",
+  Completed: "Completado",
+  "Completion status": "Estado del documento",
+  "Mark Document as Complete": "Marcar documento como completado",
+  "Mark as Draft": "Marcar como borrador",
+  "Document Completed!": "¡Documento completado!",
+  "Your writing has been saved and marked as complete.":
+    "Tu escritura se ha guardado y marcado como completada.",
+  "You can find it anytime in your document library.":
+    "Puedes encontrarla en tu biblioteca de documentos.",
+  "Ready for Your Next Idea?": "¿Listo para tu próxima idea?",
+  "Start New Document": "Crear nuevo documento",
+  "Browse Documents": "Explorar documentos",
+  "View Document Library": "Ver biblioteca de documentos",
+  "Complete & End Session": "Completar y finalizar sesión",
+  "Keep Writing": "Seguir escribiendo",
+  "Session details": "Detalles de la sesión",
+  "Active time": "Tiempo activo",
+  "Paused time": "Tiempo en pausa",
+  "Empty Trash": "Vaciar papelera",
+  "Trash emptied.": "Papelera vaciada.",
+  "Permanently Delete": "Eliminar permanentemente",
+  "Total elapsed time": "Tiempo total transcurrido",
   "Writing assistant": "Asistente de escritura",
   "Close assistant": "Cerrar asistente",
   "Enter focus mode": "Activar modo concentración",
@@ -336,9 +373,23 @@ export default function WritingEditor() {
   updateRef.current = ws.update;
   const recordRef = useRef(ws.recordActivity);
   recordRef.current = ws.recordActivity;
-  const session = useRef<Activity | null>(null),
-    lastInput = useRef(0),
-    activeSeconds = useRef(0);
+  const session = useRef<Activity | null>(null);
+  const sessionOwner = useRef<string | undefined>(undefined);
+  const [completionNotice, setCompletionNotice] = useState(false);
+  const [completionConfirm, setCompletionConfirm] = useState(false);
+  const [trashSelection, setTrashSelection] = useState<string[] | null>(null);
+  const [trashNotice, setTrashNotice] = useState(false);
+  const trashDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (trashSelection) trashDialog.current?.showModal();
+    else trashDialog.current?.close();
+  }, [trashSelection]);
+  const [completionFilter, setCompletionFilter] = useState("all");
+  const completionDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (completionConfirm) completionDialog.current?.showModal();
+    else completionDialog.current?.close();
+  }, [completionConfirm]);
   const inputKind = useRef("insertText"),
     loadedDocument = useRef("");
   const aiOwner = useRef<string | null>(null);
@@ -398,38 +449,95 @@ export default function WritingEditor() {
     if (!delta) return;
     const timestamp = Date.now();
     if (
-      !session.current ||
-      session.current.document_id !== document.id ||
+      session.current?.timer?.status === "paused" ||
+      session.current?.timer?.status === "ended"
+    )
+      return;
+    if (
+      session.current &&
       writingDates.dayKey(Date.parse(session.current.started_at), timeZone) !==
         writingDates.dayKey(timestamp, timeZone)
     ) {
-      session.current = {
-        id: crypto.randomUUID(),
-        document_id: document.id,
-        started_at: new Date(timestamp).toISOString(),
-        typed_words: 0,
-        pasted_words: 0,
-        duration_seconds: 0,
-        sequence: 0,
-      };
-      activeSeconds.current = 0;
+      changeSessionStatus("ended");
+      session.current = null;
     }
+    if (!session.current || session.current.document_id !== document.id)
+      startEditorSession();
+    const current = session.current;
+    if (!current) return;
     const next = writingEngine.applyDelta(
-      {
-        typedWords: session.current.typed_words,
-        pastedWords: session.current.pasted_words,
-      },
+      { typedWords: current.typed_words, pastedWords: current.pasted_words },
       delta,
     );
-    session.current = {
-      ...session.current,
+    storeSession({
+      ...current,
       typed_words: next.typedWords,
       pasted_words: next.pastedWords,
-      duration_seconds: Math.floor(activeSeconds.current),
-      sequence: session.current.sequence + 1,
+    });
+  }
+
+  function storeSession(row: Activity) {
+    const next = {
+      ...row,
+      duration_seconds: Math.min(
+        86400,
+        Math.floor(sessionClock.read(row.timer).active_ms / 1000),
+      ),
+      sequence: row.sequence + 1,
     };
-    lastInput.current = timestamp;
-    void recordRef.current(session.current);
+    session.current = next;
+    void recordRef.current(next);
+    setNow(Date.now());
+  }
+  function startEditorSession() {
+    const document = draftRef.current;
+    if (
+      !document ||
+      document.status !== "active" ||
+      document.completion_status === "completed"
+    )
+      return;
+    if (
+      session.current?.document_id === document.id &&
+      session.current.timer?.status !== "ended"
+    )
+      return;
+    storeSession({
+      id: crypto.randomUUID(),
+      document_id: document.id,
+      started_at: new Date().toISOString(),
+      typed_words: 0,
+      pasted_words: 0,
+      duration_seconds: 0,
+      sequence: 0,
+      timer: sessionClock.start(),
+    });
+  }
+  function changeSessionStatus(status: SessionTimer["status"]) {
+    const current = session.current;
+    if (!current?.timer || current.timer.status === status) return;
+    storeSession({
+      ...current,
+      timer: sessionClock.transition(current.timer, status),
+    });
+  }
+  async function completeDocument() {
+    const document = draftRef.current;
+    if (!document) return;
+    editor?.setEditable(false, false);
+    const completed = await ws.changeCompletion(document.id, "completed");
+    if (completed) {
+      // This end was explicitly confirmed, and applies only to this document.
+      if (session.current?.document_id === document.id)
+        changeSessionStatus("ended");
+      setCompletionConfirm(false);
+      setCompletionNotice(true);
+    } else
+      editor?.setEditable(
+        document.status === "active" &&
+          document.completion_status !== "completed",
+        false,
+      );
   }
 
   const editor = useEditor({
@@ -505,16 +613,17 @@ export default function WritingEditor() {
       !editor.state.doc.eq(storedContent)
     ) {
       editor.commands.setContent(activeDocument.content, { emitUpdate: false });
-      if (loadedDocument.current !== activeDocument.id) {
-        session.current = null;
-        activeSeconds.current = 0;
-      }
       loadedDocument.current = activeDocument.id;
     }
     // Tiptap emits an update by default even if editable did not change. That
     // would create an autosave/render loop and continually reset the debounce.
-    editor.setEditable(activeDocument.status === "active", false);
-  }, [editor, activeDocument]);
+    editor.setEditable(
+      activeDocument.status === "active" &&
+        activeDocument.completion_status !== "completed" &&
+        !ws.completionBusy,
+      false,
+    );
+  }, [editor, activeDocument, ws.completionBusy]);
 
   useEffect(() => {
     localStorage.setItem("uno-writing-language", language);
@@ -630,27 +739,47 @@ export default function WritingEditor() {
         .catch(() => {});
   }, [userId, ws.online, ws.user?.ai_access]);
   useEffect(() => {
+    if (sessionOwner.current !== ws.user?.id) {
+      session.current = null;
+      sessionOwner.current = ws.user?.id;
+    }
+    if (session.current?.document_id === activeDocument?.id) return;
+    if (
+      session.current &&
+      !ws.documents.some((d) => d.id === session.current?.document_id)
+    ) {
+      session.current = null;
+      return;
+    }
+    if (session.current?.timer?.status === "active")
+      changeSessionStatus("paused");
+    session.current =
+      ws.activities
+        .filter((a) => a.document_id === activeDocument?.id && a.timer)
+        .sort(
+          (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
+        )[0] || null;
+  }, [activeDocument?.id, ws.activities, ws.documents, ws.user?.id]);
+  useEffect(() => {
+    const snapshot = () => {
+      if (session.current?.timer?.status === "active")
+        storeSession(session.current);
+    };
     const timer = setInterval(() => {
       setNow(Date.now());
-      if (
-        !session.current ||
-        !document.hasFocus() ||
-        Date.now() - lastInput.current > 60000 ||
-        !editor?.isFocused
-      )
-        return;
-      activeSeconds.current = Math.min(86400, activeSeconds.current + 1);
-      if (Math.floor(activeSeconds.current) % 10 === 0) {
-        session.current = {
-          ...session.current,
-          duration_seconds: Math.floor(activeSeconds.current),
-          sequence: session.current.sequence + 1,
-        };
-        void recordRef.current(session.current);
-      }
+      if (Math.floor(Date.now() / 1000) % 10 === 0) snapshot();
     }, 1000);
-    return () => clearInterval(timer);
-  }, [editor]);
+    const background = () => {
+      if (document.visibilityState === "hidden") snapshot();
+    };
+    document.addEventListener("visibilitychange", background);
+    window.addEventListener("pagehide", snapshot);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", background);
+      window.removeEventListener("pagehide", snapshot);
+    };
+  }, []);
   useEffect(() => {
     aiRequest.current++;
     setAiBusy(false);
@@ -714,6 +843,8 @@ export default function WritingEditor() {
                 : d.status === filter;
           return (
             matching &&
+            (completionFilter === "all" ||
+              (d.completion_status || "draft") === completionFilter) &&
             (serverMatches?.has(d.id) ||
               `${d.title}\n${d.plain_text}`
                 .toLocaleLowerCase()
@@ -721,7 +852,7 @@ export default function WritingEditor() {
           );
         })
         .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
-    [ws.documents, search, filter, serverMatches],
+    [ws.documents, search, filter, serverMatches, completionFilter],
   );
   const progressSessions = [
     ...ws.activities.map((a) => ({
@@ -745,7 +876,8 @@ export default function WritingEditor() {
   const totalWords = writingEngine.countWords(activeDocument?.plain_text || "");
   const totalWritten = ws.activities.reduce((sum, a) => sum + a.typed_words, 0);
   const sessionWords = session.current?.typed_words || 0;
-  const seconds = Math.floor(activeSeconds.current);
+  const sessionTime = sessionClock.read(session.current?.timer, now);
+  const seconds = Math.floor(sessionTime.active_ms / 1000);
   const conflict = activeDocument && ws.conflicts[activeDocument.id];
 
   async function generate() {
@@ -982,7 +1114,11 @@ export default function WritingEditor() {
     return (
       <button
         type="button"
-        disabled={activeDocument?.status !== "active"}
+        disabled={
+          activeDocument?.status !== "active" ||
+          activeDocument?.completion_status === "completed" ||
+          ws.completionBusy
+        }
         aria-label={label}
         title={label}
         aria-pressed={selected}
@@ -1160,6 +1296,42 @@ export default function WritingEditor() {
                 </button>
               ))}
             </nav>
+            {filter === "trashed" && (
+              <button
+                className="uw-editor-empty-trash"
+                disabled={
+                  !ws.online ||
+                  ws.trashBusy ||
+                  ws.completionBusy ||
+                  !ws.documents.some((d) => d.status === "trashed")
+                }
+                onClick={() =>
+                  setTrashSelection(
+                    ws.documents
+                      .filter((d) => d.status === "trashed")
+                      .map((d) => d.id),
+                  )
+                }
+              >
+                <Trash2 size={15} />
+                {t("Empty Trash")}
+              </button>
+            )}
+            {filter === "trashed" && trashNotice && (
+              <p role="status">{t("Trash emptied.")}</p>
+            )}
+            <label className="uw-editor-completion-filter">
+              {t("Completion status")}
+              <select
+                aria-label={t("Completion status")}
+                value={completionFilter}
+                onChange={(event) => setCompletionFilter(event.target.value)}
+              >
+                <option value="all">{t("All documents")}</option>
+                <option value="draft">{t("Drafts")}</option>
+                <option value="completed">{t("Completed")}</option>
+              </select>
+            </label>
             <div className="uw-editor-folder-heading">
               <span>{t("Folders")}</span>
               <button
@@ -1186,28 +1358,50 @@ export default function WritingEditor() {
             ))}
             <div className="uw-editor-document-list" aria-label="Documents">
               {filtered.map((d) => (
-                <button
-                  className="uw-editor-document"
-                  key={d.id}
-                  aria-current={d.id === ws.selected ? "page" : undefined}
-                  onClick={() => {
-                    ws.setSelected(d.id);
-                    setLeft(false);
-                  }}
-                >
-                  <span>
-                    {d.favorite ? <Star size={14} /> : <FileText size={14} />}
-                    <strong>{d.title}</strong>
-                    {d.dirty && <i aria-label="Unsynced changes" />}
-                  </span>
-                  <small>
-                    {d.plain_text.trim().slice(0, 65) ||
-                      t("A little space for your next idea.")}
-                  </small>
-                  <time dateTime={d.updated_at}>
-                    {new Date(d.updated_at).toLocaleDateString(language)}
-                  </time>
-                </button>
+                <div key={d.id} className="uw-editor-library-item">
+                  <button
+                    className="uw-editor-document"
+                    key={d.id}
+                    aria-current={d.id === ws.selected ? "page" : undefined}
+                    onClick={() => {
+                      ws.setSelected(d.id);
+                      setLeft(false);
+                    }}
+                  >
+                    <span>
+                      {d.favorite ? <Star size={14} /> : <FileText size={14} />}
+                      <strong>{d.title}</strong>
+                      {d.dirty && <i aria-label="Unsynced changes" />}
+                    </span>
+                    <small>
+                      {d.plain_text.trim().slice(0, 65) ||
+                        t("A little space for your next idea.")}
+                    </small>
+                    <small className="uw-editor-completion-badge">
+                      {d.completion_status === "completed" && (
+                        <CheckCircle2 size={12} />
+                      )}
+                      {t(
+                        d.completion_status === "completed"
+                          ? "Completed"
+                          : "Draft",
+                      )}
+                    </small>
+                    <time dateTime={d.updated_at}>
+                      {new Date(d.updated_at).toLocaleDateString(language)}
+                    </time>
+                  </button>
+                  {d.completion_status === "completed" && (
+                    <button
+                      className="uw-editor-mark-draft"
+                      disabled={ws.completionBusy}
+                      aria-label={`${t("Mark as Draft")}: ${d.title}`}
+                      onClick={() => void ws.changeCompletion(d.id, "draft")}
+                    >
+                      {t("Mark as Draft")}
+                    </button>
+                  )}
+                </div>
               ))}
               {!filtered.length && (
                 <p className="uw-editor-muted">
@@ -1288,6 +1482,39 @@ export default function WritingEditor() {
             <div>
               {activeDocument && (
                 <>
+                  {activeDocument.completion_status === "completed" ? (
+                    <button
+                      className="uw-editor-complete"
+                      disabled={ws.completionBusy}
+                      onClick={() =>
+                        void ws.changeCompletion(activeDocument.id, "draft")
+                      }
+                    >
+                      <CheckCircle2 size={16} />
+                      {t("Mark as Draft")}
+                    </button>
+                  ) : (
+                    <button
+                      className="uw-editor-icon"
+                      title={t("Mark Document as Complete")}
+                      aria-label={t("Mark Document as Complete")}
+                      disabled={
+                        ws.completionBusy ||
+                        activeDocument.status !== "active" ||
+                        activeDocument.content_loaded === false
+                      }
+                      onClick={() => {
+                        if (
+                          session.current?.document_id === activeDocument.id &&
+                          session.current.timer?.status !== "ended"
+                        )
+                          setCompletionConfirm(true);
+                        else void completeDocument();
+                      }}
+                    >
+                      <CheckCircle2 size={18} />
+                    </button>
+                  )}
                   <button
                     className="uw-editor-icon"
                     aria-label={t("Favorites")}
@@ -1516,7 +1743,11 @@ export default function WritingEditor() {
                     aria-label={t("Rename document")}
                     value={activeDocument.title}
                     maxLength={300}
-                    readOnly={activeDocument.status !== "active"}
+                    readOnly={
+                      activeDocument.status !== "active" ||
+                      activeDocument.completion_status === "completed" ||
+                      ws.completionBusy
+                    }
                     onChange={(event) =>
                       ws.update(activeDocument.id, {
                         title: event.target.value,
@@ -1524,6 +1755,14 @@ export default function WritingEditor() {
                     }
                     placeholder={t("Untitled")}
                   />
+                  {activeDocument.completion_status === "completed" && (
+                    <p className="uw-editor-completion-badge">
+                      <CheckCircle2 size={15} />
+                      {t("Completed")}
+                      {activeDocument.completed_at &&
+                        ` · ${new Date(activeDocument.completed_at).toLocaleDateString(language)}`}
+                    </p>
+                  )}
                   {!focus && (
                     <div className="uw-editor-document-meta">
                       <span>
@@ -1624,7 +1863,7 @@ export default function WritingEditor() {
                 </article>
               </div>
             </>
-          ) : (
+          ) : completionNotice ? null : (
             <div className="uw-editor-empty">
               <span className="uw-editor-empty-mark">
                 <FileText size={34} />
@@ -1635,14 +1874,14 @@ export default function WritingEditor() {
                   ? "TU PRÓXIMO CAPÍTULO"
                   : "YOUR NEXT CHAPTER"}
               </p>
-              <h1>{t("Write something that matters to you.")}</h1>
-              <p>{t("A little space for your next idea.")}</p>
+              <h1>{t("Ready for Your Next Idea?")}</h1>
+              <p>{t("Every idea starts with UnoWord.")}</p>
               <button
                 className="uw-editor-primary"
                 onClick={() => void ws.create(t("Untitled"))}
               >
                 <Plus size={17} />
-                {t("Create a document")}
+                {t("Start New Document")}
               </button>
               <p className="uw-editor-empty-note">
                 {language === "es"
@@ -1650,6 +1889,124 @@ export default function WritingEditor() {
                   : "No rush. No perfect first draft. Just begin."}
               </p>
             </div>
+          )}
+          {completionNotice && (
+            <section className="uw-editor-completion-notice" role="status">
+              <CheckCircle2 size={22} />
+              <h2>{t("Document Completed!")}</h2>
+              <p>
+                {t("Your writing has been saved and marked as complete.")}{" "}
+                {t("You can find it anytime in your document library.")}
+              </p>
+              <button
+                className="uw-editor-primary"
+                onClick={() => {
+                  setCompletionNotice(false);
+                  setCompletionFilter("all");
+                  void ws.create(t("Untitled"));
+                }}
+              >
+                {t("Start New Document")}
+              </button>
+              <button
+                onClick={() => {
+                  setCompletionNotice(false);
+                  setFilter("active");
+                  setCompletionFilter("all");
+                  setLeft(true);
+                }}
+              >
+                {t("View Document Library")}
+              </button>
+            </section>
+          )}
+          {!activeDocument && (
+            <button
+              className="uw-editor-browse"
+              onClick={() => {
+                setFilter("active");
+                setCompletionFilter("all");
+                setLeft(true);
+              }}
+            >
+              {t("Browse Documents")}
+            </button>
+          )}
+          {activeDocument && (
+            <section
+              className="uw-editor-session-controls"
+              aria-label={t("Session details")}
+            >
+              <span role="status">
+                {t(
+                  session.current?.timer?.status === "paused"
+                    ? "Paused"
+                    : session.current?.timer?.status === "active"
+                      ? "Active"
+                      : session.current
+                        ? "Ended"
+                        : "Ready",
+                )}
+              </span>
+              {session.current?.timer &&
+              session.current.timer.status !== "ended" ? (
+                <>
+                  <button
+                    onClick={() =>
+                      changeSessionStatus(
+                        session.current?.timer?.status === "paused"
+                          ? "active"
+                          : "paused",
+                      )
+                    }
+                  >
+                    {session.current.timer.status === "paused" ? (
+                      <Play size={15} />
+                    ) : (
+                      <Pause size={15} />
+                    )}
+                    {t(
+                      session.current.timer.status === "paused"
+                        ? "Resume Session"
+                        : "Pause Session",
+                    )}
+                  </button>
+                  <button onClick={() => changeSessionStatus("ended")}>
+                    <Square size={14} />
+                    {t("End Session")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  disabled={
+                    activeDocument.completion_status === "completed" ||
+                    activeDocument.status !== "active"
+                  }
+                  onClick={startEditorSession}
+                >
+                  <Play size={15} />
+                  {t("Start Session")}
+                </button>
+              )}
+              <details>
+                <summary>{t("Session details")}</summary>
+                <p>
+                  {t("Active time")}:{" "}
+                  {Math.floor(sessionTime.active_ms / 60000)}m{" "}
+                  {Math.floor(sessionTime.active_ms / 1000) % 60}s
+                </p>
+                <p>
+                  {t("Paused time")}:{" "}
+                  {Math.floor(sessionTime.paused_ms / 60000)}m{" "}
+                  {Math.floor(sessionTime.paused_ms / 1000) % 60}s
+                </p>
+                <p>
+                  {t("Total elapsed time")}:{" "}
+                  {Math.floor(sessionTime.elapsed_ms / 60000)}m{" "}
+                  {Math.floor(sessionTime.elapsed_ms / 1000) % 60}s
+                </p>
+              </details>
+            </section>
           )}
           <footer
             data-tour="stats"
@@ -2020,7 +2377,7 @@ export default function WritingEditor() {
         }
         observation={tourObservation}
         words={totalWords}
-        sessionActive={Boolean(session.current)}
+        sessionActive={session.current?.timer?.status === "active"}
         goal={goal}
         saveGoal={saveWritingGoal}
         openAssistant={() => {
@@ -2142,6 +2499,88 @@ export default function WritingEditor() {
               disabled={folderBusy}
             >
               {t("New folder")}
+            </button>
+          </div>
+        </form>
+      </dialog>
+      <dialog
+        ref={trashDialog}
+        aria-label={t("Empty Trash")}
+        className="uw-editor-dialog"
+        onCancel={() => {
+          if (!ws.trashBusy) setTrashSelection(null);
+        }}
+      >
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (trashSelection && (await ws.emptyTrash(trashSelection))) {
+              setTrashSelection(null);
+              setTrashNotice(true);
+            }
+          }}
+        >
+          <h2>{t("Empty Trash")}</h2>
+          <p>
+            {language === "es"
+              ? `¿Eliminar permanentemente ${trashSelection?.length || 0} documento(s)?`
+              : `Permanently delete ${trashSelection?.length || 0} document(s)?`}
+          </p>
+          <p>
+            {language === "es"
+              ? "Esta acción no se puede deshacer. Solo se eliminan los documentos que siguen en la papelera. Las sesiones de estos documentos finalizarán; tu actividad y tus rachas se conservarán."
+              : "This cannot be undone. Only documents still in Trash are removed. Sessions for those documents will end; your writing activity and streaks stay saved."}
+          </p>
+          <div>
+            <button
+              type="button"
+              disabled={ws.trashBusy}
+              onClick={() => setTrashSelection(null)}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="submit"
+              className="uw-editor-primary"
+              disabled={ws.trashBusy}
+            >
+              {t("Permanently Delete")}
+            </button>
+          </div>
+        </form>
+      </dialog>
+      <dialog
+        ref={completionDialog}
+        aria-label={t("Mark Document as Complete")}
+        className="uw-editor-dialog"
+        onCancel={() => setCompletionConfirm(false)}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void completeDocument();
+          }}
+        >
+          <h2>{t("Mark Document as Complete")}</h2>
+          <p>
+            {language === "es"
+              ? "Este documento tiene una sesión abierta. Puedes guardar y completar el documento y finalizar esta sesión, o seguir escribiendo."
+              : "This document has an open writing session. Save and complete it and end this session, or keep writing."}
+          </p>
+          <div>
+            <button
+              type="button"
+              disabled={ws.completionBusy}
+              onClick={() => setCompletionConfirm(false)}
+            >
+              {t("Keep Writing")}
+            </button>
+            <button
+              className="uw-editor-primary"
+              type="submit"
+              disabled={ws.completionBusy}
+            >
+              {t("Complete & End Session")}
             </button>
           </div>
         </form>
