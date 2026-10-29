@@ -1,5 +1,10 @@
 # Persistent sessions, document completion, and Empty Trash
 
+Deployed to [unoword.vercel.app](https://unoword.vercel.app/) after the owner
+applied the migration. [PR #5](https://github.com/felipeoracio/unoword/pull/5)
+merged as `d1acc1d`; Vercel confirmed production deployment and the live checks
+below passed. Extension **0.19.0** is published.
+
 This change extends the existing Tiptap/React writing workspace, FastAPI API,
 Supabase owner/Pro policies, revision-safe document RPCs, IndexedDB drafts, and
 Chrome extension service worker. Authentication, billing, prices, AI generation,
@@ -36,8 +41,8 @@ retain the existing open session, including a paused one.
 
 Extension history, dashboard time, cloud progress metadata, and AI Memory duration
 use active time. New CSV exports retain active/paused durations; old CSV files and
-sessions without timer metadata remain readable. Extension **0.19.0** is packaged
-in the candidate ZIP; no additional Chrome permissions were introduced.
+sessions without timer metadata remain readable. Extension **0.19.0** is published
+in the verified download ZIP; no additional Chrome permissions were introduced.
 
 Restored activity responses are normalized before submission: database-only fields
 such as `user_id`, `source`, and `updated_at` are not forwarded to strict API inputs.
@@ -94,9 +99,9 @@ new ID rather than silently discarded. Reopen the editor and choose **Recovered
 drafts → Recover as a new document** to retrieve it. This protects copies available
 in this browser; it does not reach into a different offline device's storage.
 
-## Database rollout — required before deployment
+## Applied database migration
 
-In the existing Supabase project's SQL Editor, run:
+The owner applied this file in the existing Supabase project's SQL Editor:
 
 `supabase/migrations/20261029010000_session_pause_document_completion.sql`
 
@@ -107,17 +112,69 @@ metadata, preserves the existing RLS policies, and updates the existing save RPC
 No documents or activity are deleted when applying it. The deletion function runs
 only when a signed-in paid user explicitly confirms Empty Trash.
 
-No new secret, billing setup, or AI allowance change is required. Direct PostgreSQL
-connections from this execution workspace remain unavailable, so the migration
-has not been applied to production here. Keep the PR unmerged until the owner
-confirms the migration succeeded. Then deploy, run scoped live smoke checks, and
-update/reload the extension to 0.19.0. Production verification is still pending;
-isolated tests and the candidate ZIP are not a production deployment.
+No new secret, billing setup, or AI allowance change was required. Direct
+PostgreSQL connections from this workspace remain unavailable, so the owner ran
+SQL and verification used the actual Supabase REST/RPC and deployed API routes.
+Completion columns, timer metadata, and the paid Trash RPC were confirmed before
+merging. An empty Trash snapshot was rejected without changing data.
+
+After deployment, refresh the web app and update/reload the extension to
+**0.19.0**. Do not clear browser site data to update: local offline drafts should
+remain available.
+
+## Production verification
+
+These were real deployed API, database, and Chromium checks, separate from the
+isolated suites below. Changes were confined to temporary fictional documents,
+activity and a temporary Free identity; the existing dedicated Pro QA account's
+entitlement was used without granting or changing paid access. The live QA
+browser filtered its library to disposable document IDs, while authentication,
+permissions and every save/completion/Trash mutation used the real backend.
+
+- Free API and direct RPC access to the paid operations was denied. A Pro request
+  could not delete another account's document. Existing document metadata and paid
+  entitlement were unchanged after cleanup.
+- Actual session saves recorded **45 active / 10 paused / 55 elapsed minutes**
+  under one activity UUID. Duplicate and stale snapshots did not create rows or
+  replace an ended timer.
+- Completion preserved content/formatting, used the database timestamp, replayed
+  safely, survived an older-client autosave, rejected stale revisions and forged
+  timestamps, and reverted to draft with the timestamp cleared.
+- Trash deletion skipped changed/restored documents and left an active keeper
+  document intact. A paused session for a deleted test document ended without
+  adding its break to active time. Activity survived with a null document link;
+  deletion replay was safe.
+- The live editor paused/resumed the same session, restored pause after reload
+  and opening another tab, preserved counts during paused edits, ended while
+  paused, confirmed saves before completion, opened a fresh experience afterward,
+  manually reopened completed writing, and reverted it to an editable draft.
+- Offline editing, offline reload and subsequent cloud synchronization passed.
+  The real Trash modal's Cancel and confirmed deletion worked, restricted to one
+  temporary QA document. Responsive layouts passed at **320/390/768/1440px**, with
+  no JavaScript exceptions or automatic AI/processing calls.
+- The public **0.19.0** ZIP matched its release checksum and contained the shared
+  timer. The actual popup/content-script/worker browser suite also passed using
+  that downloaded ZIP with isolated network fixtures, including Free/Pro,
+  pause/resume, popup reopening and English/Spanish at 320/420px.
+
+Temporary accounts, documents and synthetic activity were removed. Original
+writing/streak presentation, entitlements and AI usage counters were verified
+unchanged. No model generation, payment, live billing activation or quota reset
+was performed. These are scoped smoke checks, not a claim that every production
+workflow or device was exercised.
+
+Production evidence in this workspace:
+
+- `/workspace/.onboarding/unoword/session-completion/production-live-results.json`
+- `production-session-paused.png`
+- `production-document-completed.png`
+- `production-empty-trash-mobile.png`
 
 ## Verification performed
 
-All tests below use isolated local fixtures; no real writing, subscriptions,
-production quotas, paid AI requests, or cards were changed.
+The pre-deployment suites below used isolated local fixtures; no real writing,
+subscriptions, production quotas, paid AI requests, or cards were changed by those
+suites. Production smoke checks are documented separately above.
 
 - 41 selected backend cases passed: document save/replay/conflict, completion and
   revert, owner/origin checks, timestamp rejection, timer persistence/validation,
