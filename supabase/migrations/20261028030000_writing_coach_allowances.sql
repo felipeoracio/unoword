@@ -49,12 +49,24 @@ insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
  on conflict(user_id) do nothing;
 -- Preserve quotes already issued by pre-update Checkout flows as well as paid
 -- accounts. No Stripe price, customer or subscription field is modified.
-insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
- select user_id,'00000000-0000-4000-8000-000000000001',100 from public.billing_accounts where customer_id is not null
- on conflict(user_id) do nothing;
-insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
- select user_id,'00000000-0000-4000-8000-000000000001',100 from public.lifetime_orders
- on conflict(user_id) do nothing;
+-- Billing modules may not be installed in every environment. Do not create
+-- incomplete billing tables or require unused modules just to configure AI.
+do $$ begin
+ if to_regclass('public.billing_accounts') is not null then
+  insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
+   select user_id,'00000000-0000-4000-8000-000000000001',100 from public.billing_accounts where customer_id is not null
+   on conflict(user_id) do nothing;
+ else
+  raise notice 'Monthly billing tables are absent. Install monthly billing before enabling checkout, then rerun this migration to attach quote protection.';
+ end if;
+ if to_regclass('public.lifetime_orders') is not null then
+  insert into public.ai_allowance_assignments(user_id,version_id,legacy_daily)
+   select user_id,'00000000-0000-4000-8000-000000000001',100 from public.lifetime_orders
+   on conflict(user_id) do nothing;
+ else
+  raise notice 'Lifetime billing tables are absent. Install the lifetime offer migration before enabling lifetime checkout, then rerun this migration to attach quote protection.';
+ end if;
+end $$;
 create or replace function public.ai_protect_legacy_checkout_quote() returns trigger
  language plpgsql security definer set search_path=public,pg_temp as $$
 begin
@@ -64,10 +76,16 @@ begin
  end if;
  return new;
 end $$;
-drop trigger if exists ai_protect_legacy_checkout on public.billing_accounts;
-create trigger ai_protect_legacy_checkout after insert or update on public.billing_accounts for each row execute function public.ai_protect_legacy_checkout_quote();
-drop trigger if exists ai_protect_legacy_lifetime on public.lifetime_orders;
-create trigger ai_protect_legacy_lifetime after insert on public.lifetime_orders for each row execute function public.ai_protect_legacy_checkout_quote();
+do $$ begin
+ if to_regclass('public.billing_accounts') is not null then
+  execute 'drop trigger if exists ai_protect_legacy_checkout on public.billing_accounts';
+  execute 'create trigger ai_protect_legacy_checkout after insert or update on public.billing_accounts for each row execute function public.ai_protect_legacy_checkout_quote()';
+ end if;
+ if to_regclass('public.lifetime_orders') is not null then
+  execute 'drop trigger if exists ai_protect_legacy_lifetime on public.lifetime_orders';
+  execute 'create trigger ai_protect_legacy_lifetime after insert on public.lifetime_orders for each row execute function public.ai_protect_legacy_checkout_quote()';
+ end if;
+end $$;
 create table if not exists public.ai_allowance_audit (
  id bigint generated always as identity primary key, admin_id text not null, action text not null,
  version_id uuid references public.ai_allowance_versions, detail jsonb not null default '{}', created_at timestamptz not null default now()

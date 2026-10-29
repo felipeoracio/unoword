@@ -12,7 +12,20 @@ const {PGlite}=require(root+'/@electric-sql/pglite');const {vector}=require(root
  await db.exec(fs.readFileSync('supabase/migrations/20261023010000_writing_workspace.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/migrations/20261023020000_writing_workspace_pro.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/migrations/20261028010000_shared_ai_quota.sql','utf8'));
- await db.exec('create table billing_accounts(user_id uuid primary key references auth.users,customer_id text);create table lifetime_orders(user_id uuid primary key references auth.users,customer_id text);');
+ const fixtureMode=process.env.COACH_BILLING_FIXTURE||'both';
+ assert.ok(['both','monthly','lifetime','none'].includes(fixtureMode));
+ const hasMonthly=['both','monthly'].includes(fixtureMode),hasLifetime=['both','lifetime'].includes(fixtureMode);
+ const pendingMonthly=randomUUID(),pendingLifetime=randomUUID();
+ if(hasMonthly){
+  await db.exec('create table billing_accounts(user_id uuid primary key references auth.users,customer_id text)');
+  await db.query('insert into auth.users values($1)',[pendingMonthly]);
+  await db.query("insert into billing_accounts values($1,'cus_preexisting_monthly')",[pendingMonthly]);
+ }
+ if(hasLifetime){
+  await db.exec('create table lifetime_orders(user_id uuid primary key references auth.users,customer_id text)');
+  await db.query('insert into auth.users values($1)',[pendingLifetime]);
+  await db.query("insert into lifetime_orders values($1,'cus_preexisting_lifetime')",[pendingLifetime]);
+ }
  const old=randomUUID(), a=randomUUID(),b=randomUUID(),free=randomUUID();
  for(const user of [old,a,b,free])await db.query('insert into auth.users values($1)',[user]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',100)",[old]);
@@ -33,6 +46,13 @@ const {PGlite}=require(root+'/@electric-sql/pglite');const {vector}=require(root
  const reserve=(u,id=randomUUID(),feature='suggestion',hash='a'.repeat(64))=>db.query('select ai_coach_reserve($1,$2,$3,$4,$5) s',[u,id,feature,hash,'America/Chicago']).then(r=>r.rows[0].s);
  const release=(u,id)=>db.query('select ai_release_request($1,$2)',[u,id]);
  const complete=(u,id,items=[])=>db.query('select ai_coach_complete($1,$2,$3,$4,$5,$6,$7,$8) s',[u,id,'gpt-5.4-mini',100,20,50,JSON.stringify({items:['coaching']}),JSON.stringify(items)]).then(r=>r.rows[0].s);
+ for(const [table,exists,pending,trigger] of [['billing_accounts',hasMonthly,pendingMonthly,'ai_protect_legacy_checkout'],['lifetime_orders',hasLifetime,pendingLifetime,'ai_protect_legacy_lifetime']]){
+  assert.equal((await db.query('select to_regclass($1)::text relation',['public.'+table])).rows[0].relation!==null,exists,'Absent optional billing modules are not created as incomplete tables');
+  if(exists){
+   assert.equal((await state(pending)).legacy_shared,true,'Existing checkout quotes keep legacy allowances');
+   assert.equal((await db.query('select count(*)::int n from pg_trigger where tgrelid=$1::regclass and tgname=$2',[table,trigger])).rows[0].n,1,'Existing module receives quote protection exactly once');
+  }
+ }
  assert.equal((await state(old)).legacy_shared,true);assert.equal((await state(old)).daily_limit,100);
  assert.equal((await state(a)).legacy_shared,false);assert.equal((await state(a)).daily_limit,10);
  assert.equal((await reserve(free)).status,'forbidden');
@@ -60,12 +80,14 @@ const {PGlite}=require(root+'/@electric-sql/pglite');const {vector}=require(root
  for(let i=0;i<30;i++){const gid=randomUUID();assert.equal((await reserve(b,gid,'guidance')).status,'reserved');assert.equal(await complete(b,gid),true);}
  assert.equal((await reserve(b,randomUUID(),'guidance')).reason,'guidance_monthly');
  // Quotes from old workers during a rolling deployment keep legacy terms.
- const rolling=randomUUID(),fresh=randomUUID();await db.query('insert into auth.users values($1),($2)',[rolling,fresh]);
- await db.query("insert into billing_accounts values($1,'cus_old_worker')",[rolling]);
- assert.equal((await state(rolling)).legacy_shared,true);
- await db.query('select ai_assign_allowance($1)',[fresh]);
- await db.query("insert into billing_accounts values($1,'cus_new_worker')",[fresh]);
- assert.equal((await state(fresh)).legacy_shared,false,'New workers bind current terms before customer creation');
+ for(const table of [hasMonthly?'billing_accounts':null,hasLifetime?'lifetime_orders':null].filter(Boolean)){
+  const rolling=randomUUID(),fresh=randomUUID();await db.query('insert into auth.users values($1),($2)',[rolling,fresh]);
+  await db.query(`insert into ${table} values($1,'cus_old_worker')`,[rolling]);
+  assert.equal((await state(rolling)).legacy_shared,true);
+  await db.query('select ai_assign_allowance($1)',[fresh]);
+  await db.query(`insert into ${table} values($1,'cus_new_worker')`,[fresh]);
+  assert.equal((await state(fresh)).legacy_shared,false,'New workers bind current terms before customer creation');
+ }
  // No rollover; previous calendar-month rows do not count this month.
  await db.query("insert into ai_usage(user_id,date,request_type,feature,created_at) select $1,current_date-32,'suggestion','suggestion',now()-interval '32 days' from generate_series(1,250)",[b]);
  assert.equal((await state(b)).suggestions_monthly_used,0);
@@ -97,5 +119,32 @@ const {PGlite}=require(root+'/@electric-sql/pglite');const {vector}=require(root
  const doc=randomUUID();await assert.rejects(db.query("insert into writing_documents(id,user_id,title,content,plain_text,mutation_id) values($1,$2,'Free draft','{\"type\":\"doc\",\"content\":[]}','',gen_random_uuid())",[doc,free]),/row-level security/);
  for(const table of ['ai_allowance_versions','ai_allowance_assignments','ai_cost_events','ai_response_cache','ai_allowance_audit'])await assert.rejects(db.query('select * from '+table),/permission denied/);
  await assert.rejects(state(a),/permission denied/);await assert.rejects(reserve(a),/permission denied/);await db.exec('reset role');
+ // Reproduce recovery with the actual historical billing migrations as well.
+ if(fixtureMode==='none'){
+  await db.exec(fs.readFileSync('supabase/migrations/20261021010000_stripe_billing.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261026010000_lifetime_offer.sql','utf8'));
+  const monthlyCustomer=randomUUID(),lifetimeCustomer=randomUUID();
+  await db.query('insert into auth.users values($1),($2)',[monthlyCustomer,lifetimeCustomer]);
+  await db.query("insert into billing_accounts(user_id,customer_id) values($1,'cus_real_schema_monthly')",[monthlyCustomer]);
+  await db.query('select lifetime_reserve($1,$2,$3,$4)',[lifetimeCustomer,randomUUID(),'cus_real_schema_lifetime','price_fixture']);
+  await db.exec(migration);await db.exec(migration);
+  assert.equal((await state(monthlyCustomer)).legacy_shared,true);
+  assert.equal((await state(lifetimeCustomer)).legacy_shared,true);
+  assert.equal((await db.query("select status from lifetime_orders where user_id=$1",[lifetimeCustomer])).rows[0].status,'reserved','Allowance migration never turns an unpaid quote into a paid order');
+  for(const [table,trigger] of [['billing_accounts','ai_protect_legacy_checkout'],['lifetime_orders','ai_protect_legacy_lifetime']]){
+   assert.equal((await db.query('select count(*)::int n from pg_trigger where tgrelid=$1::regclass and tgname=$2',[table,trigger])).rows[0].n,1);
+  }
+ }
+ // Adding an optional billing module later and reapplying protects its quotes.
+ for(const [table,existed,trigger] of [['billing_accounts',hasMonthly,'ai_protect_legacy_checkout'],['lifetime_orders',hasLifetime,'ai_protect_legacy_lifetime']]){
+  if(existed||fixtureMode==='none')continue;
+  await db.exec(`create table ${table}(user_id uuid primary key references auth.users,customer_id text)`);
+  const late=randomUUID();await db.query('insert into auth.users values($1)',[late]);
+  await db.query(`insert into ${table} values($1,'cus_late_install')`,[late]);
+  await db.exec(migration);
+  assert.equal((await state(late)).legacy_shared,true,'Later-installed billing quotes are backfilled safely');
+  assert.equal((await db.query('select count(*)::int n from pg_trigger where tgrelid=$1::regclass and tgname=$2',[table,trigger])).rows[0].n,1);
+ }
+ console.log('PASS optional billing baseline: '+fixtureMode+'; existing quote backfills/triggers; later module installation/reapply.');
  await db.close();console.log('PASS coach SQL: migration/reapply, protected legacy, Pro editor boundary, daily/monthly/guidance concurrency, exact model costs, atomic rollback, idempotency/replay, release, timezones, future releases, RLS.');
 })().catch(e=>{console.error(e.message,e.stack?.split('\n').slice(0,3).join('\n'));process.exitCode=1;});
