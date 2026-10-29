@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 const titles: Record<string, string> = {
   "/lifetime": "UnoWord Pro — $100 Lifetime Deal",
-  "/": "UnoWord — AI Writing Editor, Word Counter & Writing Companion",
+  "/": "UnoWord — Your Words. Your Voice. Your Story.",
   "/account": "Your account — UnoWord",
   "/account/security": "Account & Security — UnoWord",
   "/editor": "Your writing space — UnoWord",
@@ -24,7 +24,7 @@ export default function PageMetadata() {
       pathname === "/lifetime"
         ? "Explore UnoWord Pro’s $100 USD lifetime offer for the first 25 purchasers. Includes Pro writing tools, daily AI limits, and a 14-day refund policy."
         : pathname === "/"
-          ? "Write, track progress, and discover personalized AI ideas with UnoWord. Create documents, build writing habits, and stay inspired with our writing editor and Chrome extension."
+          ? "Build better writing habits with UnoWord. Track daily goals for free, unlock unlimited streaks, and overcome writer's block with personalized AI guidance in Pro."
           : null;
     if (publicDescription)
       for (const selector of [
@@ -41,7 +41,7 @@ export default function PageMetadata() {
         'meta[name="twitter:title"]',
       ]) {
         const meta = document.querySelector<HTMLMetaElement>(selector);
-        if (meta) meta.content = titles[pathname];
+        if (meta) meta.content = pathname === "/" ? "Your Words. Your Voice. Your Story. | UnoWord" : titles[pathname];
       }
     const robots = document.querySelector<HTMLMetaElement>(
       'meta[name="robots"]',

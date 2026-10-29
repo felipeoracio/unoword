@@ -18,6 +18,7 @@ importScripts('shared/wordcount.js');
 importScripts('shared/history.js');
 importScripts('shared/dates.js');
 importScripts('shared/writing-progress.js');
+importScripts('shared/cloud-progress.js');
 importScripts('shared/prompts.js');
 importScripts('shared/ai-profile.js');
 importScripts('shared/api-client.js');
@@ -88,6 +89,7 @@ const DEFAULT_ACCOUNT = {
   email: null,
   plan: null,
   aiAccess: false,
+  features: {},
   online: true,
   profileSyncEnabled: false,
   profileSyncedAt: null,
@@ -119,7 +121,7 @@ async function getSettings(){
 async function getHistory() {
   const { [HISTORY_KEY]: h } = await chrome.storage.local.get(HISTORY_KEY);
   const account = await getAccount();
-  return (Array.isArray(h) ? h : []).filter(row => row.source !== 'editor' || row.ownerId === account.userId);
+  return (Array.isArray(h) ? h : []).filter(row => !row.ownerId || row.ownerId === account.userId);
 }
 async function getPrompt()  { const { [PROMPT_KEY]: p }   = await chrome.storage.local.get(PROMPT_KEY);   return { ...DEFAULT_PROMPT, ...(p || {}) }; }
 async function getAccount() { const { [ACCOUNT_KEY]: a } = await chrome.storage.local.get(ACCOUNT_KEY); return { ...DEFAULT_ACCOUNT, ...(a || {}) }; }
@@ -130,10 +132,12 @@ async function setState(next) {
   // classifyDelta) and accumulated here, so we simply persist clamped ints.
   const withDerived = {
     ...next,
+    progressVersion: Math.max(Date.now(),Number(next.progressVersion||0)+1),
     typedWords: Math.max(0, Math.floor(Number(next.typedWords) || 0)),
     pastedWords: Math.max(0, Math.floor(Number(next.pastedWords) || 0)),
   };
   await chrome.storage.local.set({ [STATE_KEY]: withDerived });
+  if (withDerived.ownerId && withDerived.startedAt) {try {await queueWritingMetadata(withDerived);} catch (_) {/* Session counters remain durable; retry from the stored state. */}}
   broadcastState(withDerived).catch(() => {});
 }
 async function setSettings(next) {
@@ -147,10 +151,18 @@ async function setSettings(next) {
 async function setPrompt(next)   { await chrome.storage.local.set({ [PROMPT_KEY]: next });   }
 async function setAccount(next) {
   const previous = await getAccount();
+  if (previous.userId !== next.userId) {
+    const running=await getState();
+    if(running.active)await stopSession();
+  }
   if (previous.userId && previous.userId !== next.userId) {
     const { [SETTINGS_KEY]: stored } = await chrome.storage.local.get(SETTINGS_KEY);
     await setSettings({ ...(stored || {}), aiProfileDraft: self.WCAIProfile.createDraft(), aiProfileOwnerId: next.userId || null, themes: [...DEFAULT_SETTINGS.themes] });
     next = { ...next, profileSyncEnabled: false, profileSyncedAt: null };
+  }
+  if (previous.userId !== next.userId || previous.aiAccess !== next.aiAccess) {
+    await chrome.storage.local.set({wc_streak_display:null});
+    writingStreakMemo=null;
   }
   await chrome.storage.local.set({ [ACCOUNT_KEY]: next });
   if (previous.authenticated !== next.authenticated || previous.aiAccess !== next.aiAccess || previous.userId !== next.userId) {
@@ -182,6 +194,7 @@ async function refreshAccount() {
       email: user.email,
       plan: user.plan || null,
       aiAccess: user.ai_access === true,
+      features: user.features || {},
       online: true,
     };
     await setAccount(next);
@@ -211,6 +224,7 @@ async function authenticateAccount(mode, email, password) {
     email: result.user.email,
     plan: result.user.plan || null,
     aiAccess: result.user.ai_access === true,
+    features: result.user.features || {},
     online: true,
   };
   await setAccount(account);
@@ -386,6 +400,7 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
   const [settings, history, state] = await progressRead;
   const now = Date.now(), timezone = settings.profile.timezone;
   const completed = self.WCWritingProgress.total(history, now, timezone);
+  payload.request_id = crypto.randomUUID();
   payload.writing_progress = self.WCWritingProgress.snapshot(settings.wordGoal,
     self.WCWritingProgress.withActive(completed, state, timezone, now), timezone, now);
   if ((await getAccount()).userId !== account.userId) return { ok: false, reason: 'account_changed', account: await getAccount() };
@@ -412,12 +427,16 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
 // ---------- session lifecycle ----------
 
 async function startSession(idea = null) {
+  const account = await getAccount();
   const settings = await getSettings();
+  const startedAt=Date.now();
   const next = {
     ...DEFAULT_STATE,
     active: true,
-    startedAt: Date.now(),
-    sessionGoal: settings.plan === 'pro' ? Math.max(0, Number(settings.wordGoal) || 0) : 0,
+    ownerId: account.authenticated ? account.userId : null,
+    progressKey: "session:"+startedAt,
+    startedAt,
+    sessionGoal: Math.max(0, Number(settings.wordGoal) || 0),
     idea: idea ? { id: idea.id, title: idea.title, suggestion: idea.suggestion, mode: idea.mode, questions: idea.questions } : null,
   };
   await setState(next);
@@ -433,6 +452,9 @@ async function stopSession() {
   const pastedWords = state.pastedWords || 0;
   const goal = state.sessionGoal || 0;
   const lastResult = {
+    ownerId: state.ownerId || null,
+    progressKey: state.progressKey,
+    progressVersion: Date.now(),
     startedAt: state.startedAt,
     endedAt,
     typedWords,
@@ -445,6 +467,7 @@ async function stopSession() {
   const next = { ...state, active: false, endedAt, lastResult };
   await setState(next);
   await appendHistory(lastResult);
+  if (lastResult.ownerId) await queueWritingMetadata(lastResult);
   return next;
 }
 
@@ -453,7 +476,8 @@ async function appendHistory(session) {
   const words = (session.typedWords || 0) + (session.pastedWords || 0);
   const duration = Math.max(0, (session.endedAt || 0) - (session.startedAt || 0));
   if (words === 0 && duration < 1000) return history;
-  const next = [{ id: session.startedAt || Date.now(), ...session }, ...history].slice(0, HISTORY_MAX);
+  const raw=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
+  const next = [{ id: session.startedAt || Date.now(), ...session }, ...raw].slice(0, HISTORY_MAX);
   await chrome.storage.local.set({ [HISTORY_KEY]: next });
   return next;
 }
@@ -463,7 +487,15 @@ async function clearHistory() {
   // The completed-session card is part of the deleted history. Keep an
   // in-progress session, but never leave its previous result behind.
   const next = state.active ? { ...state, lastResult: null } : { ...DEFAULT_STATE };
-  await chrome.storage.local.set({ [HISTORY_KEY]: [], [STATE_KEY]: next, [EDITOR_CLEAR_KEY]: Date.now() });
+  const account=await getAccount();
+  const before=Date.now();
+  const keep=state.active?state.progressKey:null;
+  writingStreakMemo=null;
+  const pendingClear=await chrome.storage.local.get('wc_progress_clear');
+  const rawHistory=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
+  const keptHistory=rawHistory.filter(row=>row.ownerId && row.ownerId!==account.userId);
+  await chrome.storage.local.set({ [HISTORY_KEY]: keptHistory, [STATE_KEY]: next, [EDITOR_CLEAR_KEY]: before, wc_progress_clear:{...(pendingClear.wc_progress_clear||{}),...(account.userId?{[account.userId]:{before,keep}}:{})}, wc_streak_display:null });
+  void flushWritingMetadata();
   await broadcastState(next);
   return next;
 }
@@ -486,12 +518,13 @@ async function syncEditorActivity() {
       const history = await getHistory();
       const stored = await chrome.storage.local.get(EDITOR_CLEAR_KEY);
       const clearedAt = Number(stored[EDITOR_CLEAR_KEY] || 0);
-      const imported = rows.filter(row => row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
+      const imported = rows.filter(row => row.source !== 'extension' && row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
         id: `editor:${row.id}`, source: 'editor', ownerId: owner, cloudActivityId: row.id,
         startedAt: Date.parse(row.started_at), endedAt: Date.parse(row.started_at) + row.duration_seconds * 1000,
         typedWords: row.typed_words, pastedWords: row.pasted_words, sessionGoal: 0,
       }));
-      const merged = new Map(history.filter(row => row.source !== 'editor').map(row => [self.WCHistory.sessionKey(row), row]));
+      const rawHistory=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
+      const merged = new Map(rawHistory.filter(row => row.source !== 'editor' || row.ownerId !== owner).map(row => [self.WCHistory.sessionKey(row), row]));
       imported.forEach(row => merged.set(self.WCHistory.sessionKey(row), row));
       const next = [...merged.values()]
         .sort((a,b) => b.startedAt-a.startedAt).slice(0,HISTORY_MAX);
@@ -506,8 +539,17 @@ async function syncEditorActivity() {
 }
 
 async function applyDelta(delta) {
-  const state = await getState();
+  let state = await getState();
   if (!state.active) return;
+  const settings=await getSettings(),now=Date.now();
+  if(dayKey(state.startedAt,settings.profile.timezone)!==dayKey(now,settings.profile.timezone)){
+    // Activity, not the streak calculator, changes calendar days. Archive only
+    // observed words; never invent writing for intervening missed days.
+    const finished={...state,active:false,endedAt:now,progressVersion:Math.max(now,Number(state.progressVersion||0)+1),timezone:settings.profile.timezone};
+    await appendHistory(finished);
+    if(finished.ownerId)try{await queueWritingMetadata(finished);}catch(_){/* The archived local session is retained. */}
+    state={...DEFAULT_STATE,active:true,ownerId:state.ownerId,startedAt:now,progressKey:'session:'+now,sessionGoal:Math.max(0,Number(settings.wordGoal)||0),idea:state.idea,lastResult:null};
+  }
   const { typedWords, pastedWords } = self.WCWordCount.applyDelta(state, delta || {});
   await setState({ ...state, typedWords, pastedWords });
 }
@@ -584,6 +626,7 @@ async function requestAnotherPrompt() {
 async function getStats(range, history = null, settings = null) {
   history = history || await getHistory();
   settings = settings || await getSettings();
+  if (settings.plan !== 'pro') range = 'today';
   const tz = settings.profile.timezone;
   const now = Date.now();
 
@@ -720,7 +763,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           ]);
           sendResponse({ ok: true,
             payload: buildPopupPayload(state, settings),
-            settings, history, prompt, account,
+            settings, history: self.WCHistory.visibleHistory(history,settings.plan,Date.now()), prompt, account,
           });
           return;
         }
@@ -943,13 +986,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
           return;
         }
+        case 'SYNC_DEVICE_PROGRESS': {
+          await adoptDeviceWritingHistory();
+          const display=await verifiedWritingStreak(true);
+          sendResponse({ok:true,streakDisplay:display});return;
+        }
         case 'GET_STREAK': {
           const [full, settings] = await Promise.all([getHistory(), getSettings()]);
-          const streak = self.WCHistory.computeStreak(full, settings.profile.timezone, Date.now());
-          sendResponse({ ok: true, streak });
+          const display = await verifiedWritingStreak();
+          sendResponse({ ok: true, streak: display.displayedStreak, streakDisplay: display });
           return;
         }
         case 'GET_PROGRESS': {
+          if (msg.refreshAccount) await refreshAccount();
           const [state, settings, history] = await Promise.all([getState(), getSettings(), getHistory()]);
           const range = msg.range || 'today';
           const visible = self.WCHistory.visibleHistory(history, settings.plan, Date.now());
@@ -957,7 +1006,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             settings,
             today: await getStats('today', history, settings),
             stats: await getStats(range, history, settings),
-            streak: self.WCHistory.computeStreak(history, settings.profile.timezone, Date.now()),
+            streak: (await verifiedWritingStreak(!!msg.refreshStreak)).displayedStreak,
+            streakDisplay: await verifiedWritingStreak(),
             history: visible, plan: settings.plan, hasMore: visible.length < history.length });
           return;
         }
@@ -1095,3 +1145,83 @@ chrome.runtime.onInstalled.addListener(async () => {
     [ACCOUNT_KEY]: await getAccount(),
   });
 });
+
+
+// Persistent metadata outbox. It is independent of the visible history window
+// and of subscription status. Losing connectivity never discards pending days.
+let writingMetadataChanges=Promise.resolve(),writingMetadataFlush=null,writingStreakMemo=null;
+async function queueWritingMetadata(row){
+ const data=self.WCCloudProgress.session(row,Date.now());if(!data)return;
+ const next=writingMetadataChanges.then(async()=>{
+  const stored=await chrome.storage.local.get(['wc_progress_outbox','wc_progress_acked']);
+  if (((stored.wc_progress_acked||{})[row.ownerId]||{})[data.key]>=data.sequence)return;
+  const outbox=stored.wc_progress_outbox||{};const owner=outbox[row.ownerId]||{};
+  if(!owner[data.key]||owner[data.key].sequence<data.sequence)owner[data.key]=data;outbox[row.ownerId]=owner;
+  await chrome.storage.local.set({wc_progress_outbox:outbox});
+ });writingMetadataChanges=next.catch(()=>{});await next;
+ scheduleWritingMetadata();
+}
+let writingMetadataTimer=null;
+function scheduleWritingMetadata(){
+ if(writingMetadataTimer)return;
+ writingMetadataTimer=setTimeout(()=>{writingMetadataTimer=null;void flushWritingMetadata();},2500);
+}
+async function flushWritingMetadata(){
+ if(writingMetadataFlush)return writingMetadataFlush;
+ writingMetadataFlush=(async()=>{
+  await writingMetadataChanges;
+  const account=await getAccount();if(!account.authenticated||!account.userId||account.online===false)return false;
+  const owner=account.userId;
+  const clearState=(await chrome.storage.local.get('wc_progress_clear')).wc_progress_clear||{};
+  if(clearState[owner]){
+   await self.WCApi.post('/progress/clear',{expected_user_id:owner,before:new Date(clearState[owner].before || clearState[owner]).toISOString(),keep_extension_key:clearState[owner].keep || null,confirmed:true});
+   const stored=(await chrome.storage.local.get('wc_progress_clear')).wc_progress_clear||{};
+   if(JSON.stringify(stored[owner])===JSON.stringify(clearState[owner]))delete stored[owner];await chrome.storage.local.set({wc_progress_clear:stored});
+  }
+  const stored=await chrome.storage.local.get('wc_progress_outbox');
+  const items=Object.values((stored.wc_progress_outbox||{})[owner]||{}).slice(0,500);
+  if(!items.length)return true;
+  if((await getAccount()).userId!==owner)return false;
+  await self.WCApi.post('/progress/sessions',{expected_user_id:owner,sessions:items});
+  // Remove only exact sent revisions; newer offline/typing snapshots survive.
+  const remove=writingMetadataChanges.then(async()=>{
+   const latest=await chrome.storage.local.get(['wc_progress_outbox','wc_progress_acked']);const outbox=latest.wc_progress_outbox||{};
+   const rows=outbox[owner]||{};const acked=latest.wc_progress_acked||{};const ownerAcks=acked[owner]||{};
+   for(const item of items)ownerAcks[item.key]=item.sequence;acked[owner]=Object.fromEntries(Object.entries(ownerAcks).sort((a,b)=>b[1]-a[1]).slice(0,1000));
+   for(const item of items)if(rows[item.key]?.sequence===item.sequence)delete rows[item.key];
+   outbox[owner]=rows;await chrome.storage.local.set({wc_progress_outbox:outbox,wc_progress_acked:acked});
+  });writingMetadataChanges=remove.catch(()=>{});await remove;writingStreakMemo=null;return true;
+ })().catch(()=>false).finally(()=>{writingMetadataFlush=null;});return writingMetadataFlush;
+}
+async function adoptDeviceWritingHistory(){
+ const account=await refreshAccount();if(!account.authenticated)throw new Error('auth_required');
+ const history=await getHistory();const next=[];
+ for(const row of history){
+  if(row.source==='editor'||row.ownerId&&row.ownerId!==account.userId){next.push(row);continue;}
+  const owned={...row,ownerId:account.userId,progressKey:'session:'+row.startedAt,progressVersion:row.progressVersion||Date.now()};
+  next.push(owned);await queueWritingMetadata(owned);
+ }
+ await chrome.storage.local.set({[HISTORY_KEY]:next});
+ const state=await getState();if(state.active&&!state.ownerId)await setState({...state,ownerId:account.userId,progressKey:'session:'+state.startedAt});
+ await flushWritingMetadata();
+}
+async function verifiedWritingStreak(force=false){
+ const account=await getAccount();const settings=await getSettings();
+ const timezone=settings.profile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+ if(!account.authenticated)return {displayedStreak:null,hasUnlimitedStreakAccess:false,streakLimitReached:false,signInRequired:true};
+ if(!force&&writingStreakMemo&&writingStreakMemo.user_id===account.userId&&writingStreakMemo.timezone===timezone&&Date.now()-writingStreakMemo.fetchedAt<10000)return writingStreakMemo;
+ try{
+  const state=await getState();if(state.ownerId===account.userId)await queueWritingMetadata(state);
+  await flushWritingMetadata();
+  const display=await self.WCApi.get('/progress/streak?timezone='+encodeURIComponent(timezone));
+  if((await getAccount()).userId!==account.userId||display.user_id!==account.userId)throw new Error('account_changed');
+  writingStreakMemo={...display,fetchedAt:Date.now()};await chrome.storage.local.set({wc_streak_display:display});return writingStreakMemo;
+ }catch(_){
+  const cached=(await chrome.storage.local.get('wc_streak_display')).wc_streak_display;
+  return self.WCCloudProgress.cached(cached,account.userId,account.aiAccess===true,timezone,Date.now())||{displayedStreak:null,hasUnlimitedStreakAccess:false,streakLimitReached:false,unavailable:true};
+ }
+}
+if(chrome.alarms){
+ chrome.alarms.create('unoword-writing-metadata',{periodInMinutes:1});
+ chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='unoword-writing-metadata')void flushWritingMetadata();});
+}

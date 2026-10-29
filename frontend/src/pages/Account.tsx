@@ -1,3 +1,6 @@
+import WritingStreak from "@/components/WritingStreak";
+import AIUsage from "@/components/AIUsage";
+import { useAIUsage } from "@/lib/use-ai-usage";
 import GoogleSignIn from "@/components/GoogleSignIn";
 import LifetimeAccount from "@/components/marketing/LifetimeAccount";
 import AccountTour from "@/components/onboarding/AccountTour";
@@ -123,6 +126,7 @@ export default function Account() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const submitting = useRef(false);
   const product = useProduct();
+  const aiUsage = useAIUsage(user?.id, Boolean(user?.ai_access));
   const initialAuthRedirect = useRef({
     oauth: params.get("oauth"),
     next: params.get("next"),
@@ -430,6 +434,19 @@ export default function Account() {
                         : "Try Pro free for 7 days, then $20 USD per month unless you cancel. A payment method is required. The trial is available once per account."
                       : "Billing is currently unavailable, so your plan will stay unchanged. Existing eligible Pro accounts keep their access."}
                   </p>
+                  {product.data?.ai_allowance && (
+                    <p>
+                      New-subscriber AI allowance:{" "}
+                      {product.data.ai_allowance.suggestions_daily}{" "}
+                      suggestions/day,{" "}
+                      {product.data.ai_allowance.suggestions_monthly}{" "}
+                      suggestions/calendar month, and{" "}
+                      {product.data.ai_allowance.guidance_monthly} Writing
+                      Guidance requests/calendar month. No rollover. Your coach
+                      provides directions, never prose. Existing accounts retain
+                      their assigned terms.
+                    </p>
+                  )}
                   <label className="uw-confirm-plan">
                     <input
                       type="checkbox"
@@ -523,6 +540,8 @@ export default function Account() {
                     </button>
                   </form>
                 )}
+              <WritingStreak owner={user.id} paid={user.ai_access} />
+              {user.ai_access && <AIUsage usage={aiUsage.data} />}
               <div className="uw-install-card" id="install">
                 <Link
                   className="uw-button"
@@ -530,7 +549,7 @@ export default function Account() {
                 >
                   {user.ai_access
                     ? "Open Writing Editor"
-                    : "Unlock the editor & document library with Pro"}{" "}
+                    : "Unlock Your Writing Space with Pro"}{" "}
                   <ArrowRight size={16} />
                 </Link>
                 <div>

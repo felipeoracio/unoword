@@ -30,6 +30,9 @@ def system(monkeypatch):
         "STRIPE_LIVE_BILLING_APPROVED": "false",
     }.items():
         monkeypatch.setenv(k, v)
+    from lib import ai_quota
+    async def terms(): return {"id":"v2","name":"Coach","suggestions_daily":10,"suggestions_monthly":200,"guidance_monthly":30}
+    monkeypatch.setattr(ai_quota,'public_allowance',terms)
     item = {
         "user_id": OWNER,
         "attempt": str(uuid4()),
@@ -112,6 +115,7 @@ def system(monkeypatch):
 
     async def db(method, path, **kwargs):
         calls.append((path, deepcopy(kwargs)))
+        if path == 'rpc/ai_assign_allowance': return None
         params = kwargs.get("params", {})
         body = kwargs.get("json", {})
         if path == "lifetime_orders":

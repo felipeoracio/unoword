@@ -18,7 +18,7 @@ from lib.ai_provider import (
     get_suggestion_provider,
 )
 from lib.ai_access import get_entitlement, require_ai_user, entitlement_is_active
-from lib.ai_quota import AIRequest, resolve_daily_limit as _resolve_daily_limit, usage_counts
+from lib.ai_quota import AIRequest, usage_counts, model_cost_scope
 from lib.auth import AuthenticatedUser, auth_is_configured, require_user
 from lib import knowledge
 from lib.dates import today_iso
@@ -169,43 +169,6 @@ def _compose_prompt_context(
     return joined or "No saved user context is available yet.", list(dict.fromkeys(source_ids))
 
 
-async def _record_usage(
-    user_id: str,
-    *,
-    request_type: str,
-    model: str,
-    input_tokens: int | None,
-    output_tokens: int | None,
-    provider: str,
-) -> None:
-    body: dict = {
-        "user_id": user_id,
-        "date": today_iso(),
-        "request_type": request_type,
-    }
-    if input_tokens is not None:
-        body["input_tokens"] = input_tokens
-    if output_tokens is not None:
-        body["output_tokens"] = output_tokens
-    if input_tokens is not None and output_tokens is not None:
-        # Rough cost estimate for gpt-5.4-mini class models; kept as a small
-        # heuristic. Not used for billing.
-        body["estimated_cost"] = round(
-            (input_tokens * 0.15 + output_tokens * 0.60) / 1_000_000,
-            6,
-        )
-    try:
-        await service_rest("POST", "ai_usage", json=body, prefer="return=minimal")
-    except SupabaseAPIError as error:
-        logger.warning(
-            "usage_write_failed provider=%s model=%s status=%s detail=%s",
-            provider,
-            model,
-            error.response_status,
-            error.detail,
-        )
-
-
 @router.get("/status", response_model=AIStatus)
 async def ai_status() -> AIStatus:
     provider = get_suggestion_provider()
@@ -229,7 +192,7 @@ async def ai_status() -> AIStatus:
 
 
 @router.get("/profile", response_model=AIProfile)
-async def get_profile(user: AuthenticatedUser = Depends(require_user)) -> AIProfile:
+async def get_profile(user: AuthenticatedUser = Depends(require_ai_user)) -> AIProfile:
     rows = await _user_rows("ai_profiles", user, extra={"limit": "1"})
     if rows:
         answers = await _user_rows("ai_onboarding_answers", user, extra={"order": "updated_at.desc", "limit": "100"})
@@ -251,7 +214,7 @@ async def get_profile(user: AuthenticatedUser = Depends(require_user)) -> AIProf
 @router.put("/profile", response_model=AIProfile, dependencies=[Depends(trusted_origin)])
 async def update_profile(
     payload: AIProfileUpdate,
-    user: AuthenticatedUser = Depends(require_user),
+    user: AuthenticatedUser = Depends(require_ai_user),
 ) -> AIProfile:
     if payload.expected_user_id and payload.expected_user_id != user.id:
         raise HTTPException(409, "account_changed")
@@ -327,7 +290,8 @@ async def create_memory(
     body: dict = {"user_id": user.id, **payload.model_dump()}
     embeddings = get_embeddings_service()
     if embeddings.enabled:
-        embedded = await embeddings.embed(payload.memory)
+        async with model_cost_scope(user.id, "writing_memory"):
+            embedded = await embeddings.embed(payload.memory)
         if embedded:
             body["embedding"] = embedded.embedding
             body["embedding_model"] = embedded.model
@@ -399,35 +363,36 @@ async def save_writing_session(
             )
             session = AIWritingSession(**sessions[0])
         if payload.save_to_memory and payload.content:
-            embeddings = get_embeddings_service()
-            chunks: list[dict] = []
-            for index, content in enumerate(knowledge.split(payload.content)):
-                row = AIWritingChunk(
-                    user_id=user.id,
-                    writing_session_id=session.id,
-                    chunk_index=index,
-                    content=content,
-                ).model_dump(mode="json")
-                if embeddings.enabled:
-                    embedded = await embeddings.embed(content)
-                    if embedded:
-                        row["embedding"] = embedded.embedding
-                        row["embedding_model"] = embedded.model
-                        row["embedding_version"] = embedded.version
-                chunks.append(row)
-            await user_rest(
-                "POST",
-                "ai_writing_chunks",
-                user.access_token,
-                params={"on_conflict": "writing_session_id,chunk_index"},
-                json=chunks,
-                prefer="resolution=merge-duplicates,return=minimal",
-            )
-            await knowledge.rebuild_source_memory(
-                user.id, user.access_token, session.id,
-                title=f"{session.created_at:%Y-%m-%d}", text=payload.content,
-                kind="writing session", memory_type="experience",
-            )
+            async with model_cost_scope(user.id, "writing_memory"):
+                embeddings = get_embeddings_service()
+                chunks: list[dict] = []
+                for index, content in enumerate(knowledge.split(payload.content)):
+                    row = AIWritingChunk(
+                        user_id=user.id,
+                        writing_session_id=session.id,
+                        chunk_index=index,
+                        content=content,
+                    ).model_dump(mode="json")
+                    if embeddings.enabled:
+                        embedded = await embeddings.embed(content)
+                        if embedded:
+                            row["embedding"] = embedded.embedding
+                            row["embedding_model"] = embedded.model
+                            row["embedding_version"] = embedded.version
+                    chunks.append(row)
+                await user_rest(
+                    "POST",
+                    "ai_writing_chunks",
+                    user.access_token,
+                    params={"on_conflict": "writing_session_id,chunk_index"},
+                    json=chunks,
+                    prefer="resolution=merge-duplicates,return=minimal",
+                )
+                await knowledge.rebuild_source_memory(
+                    user.id, user.access_token, session.id,
+                    title=f"{session.created_at:%Y-%m-%d}", text=payload.content,
+                    kind="writing session", memory_type="experience",
+                )
     except SupabaseAPIError as error:
         raise_http(error)
     return session
@@ -440,7 +405,9 @@ async def create_suggestion(
 ) -> AISuggestion:
     entitlement = await _entitlement(user.id)
     task_budget(getattr(payload, "writing_progress", None))  # Reject stale snapshots before reserving quota.
-    async with AIRequest(user.id, _resolve_daily_limit(entitlement), "suggestion") as quota:
+    async with AIRequest(user.id, request_type="suggestion", payload=payload) as quota:
+        if quota.replay is not None:
+            return AISuggestion(**quota.replay)
         return await _generate_suggestion(payload, user, quota)
 
 
@@ -563,10 +530,10 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
                 used_fallback, fallback_reason = True, "unconfigured"
         except Exception as error:  # noqa: BLE001 - explicit fallback surface
             logger.warning(
-                "suggestion_provider_failed provider=%s model=%s error=%s",
+                "suggestion_provider_failed provider=%s model=%s error_type=%s",
                 provider.name,
                 provider.model,
-                error,
+                type(error).__name__,
             )
             # Phase-13 basic fallback: never let the endpoint 5xx for the extension.
             response = await MockSuggestionProvider(provider.model).generate_suggestion(context, mode=payload.mode, language=payload.language)
@@ -587,39 +554,26 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
                                        (f" Escribe aproximadamente {task.target_words} palabras." if payload.language == "es"
                                         else f" Aim for approximately {task.target_words} words."))
 
-    try:
-        rows = await user_rest(
-            "POST",
-            "ai_suggestions",
-            user.access_token,
-            json={
-                "user_id": user.id,
-                "title": response.result.title,
-                "suggestion": response.result.suggestion,
-                "reason": response.result.why if inspirations else "",
-                "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations,
-                    with_outline(task, response.result.outline, payload.language)),
-                "related_topics": response.result.related_topics,
-                "source_ids": source_ids,
-                "status": "shown",
-            },
-            prefer="return=representation",
-        )
-    except SupabaseAPIError as error:
-        raise_http(error)
-
+    from uuid import uuid4
+    record = {
+        "id": str(uuid4()), "user_id": user.id,
+        "title": response.result.title, "suggestion": response.result.suggestion,
+        "reason": response.result.why if inspirations else "",
+        "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations,
+            with_outline(task, response.result.outline, payload.language)),
+        "related_topics": response.result.related_topics, "source_ids": source_ids, "status": "shown",
+    }
+    suggestion = AISuggestion(**record)
     if used_fallback:
-        await _record_usage(
-            user.id,
-            request_type=f"suggestion_fallback_{fallback_reason}" if fallback_reason else "suggestion_fallback",
-            model=provider.model,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            provider="mock",
-        )
+        # No paid generation means no subscriber credit. Save the local/basic card.
+        try:
+            await user_rest("POST", "ai_suggestions", user.access_token, json=record, prefer="return=minimal")
+        except SupabaseAPIError as error:
+            raise_http(error)
     else:
-        await quota.complete(response.usage.input_tokens, response.usage.output_tokens)
-    return AISuggestion(**rows[0])
+        await quota.complete(response.usage.input_tokens, response.usage.output_tokens,
+            model=provider.model, response=suggestion.model_dump(mode="json"), suggestions=[record])
+    return suggestion
 
 
 @router.get("/idea-options")
@@ -751,21 +705,14 @@ async def list_usage(
 @router.get("/usage/summary", response_model=AIUsageSummary)
 async def usage_summary(
     response: Response,
+    timezone: str | None = None,
     user: AuthenticatedUser = Depends(require_ai_user),
 ) -> AIUsageSummary:
     response.headers["Cache-Control"] = "private, no-store"
     entitlement = await _entitlement(user.id)
-    counts = await usage_counts(user.id)
-    daily_limit = _resolve_daily_limit(entitlement)
-    used_today = counts["used_today"]
-    pending_today = counts["pending_today"]
-    return AIUsageSummary(
-        user_id=user.id,
-        date=counts["date"],
-        plan=entitlement.get("plan") or "free",
-        daily_limit=daily_limit,
-        used_today=used_today,
-        pending_today=pending_today,
-        total_today=counts["total_today"],
-        remaining=max(0, daily_limit - used_today - pending_today) if daily_limit else 0,
-    )
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    if timezone is not None:
+        try: ZoneInfo(timezone)
+        except (ZoneInfoNotFoundError, ValueError): raise HTTPException(422, "invalid_quota_timezone") from None
+    counts = await usage_counts(user.id, timezone)
+    return AIUsageSummary(user_id=user.id, plan=entitlement.get("plan") or "free", **counts)

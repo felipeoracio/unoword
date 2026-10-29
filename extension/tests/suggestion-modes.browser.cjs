@@ -45,7 +45,10 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       else if (['/documents','/links','/ai/memories'].includes(route)) body=[];
       else if (route==='/ai/ideas') body=saved;
       else if (route==='/ai/idea-options') body=[{id:sourceId,title:'Solar ferry notes',kind:'file'}];
-      else if (route==='/ai/usage/summary') body={user_id:userId,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:suggestions.length,pending_today:0,remaining:100-suggestions.length};
+      else if(route.startsWith('/progress/streak'))body={user_id:userId,displayedStreak:1,hasUnlimitedStreakAccess:accountPlan==='pro',streakLimitReached:false,timezone:'UTC',asOf:new Date().toISOString()};
+      else if(route==='/progress/sessions')body={synced:1};
+      else if(route==='/progress/clear')body={cleared:true};
+      else if (route.startsWith('/ai/usage/summary')) body={version_id:'v2',legacy_shared:false,timezone:'America/Chicago',daily_reset_at:new Date(Date.now()+86400000).toISOString(),monthly_reset_at:new Date(Date.now()+30*86400000).toISOString(),suggestions_monthly_used:suggestions.length,suggestions_monthly_limit:200,suggestions_monthly_remaining:200-suggestions.length,guidance_monthly_used:0,guidance_monthly_limit:30,guidance_monthly_remaining:30,user_id:userId,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:suggestions.length,pending_today:0,remaining:100-suggestions.length};
       else if (route==='/ai/suggestion') {
         if(generationGate)await generationGate;
         status=generationStatus;

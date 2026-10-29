@@ -52,6 +52,7 @@ export default function Information({
               Google. This sign-in flow does not request access to Gmail,
               Google Drive, or your writing documents.
             </p>
+            <h2>Synced progress and streaks</h2><p>When you are signed in, new sessions synchronize activity metadata: timestamps, typed and pasted word counts, duration, and stable session identifiers. This metadata combines with editor activity for your account’s writing streak. Writing text is not part of progress synchronization. Offline metadata stays queued on this device. Older, unassigned local history is uploaded only when you choose “Sync this device’s writing history.”</p><p>Free accounts see a maximum seven-day streak and recent activity. Recording continues beyond Day 7; verified paid access reveals the full qualifying current streak and available synced history. Subscription changes never delete your records. Historical days absent from both local and cloud records cannot be reconstructed.</p>
             <h2>Your writing workspace</h2>
             <p>
               The web editor saves documents to your authenticated account and

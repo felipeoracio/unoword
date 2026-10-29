@@ -441,7 +441,7 @@ def test_assistant_never_runs_for_changed_owner_or_missing_selection(fixture):
         },
         headers=ORIGIN,
     )
-    assert result.status_code == 422 and result.json()["detail"] == "select_text_first"
+    assert result.status_code == 422 # Removed rewriting actions are rejected before model work.
     calls.clear()
     assert (
         client.post(

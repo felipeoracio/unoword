@@ -1,3 +1,4 @@
+import AIManagement from "./AIManagement";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,7 +12,7 @@ import {
 import { adminGet, adminPost, adminDelete, errorText } from "@/lib/adminApi";
 import { makeT, type Lang } from "./i18n";
 
-type Tab = "overview" | "users" | "subscriptions" | "writing" | "feedback" | "health" | "settings";
+type Tab = "ai" | "overview" | "users" | "subscriptions" | "writing" | "feedback" | "health" | "settings";
 const PIE = ["#6366f1", "#22c55e"];
 
 function Card({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
@@ -60,6 +61,7 @@ export default function AdminDashboard() {
     { id: "writing", icon: <PenLine size={18} />, key: "nav.writing" },
     { id: "feedback", icon: <MessageSquare size={18} />, key: "nav.feedback" },
     { id: "health", icon: <Activity size={18} />, key: "nav.health" },
+    { id: "ai", icon: <Activity size={18} />, key: "nav.ai" },
     { id: "settings", icon: <SettingsIcon size={18} />, key: "nav.settings" },
   ];
 
@@ -113,6 +115,7 @@ export default function AdminDashboard() {
           {tab === "writing" && <Writing t={t} />}
           {tab === "feedback" && <Feedback t={t} />}
           {tab === "health" && <Health t={t} />}
+          {tab === "ai" && <AIManagement language={lang} />}
           {tab === "settings" && <SettingsTab t={t} email={email} />}
         </main>
       </div>
@@ -159,7 +162,7 @@ function Overview({ t }: { t: T }) {
         <Card label={t("card.free_users")} value={fmt(c?.free_users)} />
         <Card label={t("card.paid_users")} value={fmt(c?.paid_users)} />
         <Card label={t("card.conversion_rate")} value={c?.conversion_rate != null ? `${c.conversion_rate}%` : t("common.unavailable")} />
-        <Card label={t("card.revenue")} value={t("common.unavailable")} hint="no billing provider" />
+        <Card label={t("card.revenue")} value={t("common.unavailable")} hint="Stripe revenue reporting is not implemented" />
         <Card label={t("card.writing_sessions")} value={fmt(c?.writing_sessions)} />
         <Card label={t("card.total_words")} value={fmt(c?.total_words)} />
         <Card label={t("card.feedback")} value={fmt(c?.feedback)} />

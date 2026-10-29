@@ -1,5 +1,7 @@
 # Stripe billing for UnoWord
 
+> Current plan, allowance, coaching, and streak behavior is documented in [the updated plan rollout](writing-coach-plans-and-streaks.md). Historical allowance descriptions below are superseded; existing protected versions remain honored.
+
 UnoWord Pro is **$20 USD per month after a 7-day free trial**, once per account.
 Checkout collects a payment method before the trial starts. Each session explicitly
 sets `managed_payments.enabled=false` and uses standard Stripe Checkout subscriptions,

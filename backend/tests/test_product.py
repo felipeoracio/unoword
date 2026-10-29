@@ -8,7 +8,9 @@ import pytest
 
 
 def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch):
-    from routers import ai
+    from routers import ai, product
+    async def public_terms(): return {"id":"v2","name":"Coach","suggestions_daily":10,"suggestions_monthly":200,"guidance_monthly":30}
+    monkeypatch.setattr(product, "public_allowance", public_terms)
     monkeypatch.setenv('STRIPE_BILLING_ENABLED', 'false')
     monkeypatch.setenv('SUPABASE_SERVICE_ROLE_KEY', 'must-not-appear')
     monkeypatch.setenv('OPENAI_API_KEY', 'must-not-appear')
@@ -24,7 +26,7 @@ def test_public_catalog_does_not_require_auth_or_expose_credentials(monkeypatch)
     assert 'daily_request_limit' not in response.text
     for plan in result['plans']:
         assert plan['features'] == plan_features(plan['id'])
-    assert result['plans'][0]['features']['writing_profile'] is True
+    assert result['plans'][0]['features']['writing_profile'] is False
     assert result['plans'][0]['features']['quick_prompt'] is True
     assert result['plans'][0]['features']['writing_editor'] is False
     assert result['plans'][1]['features']['writing_editor'] is True

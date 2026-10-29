@@ -374,10 +374,9 @@
       // Only typed words are ever counted/shown; pasted text never appears.
       const typed = sessionState.typedWords || 0;
       const goal = sessionState.sessionGoal || 0;
-      const isPro = (settings.plan || 'free') === 'pro';
       const label = typed === 1 ? tt('session.word') : tt('session.words');
-      const text = (isPro && goal > 0) ? `${fmt(typed)} / ${fmt(goal)}` : fmt(typed);
-      return { text, label, secondary: '', reached: isPro && goal > 0 && typed >= goal };
+      const text = (goal > 0) ? `${fmt(typed)} / ${fmt(goal)}` : fmt(typed);
+      return { text, label, secondary: '', reached: goal > 0 && typed >= goal };
     }
 
     function syncFromState() {

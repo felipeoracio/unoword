@@ -1,5 +1,7 @@
 # Account security and writing preferences
 
+> Current behavior: [writing coach, versioned allowances, Pro permissions, and verified streak presentation](writing-coach-plans-and-streaks.md) supersedes older feature/allowance descriptions below.
+
 The extension uses the existing Supabase user and HTTP-only secure cookies. Account changes call GoTrue with a freshly reauthenticated user token. They never call the admin user-update API, create a replacement account, or transfer data by email. Profile, documents, memory, saved ideas and entitlements remain keyed by the permanent Supabase user ID. `/auth/me` reads the current provider identity, so verified email changes appear when the popup reopens; an email claim in an older JWT is not authoritative.
 
 ## Required Supabase email configuration

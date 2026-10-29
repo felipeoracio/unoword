@@ -139,3 +139,4 @@
 @media (prefers-reduced-motion: no-preference) {
   [data-testid="ai-foundation-page"] { animation: uno-fade-up 420ms ease-out both; }
 }
+.uw-ai-usage{display:grid;gap:.65rem;padding:1rem;border:1px solid #94a3b844;border-radius:14px;font-size:.82rem;min-width:0}.uw-ai-usage-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.25rem .5rem}.uw-ai-usage-row small,.uw-ai-usage-row progress{grid-column:1/-1}.uw-ai-usage small{display:block;line-height:1.5;opacity:.85}.uw-ai-usage progress{accent-color:#0866ff;width:100%;height:6px}

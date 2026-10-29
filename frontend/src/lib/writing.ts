@@ -104,7 +104,7 @@ export type AssistantItem = {
   id?: string;
   title: string;
   text: string;
-  replacement: string | null;
+
 };
 export type WritingTask = {
   daily_goal: number | null; words_written_today: number; remaining_words: number | null;
@@ -167,6 +167,10 @@ export function newDocument(
 export function editorError(error: unknown): string {
   if (error instanceof ApiError) {
     const code = (error.body as { detail?: unknown })?.detail;
+    if (typeof code === "string" && code.startsWith("ai_limit_"))
+      return "This AI allowance is used up for the current period. Check Your AI Usage for reset times. Quick Prompt is still available.";
+    if (typeof code === "string" && code.startsWith("ai_request_"))
+      return "This request is already running, completed, or changed. Reopen saved ideas or retry after it finishes.";
     if (code === "writing_progress_stale")
       return "Your writing day changed or progress is out of date. Refresh progress and generate again.";
     if (code === "account_changed")
@@ -192,8 +196,7 @@ export function editorError(error: unknown): string {
     const detail = (error.body as { detail?: unknown })?.detail;
     if (detail === "workspace_storage_unavailable")
       return "Cloud saving is unavailable. Your draft is on this device; retry when the workspace database is configured.";
-    if (detail === "select_text_first")
-      return "Select a passage to improve first.";
+
     if (detail === "document_ai_consent_required")
       return "Choose whether to share this draft for this AI request.";
   }

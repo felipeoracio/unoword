@@ -36,7 +36,7 @@ async def test_each_request_uses_latest_profile_at_provider_boundary(monkeypatch
         async def generate_suggestion(self, context, **kwargs):
             contexts.append(context)
             return SuggestionProviderResponse(AISuggestionResult(title='A topic',suggestion='A direction',why='Personal interests',source_ids=['profile','a','b']),SuggestionUsage(1,1))
-    for key,value in {'_user_rows':rows,'_entitlement':noop,'_resolve_daily_limit':lambda _:100,'_record_usage':noop,'user_rest':store,'retrieve_user_chunks':passages,'diverse_passages':passages,'get_suggestion_provider':Provider}.items(): monkeypatch.setattr(ai,key,value)
+    for key,value in {'_user_rows':rows,'_entitlement':noop,'user_rest':store,'retrieve_user_chunks':passages,'diverse_passages':passages,'get_suggestion_provider':Provider}.items(): monkeypatch.setattr(ai,key,value)
     monkeypatch.setattr(ai.knowledge,'disabled_source_ids',disabled)
     monkeypatch.setattr(ai.knowledge,'heal_missing_embeddings',noop)
     payload=AISuggestionRequest(mode=mode,current_writing='My current draft about community science.' if mode=='expand_idea' else None)

@@ -52,7 +52,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
         const route = new URL(url).pathname;
         const body = route === '/api/auth/me'
           ? { id: storage.wc_account.userId, email: 'fixture@example.com', plan: pro ? 'pro' : 'free', ai_access: pro }
-          : route === '/api/workspace/activity' ? cloudActivity : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
+          : route === '/api/progress/streak' ? {user_id:storage.wc_account.userId,displayedStreak:storage.wc_history.some(r=>r.typedWords>0)||storage.wc_state.active&&storage.wc_state.typedWords>0?1:0,hasUnlimitedStreakAccess:pro,streakLimitReached:false,timezone:storage.wc_settings.profile.timezone,asOf:new Date().toISOString()} : route === '/api/progress/sessions' ? {synced:1} : route === '/api/progress/clear' ? {cleared:true} : route === '/api/workspace/activity' ? cloudActivity : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
         return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
       },
     });

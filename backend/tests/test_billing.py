@@ -35,6 +35,7 @@ def fixture(monkeypatch):
     async def database(method,path,**kwargs):
         calls.append((path,copy.deepcopy(kwargs)))
         payload=kwargs.get('json',{})
+        if path=='rpc/ai_assign_allowance': return None
         if path=='billing_accounts':
             customer=kwargs['params'].get('customer_id')
             return [copy.deepcopy(state)] if not customer or customer=='eq.'+str(state['customer_id']) else []
@@ -97,7 +98,9 @@ def test_new_checkout_is_bound_to_owner_with_one_trial_and_no_client_entitlement
     assert params['success_url']=='https://unoword.vercel.app/account?billing=success'
     assert f.entitlement=={}
     # Ownership mapping was persisted before creating a subscription session.
-    assert f.calls[1][0]=='rpc/billing_commit' and f.calls[1][1]['json']['p_state']['customer_id']=='cus_a'
+    assert f.calls[0][0]=='rpc/ai_assign_allowance'
+    first_commit=next(call for call in f.calls if call[0]=='rpc/billing_commit')
+    assert first_commit[1]['json']['p_state']['customer_id']=='cus_a'
     key=f.provider.v1.checkout.sessions.create.call_args.kwargs['options']['idempotency_key']
     assert key.endswith(f.state['checkout_attempt'])
     assert change(f).json()==result.json()

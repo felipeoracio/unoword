@@ -13,6 +13,7 @@ class AuthUser(BaseModel):
     email: str | None = None
     plan: str | None = None
     ai_access: bool = False
+    features: dict[str, bool] = Field(default_factory=dict)
 
 
 class AuthResult(BaseModel):

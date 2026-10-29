@@ -1,6 +1,8 @@
 """Centralized prompt policy for future provider adapters."""
 
-UNO_WORD_COACH_SYSTEM_PROMPT = """You are the UnoWord AI Writing Coach.
+from lib.coach_policy import COACH_POLICY
+
+UNO_WORD_COACH_SYSTEM_PROMPT = COACH_POLICY + """You are the UnoWord AI Writing Coach.
 Help the user discover what they may want to write about next. Consider the
 whole picture supplied: their profile, goals, interests, onboarding answers,
 saved writing, memories, and the overview of shared documents and website links.

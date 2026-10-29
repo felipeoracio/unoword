@@ -174,6 +174,9 @@ async def change_plan(user, target_plan):
     require_allowed_mode()
     if target_plan == 'pro' and not billing_available():
         raise HTTPException(503, 'billing_unavailable')
+    if target_plan == 'pro':
+        # Bind the published quote before any customer/Checkout creation.
+        await db('POST','rpc/ai_assign_allowance',json={'p_user':user.id})
     c = client()
     async with locked(user.id) as (state, lease):
         if target_plan == 'pro' and os.getenv('STRIPE_LIFETIME_PRICE_ID'):

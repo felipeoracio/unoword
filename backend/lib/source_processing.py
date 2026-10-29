@@ -162,7 +162,9 @@ async def process_one(user_id: str | None = None) -> bool:
         return False
     try:
         async with asyncio.timeout(40):
-            await _step(job, token)
+            from lib.ai_quota import model_cost_scope
+            async with model_cost_scope(job["user_id"], "source_processing", job["id"]):
+                await _step(job, token)
     except LeaseLost:
         # A delete, consent change, downgrade or newer generation wins.
         pass

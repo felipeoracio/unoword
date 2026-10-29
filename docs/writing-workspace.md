@@ -1,5 +1,7 @@
 # UnoWord writing workspace
 
+> Current behavior: [writing coach, versioned allowances, Pro permissions, and verified streak presentation](writing-coach-plans-and-streaks.md) supersedes older feature/allowance descriptions below.
+
 The full-page editor lives at **`/editor`**, alongside the existing marketing,
 account and admin routes. The account page and extension **Open Writing Editor**
 action open the same workspace. The extension release is **0.15.1**.

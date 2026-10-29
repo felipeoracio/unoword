@@ -28,7 +28,7 @@ const inclusions = [
   [
     "editor_ai",
     "A little inspiration, made personal",
-    "Brainstorm, continue writing, and improve selected text with your Pro AI assistant.",
+    "Discover topics, brainstorm outlines, and get guiding questions from your Pro writing coach.",
     Sparkles,
   ],
   [
@@ -256,7 +256,7 @@ export default function Lifetime() {
                 </li>
                 <li>
                   Personalized AI: New Topic, Expand an Idea, Connect the Dots,
-                  continuation, brainstorming, and selected-text improvement.
+                  AI Writing Guidance and brainstorming. The AI offers directions, not ready-to-use prose.
                 </li>
                 <li>
                   Your Writing Profile and enabled document/website knowledge
@@ -270,9 +270,9 @@ export default function Lifetime() {
             <article>
               <h3>AI allowance & fair use</h3>
               <p>
-                {offer.data
-                  ? `New lifetime accounts receive an effective allowance of ${offer.data.daily_ai_limit} AI requests per day under the current Pro allowance.`
-                  : "The current Pro daily AI allowance will be shown here when the offer configuration loads."}{" "}
+                {offer.data?.ai_allowance
+                  ? `New lifetime accounts receive ${offer.data.ai_allowance.suggestions_daily} personalized suggestions per day, ${offer.data.ai_allowance.suggestions_monthly} per calendar month, and ${offer.data.ai_allowance.guidance_monthly} Writing Guidance requests per calendar month—identical to new Monthly Pro subscriptions.`
+                  : "Current allowances will appear when the offer configuration loads. Check your account for protected existing benefits."}{" "}
                 Your account shows your exact remaining allowance. A request can
                 return several ideas; it does not become several requests just
                 because it returns multiple suggestions.

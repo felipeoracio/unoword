@@ -1923,3 +1923,165 @@
   font-size: 10px;
   font-weight: 600;
 }
+
+.lp-hero-support {
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  line-height: 1.4;
+  margin: 1.2rem 0;
+  color: var(--lp-navy, #0b1b4d);
+}
+.lp-philosophy {
+  padding-block: 4rem;
+}
+.lp-philosophy > p {
+  max-width: 76ch;
+  line-height: 1.7;
+}
+.lp-philosophy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.lp-philosophy-grid article {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  padding: 1.5rem;
+}
+.lp-philosophy-grid svg {
+  color: #0866ff;
+}
+.lp-philosophy-grid p {
+  line-height: 1.6;
+}
+.lp-pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.lp-plan-comparison {
+  margin-top: 2rem;
+}
+.lp-plan-comparison > p {
+  line-height: 1.65;
+}
+.lp-plan-comparison table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.86rem;
+  margin: 1.2rem 0;
+}
+.lp-plan-comparison caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.75rem;
+}
+.lp-plan-comparison th,
+.lp-plan-comparison td {
+  padding: 0.8rem 0.55rem;
+  border-bottom: 1px solid #dce7f7;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+.lp-plan-comparison th:first-child {
+  width: 40%;
+}
+.lp-plan-comparison thead {
+  background: #eff6ff;
+}
+.lp-lifetime-price {
+  border-color: #93c5fd;
+}
+.lp-lifetime-price .lp-plan-badge {
+  background: #e0edff;
+  color: #0759df;
+}
+.lp-price-card {
+  min-width: 0;
+}
+.lp-price-card .lp-trial {
+  line-height: 1.6;
+}
+@media (max-width: 1000px) {
+  .lp-pricing-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lp-philosophy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .lp-plan-comparison table {
+    font-size: 0.72rem;
+  }
+  .lp-plan-comparison th,
+  .lp-plan-comparison td {
+    padding: 0.6rem 0.25rem;
+  }
+  .lp-plan-comparison th:first-child {
+    width: 35%;
+  }
+  .lp-hero h1 {
+    font-size: clamp(2.15rem, 9.2vw, 3rem);
+  }
+}
+
+.lp-bottom-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.lp-bottom-grid > .lp-pricing {
+  grid-column: 1/-1;
+}
+.lp-bottom-grid > .lp-faq {
+  display: block;
+  grid-column: auto;
+}
+.lp-pricing > h2 {
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+}
+@media (max-width: 650px) {
+  .lp-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.lp-site .lp-hero-support {
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 1.1rem 0;
+}
+.lp-site .lp-philosophy-grid h3 {
+  margin: 0.6rem 0;
+}
+.lp-site .lp-plan-comparison h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.lp-habit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding-block: 2.5rem;
+}
+.lp-habit-grid article {
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  padding: 1.3rem;
+}
+.lp-site .lp-habit-grid h2 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin: 0.8rem 0;
+}
+.lp-habit-grid p {
+  line-height: 1.6;
+}
+@media (max-width: 800px) {
+  .lp-habit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

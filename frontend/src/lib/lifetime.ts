@@ -9,7 +9,8 @@ export interface LifetimeOffer {
   remaining: number | null;
   available: number | null;
   refund_days: number;
-  daily_ai_limit: number;
+  daily_ai_limit: number | null;
+  ai_allowance?: { suggestions_daily: number; suggestions_monthly: number; guidance_monthly: number } | null;
   purchased: number | null;
   reserved: number | null;
 }

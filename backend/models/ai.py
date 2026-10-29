@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timezone
 from typing import Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from models.writing_goal import WritingProgress, WritingTask
@@ -263,6 +263,7 @@ class AISuggestion(AIModel):
 
 
 class AISuggestionRequest(AIModel):
+    request_id: UUID | None = None
     writing_progress: WritingProgress | None = None
     current_writing: str | None = Field(default=None, max_length=20_000)
     current_project: str | None = Field(default=None, max_length=2_000)
@@ -320,11 +321,27 @@ class AIUsageSummary(AIModel):
     user_id: str
     date: str
     plan: str
-    daily_limit: int = 0
+    version_id: str
+    version_name: str
+    legacy_shared: bool
+    timezone: str
+    pending_timezone: str | None = None
+    daily_reset_at: str
+    monthly_reset_at: str
+    daily_limit: int
     used_today: int = 0
     total_today: int = 0
     pending_today: int = 0
-    remaining: int | None = None
+    remaining: int = 0
+    suggestions_monthly_limit: int | None = None
+    suggestions_monthly_used: int = 0
+    suggestions_monthly_pending: int = 0
+    suggestions_monthly_remaining: int | None = None
+    guidance_monthly_limit: int | None = None
+    guidance_monthly_used: int = 0
+    guidance_monthly_pending: int = 0
+    guidance_monthly_remaining: int | None = None
+    warning_percent: int = 80
 
 
 class AIStatus(AIModel):
