@@ -206,3 +206,63 @@ async def test_editor_and_guidance_use_remaining_words(system):
     system.payload.action='guidance'
     result=await workspace_ai.generate_assistance(system.payload,system.user)
     assert all(item['writing_task']['target_words']==250 for item in result['items'])
+
+
+async def test_rejected_coaching_retries_once_without_extra_credit(
+    system, quota_store, caplog
+):
+    import json
+    from lib.ai_quota import record_provider_call
+
+    original = system.provider.generate_workspace
+    attempts = 0
+
+    async def generate(*args):
+        nonlocal attempts
+        attempts += 1
+        result = await original(*args)
+        await record_provider_call(system.provider.model, result.usage)
+        if attempts == 1:
+            parsed = json.loads(result.choices[0].message.content)
+            parsed['items'][0]['text'] = 'I was walking past PRIVATE QA NARRATION.'
+            result.choices[0].message.content = json.dumps(parsed)
+        return result
+
+    system.provider.generate_workspace = generate
+    result = await workspace_ai.generate_assistance(system.payload, system.user)
+    assert attempts == 2 and len(result['items']) == 3
+    assert len(quota_store.rows) == 1
+    assert len([c for c in quota_store.calls if c[0] == 'rpc/ai_coach_cost']) == 2
+    assert len([c for c in system.calls if c[0] == 'saved']) == 1
+    assert 'non_coaching_response' in caplog.text
+    assert 'PRIVATE QA NARRATION' not in caplog.text
+
+
+async def test_repeated_rejected_coaching_never_saves_or_charges(
+    system, quota_store
+):
+    import json
+    from lib.ai_quota import record_provider_call
+
+    original = system.provider.generate_workspace
+    attempts = 0
+
+    async def generate(*args):
+        nonlocal attempts
+        attempts += 1
+        result = await original(*args)
+        await record_provider_call(system.provider.model, result.usage)
+        parsed = json.loads(result.choices[0].message.content)
+        parsed['items'][0]['text'] = 'Here is your rewritten paragraph: A new day.'
+        result.choices[0].message.content = json.dumps(parsed)
+        return result
+
+    system.provider.generate_workspace = generate
+    with pytest.raises(HTTPException) as error:
+        await workspace_ai.generate_assistance(system.payload, system.user)
+    assert error.value.status_code == 502
+    assert attempts == 2
+    assert quota_store.rows == [] and system.reservations == {}
+    assert not any(c[0] == 'saved' for c in system.calls)
+    assert len([c for c in quota_store.calls if c[0] == 'rpc/ai_coach_cost']) == 2
+    assert any(c[0] == 'rpc/ai_coach_mark_request' for c in quota_store.calls)

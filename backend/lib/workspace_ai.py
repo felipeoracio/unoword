@@ -1,6 +1,7 @@
 """Editor tools using the existing model configuration and canonical personalization."""
 
 import json
+import logging
 from uuid import uuid4
 from fastapi import HTTPException
 from lib.ai_access import get_entitlement
@@ -13,6 +14,8 @@ from lib import knowledge
 from models.ai import AISuggestionRequest
 from lib.writing_goal import task_budget, budget_context, with_outline
 from lib.coach_policy import validate_coaching, validate_heading
+
+logger = logging.getLogger(__name__)
 
 ACTIONS = {
     "next": "Return exactly three DISTINCT personalized writing directions, each grounded in the author’s interests. Do not repeat earlier ideas.",
@@ -147,11 +150,11 @@ async def _generate_assistance(payload, user, provider, quota):
                     "items": {
                         "type": "object",
                         "properties": {
-                            "title": {"type": "string"},
+                            "title": {"type": "string", "maxLength": 100},
                             "text": {"type": "string", "maxLength": 1100},
                             "outline": {
                                 "type": "array",
-                                "items": {"type": "string"},
+                                "items": {"type": "string", "maxLength": 100},
                                 "maxItems": 5,
                             },
                         },
@@ -163,23 +166,61 @@ async def _generate_assistance(payload, user, provider, quota):
             "required": ["items"],
             "additionalProperties": False,
         }
-        result = await provider.generate_workspace(
-            context,
-            ACTIONS["guidance" if payload.action == "continue" else payload.action],
-            payload.language,
-            schema,
+        instruction = (
+            ACTIONS["guidance" if payload.action == "continue" else payload.action]
+            + " For this editor request, use the supplied items schema instead of "
+            "the single-suggestion field names. Each title and outline heading must "
+            "be a short topic label of at most ten words and 100 characters. Each "
+            "text must be coaching advice or questions, at most 70 words. Start "
+            "with a direct question or coaching action such as Explore or Consider. "
+            "Never include sample prose, quoted narration or replacement writing."
         )
-        parsed = json.loads(result.choices[0].message.content or "{}")
-        items = parsed.get("items", [])
-        if len(items) != count:
-            raise ValueError("invalid_assistant_response")
-        for item in items:
-            if not isinstance(item.get("title"), str) or item.get("replacement"):
-                raise ValueError("invalid_assistant_response")
-            validate_heading(item["title"])
-            validate_coaching(item["text"])
-            for heading in item.get("outline", []):
-                validate_heading(heading)
+        # Structured JSON can still contain non-coaching prose or invalid topic
+        # labels. Retry that boundary once before saving anything, within the
+        # same reservation. Each actual provider call keeps its cost telemetry;
+        # only a fully validated response consumes one subscriber credit.
+        for attempt in range(2):
+            result = await provider.generate_workspace(
+                context, instruction, payload.language, schema
+            )
+            try:
+                parsed = json.loads(result.choices[0].message.content or "{}")
+                items = parsed.get("items", [])
+                if not isinstance(items, list) or len(items) != count:
+                    raise ValueError("invalid_assistant_response")
+                for item in items:
+                    if (
+                        not isinstance(item, dict)
+                        or not isinstance(item.get("title"), str)
+                        or not isinstance(item.get("text"), str)
+                        or not isinstance(item.get("outline", []), list)
+                        or item.get("replacement")
+                    ):
+                        raise ValueError("invalid_assistant_response")
+                    validate_heading(item["title"])
+                    validate_coaching(item["text"])
+                    for heading in item.get("outline", []):
+                        validate_heading(heading)
+            except (ValueError, TypeError, AttributeError) as error:
+                reason = str(error)
+                if reason not in {
+                    "non_coaching_response", "non_coaching_heading",
+                    "invalid_assistant_response",
+                }:
+                    reason = "invalid_assistant_response"
+                logger.warning(
+                    "workspace_coach_response_rejected request=%s attempt=%s reason=%s",
+                    quota.id, attempt + 1, reason,
+                )
+                if attempt:
+                    raise
+                instruction += (
+                    " The previous response did not satisfy the coaching-only "
+                    "contract. Return fresh concise questions or structural advice, "
+                    "with brief topic labels and no narrative examples."
+                )
+            else:
+                break
         from lib.suggestion_details import encode_details
 
         # Reuse the existing suggestion/feedback records. Include the current
