@@ -1,5 +1,7 @@
 # Pro writing workspace and offline saving
 
+> Current plan, allowance, coaching, and streak behavior is documented in [the updated plan rollout](writing-coach-plans-and-streaks.md). Historical allowance descriptions below are superseded; existing protected versions remain honored.
+
 The writing editor and its private document library are now Pro-only features.
 Free retains Chrome extension tracking, Quick Prompt, and recent history. The
 public product catalog and landing-page pricing cards use the same plan policy.

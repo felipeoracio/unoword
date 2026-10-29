@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "UnoWord \u2014 Writing Assistant",
   "short_name": "UnoWord",
-  "version": "0.17.0",
-  "description": "A minimal, private writing session tracker with goals, prompts and progress. Click Start, type anywhere in Chrome, click Stop \u2014 see exactly how many words you wrote.",
+  "version": "0.18.0",
+  "description": "Track typed words in supported Chrome editors, set daily goals, build writing habits, and find your next writing direction with UnoWord.",
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "UnoWord \u2014 Writing Assistant"
@@ -31,7 +31,8 @@
   ],
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "host_permissions": [
     "https://unoword.vercel.app/*"

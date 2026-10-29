@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "./api";
 
 export interface Product {
+  ai_allowance?: { id: string; name: string; suggestions_daily: number; suggestions_monthly: number; guidance_monthly: number } | null;
   name: string;
   billing_available: boolean;
   chrome_store_url: string | null;

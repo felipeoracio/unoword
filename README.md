@@ -228,3 +228,7 @@ required Google Cloud credentials and Supabase provider/redirect settings.
 Pro is $20 USD monthly with a 7-day trial for eligible accounts. Checkout remains
 disabled until Stripe and the billing migration are configured. See
 [Stripe setup, verification and activation](docs/stripe-billing.md).
+
+### Writing coach and plan update
+
+UnoWord helps writers write; it does not write for them. See [versioned AI allowances, Pro permissions, streak architecture, migration and rollout instructions](docs/writing-coach-plans-and-streaks.md) and [prepared social advertising briefs](marketing/paid-social-briefs.md). The new backend requires the two documented migrations before deployment.

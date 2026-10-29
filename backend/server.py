@@ -41,11 +41,15 @@ api_router.include_router(auth_router)
 api_router.include_router(google_auth_router)
 api_router.include_router(email_signup_router)
 api_router.include_router(admin_router)
+from routers.ai_management import router as ai_management_router
+api_router.include_router(ai_management_router)
 api_router.include_router(subscription_router)
 api_router.include_router(account_security_router)
 api_router.include_router(workspace_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(processing_router)
+from routers.progress import router as progress_router
+api_router.include_router(progress_router)
 
 
 @api_router.get("/")

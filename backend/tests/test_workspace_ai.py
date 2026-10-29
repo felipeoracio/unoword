@@ -61,6 +61,9 @@ def system(monkeypatch, quota_store):
         ],
     }
     calls = []
+    quota_store.daily = 2
+    async def saved(records): calls.append(("saved", records))
+    quota_store.on_complete = saved
     reservations = quota_store.reservations
 
     async def rows(table, owner, *, extra):
@@ -106,7 +109,7 @@ def system(monkeypatch, quota_store):
                                     "items": [
                                         {
                                             "title": f"Angle {i}",
-                                            "text": "A specific writing direction",
+                                            "text": "Consider a specific writing direction.",
                                             "replacement": None,
                                         }
                                         for i in range(count)
@@ -121,7 +124,6 @@ def system(monkeypatch, quota_store):
 
     provider = Provider()
     monkeypatch.setattr(ai, "_user_rows", rows)
-    monkeypatch.setattr(ai, "_record_usage", record)
     monkeypatch.setattr(workspace_ai, "get_entitlement", entitlement)
     monkeypatch.setattr(workspace_ai, "get_suggestion_provider", lambda: provider)
     monkeypatch.setattr(workspace_ai, "user_rest", save)
@@ -184,17 +186,16 @@ async def test_provider_failure_releases_reservation_and_hides_private_error(sys
     assert system.reservations == {}
 
 
-async def test_improvement_only_requests_one_proposal_and_includes_selection(system):
-    system.payload.action = "improve"
-    system.payload.selected_text = "The selected author-owned passage."
+async def test_guidance_only_returns_questions_not_replacements(system):
+    system.payload.action = "guidance"
     system.payload.language = "es"
     result = await workspace_ai.generate_assistance(system.payload, system.user)
     assert len(result["items"]) == 1
     call = next(call for call in system.calls if call[0] == "model")
-    assert "ONLY the selected passage" in call[2] and call[3] == "es"
-    assert system.payload.selected_text in call[1]
+    assert "Never supply a sentence" in call[2] and call[3] == "es"
+    assert all(not item.get('replacement') for item in result['items'])
 
-async def test_editor_uses_remaining_words_and_preserves_improvement_scope(system):
+async def test_editor_and_guidance_use_remaining_words(system):
     from datetime import datetime,timezone
     from models.writing_goal import WritingProgress
     now=datetime.now(timezone.utc)
@@ -202,6 +203,6 @@ async def test_editor_uses_remaining_words_and_preserves_improvement_scope(syste
     result=await workspace_ai.generate_assistance(system.payload,system.user)
     assert all(item['writing_task']['target_words']==250 for item in result['items'])
     assert '"target_words": 250' in next(call[1] for call in system.calls if call[0]=='model')
-    system.payload.action='improve';system.payload.selected_text='Keep this passage concise.'
+    system.payload.action='guidance'
     result=await workspace_ai.generate_assistance(system.payload,system.user)
-    assert all('writing_task' not in item for item in result['items'])
+    assert all(item['writing_task']['target_words']==250 for item in result['items'])

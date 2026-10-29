@@ -4,7 +4,7 @@ import json
 from uuid import uuid4
 from fastapi import HTTPException
 from lib.ai_access import get_entitlement
-from lib.ai_quota import AIRequest, resolve_daily_limit
+from lib.ai_quota import AIRequest
 from lib.ai_provider import get_suggestion_provider, MockSuggestionProvider
 from lib.personalization import effective_profile, contextual_answers
 from lib.supabase_client import user_rest
@@ -12,24 +12,33 @@ from lib.retrieval import retrieve_user_chunks
 from lib import knowledge
 from models.ai import AISuggestionRequest
 from lib.writing_goal import task_budget, budget_context, with_outline
+from lib.coach_policy import validate_coaching, validate_heading
 
 ACTIONS = {
     "next": "Return exactly three DISTINCT personalized writing directions, each grounded in the author’s interests. Do not repeat earlier ideas.",
-    "continue": "Suggest a thoughtful next direction and a short optional continuation of the current draft in the author’s voice.",
+    "guidance": "Offer one concise coaching direction with three guiding questions or structural steps for what the author could explore next. Never supply a sentence, paragraph, sample or replacement for their writing.",
     "block": "Offer three specific, open-ended questions or creative prompts that help this writer move forward.",
     "brainstorm": "Offer three distinct angles, each with a compact outline. Develop the author’s ideas instead of replacing them.",
-    "improve": "Improve ONLY the selected passage for clarity, grammar and flow. Preserve meaning, language, facts and the author’s voice. Put the exact proposed replacement in replacement; explain changes briefly in text.",
 }
 
 
 async def generate_assistance(payload, user):
+    if payload.action not in ACTIONS and payload.action != "continue":
+        raise HTTPException(422, "unsupported_coach_action")
     task_budget(getattr(payload, "writing_progress", None))
     provider = get_suggestion_provider()
     if isinstance(provider, MockSuggestionProvider):
         raise HTTPException(503, "ai_provider_unavailable")
-    entitlement = await get_entitlement(user.id)
-    limit = resolve_daily_limit(entitlement or {})
-    async with AIRequest(user.id, limit, "workspace_assistant") as quota:
+    async with AIRequest(
+        user.id,
+        request_type="workspace_assistant",
+        payload=payload,
+        feature=(
+            "guidance" if payload.action in {"guidance", "continue"} else "suggestion"
+        ),
+    ) as quota:
+        if quota.replay is not None:
+            return quota.replay
         return await _generate_assistance(payload, user, provider, quota)
 
 
@@ -122,7 +131,7 @@ async def _generate_assistance(payload, user, provider, quota):
     if payload.selected_text:
         context += "\nSelected passage:\n" + payload.selected_text
     count = 3 if payload.action in {"next", "brainstorm", "block"} else 1
-    task = task_budget(getattr(payload, "writing_progress", None)) if payload.action != "improve" else None
+    task = task_budget(getattr(payload, "writing_progress", None))
     if task is not None:
         context += budget_context(task)
     # One provider request returns three directions and consumes one shared AI
@@ -139,11 +148,14 @@ async def _generate_assistance(payload, user, provider, quota):
                         "type": "object",
                         "properties": {
                             "title": {"type": "string"},
-                            "text": {"type": "string"},
-                            "replacement": {"type": ["string", "null"]},
-                            "outline": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+                            "text": {"type": "string", "maxLength": 1100},
+                            "outline": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "maxItems": 5,
+                            },
                         },
-                        "required": ["title", "text", "replacement", "outline"],
+                        "required": ["title", "text", "outline"],
                         "additionalProperties": False,
                     },
                 }
@@ -152,22 +164,22 @@ async def _generate_assistance(payload, user, provider, quota):
             "additionalProperties": False,
         }
         result = await provider.generate_workspace(
-            context, ACTIONS[payload.action], payload.language, schema
+            context,
+            ACTIONS["guidance" if payload.action == "continue" else payload.action],
+            payload.language,
+            schema,
         )
         parsed = json.loads(result.choices[0].message.content or "{}")
         items = parsed.get("items", [])
-        if len(items) != count or any(
-            not isinstance(i.get("title"), str)
-            or not isinstance(i.get("text"), str)
-            or (
-                i.get("replacement") is not None
-                and not isinstance(i["replacement"], str)
-            )
-            for i in items
-        ):
+        if len(items) != count:
             raise ValueError("invalid_assistant_response")
-        if sum(len(i["text"]) + len(i.get("replacement") or "") for i in items) > 30000:
-            raise ValueError("assistant_response_too_large")
+        for item in items:
+            if not isinstance(item.get("title"), str) or item.get("replacement"):
+                raise ValueError("invalid_assistant_response")
+            validate_heading(item["title"])
+            validate_coaching(item["text"])
+            for heading in item.get("outline", []):
+                validate_heading(heading)
         from lib.suggestion_details import encode_details
 
         # Reuse the existing suggestion/feedback records. Include the current
@@ -181,7 +193,11 @@ async def _generate_assistance(payload, user, provider, quota):
         saved = []
         for item in items:
             item["id"] = str(uuid4())
-            item_task = with_outline(task, item.get("outline"), payload.language) if task is not None else None
+            item_task = (
+                with_outline(task, item.get("outline"), payload.language)
+                if task is not None
+                else None
+            )
             if item_task is not None:
                 item["writing_task"] = item_task.model_dump()
             saved.append(
@@ -203,19 +219,16 @@ async def _generate_assistance(payload, user, provider, quota):
                     "status": "shown",
                 }
             )
-        await user_rest(
-            "POST",
-            "ai_suggestions",
-            user.access_token,
-            json=saved,
-            prefer="return=minimal",
-        )
         usage = result.usage
+        response = {"items": items, "request_id": quota.id}
         await quota.complete(
             getattr(usage, "prompt_tokens", None),
             getattr(usage, "completion_tokens", None),
+            model=provider.model,
+            response=response,
+            suggestions=saved,
         )
-        return {"items": items, "request_id": quota.id}
+        return response
     except HTTPException:
         raise
     except Exception as error:

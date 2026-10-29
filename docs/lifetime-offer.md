@@ -1,5 +1,7 @@
 # $100 lifetime Pro offer — first 25 purchasers
 
+> Current plan, allowance, coaching, and streak behavior is documented in [the updated plan rollout](writing-coach-plans-and-streaks.md). Historical allowance descriptions below are superseded; existing protected versions remain honored.
+
 Public page: `/lifetime`. Account/purchase flow: `/account?offer=lifetime`.
 The offer is a **one-time $100 USD payment**, not a subscription or trial, for
 UnoWord Pro access on that account. It includes the current Pro editor/library,

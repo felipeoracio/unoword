@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string | null;
   plan: string | null;
   ai_access: boolean;
+  features?: Record<string, boolean>;
 }
 
 export interface AuthResult {

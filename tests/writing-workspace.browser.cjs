@@ -24,8 +24,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    if(!signedIn){status=401;value={detail:'Authentication required'};}
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
    else if(key==='/auth/refresh')value={authenticated:true};
+   else if(key==='/progress/streak')value={user_id:currentOwner,displayedStreak:pro?15:7,hasUnlimitedStreakAccess:pro,streakLimitReached:!pro,journeyContinues:!pro,timezone:'America/Chicago',asOf:new Date().toISOString()};
    else if(key==='/ai/profile'&&method==='GET')value=profile;
-   else if(key==='/ai/usage/summary')value={user_id:currentOwner,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:aiUsed,pending_today:aiPending,remaining:Math.max(0,100-aiUsed-aiPending)};
+   else if(key==='/ai/usage/summary')value={version_id:'v2',version_name:'Coach',legacy_shared:false,timezone:'America/Chicago',daily_reset_at:new Date(Date.now()+86400000).toISOString(),monthly_reset_at:new Date(Date.now()+30*86400000).toISOString(),suggestions_monthly_limit:200,suggestions_monthly_used:aiUsed,suggestions_monthly_remaining:200-aiUsed,guidance_monthly_limit:30,guidance_monthly_used:0,guidance_monthly_remaining:30,warning_percent:80,user_id:currentOwner,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:aiUsed,pending_today:aiPending,remaining:Math.max(0,100-aiUsed-aiPending)};
    else if(key==='/ai/profile'&&method==='PUT'){assert.equal(body.expected_user_id,currentOwner);Object.assign(profile,body);value=profile;}
    else if(key==='/onboarding')value={version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
    else if(key==='/workspace/config')value={daily_goal:250,max_document_chars:200000,max_upload_bytes:5242880,ai_batch_size:3};
@@ -56,8 +57,8 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/workspace/assistant'){
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
     aiUsed++;
-    value={items:body.action==='improve'?[{title:'A clearer passage',text:'Keeps your thought and simplifies its rhythm.',replacement:'A careful first step makes room for a better idea.'}]:Array.from({length:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'An angle grounded in your interests in craft and community.',replacement:null}))};
-    if(body.action!=='improve')for(const [index,item] of value.items.entries()){
+    value={items:Array.from({length:body.action==='guidance'?1:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'Consider a detail grounded in your interests in craft and community. What could you explore next?'}))};
+    for(const [index,item] of value.items.entries()){
      const p=body.writing_progress,remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
      const sizes=[10,25,25,25].map(percent=>Math.floor(target*percent/100));sizes.push(target-sizes.reduce((a,b)=>a+b,0));
      item.id='task-'+requests.filter(r=>r.key==='/workspace/assistant').length+'-'+index;
@@ -141,11 +142,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   // AI is opt-in and does not edit the document until explicit application.
   await page.getByRole('button',{name:'Writing assistant',exact:true}).click();
   const generate=page.getByRole('button',{name:'Generate',exact:true});assert.equal(await generate.isEnabled(),false);
-  await page.getByLabel('Share this draft and selected text for this AI request.').check();
+  await page.getByLabel('Share this draft for this AI request.').check();
   const before=await canvas.textContent();await generate.click();await page.locator('.uw-editor-ai-results article').nth(2).waitFor();
   assert.equal(await canvas.textContent(),before,'AI generation never overwrites writing');
   assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,1);
-  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('1 of 100 AI requests used'));
+  await page.waitForFunction(()=>document.querySelector('.uw-ai-usage').textContent.includes('1 / 100'));
   const progress=requests.find(r=>r.key==='/workspace/assistant').body.writing_progress;
   assert.equal(progress.daily_goal,250);assert.ok(progress.words_written_today>0);
   assert.ok((await page.locator('.uw-writing-task').first().textContent()).includes('words'));
@@ -162,26 +163,21 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   // A request from the extension is reflected when returning to the editor.
   aiUsed=99;aiPending=1;
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('99 of 100'));
-  assert.ok((await page.locator('.uw-editor-ai-usage').textContent()).includes('1 in progress'));
+  await page.waitForFunction(()=>document.querySelector('.uw-ai-usage').textContent.includes('99 / 100'));
+  assert.ok((await page.locator('.uw-ai-usage').textContent()).includes('1 pending'));
   assert.equal(await generate.isEnabled(),false,'Pending requests reserve the last shared slot');
   aiPending=0;
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('1 left'));
+  await page.waitForFunction(()=>document.querySelector('.uw-ai-usage').textContent.includes('1 left'));
   aiUsed=1;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await page.waitForFunction(()=>document.querySelector('.uw-editor-ai-usage').textContent.includes('99 left'));
-  await page.locator('.uw-editor-ai-results article button').first().click();
-  assert.ok((await canvas.textContent()).includes('The quiet value of practice'));
-  await canvas.click();await canvas.press('ControlOrMeta+a');
-  await page.getByLabel('AI writing tool').selectOption('improve');await generate.click();
-  await page.getByRole('button',{name:'Apply to selection',exact:true}).waitFor();
-  await canvas.click();await canvas.press('ControlOrMeta+End');await canvas.pressSequentially(' A new thought.');
-  const changedAfterSuggestion=await canvas.textContent();
-  await page.getByRole('button',{name:'Apply to selection',exact:true}).click();
-  assert.equal(await canvas.textContent(),changedAfterSuggestion,'A stale improvement never overwrites later edits');
-  await canvas.click();await canvas.press('ControlOrMeta+a');await generate.click();
-  await page.getByRole('button',{name:'Apply to selection',exact:true}).click();
-  assert.ok((await canvas.textContent()).includes('A careful first step'));
+  await page.waitForFunction(()=>document.querySelector('.uw-ai-usage').textContent.includes('99 left'));
+  const authoredText=await canvas.textContent();
+  assert.equal(await page.getByRole('button',{name:/Add to document|Apply to selection/}).count(),0,'AI cannot insert or replace author text');
+  assert.equal(await page.getByLabel('AI writing tool').locator('option[value="improve"]').count(),0,'Rewriting option removed');
+  await page.getByLabel('AI writing tool').selectOption('guidance');await generate.click();
+  await page.locator('.uw-editor-ai-results article').first().waitFor();
+  assert.equal(await page.locator('.uw-editor-ai-results article').count(),1);
+  assert.equal(await canvas.textContent(),authoredText,'Guidance never changes the document');
   await page.getByRole('button',{name:'My Writing Profile',exact:true}).click();
   const profileDialog=page.getByRole('dialog');await profileDialog.getByLabel('What do you want to write?').fill('An edit that should be canceled');
   await profileDialog.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -279,20 +275,20 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await second.close();
   // Downgrade hides both editor and library without deleting local writing.
   pro=false;const downgradeCalls=requests.length;await page.reload();
-  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0);
   assert.equal(await page.locator('.uw-editor-document').count(),0);
   assert.equal(requests.slice(downgradeCalls).some(r=>r.key.startsWith('/workspace/')),false,'Free must not fetch private workspace data');
   assert.equal(await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const request=open.result.transaction('records').objectStore('records').getAll();request.onsuccess=()=>{resolve(request.result.some(r=>r.kind==='document'||r.kind==='draft'));open.result.close();};};})),true,'Existing writing survives downgrade');
   // Cached Free identities cannot bypass the gate by reloading offline.
   await context.setOffline(true);await page.reload();
-  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0);
   pro=true;await context.setOffline(false);await canvas.waitFor();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Offline draft from the'));
   // Revocation in an already open tab is detected when focus returns.
   pro=false;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();
+  await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();
   pro=true;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await canvas.waitFor();
   // A fresh device cache still opens private cloud metadata on demand.
   await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const tx=open.result.transaction('records','readwrite');tx.objectStore('records').clear();tx.oncomplete=()=>{open.result.close();resolve();};};}));
@@ -306,6 +302,6 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await page.locator('.uw-editor-document').count(),0);
   assert.equal(await page.locator('.uw-editor-recovery').count(),0);
   assert.deepEqual(errors,[]);
-  console.log('PASS: production editor; auth isolation; autosave/reopen; formatting; typed/pasted counts; library/folders/trash; conflicts; consent and AI approval; profile and sources; import/export; focus/themes; 320/390/768/1440px EN/ES; offline create/edit/reload/reconnect; Free downgrade/renewal and offline denial; Pro.');
+  console.log('PASS: production editor; auth isolation; autosave/reopen; formatting; typed/pasted counts; library/folders/trash; conflicts; consent and coaching without insertion; profile and sources; import/export; focus/themes; 320/390/768/1440px EN/ES; offline create/edit/reload/reconnect; Free editor denial and preserved drafts; verified Pro and Lifetime access.');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

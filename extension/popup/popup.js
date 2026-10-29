@@ -314,9 +314,10 @@ function renderWriteDashboard() {
   if (!settings) return;
   const activeWords = state?.active && dayKey(state.startedAt) === dayKey(Date.now()) ? (state.typedWords || 0) : 0;
   const words = window.WCWritingProgress.withActive(completedWordsToday, state, settings.profile?.timezone);
-  const goal = isPro() ? Number(settings.wordGoal || 0) : 0;
+  const goal = Number(settings.wordGoal || 0);
   const percent = goal > 0 ? Math.min(100, Math.max(0, Math.round(words / goal * 100))) : 0;
   $('daily-word-count').textContent = fmtNumber(words);
+  renderStreakNotice();
   $('daily-word-count').style.fontSize = words >= 100000 ? '32px' : '';
   $('daily-word-target').textContent = goal > 0 ? t('dashboard.ofGoal', { n: fmtNumber(goal) }) : t('dashboard.yourWords');
   $('dashboard-daily-goal').textContent = goal > 0 ? fmtNumber(goal) : '—';
@@ -324,8 +325,8 @@ function renderWriteDashboard() {
   $('daily-goal-ring').style.setProperty('--progress', `${percent}%`);
   $('daily-goal-ring').setAttribute('aria-valuenow', String(percent));
   $('daily-goal-ring').setAttribute('aria-label', t('dashboard.dailyGoal'));
-  const streak = streakValue + (activeWords > 0 && completedWordsToday === 0 ? 1 : 0);
-  $('dashboard-streak').textContent = t('dashboard.days', { n: fmtNumber(streak) });
+  const streak = streakValue;
+  $('dashboard-streak').textContent = streak == null ? '—' : t('dashboard.days', { n: fmtNumber(streak) });
   const duration = state?.active ? Date.now() - (state.startedAt || Date.now()) :
     Math.max(0, (state?.lastResult?.endedAt || 0) - (state?.lastResult?.startedAt || 0));
   $('dashboard-session-time').textContent = fmtDuration(duration).replace(/^00:/, '');
@@ -345,7 +346,7 @@ async function refreshProgress(manual = false) {
   if (manual) buttons.forEach(button => { button.disabled = true; });
   try {
     if (manual && account.authenticated) await sendMessage({ type: 'SYNC_EDITOR_ACTIVITY' });
-    const response = await sendMessage({ type: 'GET_PROGRESS', range: progRange });
+    const response = await sendMessage({ type: 'GET_PROGRESS', range: progRange, refreshStreak: manual });
     if (request !== progressRequest) return;
     if (!response.ok) {
       if (manual) $('progress-refresh-status').textContent = t('dashboard.refreshFailed');
@@ -354,7 +355,7 @@ async function refreshProgress(manual = false) {
     state = response.payload;
     if (response.settings) settings = response.settings;
     completedWordsToday = response.today.totalWords || 0;
-    streakValue = response.streak || 0;
+    streakValue = response.streak;
     renderSession();
     renderProgressStats(response.stats, progRange);
     els.progStreak.hidden = streakValue === 0;
@@ -402,6 +403,7 @@ function renderCloudMemory() {
 
 let libraryRequestVersion = 0;
 async function openLibrary(filter = libraryFilter) {
+  if (!account.aiAccess) { openUpgrade(); return; }
   const version = ++libraryRequestVersion;
   els.library.setAttribute('aria-busy', 'true');
   try {
@@ -481,7 +483,7 @@ function renderSession() {
   } else {
     setStatus('idle');
     renderCount(0);
-    renderGoal(0, isPro() ? (settings?.wordGoal || 0) : 0);
+    renderGoal(0, settings?.wordGoal || 0);
     els.durationRow.hidden = true;
     els.primaryBtn.textContent = t('session.start');
     els.primaryBtn.dataset.variant = '';
@@ -564,7 +566,7 @@ function renderStreak() {
 }
 async function refreshStreak() {
   const r = await sendMessage({ type: 'GET_STREAK' });
-  streakValue = r.ok ? (r.streak || 0) : 0;
+  streakValue = r.ok ? r.streak : null;
   renderStreak();
   renderWriteDashboard();
 }
@@ -613,7 +615,7 @@ function renderProgressStats(s, range) {
   els.progPrimary.textContent = fmtNumber(s.totalWords);
   els.progPrimarySub.textContent = t(`dash.primarySub.${range}`);
   els.progSessions.textContent = fmtNumber(s.sessionCount);
-  if (range === 'today' && isPro() && (settings?.wordGoal || 0) > 0) {
+  if (range === 'today' && (settings?.wordGoal || 0) > 0) {
     const goal = settings.wordGoal;
     const pct = Math.min(999, Math.round((s.totalWords / goal) * 100));
     els.progProgress.textContent = `${t('dash.goal')} ${fmtNumber(goal)} · ${pct}%`;
@@ -652,7 +654,7 @@ async function openProgress() {
 }
 
 function renderGoal(current, goal) {
-  if (!isPro() || !goal || goal <= 0) {
+  if (!goal || goal <= 0) {
     els.countGoal.hidden = true;
     return;
   }
@@ -1596,7 +1598,9 @@ function renderSettings() {
     : t('settings.privacy');
 
   // Pro badges visibility
-  [els.historyProBadge, $('goal-pro-badge'), $('themes-pro-badge')].forEach((b) => { if (b) b.hidden = isPro(); });
+  [els.historyProBadge, $('themes-pro-badge')].forEach((b) => { if (b) b.hidden = isPro(); });
+
+  if ($('goal-pro-badge')) $('goal-pro-badge').hidden = true;
 
   // Reset editors closed
   els.goalEditor.hidden = true;
@@ -1627,7 +1631,7 @@ async function loadUsage() {
   const owner = account.userId, version = ++usageVersion;
   if (!owner || !account.authenticated || !account.aiAccess || account.online === false) { usage = null; return; }
   try {
-    const summary = await window.WCApi.get('/ai/usage/summary');
+    const summary = await window.WCApi.get('/ai/usage/summary?timezone=' + encodeURIComponent(settings?.profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone));
     if (version === usageVersion && owner === account.userId && account.authenticated && account.aiAccess) usage = summary.user_id === owner ? summary : null;
   } catch (_error) {
     if (version === usageVersion && owner === account.userId) usage = null;
@@ -1641,7 +1645,7 @@ async function refreshUsage() {
 
 function renderUsage() {
   if (!els.aiUsageMeta) return;
-  if (!usage || account.online === false || usage.date !== new Date().toISOString().slice(0, 10)) {
+  if (!usage || account.online === false || usage.daily_reset_at && Date.now() >= Date.parse(usage.daily_reset_at)) {
     els.aiUsageMeta.textContent = t('aiSettings.usageUnavailable');
     els.aiUsageBar.hidden = true;
     return;
@@ -1653,7 +1657,15 @@ function renderUsage() {
       remaining: fmtNumber(usage.remaining),
     });
     if (usage.pending_today > 0) els.aiUsageMeta.textContent += ' · ' + t('aiSettings.usagePending', { n: fmtNumber(usage.pending_today) });
-    els.aiUsageMeta.textContent += ' ' + t('aiSettings.usageShared');
+    const es = getLang() === 'es';
+    if (!usage.legacy_shared) {
+      els.aiUsageMeta.textContent += ` · ${es ? 'Sugerencias este mes' : 'Suggestions This Month'}: ${usage.suggestions_monthly_used} / ${usage.suggestions_monthly_limit} (${usage.suggestions_monthly_remaining} ${es ? 'disponibles' : 'left'})`;
+      els.aiUsageMeta.textContent += ` · ${es ? 'Guía de escritura' : 'Writing Guidance'}: ${usage.guidance_monthly_used} / ${usage.guidance_monthly_limit} (${usage.guidance_monthly_remaining} ${es ? 'disponibles' : 'left'})`;
+    } else els.aiUsageMeta.textContent += es ? ' · Plan protegido' : ' · Protected legacy plan';
+    const date = value => new Date(value).toLocaleString(es ? 'es' : 'en', {timeZone: usage.timezone});
+    if (usage.daily_reset_at) els.aiUsageMeta.textContent += ` · ${es ? 'Restablecimiento diario' : 'Daily reset'}: ${date(usage.daily_reset_at)}`;
+    if (usage.monthly_reset_at) els.aiUsageMeta.textContent += ` · ${es ? 'Restablecimiento mensual' : 'Monthly reset'}: ${date(usage.monthly_reset_at)}`;
+    els.aiUsageMeta.textContent += es ? ' · Compartido con el editor. Sin acumulación.' : ' · Shared with the editor. No rollover.';
     const pct = Math.max(0, Math.min(100, Math.round((usage.used_today / usage.daily_limit) * 100)));
     els.aiUsageBar.hidden = false;
     els.aiUsageBar.style.cssText = 'height:6px;border-radius:999px;background:rgba(128,128,128,.18);overflow:hidden;margin-top:6px;';
@@ -2318,7 +2330,7 @@ function wire() {
   document.querySelectorAll('[data-idea-mode]').forEach(button => button.addEventListener('click', () => openIdeas(button.dataset.ideaMode)));
   $('dashboard-more-ideas').addEventListener('click', () => openIdeas());
   $('ideas-open-saved').addEventListener('click', () => openLibrary('saved'));
-  $('dashboard-goal-action').addEventListener('click', async () => { if (isPro()) { await openSettings(); toggleGoalEditor(); } else openUpgrade(); });
+  $('dashboard-goal-action').addEventListener('click', async () => { await openSettings(); toggleGoalEditor(); });
   ['ideas-account-action', 'library-account-action'].forEach(id => $(id).addEventListener('click', () => openSettings()));
   $('link-content-close').addEventListener('click', () => $('link-content-dialog').close());
   $('link-edit-cancel').addEventListener('click', () => $('link-edit-dialog').close());
@@ -2460,7 +2472,7 @@ function wire() {
     });
   } catch (_e) { /* preview */ }
   window.addEventListener('focus', scheduleProgressRefresh);
-  window.addEventListener('focus', () => void refreshUsage());
+  window.addEventListener('focus', async () => {const r=await sendMessage({type:'GET_ACCOUNT'});if(r.ok){account=r.account;await refreshProgress();}void refreshUsage();});
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { scheduleProgressRefresh(); void refreshUsage(); } });
   const usageTicker = setInterval(() => { if (!document.hidden) void refreshUsage(); }, 30000);
   window.addEventListener('unload', () => clearInterval(usageTicker));
@@ -2507,3 +2519,15 @@ async function boot() {
 
 document.addEventListener('DOMContentLoaded', boot);
 window.addEventListener('unload', stopDurationTicker);
+
+function renderStreakNotice(){
+ let note=document.getElementById('writing-streak-notice');
+ if(!note){note=document.createElement('div');note.id='writing-streak-notice';note.className='wc__library-note';document.getElementById('session-panel')?.appendChild(note);if(!note.isConnected)document.getElementById('open-writing-editor')?.parentElement?.appendChild(note);}
+ if(!note)return;note.replaceChildren();const es=getLang()==='es';
+ const text=document.createElement('p');
+ text.textContent=!account.authenticated?(es?'Inicia sesión para sincronizar tu racha de forma segura.':'Sign in to sync your streak securely.'):
+ !isPro()&&streakValue>=7?(es?'¡Has creado un hábito de 7 días! Tu recorrido continúa: seguimos registrando tu actividad. Pro muestra tu racha completa.':"You've Built a 7-Day Writing Habit! Your Writing Journey Continues. Your activity is still tracked; Pro reveals your full qualifying streak."):
+ (es?'Tu actividad de escritura se sincroniza como datos de progreso, sin el texto.':'Writing activity syncs as progress metadata, without your writing text.');note.appendChild(text);
+ if(account.authenticated){const sync=document.createElement('button');sync.type='button';sync.className='wc__link-btn';sync.textContent=es?'Sincronizar historial de este dispositivo':'Sync this device’s writing history';sync.onclick=async()=>{sync.disabled=true;const r=await sendMessage({type:'SYNC_DEVICE_PROGRESS'});if(r.ok)await refreshProgress();else text.textContent=es?'No se pudo sincronizar. Tu historial sigue en este dispositivo.':'Sync unavailable. Your history is still on this device.';sync.disabled=false;};note.appendChild(sync);}
+ if(!isPro()&&streakValue>=7){const upgrade=document.createElement('button');upgrade.type='button';upgrade.className='wc__link-btn';upgrade.textContent=es?'Desbloquear rachas ilimitadas':'Unlock Unlimited Streaks';upgrade.onclick=openUpgrade;note.appendChild(upgrade);}
+}

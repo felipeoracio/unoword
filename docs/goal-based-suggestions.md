@@ -1,5 +1,7 @@
 # Goal-based writing suggestions
 
+> Current behavior: [writing coach, versioned allowances, Pro permissions, and verified streak presentation](writing-coach-plans-and-streaks.md) supersedes older feature/allowance descriptions below.
+
 New personalized suggestions use the current daily goal and **typed words today**
 from the existing dashboard. The backend calculates `max(0, goal - written)`
 before calling AI. Pasted text, imported editor history and manually checked

@@ -33,19 +33,19 @@ const examples = [
     ],
   },
   {
-    name: "Improve",
-    title: "Keep your voice. Find your flow.",
-    text: "Review a suggestion before changing your words.",
+    name: "Questions",
+    title: "Your words. Your next direction.",
+    text: "Reflective questions to help you develop your own ideas.",
     items: [
-      "Make a thought a little clearer",
-      "Find a more natural rhythm",
-      "Keep the details that feel like you",
+      "Which detail could make your opening more specific?",
+      "What changed your perspective?",
+      "How could your ending connect to your beginning?",
     ],
   },
   {
-    name: "Continue",
+    name: "Guidance",
     title: "Where could this thought lead?",
-    text: "A few possible directions for your next paragraph.",
+    text: "Short questions and structural advice. No generated prose.",
     items: [
       "Begin with a moment you remember",
       "Explore what changed your perspective",
@@ -72,7 +72,7 @@ export default function ProductPreview() {
   return (
     <figure
       className="lp-showcase"
-      aria-label="Illustrative UnoWord writing editor with fictional content"
+      aria-label="Illustrative UnoWord Pro writing editor with fictional content"
     >
       <div className="lp-window-dots" aria-hidden="true">
         <i />
@@ -212,7 +212,7 @@ export default function ProductPreview() {
         </div>
       </div>
       <figcaption>
-        Illustrative editor preview · Fictional writing and AI examples
+        Pro writing workspace · Illustrative preview · Fictional writing and coaching examples
       </figcaption>
     </figure>
   );

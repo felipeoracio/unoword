@@ -15,6 +15,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 from openai import AsyncOpenAI, OpenAIError
+from lib.ai_quota import record_provider_call
+from types import SimpleNamespace
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +87,10 @@ class EmbeddingsService:
                 encoding_format="float",
             )
         except OpenAIError as error:
+            await record_provider_call(self._model, status="failed")
             logger.warning("embedding_failed model=%s error=%s", self._model, error)
             return None
+        await record_provider_call(self._model, SimpleNamespace(input_tokens=getattr(getattr(response, "usage", None), "prompt_tokens", None), output_tokens=0))
         vector = response.data[0].embedding
         if len(vector) != EMBEDDING_DIMENSIONS:
             logger.error(
@@ -127,10 +131,12 @@ class EmbeddingsService:
             response = await self._client.embeddings.create(
                 model=self._model, input=list(missing.values()), encoding_format="float", timeout=25.0,
             )
+            await record_provider_call(self._model, SimpleNamespace(input_tokens=getattr(getattr(response, "usage", None), "prompt_tokens", None), output_tokens=0))
             by_index = {item.index: item.embedding for item in response.data}
             if set(by_index) != set(range(len(missing))) or any(len(v) != EMBEDDING_DIMENSIONS for v in by_index.values()):
                 return results
         except OpenAIError:
+            await record_provider_call(self._model, status="failed")
             logger.warning("embedding_batch_failed model=%s", self._model)
             return results
         vectors = dict(zip(missing, (by_index[i] for i in range(len(missing)))))

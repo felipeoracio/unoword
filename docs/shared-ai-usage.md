@@ -1,5 +1,7 @@
 # Shared AI usage
 
+> Current behavior: [writing coach, versioned allowances, Pro permissions, and verified streak presentation](writing-coach-plans-and-streaks.md) supersedes older feature/allowance descriptions below.
+
 The writing editor and Chrome extension use **one daily AI request allowance per
 account**, enforced on the backend and serialized in PostgreSQL. Nothing changes
 subscription prices, trial terms, entitlement grants or Free Quick Prompt.

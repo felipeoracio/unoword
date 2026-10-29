@@ -11,6 +11,7 @@ const DICT: Record<string, { en: string; es: string }> = {
   "nav.overview": { en: "Overview", es: "Resumen" },
   "nav.users": { en: "Users", es: "Usuarios" },
   "nav.subscriptions": { en: "Subscriptions", es: "Suscripciones" },
+  "nav.ai": { en: "AI Management", es: "Gestión de IA" },
   "nav.writing": { en: "Writing Activity", es: "Actividad de escritura" },
   "nav.feedback": { en: "Feedback", es: "Comentarios" },
   "nav.health": { en: "System Health", es: "Estado del sistema" },

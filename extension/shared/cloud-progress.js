@@ -1,0 +1,41 @@
+/** Metadata-only activity sync helpers. No writing content and no streak math. */
+(function (root) {
+  function session(row, now) {
+    if (!row?.startedAt || !row.ownerId || row.source === "editor") return null;
+    return {
+      key: "session:" + row.startedAt,
+      started_at: new Date(row.startedAt).toISOString(),
+      typed_words: Math.max(0, Math.floor(row.typedWords || 0)),
+      pasted_words: Math.max(0, Math.floor(row.pastedWords || 0)),
+      duration_seconds: Math.min(
+        86400,
+        Math.max(0, Math.floor(((row.endedAt || now) - row.startedAt) / 1000)),
+      ),
+      sequence: row.progressVersion || now,
+    };
+  }
+  function cached(value, owner, paid, timezone, now) {
+    if (
+      !value ||
+      value.user_id !== owner ||
+      value.timezone !== timezone ||
+      Date.parse(value.asOf) > now + 30000 ||
+      now - Date.parse(value.asOf) > 86400000
+    )
+      return null;
+    // Cached offline results never expose a previously paid streak to Free.
+    const permitted = paid
+      ? value.displayedStreak
+      : Math.min(value.displayedStreak, 7);
+    return {
+      displayedStreak: permitted,
+      hasUnlimitedStreakAccess: !!paid,
+      streakLimitReached: !paid && permitted >= 7,
+      journeyContinues: !paid && permitted >= 7,
+      offline: true,
+    };
+  }
+  const api = { session, cached };
+  root.WCCloudProgress = api;
+  if (typeof module !== "undefined") module.exports = api;
+})(typeof self !== "undefined" ? self : globalThis);

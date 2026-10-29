@@ -260,6 +260,7 @@ async def activity(
         "writing_activity",
         user,
         select="*",
+        source="eq.editor",
         order="started_at.desc,id.asc",
         limit="1000",
         offset=str(offset),
@@ -396,7 +397,8 @@ async def source_permission(
 class Assistance(Owned):
     writing_progress: WritingProgress | None = None
     document_id: UUID
-    action: Literal["next", "continue", "block", "brainstorm", "improve"]
+    action: Literal["next", "guidance", "continue", "block", "brainstorm"]
+    request_id: UUID | None = None
     consent: bool = False
     current_text: str = Field(default="", max_length=200000)
     selected_text: str = Field(default="", max_length=12000)
@@ -411,8 +413,79 @@ async def assistant(
     if not payload.consent:
         raise HTTPException(422, "document_ai_consent_required")
     await document(payload.document_id, user)
-    if payload.action == "improve" and not payload.selected_text.strip():
-        raise HTTPException(422, "select_text_first")
+    # Older extension/editor clients may still send continue; it now means guidance.
+    if payload.action == "continue":
+        payload = payload.model_copy(update={"action": "guidance"})
     from lib.workspace_ai import generate_assistance
 
     return await generate_assistance(payload, user)
+
+
+@router.get("/recovery/index")
+async def recovery_index(
+    offset: int = Query(default=0, ge=0),
+    user: AuthenticatedUser = Depends(require_user),
+):
+    """Downgrades lock editing, not the ability to retrieve one's existing work."""
+    try:
+        return await service_rest(
+            "GET",
+            "writing_documents",
+            params={
+                "user_id": f"eq.{user.id}",
+                "select": "id,title,updated_at",
+                "order": "updated_at.desc,id.asc",
+                "limit": "100",
+                "offset": str(offset),
+            },
+        )
+    except SupabaseAPIError as error:
+        raise HTTPException(503, "workspace_storage_unavailable") from error
+
+
+@router.get("/recovery/{document_id}/export/{format}")
+async def recovery_export(
+    document_id: UUID,
+    format: Literal["txt", "md", "docx", "pdf"],
+    user: AuthenticatedUser = Depends(require_user),
+):
+    try:
+        found = await service_rest(
+            "GET",
+            "writing_documents",
+            params={
+                "id": f"eq.{document_id}",
+                "user_id": f"eq.{user.id}",
+                "select": "title,content",
+                "limit": "1",
+            },
+        )
+    except SupabaseAPIError as error:
+        raise HTTPException(503, "workspace_storage_unavailable") from error
+    if not found:
+        raise HTTPException(404, "document_not_found")
+    # Reuse the existing sanitized exporters; this path never saves or edits.
+    content = clean_document(found[0]["content"])
+    title = found[0]["title"]
+    if format == "docx":
+        data = to_docx(content, title)
+        media = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    elif format == "pdf":
+        data = to_pdf(content, title)
+        media = "application/pdf"
+    elif format == "md":
+        data = markdown(content).encode()
+        media = "text/markdown"
+    else:
+        data = plain_text(content).encode()
+        media = "text/plain"
+    return Response(
+        data,
+        media_type=media,
+        headers={
+            "Content-Disposition": f'attachment; filename="unoword-document.{format}"',
+            "Cache-Control": "private, no-store",
+        },
+    )

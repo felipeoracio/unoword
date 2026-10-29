@@ -54,7 +54,7 @@ def quota_store(monkeypatch):
     from lib import ai_quota
     from lib.supabase_client import SupabaseAPIError
 
-    state = SimpleNamespace(rows=[], reservations={}, calls=[], fail=None)
+    state = SimpleNamespace(rows=[], reservations={}, calls=[], fail=None, daily=100, monthly=200, guidance=30, on_complete=None, responses={})
     lock = asyncio.Lock()
 
     async def rpc(method, path, *, json):
@@ -66,29 +66,40 @@ def quota_store(monkeypatch):
             owner = json["p_user"]
             rows = [row for row in state.rows if row["user_id"] == owner]
             pending = [r for r in state.reservations.values() if r["user_id"] == owner and r["state"] == "pending"]
-            used = sum(r["request_type"] in {"suggestion", "workspace_assistant"} for r in rows)
-            if path == "rpc/ai_usage_summary":
-                from datetime import datetime, timezone
-                return dict(date=datetime.now(timezone.utc).date().isoformat(), used_today=used,
-                            pending_today=len(pending), total_today=len(rows))
+            used = sum(r.get("feature", "suggestion") == "suggestion" for r in rows)
+            guidance = sum(r.get("feature") == "guidance" for r in rows)
+            ps = sum(r["feature"] == "suggestion" for r in pending)
+            pg = sum(r["feature"] == "guidance" for r in pending)
+            if path == "rpc/ai_coach_state":
+                from datetime import datetime, timezone, timedelta
+                now = datetime.now(timezone.utc)
+                return dict(date=now.date().isoformat(), version_id="version", version_name="Coach test", legacy_shared=False,
+                    timezone=json.get("p_timezone") or "UTC", daily_reset_at=(now+timedelta(days=1)).isoformat(), monthly_reset_at=(now+timedelta(days=30)).isoformat(),
+                    daily_limit=state.daily, used_today=used, pending_today=ps, total_today=len(rows), remaining=max(0,state.daily-used-ps),
+                    suggestions_monthly_limit=state.monthly,suggestions_monthly_used=used,suggestions_monthly_remaining=max(0,state.monthly-used-ps),
+                    guidance_monthly_limit=state.guidance,guidance_monthly_used=guidance,guidance_monthly_remaining=max(0,state.guidance-guidance-pg))
             request = json["p_request"]
-            if path == "rpc/ai_reserve_request":
-                if request in state.reservations or used + len(pending) >= json["p_limit"]:
-                    return False
-                state.reservations[request] = dict(user_id=owner, state="pending", request_type=json["p_type"])
-                return True
+            if path in {"rpc/ai_coach_cost", "rpc/ai_coach_mark_request"}: return None
             reservation = state.reservations.get(request)
-            if not reservation or reservation["user_id"] != owner:
-                return False
-            if path == "rpc/ai_complete_request":
+            if path == "rpc/ai_coach_reserve":
+                if reservation:
+                    if reservation['user_id'] != owner or reservation['fingerprint'] != json['p_fingerprint']: return {'status':'conflict'}
+                    return {'status':'replay','response':state.responses[request]} if reservation['state']=='done' else {'status':'pending'}
+                feature = json['p_feature']
+                reason = ('daily' if used+ps>=state.daily else 'suggestions_monthly' if used+ps>=state.monthly else None) if feature=='suggestion' else ('guidance_monthly' if guidance+pg>=state.guidance else None)
+                if reason: return {'status':'limited','reason':reason}
+                state.reservations[request] = dict(user_id=owner,state='pending',feature=feature,fingerprint=json['p_fingerprint'],request_type='suggestion' if feature=='suggestion' else 'workspace_assistant')
+                return {'status':'reserved'}
+            if not reservation or reservation["user_id"] != owner: return False
+            if path == "rpc/ai_coach_complete":
                 if reservation["state"] != "done":
-                    state.rows.append(dict(id=request, user_id=owner, request_type=reservation["request_type"],
-                                           input_tokens=json["p_input_tokens"], output_tokens=json["p_output_tokens"]))
+                    if state.on_complete: await state.on_complete(json.get('p_suggestions', []))
+                    state.rows.append(dict(id=request,user_id=owner,feature=reservation['feature'],request_type=reservation['request_type'],input_tokens=json['p_input'],output_tokens=json['p_output']))
                     reservation["state"] = "done"
+                    state.responses[request] = json['p_response']
                 return True
-            if path == "rpc/ai_release_request":
-                if reservation["state"] == "pending":
-                    del state.reservations[request]
+            if path == "rpc/ai_coach_release":
+                if reservation["state"] == "pending": del state.reservations[request]
                 return None
             raise AssertionError(path)
 

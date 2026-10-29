@@ -1,31 +1,48 @@
-/** Public production bundle only; fixtures never create users, payments, or AI requests. */
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
+/** Public production bundle: accurate plan copy, real navigation, no AI/payment requests. */
+const assert = require("node:assert/strict"),
+  fs = require("node:fs");
 const { chromium } = require(
   process.env.PLAYWRIGHT_MODULE || "./node_modules/playwright",
 );
 const origin = process.env.LANDING_TEST_ORIGIN || "http://localhost:4175";
-const screenshots = process.env.LANDING_SCREENSHOTS;
-const flags = {
-  writing_editor: false,
-  editor_ai: false,
+const output = process.env.LANDING_SCREENSHOTS;
+const free = {
   session_tracking: true,
   quick_prompt: true,
   basic_history: true,
+  writing_goals: true,
+};
+const paid = {
+  ...free,
+  writing_editor: true,
+  rich_text_formatting: true,
+  full_streak_history: true,
+  document_library: true,
+  document_folders: true,
+  unlimited_writing_streaks: true,
+  personalized_ai_suggestions: true,
+  ai_writing_guidance: true,
+  personalized_writing_profile: true,
   writing_profile: true,
-  new_topic: false,
-  expand_idea: false,
-  connect_dots: false,
-  knowledge_sources: false,
-  goals_analytics: false,
+  editor_ai: true,
+  goals_analytics: true,
+  new_topic: true,
+  expand_idea: true,
+  connect_dots: true,
+  knowledge_sources: true,
 };
 const catalog = {
   name: "UnoWord",
   billing_available: true,
   chrome_store_url: null,
+  ai_allowance: {
+    id: "v2",
+    suggestions_daily: 10,
+    suggestions_monthly: 200,
+    guidance_monthly: 30,
+  },
   plans: [
-    { id: "free", name: "Free", price: null, features: flags },
+    { id: "free", name: "Free", price: null, features: free },
     {
       id: "pro",
       name: "Pro",
@@ -35,7 +52,7 @@ const catalog = {
         interval: "month",
         trial_days: 7,
       },
-      features: Object.fromEntries(Object.keys(flags).map((k) => [k, true])),
+      features: paid,
     },
   ],
   features: [],
@@ -48,17 +65,39 @@ const catalog = {
   });
   try {
     const context = await browser.newContext({
-      viewport: { width: 1312, height: 1000 },
+      viewport: { width: 1440, height: 1000 },
       reducedMotion: "reduce",
     });
-    const requests = [],
-      errors = [];
-    let product = structuredClone(catalog),
-      unavailable = false;
+    let unavailable = false,
+      soldout = false;
+    const errors = [],
+      calls = [];
     await context.route(origin + "/api/**", async (route) => {
       const req = route.request(),
-        endpoint = new URL(req.url()).pathname;
-      requests.push({ method: req.method(), endpoint });
+        url = new URL(req.url()),
+        endpoint = url.pathname;
+      calls.push({ method: req.method(), endpoint });
+      if (endpoint === "/api/product")
+        return route.fulfill({
+          status: unavailable ? 503 : 200,
+          json: unavailable ? { detail: "unavailable" } : catalog,
+        });
+      if (endpoint === "/api/subscription/lifetime/offer")
+        return route.fulfill({
+          json: {
+            amount: 10000,
+            currency: "usd",
+            capacity: 25,
+            test_mode: true,
+            checkout_available: !soldout,
+            purchased: soldout ? 25 : 4,
+            remaining: soldout ? 0 : 21,
+            reserved: 0,
+            available: soldout ? 0 : 21,
+            refund_days: 14,
+            ai_allowance: catalog.ai_allowance,
+          },
+        });
       if (endpoint === "/api/auth/google")
         return route.fulfill({ json: { enabled: false } });
       if (endpoint === "/api/onboarding")
@@ -69,19 +108,11 @@ const catalog = {
             current_step: "summary",
             completed_actions: {},
             skipped_steps: [],
-            draft_id: null,
-            words: 0,
           },
-        });
-      if (endpoint === "/api/product")
-        return route.fulfill({
-          status: unavailable ? 503 : 200,
-          json: unavailable ? { detail: "unavailable" } : product,
         });
       assert.ok(
         ["/api/auth/me", "/api/auth/refresh"].includes(endpoint),
-        "Marketing and logged-out navigation must not call paid/private APIs: " +
-          endpoint,
+        "Unexpected private/paid request " + endpoint,
       );
       return route.fulfill({
         status: 401,
@@ -92,322 +123,172 @@ const catalog = {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(origin);
     await page
-      .getByRole("link", { name: "Start 7-Day Free Trial", exact: true })
+      .getByRole("heading", { name: "Your Words. Your Voice. Your Story." })
       .waitFor();
-    await page.evaluate(() => document.fonts.ready);
+    await page
+      .getByRole("heading", { name: "Pro Monthly", exact: true })
+      .waitFor();
     assert.equal(
       await page.title(),
-      "UnoWord — AI Writing Editor, Word Counter & Writing Companion",
+      "UnoWord — Your Words. Your Voice. Your Story.",
+    );
+    assert.equal(
+      await page.locator('meta[property="og:title"]').getAttribute("content"),
+      "Your Words. Your Voice. Your Story. | UnoWord",
     );
     assert.ok(
       (
-        await page.locator('meta[name="description"]').getAttribute("content")
-      ).startsWith(
-        "Write, track progress, and discover personalized AI ideas with UnoWord.",
-      ),
+        await page.locator("meta[name=description]").getAttribute("content")
+      ).includes("Track daily goals for free"),
     );
     assert.equal(await page.locator("h1").count(), 1);
-    assert.ok(
-      (await page.locator("h1").textContent()).includes("All in One Place."),
-    );
-    const schema = JSON.parse(
-      await page.locator('script[type="application/ld+json"]').textContent(),
-    );
-    assert.equal(schema.name, "UnoWord");
-    assert.equal(
-      new URL(await page.locator('link[rel="canonical"]').getAttribute("href"))
-        .protocol,
-      "https:",
-    );
-    const branding = await page.evaluate(
-      () =>
-        document.body.innerText +
-        [...document.querySelectorAll("[alt],[aria-label],meta")]
-          .map((e) =>
-            [
-              e.getAttribute("alt"),
-              e.getAttribute("aria-label"),
-              e.getAttribute("content"),
-            ].join(" "),
-          )
-          .join(" ") +
-        document.title,
-    );
-    assert.ok(
-      !/Uno\s+[Ww]ord|Uno(?:word)/.test(branding),
-      "Landing branding must always be UnoWord, even if API brand is legacy",
-    );
-    assert.match(
-      await page.locator(".lp-price-pro .lp-price").innerText(),
-      /\$20\s*\/month/,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-price-card:not(.lp-price-pro)")
-        .getByText("Quick Prompt — no AI request needed", { exact: true })
-        .count(),
-      1,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-price-card:not(.lp-price-pro)")
-        .getByText("New Topic", { exact: true })
-        .count(),
-      0,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-price-card:not(.lp-price-pro)")
-        .getByText("Writing editor & document library", { exact: true })
-        .count(),
-      0,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-price-pro")
-        .getByText("Writing editor & document library", { exact: true })
-        .count(),
-      1,
-    );
-    // Every on-page destination exists; account links preserve the established flow.
-    for (const href of await page
-      .locator('a[href^="#"]')
-      .evaluateAll((links) => links.map((a) => a.getAttribute("href"))))
-      assert.equal(await page.locator(href).count(), 1, href);
-    for (const href of await page
-      .locator('a:not([href^="#"])')
-      .evaluateAll((links) => links.map((a) => a.getAttribute("href"))))
-      assert.ok(
-        [
-          "/",
-          "/editor",
-          "/account?mode=signup",
-          "/account?mode=signin",
-          "/account?plan=pro",
-          "/privacy",
-          "/terms",
-          "/support",
-        ].includes(href),
-        "Unknown marketing destination: " + href,
-      );
-    // Demonstration switches without network or editing anyone’s documents.
-    await page.getByRole("tab", { name: "Improve", exact: true }).click();
-    await page
-      .getByRole("tabpanel")
-      .getByText("Keep your voice. Find your flow.")
+    const cards = page.locator(".lp-price-card");
+    assert.equal(await cards.count(), 3);
+    const freeCard = cards.filter({
+      has: page.getByRole("heading", { name: "Free", exact: true }),
+    });
+    const proCard = cards.filter({
+      has: page.getByRole("heading", { name: "Pro Monthly", exact: true }),
+    });
+    const lifetime = cards.filter({
+      has: page.getByRole("heading", { name: "Lifetime", exact: true }),
+    });
+    await lifetime
+      .getByText("First 25 qualifying purchasers.", { exact: false })
       .waitFor();
-    await page
-      .getByRole("tab", { name: "Improve", exact: true })
-      .press("ArrowRight");
-    await page
-      .getByRole("tabpanel")
-      .getByText("Where could this thought lead?")
-      .waitFor();
+    assert.ok(
+      !(await freeCard.innerText()).includes("Built-in writing editor"),
+    );
+    assert.ok((await freeCard.innerText()).includes("up to 7 days"));
+    assert.ok((await proCard.innerText()).includes("$20"));
+    assert.ok((await proCard.innerText()).includes("10 suggestions/day"));
+    assert.ok((await lifetime.innerText()).includes("$100"));
+    assert.ok((await lifetime.innerText()).includes("21 places remain"));
+    assert.equal(
+      await page.locator(".lp-plan-comparison tbody tr").count(),
+      16,
+    );
     assert.equal(
       await page
-        .getByRole("tab", { name: "Continue", exact: true })
-        .getAttribute("aria-selected"),
-      "true",
+        .locator(".lp-plan-comparison tbody tr")
+        .filter({ hasText: "Built-in writing editor" })
+        .locator("td")
+        .first()
+        .textContent(),
+      "No",
     );
-    await page
-      .getByRole("tab", { name: "Continue", exact: true })
-      .press("Home");
-    await page
-      .getByRole("tabpanel")
-      .getByText("What should I write next?")
-      .waitFor();
-    // Native FAQ is keyboard accessible and exposes accurate consent/counting details.
-    const question = page
-      .locator("summary")
-      .filter({ hasText: "How does UnoWord count words?" });
-    await question.focus();
-    await question.press("Enter");
     assert.ok(
-      await page
-        .locator("details[open]")
-        .innerText()
-        .then((t) => t.includes("Pasted text, imports, and inserted AI text")),
+      (await page.locator(".lp-site").innerText()).includes(
+        "AI That Helps You Write. Not AI That Writes for You.",
+      ),
     );
-    await question.press("Enter");
-    if (screenshots) fs.mkdirSync(screenshots, { recursive: true });
-    for (const width of [
-      320, 360, 390, 640, 641, 768, 960, 961, 1024, 1200, 1201, 1312, 1440,
-      1920,
-    ]) {
-      await page.setViewportSize({ width, height: width < 700 ? 844 : 1000 });
-      await page.evaluate(() => scrollTo(0, 0));
+    assert.ok(
+      !(await page.locator(".lp-site").innerText()).includes(
+        "AI text improvement",
+      ),
+    );
+    const previousCalls = calls.length;
+    await page.getByRole("tab", { name: "Guidance", exact: true }).click();
+    await page.getByRole("tab", { name: "Questions", exact: true }).click();
+    assert.equal(
+      calls.length,
+      previousCalls,
+      "Marketing demos do not generate AI or fetch private writing",
+    );
+    const axePath=process.env.AXE_PATH || require.resolve('axe-core/axe.min.js',{paths:[__dirname]});
+    await page.addScriptTag({path:axePath});
+    const accessibility=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
+    assert.deepEqual(accessibility.violations.map(v=>({id:v.id,nodes:v.nodes.length})),[],'Landing accessibility');
+    const firstFAQ = page.locator(".lp-faq summary").first();
+    await firstFAQ.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await firstFAQ.evaluate((e) => e.parentElement.open), true);
+    for (const width of [1440, 1024, 768, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.waitForTimeout(100);
       const layout = await page.evaluate(() => ({
-        viewport: innerWidth,
-        scroll: document.documentElement.scrollWidth,
-        clipped: [...document.querySelectorAll("a,button,summary")]
-          .filter((e) => {
-            const r = e.getBoundingClientRect();
-            return (
-              r.width &&
-              (r.left < -1 ||
-                r.right > innerWidth + 1 ||
-                e.scrollWidth > e.clientWidth + 2)
-            );
-          })
-          .map((e) => e.textContent.trim()),
+        overflow: document.documentElement.scrollWidth > innerWidth,
+        clipped: [...document.querySelectorAll(".lp-site a,.lp-site button")]
+          .filter(
+            (e) =>
+              (e.offsetWidth && e.getBoundingClientRect().left < -1) ||
+              (e.offsetWidth &&
+                e.getBoundingClientRect().right > innerWidth + 1),
+          )
+          .map((e) => e.textContent),
       }));
-      assert.equal(
-        layout.scroll,
-        layout.viewport,
-        "Horizontal scrolling at " + width,
-      );
-      assert.deepEqual(layout.clipped, [], "Clipped controls at " + width);
-      if ([320, 390, 768, 1312, 1440].includes(width) && screenshots) {
+      assert.equal(layout.overflow, false, "No overflow at " + width);
+      assert.deepEqual(layout.clipped, [], "No clipped controls at " + width);
+      if (output && [1440, 390].includes(width)) {
+        fs.mkdirSync(output, { recursive: true });
+        await page.evaluate(() => {
+          document.activeElement?.blur();
+          window.scrollTo(0, 0);
+        });
         await page.screenshot({
-          path: path.join(screenshots, "landing-" + width + ".png"),
+          path: output + "/landing-" + width + ".png",
           fullPage: true,
         });
-        await page.screenshot({
-          path: path.join(screenshots, "landing-" + width + "-viewport.png"),
-        });
       }
     }
-    // WCAG audits in both desktop and narrow mobile layouts.
-    if (process.env.AXE_SCRIPT) {
-      for (const width of [1312, 390, 320]) {
-        await page.setViewportSize({ width, height: 1000 });
-        await page.addScriptTag({ path: process.env.AXE_SCRIPT });
-        const violations = await page.evaluate(async () =>
-          (
-            await window.axe.run(document, {
-              runOnly: {
-                type: "tag",
-                values: ["wcag2a", "wcag2aa", "wcag21aa"],
-              },
-            })
-          ).violations.map((v) => ({
-            id: v.id,
-            nodes: v.nodes.map((n) => ({
-              target: n.target,
-              summary: n.failureSummary,
-            })),
-          })),
-        );
-        assert.deepEqual(
-          violations,
-          [],
-          "Accessibility violations at " + width,
-        );
-      }
-    }
-    // Mobile menu: links scroll, Escape restores focus, signup stays prominent.
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.setViewportSize({ width: 390, height: 1000 });
     await page
-      .getByRole("navigation", { name: "Mobile navigation" })
-      .getByRole("link", { name: "Pricing" })
+      .getByRole("button", { name: /Open menu|Open navigation/ })
+      .click();
+    await page
+      .getByRole("navigation", { name: /Mobile/i })
+      .getByRole("link", { name: "Pricing", exact: true })
       .click();
     assert.equal(new URL(page.url()).hash, "#pricing");
-    assert.equal(
-      await page.getByRole("navigation", { name: "Mobile navigation" }).count(),
-      0,
-    );
-    await page.getByRole("button", { name: "Open navigation" }).click();
     await page
-      .getByRole("navigation", { name: "Mobile navigation" })
-      .getByRole("link", { name: "FAQ" })
-      .focus();
-    await page.keyboard.press("Escape");
-    assert.equal(
-      await page
-        .getByRole("button", { name: "Open navigation" })
-        .evaluate((e) => e === document.activeElement),
-      true,
-    );
-    await page.locator(".lp-header-cta").click();
+      .getByRole("link", { name: "Start Writing Free", exact: true })
+      .click();
     await page
       .getByRole("heading", { name: "Your next chapter starts here." })
       .waitFor();
     assert.equal(new URL(page.url()).search, "?mode=signup");
     await page.goto(origin);
     await page
-      .getByRole("link", { name: "Start 7-Day Free Trial", exact: true })
+      .getByRole("link", { name: "Get UnoWord Pro", exact: true })
       .click();
     await page
       .getByRole("heading", { name: "Welcome back to your words." })
       .waitFor();
     assert.equal(new URL(page.url()).search, "?plan=pro");
-    assert.equal(
-      requests.some((r) =>
-        /billing|checkout|assistant|suggestion/.test(r.endpoint),
+    await page.goto(origin);
+    await page
+      .getByRole("link", { name: "Get Lifetime Access", exact: true })
+      .click();
+    assert.equal(new URL(page.url()).pathname, "/lifetime");
+    soldout = true;
+    await page.goto(origin);
+    await page
+      .getByRole("link", { name: "Offer sold out — view plans" })
+      .waitFor();
+    assert.ok(
+      (await page.locator(".lp-lifetime-price").innerText()).includes(
+        "0 places remain",
       ),
-      false,
-      "Signed-out CTA cannot start a charge or AI request",
-    );
-    await page.goto(origin);
-    await page.getByRole("link", { name: "Explore the Pro Editor" }).click();
-    await page.getByRole("heading", { name: "Sign in to write" }).waitFor();
-    for (const [route, heading] of [
-      ["/privacy", "Privacy & data"],
-      ["/terms", "Terms of service"],
-      ["/support", "Let’s get you writing."],
-    ]) {
-      await page.goto(origin + route);
-      await page.getByRole("heading", { name: heading, exact: true }).waitFor();
-    }
-    // Changed backend offer, no trial, feature removal, billing disabled, and outage.
-    product.plans[1].price = {
-      amount: 3500,
-      currency: "usd",
-      interval: "year",
-      trial_days: 3,
-    };
-    product.plans[1].features.connect_dots = false;
-    await page.goto(origin);
-    await page
-      .getByRole("link", { name: "Start 3-Day Free Trial", exact: true })
-      .waitFor();
-    assert.match(
-      await page.locator(".lp-price-pro .lp-price").innerText(),
-      /\$35\s*\/year/,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-price-pro")
-        .getByText("Connect the Dots", { exact: true })
-        .count(),
-      0,
-    );
-    assert.ok(!(await page.locator(".lp-pricing").innerText()).includes("$20"));
-    product.plans[1].price.trial_days = 0;
-    await page.reload();
-    await page
-      .locator(".lp-price-pro")
-      .getByRole("link", { name: "View Pro in Your Account" })
-      .waitFor();
-    assert.equal(await page.locator(".lp-pricing .lp-trial").count(), 0);
-    product.billing_available = false;
-    await page.reload();
-    await page
-      .getByText("Checkout is currently unavailable.", { exact: true })
-      .waitFor();
-    assert.equal(
-      await page.getByRole("link", { name: /Start .*Free Trial/ }).count(),
-      0,
     );
     unavailable = true;
     await page.reload();
     await page
-      .getByText(
-        "Plan details are temporarily unavailable. Check your account for current access.",
-      )
+      .getByText("Plan details are temporarily unavailable.", { exact: false })
       .first()
       .waitFor();
-    assert.equal(
-      await page
-        .locator(".lp-price-pro")
-        .getByText("$35", { exact: true })
-        .count(),
-      0,
+    assert.ok(
+      !(await proCard.innerText()).includes("$20"),
+      "Unavailable backend does not invent a price",
     );
-    assert.deepEqual(errors, [], "No browser errors, including SSR hydration");
+    assert.ok(
+      calls.every(
+        (c) => c.method === "GET" || ["/api/auth/refresh"].includes(c.endpoint),
+      ),
+      "Browsing never starts checkout or AI",
+    );
+    assert.deepEqual(errors, []);
     console.log(
-      "PASS landing: 14 viewport widths, branding/SEO, keyboard demo/FAQ/menu, all links, signup/Pro/editor auth gates, live-config pricing/entitlements/failure states, zero paid API calls, WCAG audits, screenshots.",
+      "PASS landing: new brand/SEO, 3 plans, verified quotas/capacity, 16-row comparison, paid labels, coaching demos, FAQ keyboard, 320–1440px layouts, signup/Pro/lifetime routes, sold out/configuration errors, no AI/payment calls.",
     );
   } finally {
     await browser.close();

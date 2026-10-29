@@ -4,6 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 
 from lib.auth import AuthenticatedUser, require_user
 from lib.ai_access import entitlement_is_active, get_entitlement
+from lib.plans import plan_features
 from lib.supabase_client import SupabaseAPIError, auth_request, raise_http
 from models.auth import AuthCredentials, AuthResult, AuthUser
 from lib.request_security import limit_sensitive
@@ -133,6 +134,7 @@ async def me(user: AuthenticatedUser = Depends(require_user)) -> AuthUser:
         email=identity.get("email"),
         plan=entitlement.get("plan") if entitlement else None,
         ai_access=entitlement_is_active(entitlement),
+        features=plan_features("pro" if entitlement_is_active(entitlement) else "free"),
     )
 
 

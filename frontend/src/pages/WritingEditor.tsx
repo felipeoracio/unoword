@@ -1,3 +1,6 @@
+import WritingRecovery from "@/components/WritingRecovery";
+import { useWritingStreak } from "@/lib/use-writing-streak";
+import AIUsage from "@/components/AIUsage";
 import WritingTour from "@/components/onboarding/WritingTour";
 import WritingTask from "@/components/WritingTask";
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -55,7 +58,6 @@ import {
   fetchDocumentIndex,
   writingEngine,
   writingDates,
-  writingHistory,
   writingProgress,
   prompts,
   editorError,
@@ -105,13 +107,12 @@ const spanish: Record<string, string> = {
   "Start with a question, follow a thought, see where it takes you.":
     "Empieza con una pregunta, sigue una idea y descubre a dónde te lleva.",
   "What should I write next?": "¿Qué debería escribir ahora?",
-  "Continue writing": "Continuar escribiendo",
+  "Help Me Continue": "Ayúdame a continuar",
   "Overcome writer’s block": "Superar el bloqueo",
   "Brainstorm ideas": "Lluvia de ideas",
-  "Improve selected text": "Mejorar el texto seleccionado",
-  "Share this draft and selected text for this AI request.":
+  "Share this draft for this AI request.":
     "Compartir este borrador y el texto seleccionado para esta solicitud de IA.",
-  "AI only reads this draft when you ask. Suggestions never replace your words automatically.":
+  "AI only reads this draft when you ask. Your coach offers questions and directions; every sentence stays yours.":
     "La IA solo lee este borrador cuando lo solicitas. Nunca sustituye tus palabras automáticamente.",
   Generate: "Generar",
   "Thinking…": "Pensando…",
@@ -132,10 +133,11 @@ const spanish: Record<string, string> = {
   "Personalized assistance is included in Pro.":
     "La asistencia personalizada está incluida en Pro.",
   "View plans": "Ver planes",
-  "Your writing workspace is a Pro feature":
-    "Tu espacio de escritura es una función Pro",
-  "Upgrade to Pro to use the writing editor and document library. Your existing documents and local drafts are preserved.":
-    "Mejora a Pro para usar el editor de escritura y la biblioteca de documentos. Tus documentos y borradores locales se conservan.",
+  "Unlock Your Writing Space": "Desbloquea tu espacio de escritura",
+  "Create, format, and organize your writing in one dedicated workspace with UnoWord Pro. Your saved writing is preserved.":
+    "Crea, da formato y organiza tu escritura en UnoWord Pro. Tus documentos se conservan.",
+  "Unlock UnoWord Pro": "Desbloquear UnoWord Pro",
+  "View Plans": "Ver planes",
   "View Pro plans": "Ver planes Pro",
   "Back to home": "Volver al inicio",
   "AI needs an internet connection.": "La IA necesita conexión a internet.",
@@ -228,13 +230,6 @@ export default function WritingEditor() {
   const ws = useWritingWorkspace();
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
-  const aiUsage = useAIUsage(userId, Boolean(ws.user?.ai_access && ws.online));
-  const usage =
-    ws.online &&
-    !aiUsage.isError &&
-    aiUsage.data?.date === new Date().toISOString().slice(0, 10)
-      ? aiUsage.data
-      : null;
   const [language, setLanguage] = useState(
     () =>
       localStorage.getItem("uno-writing-language") ||
@@ -257,6 +252,20 @@ export default function WritingEditor() {
     [timeZone, setTimeZone] = useState(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
     );
+  const aiUsage = useAIUsage(
+    userId,
+    Boolean(ws.user?.ai_access && ws.online),
+    timeZone,
+  );
+  const usage =
+    ws.online &&
+    !aiUsage.isError &&
+    Boolean(
+      aiUsage.data?.daily_reset_at &&
+      Date.now() < Date.parse(aiUsage.data.daily_reset_at),
+    )
+      ? aiUsage.data
+      : null;
   const [now, setNow] = useState(Date.now());
   const [extensionSessions, setExtensionSessions] = useState<
     { id: string; startedAt: number; typedWords: number }[]
@@ -332,13 +341,6 @@ export default function WritingEditor() {
     activeSeconds = useRef(0);
   const inputKind = useRef("insertText"),
     loadedDocument = useRef("");
-  const selectedForAI = useRef<{
-    id: string;
-    from: number;
-    to: number;
-    text: string;
-    fingerprint: string;
-  } | null>(null);
   const aiOwner = useRef<string | null>(null);
   const aiRequest = useRef(0);
   const ownerRef = useRef(ws.user?.id);
@@ -655,7 +657,6 @@ export default function WritingEditor() {
     setAiItems([]);
     setAiError("");
     setConsent(false);
-    selectedForAI.current = null;
   }, [ws.selected]);
   useEffect(() => {
     if (profileOpen) profileDialog.current?.showModal();
@@ -731,17 +732,16 @@ export default function WritingEditor() {
     ...extensionSessions,
   ];
   const todayWords = writingProgress.total(progressSessions, now, timeZone);
-  const streak = writingHistory.computeStreak(
-    [
-      ...extensionSessions,
-      ...ws.activities.map((a) => ({
-        typedWords: a.typed_words,
-        startedAt: Date.parse(a.started_at),
-      })),
-    ],
+  const streakQuery = useWritingStreak(
+    userId,
+    Boolean(ws.user?.ai_access),
     timeZone,
-    now,
+    ws.activities.map((a) => `${a.id}:${a.sequence}`).join(","),
   );
+  const streak =
+    streakQuery.isError || !ws.online
+      ? "—"
+      : (streakQuery.data?.displayedStreak ?? "—");
   const totalWords = writingEngine.countWords(activeDocument?.plain_text || "");
   const totalWritten = ws.activities.reduce((sum, a) => sum + a.typed_words, 0);
   const sessionWords = session.current?.typed_words || 0;
@@ -753,19 +753,6 @@ export default function WritingEditor() {
     const request = ++aiRequest.current;
     const owner = ws.user.id,
       id = activeDocument.id;
-    const { from, to } = editor.state.selection;
-    const text = editor.state.doc.textBetween(from, to, "\n");
-    if (action === "improve" && !text.trim()) {
-      setAiError(t("Select a passage to improve first."));
-      return;
-    }
-    selectedForAI.current = {
-      id,
-      from,
-      to,
-      text,
-      fingerprint: JSON.stringify(editor.getJSON()),
-    };
     aiOwner.current = owner;
     setAiBusy(true);
     setAiError("");
@@ -780,7 +767,7 @@ export default function WritingEditor() {
           action,
           consent,
           current_text: editor.getText({ blockSeparator: "\n" }),
-          selected_text: action === "improve" ? text : "",
+          request_id: crypto.randomUUID(),
           language,
           writing_progress: writingProgress.snapshot(
             goal,
@@ -807,56 +794,6 @@ export default function WritingEditor() {
     } finally {
       if (ownerRef.current === owner) void aiUsage.refetch();
       if (request === aiRequest.current) setAiBusy(false);
-    }
-  }
-  function applyItem(item: AssistantItem) {
-    if (!editor || !activeDocument || ownerRef.current !== aiOwner.current)
-      return;
-    if (action === "improve" && item.replacement) {
-      const selected = selectedForAI.current;
-      if (
-        !selected ||
-        selected.id !== activeDocument.id ||
-        selected.to > editor.state.doc.content.size ||
-        selected.from >= selected.to ||
-        selected.fingerprint !== JSON.stringify(editor.getJSON()) ||
-        editor.state.doc.textBetween(
-          selected.from,
-          Math.min(selected.to, editor.state.doc.content.size),
-          "\n",
-        ) !== selected.text
-      ) {
-        setAiError(
-          "The selected passage changed. Select it again and generate a fresh suggestion.",
-        );
-        return;
-      }
-      inputKind.current = "insertFromPaste";
-      editor
-        .chain()
-        .focus()
-        .insertContentAt(
-          { from: selected.from, to: selected.to },
-          { type: "text", text: item.replacement },
-        )
-        .run();
-      selectedForAI.current = null;
-    } else {
-      inputKind.current = "insertFromPaste";
-      // Insert plain text as a paragraph. AI output is never interpreted as HTML.
-      editor
-        .chain()
-        .focus()
-        .insertContentAt(editor.state.doc.content.size, {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: item.replacement || `${item.title}\n${item.text}`,
-            },
-          ],
-        })
-        .run();
     }
   }
   function anotherPrompt() {
@@ -1085,16 +1022,17 @@ export default function WritingEditor() {
     return (
       <main className="uw-writing-gate">
         <Brand />
-        <h1>{t("Your writing workspace is a Pro feature")}</h1>
+        <h1>{t("Unlock Your Writing Space")}</h1>
         <p>
           {t(
-            "Upgrade to Pro to use the writing editor and document library. Your existing documents and local drafts are preserved.",
+            "Create, format, and organize your writing in one dedicated workspace with UnoWord Pro. Your saved writing is preserved.",
           )}
         </p>
+        <WritingRecovery owner={ws.user.id} />
         <Link to="/account?plan=pro">
-          {t("View Pro plans")} <ArrowRight size={16} />
+          {t("Unlock UnoWord Pro")} <ArrowRight size={16} />
         </Link>
-        <Link to="/">{t("Back to home")}</Link>
+        <Link to="/account?plan=pro">{t("View Plans")}</Link>
       </main>
     );
 
@@ -1815,45 +1753,13 @@ export default function WritingEditor() {
               </h2>
               <p>
                 {t(
-                  "AI only reads this draft when you ask. Suggestions never replace your words automatically.",
+                  "AI only reads this draft when you ask. Your coach offers questions and directions; every sentence stays yours.",
                 )}
               </p>
             </div>
             {ws.user.ai_access ? (
               <>
-                <div
-                  className="uw-editor-ai-usage"
-                  role="status"
-                  aria-live="polite"
-                >
-                  {usage ? (
-                    <>
-                      <strong>
-                        {language === "es"
-                          ? `${usage.used_today} de ${usage.daily_limit} solicitudes de IA usadas · ${usage.remaining} disponibles`
-                          : `${usage.used_today} of ${usage.daily_limit} AI requests used · ${usage.remaining} left`}
-                      </strong>
-                      {usage.pending_today > 0 && (
-                        <span>
-                          {language === "es"
-                            ? `${usage.pending_today} en curso`
-                            : `${usage.pending_today} in progress`}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <strong>
-                      {language === "es"
-                        ? "Uso de IA no disponible"
-                        : "AI usage unavailable"}
-                    </strong>
-                  )}
-                  <span>
-                    {language === "es"
-                      ? "Compartido con la extensión. Se restablece a medianoche UTC."
-                      : "Shared with the extension. Resets at midnight UTC."}
-                  </span>
-                </div>
+                <AIUsage usage={usage} language={language} />
                 <label className="uw-editor-tool-label">
                   {t("Writing assistant")}
                   <select
@@ -1868,10 +1774,9 @@ export default function WritingEditor() {
                   >
                     {[
                       ["next", "What should I write next?"],
-                      ["continue", "Continue writing"],
+                      ["guidance", "Help Me Continue"],
                       ["block", "Overcome writer’s block"],
                       ["brainstorm", "Brainstorm ideas"],
-                      ["improve", "Improve selected text"],
                     ].map(([value, label]) => (
                       <option key={value} value={value}>
                         {t(label)}
@@ -1885,7 +1790,7 @@ export default function WritingEditor() {
                     checked={consent}
                     onChange={(event) => setConsent(event.target.checked)}
                   />
-                  {t("Share this draft and selected text for this AI request.")}
+                  {t("Share this draft for this AI request.")}
                 </label>
                 <button
                   className="uw-editor-primary"
@@ -1896,7 +1801,12 @@ export default function WritingEditor() {
                     ws.documents.some((document) => document.dirty) ||
                     sourceBusy.size > 0 ||
                     aiBusy ||
-                    usage?.remaining === 0 ||
+                    (usage?.legacy_shared
+                      ? usage.remaining === 0
+                      : action === "guidance"
+                        ? usage?.guidance_monthly_remaining === 0
+                        : usage?.remaining === 0 ||
+                          usage?.suggestions_monthly_remaining === 0) ||
                     !ws.online
                   }
                   onClick={() => void generate()}
@@ -1918,9 +1828,14 @@ export default function WritingEditor() {
                   </p>
                 )}
                 <div className="uw-editor-ai-results" aria-live="polite">
-                  {aiItems.length > 1 && aiItems.some(item => item.writing_task) && <p className="uw-editor-muted">
-                    {language === "es" ? "Elige una dirección. Son alternativas para la misma meta pendiente." : "Choose one direction. These are alternatives for the same remaining goal."}
-                  </p>}
+                  {aiItems.length > 1 &&
+                    aiItems.some((item) => item.writing_task) && (
+                      <p className="uw-editor-muted">
+                        {language === "es"
+                          ? "Elige una dirección. Son alternativas para la misma meta pendiente."
+                          : "Choose one direction. These are alternatives for the same remaining goal."}
+                      </p>
+                    )}
                   {aiItems.map((item, index) => (
                     <article key={index}>
                       <h3>{item.title}</h3>
@@ -1931,20 +1846,6 @@ export default function WritingEditor() {
                         id={item.id || `${index}`}
                         language={language}
                       />
-                      {item.replacement && (
-                        <blockquote>{item.replacement}</blockquote>
-                      )}
-                      <button
-                        disabled={activeDocument?.status !== "active"}
-                        onClick={() => applyItem(item)}
-                      >
-                        {t(
-                          action === "improve"
-                            ? "Apply to selection"
-                            : "Add to document",
-                        )}
-                        <ArrowRight size={14} />
-                      </button>
                     </article>
                   ))}
                 </div>

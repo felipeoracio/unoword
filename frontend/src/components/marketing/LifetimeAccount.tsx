@@ -132,7 +132,8 @@ export default function LifetimeAccount({ user }: { user: AuthUser }) {
       <h2>UnoWord Pro — $100 Lifetime Offer</h2>
       <p>
         A one-time $100 USD purchase for lifetime Pro access. Limited to the
-        first 25 lifetime purchasers, with the current Pro AI usage limits.
+        first 25 lifetime purchasers, with the same AI allowance as new Monthly Pro subscribers.
+        {offer.data?.ai_allowance && <> {offer.data.ai_allowance.suggestions_daily} suggestions/day, {offer.data.ai_allowance.suggestions_monthly} suggestions/calendar month, and {offer.data.ai_allowance.guidance_monthly} Writing Guidance requests/calendar month. No rollover.</>}
       </p>
       <p>
         <strong>Stripe sandbox/test mode.</strong> This flow does not accept

@@ -21,6 +21,8 @@ QUESTIONS = ['What observation changes the decision?', 'What does the second tes
 def system(monkeypatch, quota_store):
     state = {name:[] for name in ('ai_profiles','ai_onboarding_answers','ai_memories','ai_suggestions','ai_usage','ai_feedback')}
     quota_store.rows = state['ai_usage']
+    async def saved(records): state['ai_suggestions'][0:0] = records
+    quota_store.on_complete = saved
     state['ai_documents'] = [dict(id=sid,user_id=A,source_kind='file',document_title=title,summary=text,enabled=True,processing_status='ready')
         for sid,title,text in [(D1,'Solar ferries',TEXT1),(D2,'Clay workshop',TEXT2)]]
     state['ai_document_chunks'] = [dict(id=str(uuid4()),user_id=A,document_id=sid,content=text) for sid,text in [(D1,TEXT1),(D2,TEXT2)]]
@@ -68,7 +70,7 @@ def system(monkeypatch, quota_store):
                 why='Both crafts involve concrete tests.',questions=QUESTIONS,source_ids=self.cited),SuggestionUsage(200,100))
     provider = Provider()
     for name,value in [('_user_rows',rows),('user_rest',rest),('service_rest',service),('_entitlement',entitlement),
-                       ('_resolve_daily_limit',lambda _:100),('get_suggestion_provider',lambda:provider),
+                       ('get_suggestion_provider',lambda:provider),
                        ('get_embeddings_service',lambda:SimpleNamespace(enabled=False)),('retrieve_user_chunks',noop)]:
         monkeypatch.setattr(ai,name,value)
     monkeypatch.setattr(ai.knowledge,'heal_missing_embeddings',noop)
@@ -114,7 +116,7 @@ def test_insufficient_connection_is_honest_without_model_call(system):
     system.state['ai_documents']=system.state['ai_documents'][:1]
     body=system.client.post('/api/ai/suggestion',json={'mode':'connect_dots'}).json()
     assert 'not enough' in body['suggestion'] and not body['inspired_by'] and not system.calls
-    assert system.state['ai_usage'][0]['request_type']=='suggestion_fallback_insufficient_context'
+    assert system.state['ai_usage']==[]
 
 def test_unseen_source_credits_are_discarded(system):
     system.provider.cited=[D1,str(uuid4())]
@@ -126,7 +128,7 @@ def test_one_cited_source_cannot_masquerade_as_a_connection(system):
     system.provider.cited=[D1]
     body=system.client.post('/api/ai/suggestion',json={'mode':'connect_dots'}).json()
     assert 'not enough' in body['suggestion'] and not body['inspired_by']
-    assert system.state['ai_usage'][0]['request_type']=='suggestion_fallback_insufficient_evidence'
+    assert system.state['ai_usage']==[]
 
 def test_save_use_reload_and_user_isolation(system):
     body=system.client.post('/api/ai/suggestion',json={'mode':'connect_dots'}).json()
@@ -167,7 +169,7 @@ def test_provider_failure_returns_basic_prompt_without_consuming_shared_quota(sy
     assert usage_response.headers['Cache-Control'] == 'private, no-store'
     summary = usage_response.json()
     assert (summary['used_today'], summary['pending_today'], summary['remaining']) == (0, 0, 100)
-    assert system.state['ai_usage'][0]['request_type'] == 'suggestion_fallback_provider_error'
+    assert system.state['ai_usage']==[]
 
 @pytest.mark.parametrize('goal,written,target',[(100,0,100),(1000,750,250),(2000,500,1500),(1000,1000,0)])
 @pytest.mark.parametrize('mode',['new_topic','expand_idea','connect_dots'])

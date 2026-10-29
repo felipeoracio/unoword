@@ -1,5 +1,7 @@
 # UnoWord landing page redesign
 
+> Current behavior: [writing coach, versioned allowances, Pro permissions, and verified streak presentation](writing-coach-plans-and-streaks.md) supersedes older feature/allowance descriptions below.
+
 The public `/` route now follows the supplied editor-focused reference: a sticky
 header, two-column hero with a prominent editor illustration, four benefits,
 four feature cards, three onboarding steps, a connected personalization flow,

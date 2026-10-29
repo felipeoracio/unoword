@@ -46,10 +46,17 @@ async def availability():
         "remaining": None,
         "available": None,
         "refund_days": REFUND_DAYS,
-        "daily_ai_limit": effective_ai_limit(),
+        "daily_ai_limit": None,
+        "ai_allowance": None,
         "purchased": None,
         "reserved": None,
     }
+    try:
+        from lib.ai_quota import public_allowance
+        result["ai_allowance"] = await public_allowance()
+        result["daily_ai_limit"] = result["ai_allowance"]["suggestions_daily"]
+    except (HTTPException, SupabaseAPIError):
+        pass
     try:
         rows = await db(
             "GET", "lifetime_orders", params={"select": "status,slot", "limit": "26"}
@@ -132,6 +139,9 @@ async def checkout(user):
         raise HTTPException(503, "lifetime_unavailable")
     c = billing.client()
     await verified_price(c)
+    # Bind the displayed allowance before Checkout; a later scheduled change
+    # cannot alter the terms of this purchase. This never grants Pro access.
+    await db("POST", "rpc/ai_assign_allowance", json={"p_user": user.id})
     async with billing.locked(user.id) as (state, lease):
         previous = await order(user.id)
         if previous and previous["status"] != "reserved":
@@ -458,13 +468,6 @@ async def process_event(event):
             await expired(c, item)
         else:
             await reconcile(c, item, event["id"])
-
-
-def effective_ai_limit():
-    # Same effective cap used by existing AI endpoints for a new Pro grant.
-    from routers.ai import _resolve_daily_limit
-
-    return _resolve_daily_limit({"daily_request_limit": 100})
 
 
 async def refund(user):
