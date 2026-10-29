@@ -1224,3 +1224,123 @@
 .uw-editor-ai-usage span {
   opacity: 0.75;
 }
+
+/* Completion stays independent of folders/archive/trash. */
+.uw-editor-completion-filter {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  padding: 8px 0;
+  color: var(--we-muted);
+}
+.uw-editor-completion-filter select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--we-line);
+  border-radius: 8px;
+  background: var(--we-panel);
+  color: inherit;
+}
+.uw-editor-library-item {
+  min-width: 0;
+}
+.uw-editor-library-item .uw-editor-document {
+  width: 100%;
+}
+.uw-editor-completion-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--we-blue);
+  font-size: 12px;
+}
+.uw-editor-mark-draft,
+.uw-editor-complete,
+.uw-editor-browse {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--we-blue);
+  padding: 7px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.uw-editor-complete {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.uw-editor-browse {
+  margin: 0 auto 16px;
+}
+.uw-editor-completion-notice {
+  padding: 20px;
+  margin: 12px 20px;
+  background: var(--we-soft);
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  color: var(--we-text);
+}
+.uw-editor-completion-notice h2 {
+  font-size: 20px;
+  margin: 8px 0;
+}
+.uw-editor-completion-notice p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.uw-editor-completion-notice button {
+  margin: 5px;
+}
+.uw-editor-session-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--we-line);
+  font-size: 12px;
+}
+.uw-editor-session-controls > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.uw-editor-session-controls > span {
+  color: var(--we-blue);
+  font-weight: 600;
+}
+.uw-editor-session-controls details {
+  margin-left: auto;
+  max-width: 100%;
+}
+.uw-editor-session-controls summary {
+  cursor: pointer;
+}
+.uw-editor-session-controls p {
+  margin: 5px 0;
+}
+.uw-editor-session-controls button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.uw-editor-empty-trash {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--we-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--we-text);
+  margin: 8px 0;
+}

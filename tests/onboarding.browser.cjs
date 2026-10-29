@@ -28,6 +28,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key==='/product')value={name:'UnoWord',billing_available:false,chrome_store_url:null,plans:[],features:[]};
    else if(key==='/auth/google')value={enabled:false};
    else if(key==='/auth/refresh')value={authenticated:true};
+   else if(key==='/ai/usage/summary')value={user_id:currentOwner,version_id:'coach',version_name:'Coach',legacy_shared:false,timezone:'America/Chicago',date:new Date().toISOString().slice(0,10),daily_limit:10,used_today:0,pending_today:0,remaining:10,suggestions_monthly_limit:200,suggestions_monthly_used:0,suggestions_monthly_remaining:200,guidance_monthly_limit:30,guidance_monthly_used:0,guidance_monthly_remaining:30,warning_percent:80,daily_reset_at:new Date(Date.now()+86400000).toISOString(),monthly_reset_at:new Date(Date.now()+30*86400000).toISOString()};
+   else if(key==='/progress/streak')value={user_id:currentOwner,displayedStreak:pro?15:7,hasUnlimitedStreakAccess:pro,streakLimitReached:!pro,journeyContinues:!pro,timezone:'America/Chicago',asOf:new Date().toISOString()};
+   else if(key==='/subscription/lifetime')value={user_id:currentOwner,status:'inactive',can_checkout:false,can_refund:false};
+   else if(key==='/subscription/lifetime/offer')value={amount:10000,currency:'usd',capacity:25,test_mode:true,checkout_available:false,remaining:25,available:25,refund_days:14,daily_ai_limit:10,purchased:0,reserved:0};
+
    else if(key==='/ai/profile'&&method==='GET')value=profile;
    else if(key==='/ai/profile'&&method==='PUT'){assert.equal(body.expected_user_id,currentOwner);Object.assign(profile,body);value=profile;}
    else if(key==='/onboarding'){if(method==='PUT'){const {expected_user_id,...next}=body;tour={...next,completed_actions:{...tour.completed_actions,...next.completed_actions}};}value=tour;}
@@ -55,7 +60,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    else if(key.startsWith('/workspace/sources/')){Object.assign(sources[0],body);value=sources[0];}
    else if(key==='/workspace/assistant'){
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
-    value={items:body.action==='improve'?[{title:'A clearer passage',text:'Keeps your thought and simplifies its rhythm.',replacement:'A careful first step makes room for a better idea.'}]:Array.from({length:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'An angle grounded in your interests in craft and community.',replacement:null}))};
+    value={items:Array.from({length:body.action==='guidance'?1:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'Consider which details connect to your interests. What could you explore next?'}))};
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
   });
@@ -146,7 +151,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   offline=true;await context.setOffline(true);await page.reload();
   await panel.getByRole('heading',{name:'One Sentence Down. Endless Possibilities Ahead.'}).waitFor();
   offline=false;await context.setOffline(false);
-  pro=false;await page.reload();await page.getByRole('heading',{name:'Your writing workspace is a Pro feature'}).waitFor();assert.equal(await panel.count(),0);
+  pro=false;await page.reload();await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();assert.equal(await panel.count(),0);
   await page.goto(origin+'/account');await page.getByRole('region',{name:'UnoWord onboarding'}).getByText('The full writing editor is a Pro feature.',{exact:false}).waitFor();
   pro=true;await page.reload();await page.getByRole('region',{name:'UnoWord onboarding'}).getByRole('link',{name:/Write My First Sentence|Resume UnoWord Tour|Take the UnoWord Tour/}).click();
   await panel.getByRole('heading',{name:'One Sentence Down. Endless Possibilities Ahead.'}).waitFor();

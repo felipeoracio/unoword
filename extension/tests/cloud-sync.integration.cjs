@@ -235,6 +235,29 @@ const root = path.resolve(__dirname, "..");
   await evaluate('flushWritingMetadata()');
   const dayRows=[...server.values()].filter(row=>row.owner===other);
   assert.equal(dayRows.length,2);assert.equal(dayRows.reduce((n,row)=>n+row.typed_words,0),10,'Midnight rollover never duplicates words');
+  // Persistent pause/resume uses the same session on Free; duplicate start is safe.
+  workerNow=Date.parse('2026-10-28T15:00:00Z');
+  await evaluate('startSession()');const sessionStart=storage.wc_state.startedAt;
+  await evaluate('applyDelta({kind:"typed",words:12})');
+  workerNow+=25*60000;await evaluate('pauseOrResumeSession("paused")');
+  assert.equal(storage.wc_state.timer.status,'paused');
+  const pausedSnapshot=structuredClone(storage.wc_state);
+  workerNow+=10*60000;await evaluate('applyDelta({kind:"typed",words:500})');
+  assert.equal(storage.wc_state.typedWords,12,'Paused input never accumulates tracked words');
+  storage.wc_state=structuredClone(pausedSnapshot); // persisted worker/browser restoration
+  await evaluate('startSession()');assert.equal(storage.wc_state.startedAt,sessionStart);
+  assert.equal(storage.wc_state.timer.status,'paused','Duplicate start never resumes a paused session');
+  await evaluate('pauseOrResumeSession("active")');workerNow+=20*60000;
+  await evaluate('stopSession()');const result=storage.wc_state.lastResult;
+  assert.equal(result.startedAt,sessionStart);assert.equal(result.timer.active_ms,45*60000);
+  assert.equal(result.timer.paused_ms,10*60000);
+  const historyCount=storage.wc_history.length;await evaluate('stopSession()');
+  assert.equal(storage.wc_history.length,historyCount,'Ending twice never duplicates history');
+  await evaluate('startSession()');workerNow+=60000;await evaluate('pauseOrResumeSession("paused")');
+  workerNow+=5*60000;await evaluate('stopSession()');
+  assert.equal(storage.wc_state.lastResult.timer.active_ms,60000,'End while paused excludes the break');
+  workerNow=null;
+  console.log('PASS persistent worker sessions: Free pause/resume, 45 active/10 paused/55 elapsed, input suppression, restored pause, duplicate-start/stop protection, same session identity.');
   // Clear pending debounce timers after this standalone worker test.
   vm.runInContext(
     "if(writingMetadataTimer)clearTimeout(writingMetadataTimer)",

@@ -50,6 +50,17 @@ def fixture(monkeypatch):
     async def provider(method, table, token, **kwargs):
         calls.append((method, table, token, deepcopy(kwargs)))
         params = kwargs.get("params", {})
+        if table == "rpc/workspace_empty_trash":
+            requested = kwargs["json"]["p_documents"]
+            removed = [item["id"] for item in requested if item["id"] not in records]
+            deleted = []
+            for item in requested:
+                record = records.get(item["id"])
+                if record and record["status"] == "trashed" and record["revision"] == item["revision"]:
+                    deleted.append(item["id"])
+                    removed.append(item["id"])
+                    del records[item["id"]]
+            return {"deleted_ids": deleted, "removed_ids": removed, "activities": []}
         if table == "rpc/workspace_save_document":
             body = kwargs["json"]
             existing = records.get(body["p_id"])
@@ -66,6 +77,9 @@ def fixture(monkeypatch):
                 "revision": (existing or {}).get("revision", 0) + 1,
                 "mutation_id": body["p_mutation"],
             }
+            saved.setdefault("folder_id", None)
+            saved.setdefault("completion_status", (existing or {}).get("completion_status", "draft"))
+            saved["completed_at"] = ("2026-10-29T12:00:00Z" if saved["completion_status"] == "completed" else None)
             records[body["p_id"]] = saved
             return saved
         if table == "writing_documents":
@@ -117,6 +131,88 @@ def payload(**patch):
         "content": CONTENT,
         **patch,
     }
+
+
+def test_completion_preserves_saved_writing_and_uses_revision_checks(fixture):
+    client, records, _ = fixture
+    doc = str(uuid4())
+    original = client.put(f"/api/workspace/documents/{doc}", json=payload(), headers=ORIGIN).json()
+    body = {"expected_user_id": OWNER, "revision": 1, "mutation_id": str(uuid4()), "completion_status": "completed"}
+    response = client.post(f"/api/workspace/documents/{doc}/completion", json=body, headers=ORIGIN)
+    assert response.status_code == 200
+    completed = response.json()
+    assert completed["completion_status"] == "completed" and completed["completed_at"]
+    assert completed["status"] == "active"  # not archived or trashed
+    assert completed["content"] == original["content"] and completed["plain_text"] == original["plain_text"]
+    assert client.post(f"/api/workspace/documents/{doc}/completion", json=body, headers=ORIGIN).json() == completed
+    stale = {**body, "mutation_id": str(uuid4()), "completion_status": "draft"}
+    assert client.post(f"/api/workspace/documents/{doc}/completion", json=stale, headers=ORIGIN).status_code == 409
+    stale["revision"] = completed["revision"]
+    reverted = client.post(f"/api/workspace/documents/{doc}/completion", json=stale, headers=ORIGIN).json()
+    assert reverted["completion_status"] == "draft" and reverted["completed_at"] is None
+    assert records[doc]["content"] == original["content"]
+
+
+def test_completion_requires_owner_pro_origin_and_trusted_timestamp(fixture, monkeypatch):
+    client, _, _ = fixture
+    doc = str(uuid4())
+    body = {"expected_user_id": OWNER, "revision": 1, "mutation_id": str(uuid4()), "completion_status": "completed"}
+    route = f"/api/workspace/documents/{doc}/completion"
+    assert client.post(route, json=body).status_code == 403
+    assert client.post(route, json={**body, "expected_user_id": OTHER}, headers=ORIGIN).status_code == 409
+    assert client.post(route, json={**body, "completed_at": "2026-10-29T12:00:00Z"}, headers=ORIGIN).status_code == 422
+    assert client.post(route, json=body, headers=ORIGIN).status_code == 404
+    async def free(_): return {"plan": "free", "status": "active"}
+    monkeypatch.setattr(workspace, "get_entitlement", free)
+    assert client.post(route, json=body, headers=ORIGIN).status_code == 403
+
+
+def test_activity_persists_paused_clock_without_changing_session_identity(fixture):
+    client, _, calls = fixture
+    doc = str(uuid4())
+    client.put(f"/api/workspace/documents/{doc}", json=payload(), headers=ORIGIN)
+    now = datetime.now(timezone.utc)
+    timer = {"status": "paused", "active_ms": 25*60000, "paused_ms": 0, "changed_at": int(now.timestamp()*1000)}
+    body = {"id": str(uuid4()), "document_id": doc, "expected_user_id": OWNER, "started_at": now.isoformat(), "typed_words": 100, "duration_seconds": 1500, "sequence": 1, "timer": timer}
+    r = client.put('/api/workspace/activity', json=body, headers=ORIGIN)
+    assert r.status_code == 200 and r.json()['timer'] == timer
+    assert r.json()['id'] == body['id'] and r.json()['typed_words'] == 100
+    assert client.put('/api/workspace/activity', json={**body, "timer": {**timer, "changed_at": timer['changed_at']+600000}}, headers=ORIGIN).status_code == 422
+    assert client.put('/api/workspace/activity', json={**body, "timer": {**timer, "status": "forged"}}, headers=ORIGIN).status_code == 422
+
+
+def test_empty_trash_requires_confirmation_and_keeps_other_documents(fixture, monkeypatch):
+    client, records, _ = fixture
+    trash, draft = str(uuid4()), str(uuid4())
+    client.put(f'/api/workspace/documents/{trash}', json=payload(status='trashed'), headers=ORIGIN)
+    client.put(f'/api/workspace/documents/{draft}', json=payload(), headers=ORIGIN)
+    body = {'expected_user_id': OWNER, 'confirm': True, 'documents': [{'id': trash, 'revision': 1}, {'id': draft, 'revision': 1}]}
+    route = '/api/workspace/trash/empty'
+    assert client.post(route, json={**body, 'confirm': False}, headers=ORIGIN).status_code == 422
+    assert client.post(route, json=body).status_code == 403
+    assert client.post(route, json={**body, 'expected_user_id': OTHER}, headers=ORIGIN).status_code == 409
+    result = client.post(route, json=body, headers=ORIGIN)
+    assert result.status_code == 200 and result.json()['deleted_ids'] == [trash]
+    assert draft in records and trash not in records
+    assert client.post(route, json=body, headers=ORIGIN).json()['deleted_ids'] == []
+    async def free(_): return {'plan': 'free', 'status': 'active'}
+    monkeypatch.setattr(workspace, 'get_entitlement', free)
+    assert client.post(route, json=body, headers=ORIGIN).status_code == 403
+
+
+@pytest.mark.parametrize('billing_source', ['stripe', 'stripe_lifetime'])
+def test_monthly_and_lifetime_share_completion_and_trash_access(fixture, monkeypatch, billing_source):
+    client, _, _ = fixture
+    monkeypatch.setenv('STRIPE_SECRET_KEY', 'sk_test_fixture_only')
+    async def paid(_):
+        return {'plan': 'pro', 'status': 'active', 'billing_source': billing_source, 'billing_livemode': False}
+    monkeypatch.setattr(workspace, 'get_entitlement', paid)
+    doc = str(uuid4())
+    assert client.put(f'/api/workspace/documents/{doc}', json=payload(status='trashed'), headers=ORIGIN).status_code == 200
+    response = client.post(f'/api/workspace/documents/{doc}/completion', json={'expected_user_id': OWNER, 'revision': 1, 'mutation_id': str(uuid4()), 'completion_status': 'completed'}, headers=ORIGIN)
+    assert response.status_code == 200
+    response = client.post('/api/workspace/trash/empty', json={'expected_user_id': OWNER, 'confirm': True, 'documents': [{'id': doc, 'revision': response.json()['revision']}]}, headers=ORIGIN)
+    assert response.status_code == 200 and response.json()['deleted_ids'] == [doc]
 
 
 def test_save_retry_and_conflict_never_lose_revision(fixture):

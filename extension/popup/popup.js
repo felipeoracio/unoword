@@ -44,6 +44,7 @@ const els = {
   durationRow:  $('duration-row'),
   durationValue:$('duration-value'),
   primaryBtn:   $('primary-btn'),
+  pauseBtn: $('pause-btn'),
   helperText:   $('helper-text'),
   memoryCard:   $('memory-card'),
   memoryPromptCopy:$('memory-prompt-copy'),
@@ -327,8 +328,7 @@ function renderWriteDashboard() {
   $('daily-goal-ring').setAttribute('aria-label', t('dashboard.dailyGoal'));
   const streak = streakValue;
   $('dashboard-streak').textContent = streak == null ? '—' : t('dashboard.days', { n: fmtNumber(streak) });
-  const duration = state?.active ? Date.now() - (state.startedAt || Date.now()) :
-    Math.max(0, (state?.lastResult?.endedAt || 0) - (state?.lastResult?.startedAt || 0));
+  const duration = self.WCSessionClock.read(self.WCSessionClock.forSession(state?.active ? state : state?.lastResult)).active_ms;
   $('dashboard-session-time').textContent = fmtDuration(duration).replace(/^00:/, '');
 }
 
@@ -459,23 +459,29 @@ function renderSession() {
   renderStreak();
 
   const { active, startedAt, typedWords, sessionGoal, lastResult } = state;
+  const paused=active && state.timer?.status==='paused';
+  els.pauseBtn.hidden=!active;
+  els.pauseBtn.textContent=t(paused?'session.resume':'session.pause');
+  $('session-paused').hidden=!paused;
+  $('session-timing-details').hidden=!active&&!lastResult;
+  renderSessionTiming();
 
   if (active) {
     setStatus('active');
     renderCount(typedWords);
     renderGoal(typedWords, sessionGoal);
     els.durationRow.hidden = false;
-    els.durationValue.textContent = fmtDuration(Date.now() - (startedAt || Date.now()));
+    els.durationValue.textContent = fmtDuration(self.WCSessionClock.read(self.WCSessionClock.forSession(state)).active_ms);
     els.primaryBtn.textContent = t('session.stop');
     els.primaryBtn.dataset.variant = 'danger';
-    els.helperText.textContent = t('session.helperActive');
+    els.helperText.textContent = t(paused?'session.helperPaused':'session.helperActive');
     startDurationTicker();
   } else if (lastResult) {
     setStatus('done');
     renderCount(lastResult.typedWords);
     renderGoal(lastResult.typedWords, lastResult.sessionGoal || 0);
     els.durationRow.hidden = false;
-    els.durationValue.textContent = fmtDuration(Math.max(0, (lastResult.endedAt || 0) - (lastResult.startedAt || 0)));
+    els.durationValue.textContent = fmtDuration(self.WCSessionClock.read(self.WCSessionClock.forSession(lastResult)).active_ms);
     els.primaryBtn.textContent = t('session.new');
     els.primaryBtn.dataset.variant = '';
     els.helperText.textContent = t('session.helperDone');
@@ -665,11 +671,17 @@ function renderGoal(current, goal) {
     : `${fmtNumber(current)} / ${fmtNumber(goal)} · ${t('session.words')}`;
 }
 
+function renderSessionTiming() {
+  const clock=self.WCSessionClock.read(self.WCSessionClock.forSession(state?.active?state:state?.lastResult));
+  $('paused-duration').textContent=fmtDuration(clock.paused_ms);
+  $('elapsed-duration').textContent=fmtDuration(clock.elapsed_ms);
+}
 function startDurationTicker() {
   if (durationTicker) return;
   durationTicker = setInterval(() => {
     if (!state || !state.active || !state.startedAt) return;
-    els.durationValue.textContent = fmtDuration(Date.now() - state.startedAt);
+    els.durationValue.textContent = fmtDuration(self.WCSessionClock.read(self.WCSessionClock.forSession(state)).active_ms);
+    renderSessionTiming();
     renderWriteDashboard();
   }, 1000);
 }
@@ -1105,6 +1117,15 @@ async function renderPrompt() {
   if (pro && account.authenticated && account.aiAccess && !isOfflineNow()) pending.push(loadIdeaChoices());
   await Promise.all(pending);
 }
+
+els.pauseBtn.addEventListener('click',async()=>{
+  if(!state?.active)return;
+  els.pauseBtn.disabled=true;
+  try {
+    const r=await sendMessage({type:state.timer?.status==='paused'?'RESUME_SESSION':'PAUSE_SESSION'});
+    if(r.ok){state=r.payload;renderSession();}
+  }finally{els.pauseBtn.disabled=false;}
+});
 
 // ---------- primary action ----------
 

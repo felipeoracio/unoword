@@ -213,7 +213,10 @@
           <span class="wc__duration-label" data-i18n="session.duration">Session duration</span>
         </div>
 
+        <p id="session-paused" role="status" data-i18n="session.paused" hidden>Paused</p>
+        <button class="wc__btn wc__btn--secondary" id="pause-btn" data-testid="pause-btn" hidden>Pause Session</button>
         <button class="wc__btn wc__btn--primary" id="primary-btn" data-testid="primary-btn">Start Session</button>
+        <details id="session-timing-details" hidden><summary data-i18n="session.timingDetails">Session details</summary><p><span data-i18n="session.pausedTime">Paused time</span>: <span id="paused-duration">00:00:00</span></p><p><span data-i18n="session.elapsedTime">Total elapsed time</span>: <span id="elapsed-duration">00:00:00</span></p></details>
         <p class="wc__helper wc__helper--center" id="helper-text" data-testid="helper-text"></p>
         <div class="wc__memory-card" id="memory-card" data-testid="memory-card" hidden>
           <div class="wc__memory-head" data-testid="memory-card-header">
@@ -798,7 +801,8 @@
     <dialog id="link-content-dialog" class="wc__content-dialog"><div class="wc__preview-head"><h2 id="link-content-title"></h2><button type="button" id="link-content-close" class="wc__icon-btn" data-i18n-aria="dialog.close" aria-label="Close">×</button></div><p id="link-content-note" class="wc__helper"></p><p id="link-content-error" class="wc__error" hidden></p><pre id="link-content-text"></pre></dialog>
     <dialog id="link-edit-dialog" class="wc__content-dialog"><h2 data-i18n="links.edit">Edit</h2><form id="link-edit-form"><label class="wc__field" for="link-edit-title"><span data-i18n="links.linkTitle">Title</span><input id="link-edit-title" required maxlength="300" /></label><p id="link-edit-error" class="wc__error" hidden></p><div class="wc__source-action-list"><button type="button" id="link-edit-cancel" class="wc__btn wc__btn--outline" data-i18n="dialog.cancel">Cancel</button><button type="submit" id="link-edit-save" class="wc__btn wc__btn--primary" data-i18n="settings.save">Save</button></div></form></dialog>
 
-    <script src="../shared/i18n.js"></script>
+    <script src="../shared/session-clock.js"></script>
+  <script src="../shared/i18n.js"></script>
     <script src="../shared/prompts.js"></script>
     <script src="../shared/history.js"></script>
     <script src="../shared/ai-profile.js"></script>

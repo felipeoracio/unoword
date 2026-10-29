@@ -115,6 +115,17 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await message({ type: 'DELTA', delta: { kind: 'deleted', words: 10 } });
     await editor.locator('textarea').pressSequentially('fresh words here');
     await page.waitForFunction(() => document.querySelector('#daily-word-count').textContent === '3');
+    // Pause survives popup recreation and the real content script ignores paused edits.
+    await page.click('#pause-btn');await page.locator('#session-paused').waitFor({state:'visible'});
+    const pausedSession=(await message({type:'GET_STATE'})).payload;
+    const pausedTime=await page.locator('#duration-value').textContent();
+    await page.reload();await page.locator('#session-paused').waitFor({state:'visible'});
+    assert.equal((await message({type:'GET_STATE'})).payload.startedAt,pausedSession.startedAt);
+    await editor.locator('textarea').fill('fresh words here paused typing');
+    assert.equal((await message({type:'GET_STATE'})).payload.typedWords,3);
+    await editor.locator('textarea').fill('fresh words here');
+    assert.equal(await page.locator('#duration-value').textContent(),pausedTime);
+    await page.click('#pause-btn');assert.equal((await message({type:'GET_STATE'})).payload.timer.status,'active');
     // Clear completed history during active writing without discarding its words.
     await message({ type: 'CLEAR_HISTORY' });
     const active = (await message({ type: 'GET_STATE' })).payload;
@@ -176,6 +187,9 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await message({type:'OPEN_WRITING_EDITOR'});
     assert.equal(new URL(opened[0].url).pathname,'/editor');
     await message({type:'START_SESSION'});
+    await page.click('#pause-btn');assert.equal((await message({type:'GET_STATE'})).payload.timer.status,'paused','Free retains Pause');
+    await message({type:'DELTA',delta:{kind:'typed',words:500}});assert.equal((await message({type:'GET_STATE'})).payload.typedWords,0);
+    await page.click('#pause-btn');assert.equal((await message({type:'GET_STATE'})).payload.timer.status,'active','Free retains Resume');
     await message({type:'DELTA',delta:{kind:'typed',words:100}},{url:'https://unoword.vercel.app/editor'});
     assert.equal((await message({type:'GET_STATE'})).payload.typedWords,0);
     await message({type:'DELTA',delta:{kind:'typed',words:2}},{url:'https://example.com/draft'});

@@ -106,7 +106,7 @@ async def documents(
     user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     params = {
-        "select": "id,user_id,title,folder_id,favorite,status,ai_allowed,revision,mutation_id,created_at,updated_at",
+        "select": "id,user_id,title,folder_id,favorite,status,completion_status,completed_at,ai_allowed,revision,mutation_id,created_at,updated_at",
         "order": "updated_at.desc,id.asc",
         "limit": "200",
         "offset": str(offset),
@@ -134,6 +134,7 @@ class DocumentSave(Owned):
     folder_id: UUID | None = None
     favorite: bool = False
     status: Literal["active", "archived", "trashed"] = "active"
+    completion_status: Literal["draft", "completed"] | None = None
     ai_allowed: bool = False
 
     @field_validator("content")
@@ -152,7 +153,7 @@ async def save_document(
     # ai_allowed is opt-in permission, not a grant of paid access. It only allows
     # eligible future assistant requests to read this document as context.
     data = payload.model_dump(
-        mode="json", exclude={"expected_user_id", "revision", "mutation_id"}
+        mode="json", exclude={"expected_user_id", "revision", "mutation_id"}, exclude_none=True
     )
     data["plain_text"] = plain_text(payload.content)
     saved = await rest(
@@ -167,6 +168,58 @@ async def save_document(
         },
     )
     return saved
+
+
+class CompletionChange(Owned):
+    revision: int = Field(ge=1)
+    mutation_id: UUID
+    completion_status: Literal["draft", "completed"]
+
+
+class TrashDocument(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    revision: int = Field(ge=1)
+
+
+class EmptyTrash(Owned):
+    confirm: Literal[True]
+    documents: list[TrashDocument] = Field(min_length=1, max_length=1000)
+
+
+@router.post("/trash/empty", dependencies=[Depends(trusted_origin)])
+async def empty_trash(
+    payload: EmptyTrash,
+    user: AuthenticatedUser = Depends(require_workspace_user),
+):
+    owner(payload, user)
+    return await rest("POST", "rpc/workspace_empty_trash", user, json={
+        "p_documents": [item.model_dump(mode="json") for item in payload.documents],
+    })
+
+
+@router.post("/documents/{document_id}/completion", dependencies=[Depends(trusted_origin)])
+async def change_completion(
+    document_id: UUID,
+    payload: CompletionChange,
+    user: AuthenticatedUser = Depends(require_workspace_user),
+):
+    owner(payload, user)
+    current = await document(document_id, user)
+    if str(current["mutation_id"]) == str(payload.mutation_id):
+        return current
+    if current["revision"] != payload.revision:
+        raise HTTPException(409, "revision_conflict")
+    # Reuse the revision-safe save, preserving the full saved document. Completion
+    # time is assigned by the database trigger, never supplied by the browser.
+    data = {key: current.get(key) for key in (
+        "title", "content", "plain_text", "folder_id", "favorite", "status", "ai_allowed"
+    )}
+    data["completion_status"] = payload.completion_status
+    return await rest("POST", "rpc/workspace_save_document", user, json={
+        "p_id": str(document_id), "p_revision": payload.revision,
+        "p_mutation": str(payload.mutation_id), "p_data": data,
+    })
 
 
 @router.get("/folders")
@@ -222,6 +275,14 @@ async def sync_folder(
     return result[0]
 
 
+class SessionTimer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["active", "paused", "ended"]
+    active_ms: int = Field(ge=0, le=315360000000)
+    paused_ms: int = Field(ge=0, le=315360000000)
+    changed_at: int = Field(ge=0, le=9999999999999)
+
+
 class Activity(Owned):
     id: UUID
     document_id: UUID
@@ -230,6 +291,7 @@ class Activity(Owned):
     pasted_words: int = Field(default=0, ge=0, le=1000000)
     duration_seconds: int = Field(ge=0, le=86400)
     sequence: int = Field(ge=1, le=2147483647)
+    timer: SessionTimer | None = None
 
 
 @router.put("/activity", dependencies=[Depends(trusted_origin)])
@@ -240,6 +302,7 @@ async def save_activity(
     if (
         payload.started_at.tzinfo is None
         or payload.started_at.timestamp() > datetime.now(timezone.utc).timestamp() + 300
+        or (payload.timer and payload.timer.changed_at > datetime.now(timezone.utc).timestamp() * 1000 + 300000)
     ):
         raise HTTPException(422, "invalid_activity_time")
     await document(payload.document_id, user)
@@ -247,7 +310,7 @@ async def save_activity(
         "POST",
         "rpc/workspace_save_activity",
         user,
-        json={"p_data": payload.model_dump(mode="json", exclude={"expected_user_id"})},
+        json={"p_data": payload.model_dump(mode="json", exclude={"expected_user_id"}, exclude_none=True)},
     )
 
 

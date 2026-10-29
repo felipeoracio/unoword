@@ -1,5 +1,8 @@
 # UnoWord
 
+[Session controls, document completion, and Empty Trash](docs/session-controls-and-completion.md)
+documents the new controls, required additive migration, and verification results.
+
 [Goal-based suggestions](docs/goal-based-suggestions.md) explains how the existing
 daily tracker sizes AI tasks, estimated word counts and saved section checklists.
 
