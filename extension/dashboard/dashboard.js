@@ -31,6 +31,7 @@ const els = {
 let currentRange = 'today';
 let settings = null;
 let loadRequest = 0;
+let lastSyncStatus=null;
 
 function sendMessage(msg) {
   return new Promise((resolve) => {
@@ -131,6 +132,11 @@ async function load(range) {
   const r = await sendMessage({ type: 'GET_STATS', range });
   if (!r.ok || request !== loadRequest) return false;
   const s = r.stats;
+  lastSyncStatus=r.accountSummary?.syncStatus||null;
+  if(lastSyncStatus)document.getElementById('refresh-status').textContent=t('sync.'+lastSyncStatus);
+  const time=n=>[Math.floor(n/3600),Math.floor(n/60)%60,Math.floor(n)%60].map(pad2).join(':');
+  document.getElementById('today-writing-time').textContent=Number.isFinite(r.accountSummary?.dailyActiveWritingSeconds)?time(r.accountSummary.dailyActiveWritingSeconds):'—';
+  document.getElementById('total-writing-time').textContent=Number.isFinite(r.accountSummary?.lifetimeActiveWritingSeconds)?time(r.accountSummary.lifetimeActiveWritingSeconds):'—';
 
   // Hero
   els.heroPrimary.textContent = fmt(s.totalWords);
@@ -210,7 +216,7 @@ async function boot() {
     const button = event.currentTarget;
     button.disabled = true;
     try {
-      document.getElementById('refresh-status').textContent = t(await load(currentRange) ? 'dashboard.refreshed' : 'dashboard.refreshFailed');
+      document.getElementById('refresh-status').textContent = t(await load(currentRange) ? (lastSyncStatus?'sync.'+lastSyncStatus:'dashboard.refreshed') : 'dashboard.refreshFailed');
     } finally { button.disabled = false; }
   });
   try {
@@ -221,6 +227,9 @@ async function boot() {
       if (message?.type === 'PROGRESS_UPDATE') scheduleRefresh();
     });
   } catch (_e) { /* preview */ }
+  const polling=setInterval(()=>{if(!document.hidden)scheduleRefresh();},15000);
+  window.addEventListener('unload',()=>clearInterval(polling));
+  window.addEventListener('online',scheduleRefresh);
   window.addEventListener('focus', scheduleRefresh);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
 }

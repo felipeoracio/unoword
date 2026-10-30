@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "UnoWord \u2014 Writing Assistant",
   "short_name": "UnoWord",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Track typed words in supported Chrome editors, set daily goals, build writing habits, and find your next writing direction with UnoWord.",
   "action": {
     "default_popup": "popup/popup.html",

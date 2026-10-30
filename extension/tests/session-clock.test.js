@@ -37,3 +37,17 @@ test('CSV round-trip preserves active and paused time; old CSV remains readable'
  assert.deepEqual(clock.read(result.records[0].timer),{active_ms:2700000,paused_ms:600000,elapsed_ms:3300000});
  assert.equal(history.parseCSV('start_time,words_written\n2026-10-29T12:00:00Z,5').validCount,1);
 });
+
+test('Exact checkpoints preserve pauses, day-spanning ranges and duplicate timer reads',()=>{
+ const start=Date.parse('2026-10-20T23:50:00Z');
+ let row={started_at:new Date(start).toISOString(),timer:clock.start(start),active_intervals:[]};
+ row.active_intervals=clock.intervals(row,start+1200000);
+ row.timer=clock.checkpoint(row.timer,start+1200000);
+ assert.deepEqual(row.active_intervals,[[start,start+1200000]]);
+ assert.deepEqual(clock.intervals(row,start+1200000),row.active_intervals);
+ row.timer=clock.transition(row.timer,'paused',start+1200000);
+ row.timer=clock.transition(row.timer,'active',start+1500000);
+ row.active_intervals=clock.intervals(row,start+2100000);
+ assert.deepEqual(row.active_intervals,[[start,start+1200000],[start+1500000,start+2100000]]);
+ assert.equal(row.active_intervals.reduce((n,[a,b])=>n+b-a,0),1800000);
+});

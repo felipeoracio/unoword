@@ -134,11 +134,13 @@ async function setState(next) {
   // classifyDelta) and accumulated here, so we simply persist clamped ints.
   const withDerived = {
     ...next,
+    ...(next.timer ? {active_intervals:self.WCSessionClock.intervals(next)} : {}),
     progressVersion: Math.max(Date.now(),Number(next.progressVersion||0)+1),
     typedWords: Math.max(0, Math.floor(Number(next.typedWords) || 0)),
     pastedWords: Math.max(0, Math.floor(Number(next.pastedWords) || 0)),
   };
   await chrome.storage.local.set({ [STATE_KEY]: withDerived });
+  accountSummaryMemo=null;
   if (withDerived.ownerId && withDerived.startedAt) {try {await queueWritingMetadata(withDerived);} catch (_) {/* Session counters remain durable; retry from the stored state. */}}
   broadcastState(withDerived).catch(() => {});
 }
@@ -156,15 +158,17 @@ async function setAccount(next) {
   if (previous.userId !== next.userId) {
     const running=await getState();
     if(running.active)await stopSession();
+    await chrome.storage.local.set({[STATE_KEY]:{...DEFAULT_STATE}});
   }
   if (previous.userId && previous.userId !== next.userId) {
     const { [SETTINGS_KEY]: stored } = await chrome.storage.local.get(SETTINGS_KEY);
-    await setSettings({ ...(stored || {}), aiProfileDraft: self.WCAIProfile.createDraft(), aiProfileOwnerId: next.userId || null, themes: [...DEFAULT_SETTINGS.themes] });
+    await setSettings({ ...(stored || {}), aiProfileDraft: self.WCAIProfile.createDraft(), aiProfileOwnerId: next.userId || null, themes: [...DEFAULT_SETTINGS.themes],wordGoal:DEFAULT_SETTINGS.wordGoal,profile:{...DEFAULT_SETTINGS.profile},accountPreferencesOwner:null,accountPreferencesRevision:0 });
     next = { ...next, profileSyncEnabled: false, profileSyncedAt: null };
   }
   if (previous.userId !== next.userId || previous.aiAccess !== next.aiAccess) {
-    await chrome.storage.local.set({wc_streak_display:null});
+    await chrome.storage.local.set({wc_streak_display:null,wc_account_summary:null});
     writingStreakMemo=null;
+    accountSummaryMemo=null;
   }
   await chrome.storage.local.set({ [ACCOUNT_KEY]: next });
   if (previous.authenticated !== next.authenticated || previous.aiAccess !== next.aiAccess || previous.userId !== next.userId) {
@@ -402,9 +406,10 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
   const [settings, history, state] = await progressRead;
   const now = Date.now(), timezone = settings.profile.timezone;
   const completed = self.WCWritingProgress.total(history, now, timezone);
+  const summary=await verifiedAccountSummary(true);
   payload.request_id = crypto.randomUUID();
   payload.writing_progress = self.WCWritingProgress.snapshot(settings.wordGoal,
-    self.WCWritingProgress.withActive(completed, state, timezone, now), timezone, now);
+    summary?.dailyWordCount ?? self.WCWritingProgress.withActive(completed, state, timezone, now), summary?.timezone || timezone, now);
   if ((await getAccount()).userId !== account.userId) return { ok: false, reason: 'account_changed', account: await getAccount() };
   if (ideaSourceId) payload.idea_source_id = ideaSourceId;
   const draft = (currentWriting || '').trim().slice(0, 20000);
@@ -438,7 +443,9 @@ async function startSession(idea = null) {
     ...DEFAULT_STATE,
     active: true,
     ownerId: account.authenticated ? account.userId : null,
-    progressKey: "session:"+startedAt,
+    progressKey: "session:"+crypto.randomUUID(),
+    deviceId: await writingDeviceId(),
+    lastActivityAt: startedAt,
     startedAt,
     timer: self.WCSessionClock.start(startedAt),
     sessionGoal: Math.max(0, Number(settings.wordGoal) || 0),
@@ -459,6 +466,8 @@ async function stopSession() {
   const lastResult = {
     ownerId: state.ownerId || null,
     progressKey: state.progressKey,
+    deviceId: state.deviceId,
+    active_intervals: self.WCSessionClock.intervals({...state,timer:self.WCSessionClock.transition(self.WCSessionClock.forSession(state,endedAt),"ended",endedAt)},endedAt),
     progressVersion: Date.now(),
     startedAt: state.startedAt,
     endedAt,
@@ -481,7 +490,7 @@ async function pauseOrResumeSession(status) {
   const state=await getState();
   if (!state.active) return state;
   const timer=self.WCSessionClock.transition(self.WCSessionClock.forSession(state),status);
-  const next={...state,timer};
+  const next={...state,timer,lastActivityAt:Date.now()};
   await setState(next);
   return next;
 }
@@ -505,7 +514,8 @@ async function clearHistory() {
   const account=await getAccount();
   const before=Date.now();
   const keep=state.active?state.progressKey:null;
-  writingStreakMemo=null;
+  writingStreakMemo=null;accountSummaryMemo=null;
+  await chrome.storage.local.set({wc_account_summary:null});
   const pendingClear=await chrome.storage.local.get('wc_progress_clear');
   const rawHistory=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
   const keptHistory=rawHistory.filter(row=>row.ownerId && row.ownerId!==account.userId);
@@ -528,19 +538,23 @@ async function syncEditorActivity() {
     if (!account.authenticated || !account.userId) return { ok: false };
     const owner = account.userId;
     try {
-      const rows = await self.WCApi.get('/workspace/activity');
+      let rows=[];
+      for(let offset=0;;offset+=1000){const page=await self.WCApi.get('/progress/activity?offset='+offset);rows.push(...page);if(page.length<1000)break;}
       if ((await getAccount()).userId !== owner) return { ok: false };
+      accountSummaryMemo=null;
       const history = await getHistory();
       const stored = await chrome.storage.local.get(EDITOR_CLEAR_KEY);
       const clearedAt = Number(stored[EDITOR_CLEAR_KEY] || 0);
-      const imported = rows.filter(row => row.source !== 'extension' && row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
-        id: `editor:${row.id}`, source: 'editor', ownerId: owner, cloudActivityId: row.id,
+      const localKeys=new Set(history.filter(row=>!row.cloudActivityId && row.source!=='editor').map(row=>row.progressKey||'session:'+row.startedAt));
+      const state=await getState();if(state.ownerId===owner && state.startedAt)localKeys.add(state.progressKey||'session:'+state.startedAt);
+      const imported = rows.filter(row => !localKeys.has(row.client_key) && row.user_id === owner && Date.parse(row.started_at) > clearedAt).map(row => ({
+        id: `${row.source==='extension'?'cloud':'editor'}:${row.id}`, source: row.source || 'editor', ownerId: owner, cloudActivityId: row.id,
         startedAt: Date.parse(row.started_at), endedAt: Date.parse(row.started_at) + row.duration_seconds * 1000,
-        ...(row.timer?{timer:self.WCSessionClock.transition(row.timer,'ended')}:{}),
+        ...(row.timer?{timer:{status:'ended',active_ms:row.duration_seconds*1000,paused_ms:row.timer.paused_ms||0,changed_at:Date.parse(row.updated_at)}}:{}),
         typedWords: row.typed_words, pastedWords: row.pasted_words, sessionGoal: 0,
       }));
       const rawHistory=(await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY]||[];
-      const merged = new Map(rawHistory.filter(row => row.source !== 'editor' || row.ownerId !== owner).map(row => [self.WCHistory.sessionKey(row), row]));
+      const merged = new Map(rawHistory.filter(row => ((!row.cloudActivityId && row.source !== 'editor' && !String(row.id).startsWith('editor:') && !String(row.id).startsWith('cloud:')) || row.ownerId && row.ownerId !== owner)).map(row => [self.WCHistory.sessionKey(row), row]));
       imported.forEach(row => merged.set(self.WCHistory.sessionKey(row), row));
       const next = [...merged.values()]
         .sort((a,b) => b.startedAt-a.startedAt).slice(0,HISTORY_MAX);
@@ -556,6 +570,7 @@ async function syncEditorActivity() {
 
 async function applyDelta(delta) {
   let state = await getState();
+  if(state.active && state.timer?.status==='active' && Date.now()>(state.lastActivityAt||state.startedAt)+300000){await checkpointWritingSession();state=await getState();}
   if (!state.active || state.timer?.status === "paused") return;
   const settings=await getSettings(),now=Date.now();
   if(dayKey(state.startedAt,settings.profile.timezone)!==dayKey(now,settings.profile.timezone)){
@@ -567,7 +582,7 @@ async function applyDelta(delta) {
     state={...DEFAULT_STATE,active:true,timer:self.WCSessionClock.start(now),ownerId:state.ownerId,startedAt:now,progressKey:'session:'+now,sessionGoal:Math.max(0,Number(settings.wordGoal)||0),idea:state.idea,lastResult:null};
   }
   const { typedWords, pastedWords } = self.WCWordCount.applyDelta(state, delta || {});
-  await setState({ ...state, typedWords, pastedWords });
+  await setState({ ...state, typedWords, pastedWords, lastActivityAt: now });
 }
 
 // ---------- prompt ----------
@@ -645,7 +660,18 @@ async function getStats(range, history = null, settings = null) {
   if (settings.plan !== 'pro') range = 'today';
   const tz = settings.profile.timezone;
   const now = Date.now();
+  const account=await getAccount();
+  if(account.authenticated){
+    try{
+      const server=await self.WCApi.get('/progress/statistics?range='+encodeURIComponent(range)+'&timezone='+encodeURIComponent(tz||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'));
+      if(server.user_id!==account.userId || (await getAccount()).userId!==account.userId)throw new Error('account_changed');
+      const bounds=rangeBounds(range,now,server.timezone||tz);
+      return {...server,...bounds,sessions:history.filter(row=>row.startedAt>=bounds.start && row.startedAt<bounds.end).slice(0,100),syncStatus:'synced'};
+    }catch(_){/* Offline charts remain local, clearly marked as pending. */}
+  }
 
+  const running=await getState();
+  if(running.active && (!running.ownerId || running.ownerId===account.userId) && !history.some(row=>row.startedAt===running.startedAt))history=[...history,{...running,id:running.startedAt,endedAt:now}];
   const withWords = self.WCWritingProgress.unique(history).map((s) => ({
     ...s,
     _words: self.WCHistory.sessionWords(s),   // typed only; pasted never counts
@@ -736,6 +762,7 @@ function buildPopupPayload(state, settings) {
   const pastedWords = state.pastedWords || 0;
   return {
     idea: state.idea || null,
+    ownerId: state.ownerId,progressKey:state.progressKey,progressVersion:state.progressVersion,
     active: state.active,
     timer: self.WCSessionClock.forSession(state),
     startedAt: state.startedAt,
@@ -822,7 +849,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'DELTA': {
           try {
             const source = new URL(sender.url || '');
-            if (source.origin === 'https://unoword.vercel.app' && source.pathname === '/editor') { sendResponse({ ok: true }); return; }
+            if (source.origin === 'https://unoword.vercel.app' && (source.pathname === '/editor' || source.pathname.startsWith('/editor/'))) { sendResponse({ ok: true }); return; }
           } catch (_error) { /* ordinary extension / fixture sender */ }
           await applyDelta(msg.delta || {});
           sendResponse({ ok: true });
@@ -838,6 +865,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const patch = { ...(msg.settings || {}) };
           delete patch.plan;
           delete patch.aiProfileOwnerId;
+          delete patch.accountPreferencesOwner;delete patch.accountPreferencesRevision;
           const nextProfile = patch.profile
             ? { ...current.profile, ...patch.profile }
             : current.profile;
@@ -846,6 +874,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             : current.aiProfileDraft;
           const next = { ...current, ...patch, profile: nextProfile, aiProfileDraft: nextAIProfile };
           await setSettings(next);
+          const shared={};
+          if(patch.wordGoal!=null)shared.daily_goal=patch.wordGoal;
+          if(patch.profile?.timezone)shared.timezone=patch.profile.timezone;
+          if(patch.language)shared.language=patch.language;
+          if(patch.themes)shared.themes=patch.themes;
+          if(Object.keys(shared).length)await queueAccountPreferences(shared);
           if (patch.aiProfileDraft) next.aiProfileDraft = await maybeAutoSyncProfile(next.aiProfileDraft);
           const state = await getState();
           broadcastState(state).catch(() => {});
@@ -1022,15 +1056,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'GET_PROGRESS': {
           if (msg.refreshAccount) await refreshAccount();
+          const summary=await verifiedAccountSummary(!!msg.refreshStreak);
           const [state, settings, history] = await Promise.all([getState(), getSettings(), getHistory()]);
           const range = msg.range || 'today';
           const visible = self.WCHistory.visibleHistory(history, settings.plan, Date.now());
+          const today=await getStats('today',history,settings);
+          const stats=range==='today'?today:await getStats(range,history,settings);
+          const streakDisplay=Number.isFinite(summary?.displayedStreak)?summary:await verifiedWritingStreak(!!msg.refreshStreak);
           sendResponse({ ok: true, payload: buildPopupPayload(state, settings),
             settings,
-            today: await getStats('today', history, settings),
-            stats: await getStats(range, history, settings),
-            streak: (await verifiedWritingStreak(!!msg.refreshStreak)).displayedStreak,
-            streakDisplay: await verifiedWritingStreak(),
+            accountSummary: summary,
+            today,
+            stats,
+            streak: streakDisplay.displayedStreak,
+            streakDisplay,
             history: visible, plan: settings.plan, hasMore: visible.length < history.length });
           return;
         }
@@ -1116,8 +1155,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         case 'GET_STATS': {
+          await syncEditorActivity();
+          const summary=await verifiedAccountSummary();
           const stats = await getStats(msg.range || 'today');
-          sendResponse({ ok: true, stats });
+          if((msg.range||'today')==='today' && Number.isFinite(summary?.dailyWordCount))stats.totalWords=summary.dailyWordCount;
+          sendResponse({ ok: true, stats, accountSummary:summary });
           return;
         }
         case 'SYNC_EDITOR_ACTIVITY': {
@@ -1128,7 +1170,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (!account.authenticated) { sendResponse({ok:false});return; }
           const history=await getHistory();
           const state = await getState();
-          const local = history.filter(row => row.source!=='editor' && !String(row.id).startsWith('editor:')).map(row => ({
+          const local = history.filter(row => !row.cloudActivityId && row.source!=='editor' && !String(row.id).startsWith('editor:') && !String(row.id).startsWith('cloud:')).map(row => ({
             id:String(row.id || row.startedAt),startedAt:row.startedAt,typedWords:row.typedWords || 0,
           }));
           if (state.active) local.push({id:String(state.startedAt),startedAt:state.startedAt,typedWords:state.typedWords || 0});
@@ -1174,6 +1216,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 // and of subscription status. Losing connectivity never discards pending days.
 let writingMetadataChanges=Promise.resolve(),writingMetadataFlush=null,writingStreakMemo=null;
 async function queueWritingMetadata(row){
+ if(row.cloudActivityId || String(row.id).startsWith('editor:') || String(row.id).startsWith('cloud:'))return;
  const data=self.WCCloudProgress.session(row,Date.now());if(!data)return;
  const next=writingMetadataChanges.then(async()=>{
   const stored=await chrome.storage.local.get(['wc_progress_outbox','wc_progress_acked']);
@@ -1213,15 +1256,15 @@ async function flushWritingMetadata(){
    for(const item of items)ownerAcks[item.key]=item.sequence;acked[owner]=Object.fromEntries(Object.entries(ownerAcks).sort((a,b)=>b[1]-a[1]).slice(0,1000));
    for(const item of items)if(rows[item.key]?.sequence===item.sequence)delete rows[item.key];
    outbox[owner]=rows;await chrome.storage.local.set({wc_progress_outbox:outbox,wc_progress_acked:acked});
-  });writingMetadataChanges=remove.catch(()=>{});await remove;writingStreakMemo=null;return true;
+  });writingMetadataChanges=remove.catch(()=>{});await remove;writingStreakMemo=null;accountSummaryMemo=null;return true;
  })().catch(()=>false).finally(()=>{writingMetadataFlush=null;});return writingMetadataFlush;
 }
 async function adoptDeviceWritingHistory(){
  const account=await refreshAccount();if(!account.authenticated)throw new Error('auth_required');
  const history=await getHistory();const next=[];
  for(const row of history){
-  if(row.source==='editor'||row.ownerId&&row.ownerId!==account.userId){next.push(row);continue;}
-  const owned={...row,ownerId:account.userId,progressKey:'session:'+row.startedAt,progressVersion:row.progressVersion||Date.now()};
+  if(row.cloudActivityId||String(row.id).startsWith('cloud:')||String(row.id).startsWith('editor:')||row.source==='editor'||row.ownerId&&row.ownerId!==account.userId){next.push(row);continue;}
+  const owned={...row,ownerId:account.userId,progressKey:row.progressKey||'session:'+row.startedAt,progressVersion:row.progressVersion||Date.now()};
   next.push(owned);await queueWritingMetadata(owned);
  }
  await chrome.storage.local.set({[HISTORY_KEY]:next});
@@ -1234,7 +1277,7 @@ async function verifiedWritingStreak(force=false){
  if(!account.authenticated)return {displayedStreak:null,hasUnlimitedStreakAccess:false,streakLimitReached:false,signInRequired:true};
  if(!force&&writingStreakMemo&&writingStreakMemo.user_id===account.userId&&writingStreakMemo.timezone===timezone&&Date.now()-writingStreakMemo.fetchedAt<10000)return writingStreakMemo;
  try{
-  const state=await getState();if(state.ownerId===account.userId)await queueWritingMetadata(state);
+  const state=await getState();if(state.ownerId===account.userId && state.active)await checkpointWritingSession();
   await flushWritingMetadata();
   const display=await self.WCApi.get('/progress/streak?timezone='+encodeURIComponent(timezone));
   if((await getAccount()).userId!==account.userId||display.user_id!==account.userId)throw new Error('account_changed');
@@ -1246,5 +1289,92 @@ async function verifiedWritingStreak(force=false){
 }
 if(chrome.alarms){
  chrome.alarms.create('unoword-writing-metadata',{periodInMinutes:1});
- chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='unoword-writing-metadata')void flushWritingMetadata();});
+ chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='unoword-writing-metadata')void checkpointWritingSession().then(flushWritingMetadata);});
+}
+
+
+async function writingDeviceId(){
+ const stored=await chrome.storage.local.get('wc_writing_device');
+ if(stored.wc_writing_device)return stored.wc_writing_device;
+ const id=crypto.randomUUID();await chrome.storage.local.set({wc_writing_device:id});return id;
+}
+async function checkpointWritingSession(){
+ const state=await getState();
+ if(!state.active || !state.ownerId)return;
+ const deadline=(state.lastActivityAt || state.startedAt)+300000;
+ const timer=state.timer?.status==='active' && Date.now()>deadline
+  ? self.WCSessionClock.transition(self.WCSessionClock.forSession(state),'paused',deadline):state.timer;
+ await setState({...state,timer});
+}
+let accountSummaryMemo=null,accountSummaryRequest=null;
+async function verifiedAccountSummary(force=false){
+ let account=await getAccount();if(!account.authenticated)return null;
+ if(!force && accountSummaryMemo?.user_id===account.userId && accountSummaryMemo.reportingDate===dayKey(Date.now(),accountSummaryMemo.timezone) && Date.now()-accountSummaryMemo.fetchedAt<10000)return accountSummaryMemo;
+ if(accountSummaryRequest)return accountSummaryRequest;
+ accountSummaryRequest=(async()=>{
+  const owner=account.userId;
+  try{
+   account=await refreshAccount();if(account.userId!==owner || !account.authenticated)return null;
+   await syncAccountPreferences();
+   await checkpointWritingSession();
+   const flushed=await flushWritingMetadata();
+   const settings=await getSettings();
+   const timezone=settings.profile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+   const result=await self.WCApi.get('/progress/summary?timezone='+encodeURIComponent(timezone));
+   if((await getAccount()).userId!==owner || result.user_id!==owner)return null;
+   const stored=await chrome.storage.local.get('wc_progress_outbox');
+   const pending=Object.keys((stored.wc_progress_outbox||{})[owner]||{}).length>0;
+   const conflict=(await chrome.storage.local.get('wc_preference_conflict')).wc_preference_conflict;
+   const summary={...result,syncStatus:conflict?.owner===owner?'settings_conflict':!flushed||pending?'pending':'synced',fetchedAt:Date.now()};
+   accountSummaryMemo=summary;await chrome.storage.local.set({wc_account_summary:summary});return summary;
+  }catch(_){
+   const cached=(await chrome.storage.local.get('wc_account_summary')).wc_account_summary;
+   if((await getAccount()).userId!==owner)return null;
+   if(cached?.user_id!==owner)return {user_id:owner,syncStatus:'error'};
+   const settings=await getSettings();
+   const tz=settings.profile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+   if(cached.timezone!==tz || cached.reportingDate!==dayKey(Date.now(),tz))return {user_id:owner,syncStatus:'offline'};
+   const safe={...cached,syncStatus:'offline',displayedStreak:account.aiAccess?cached.displayedStreak:Math.min(cached.displayedStreak,7)};
+   if(!account.aiAccess){delete safe.longestStreak;delete safe.milestones;}
+   return safe;
+  }
+ })().finally(()=>{accountSummaryRequest=null;});return accountSummaryRequest;
+}
+let preferenceSync=null;
+async function syncAccountPreferences(){
+ if(preferenceSync)return preferenceSync;
+ preferenceSync=(async()=>{
+  const account=await getAccount();if(!account.authenticated)return;
+  const owner=account.userId;
+  let remote=await self.WCApi.get('/progress/preferences');
+  if(remote.user_id!==owner || (await getAccount()).userId!==owner)return;
+  const stored=await chrome.storage.local.get(['wc_preference_pending','wc_settings']);
+  const pending=(stored.wc_preference_pending||{})[owner];
+  const settings=await getSettings();
+  const patch=pending?.patch || (remote.revision===0?{daily_goal:settings.wordGoal,timezone:settings.profile.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',language:settings.language||'en',themes:settings.themes}:null);
+  if(patch){
+   let conflicted=false;
+   try{remote=await self.WCApi.put('/progress/preferences',{expected_user_id:owner,revision:pending?.revision??remote.revision,...patch});}
+   catch(error){if(error.status===409 && error.body?.detail?.current){remote=error.body.detail.current;conflicted=true;await chrome.storage.local.set({wc_preference_conflict:{owner,requested:patch,current:remote}});}else throw error;}
+   if((await getAccount()).userId!==owner)return;
+   const latest=(await chrome.storage.local.get('wc_preference_pending')).wc_preference_pending||{};
+   if(JSON.stringify(latest[owner])===JSON.stringify(pending))delete latest[owner];
+   else if(!conflicted && latest[owner]?.revision===(pending?.revision??0))latest[owner]={...latest[owner],revision:remote.revision};
+   await chrome.storage.local.set({wc_preference_pending:latest});
+  }
+  if((await getAccount()).userId!==owner)return;
+  const stillPending=(await chrome.storage.local.get('wc_preference_pending')).wc_preference_pending||{};
+  if(stillPending[owner])return;
+  // Cloud adoption bypasses SET_SETTINGS and cannot requeue an older value.
+  const local=await getSettings();
+  await setSettings({...local,wordGoal:remote.daily_goal,language:remote.language,themes:remote.themes||local.themes,profile:{...local.profile,timezone:remote.timezone||local.profile.timezone},accountPreferencesOwner:owner,accountPreferencesRevision:remote.revision});
+ })().finally(()=>{preferenceSync=null;});return preferenceSync;
+}
+async function queueAccountPreferences(patch){
+ const account=await getAccount();if(!account.authenticated)return;
+ const owner=account.userId,settings=await getSettings();
+ const stored=(await chrome.storage.local.get('wc_preference_pending')).wc_preference_pending||{};
+ stored[owner]={revision:stored[owner]?.revision??(settings.accountPreferencesOwner===owner?settings.accountPreferencesRevision:0),patch:{...stored[owner]?.patch,...patch}};
+ await chrome.storage.local.set({wc_preference_pending:stored,wc_preference_conflict:null});accountSummaryMemo=null;
+ void syncAccountPreferences().catch(()=>{});
 }

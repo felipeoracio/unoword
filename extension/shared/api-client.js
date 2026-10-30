@@ -18,7 +18,12 @@
     return Object.keys(result).length ? result : undefined;
   }
 
+  let refreshRequest=null;
   async function tryRefresh() {
+    if(refreshRequest)return refreshRequest;
+    refreshRequest=refreshSession().finally(()=>{refreshRequest=null;});return refreshRequest;
+  }
+  async function refreshSession() {
     try {
       const r = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include', headers: headers() });
       return r.ok;

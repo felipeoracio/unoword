@@ -235,3 +235,5 @@ disabled until Stripe and the billing migration are configured. See
 ### Writing coach and plan update
 
 UnoWord helps writers write; it does not write for them. See [versioned AI allowances, Pro permissions, streak architecture, migration and rollout instructions](docs/writing-coach-plans-and-streaks.md) and [prepared social advertising briefs](marketing/paid-social-briefs.md). The new backend requires the two documented migrations before deployment.
+
+Account-wide time and multi-device sync: [architecture, tests and migration](docs/unified-account-writing-sync.md).

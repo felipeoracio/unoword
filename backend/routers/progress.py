@@ -3,13 +3,14 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel, Field, ConfigDict, field_validator
+from lib.activity_time import ActivityTime
 from lib.auth import AuthenticatedUser, require_user
 from lib.ai_access import get_entitlement, entitlement_is_active
 from lib.plans import plan_features
 from lib.request_security import trusted_origin
-from lib.supabase_client import service_rest, SupabaseAPIError
+from lib.supabase_client import service_rest, user_rest, SupabaseAPIError
 
 router = APIRouter(prefix="/progress", tags=["writing-progress"])
 
@@ -18,10 +19,12 @@ async def rpc(name, body):
     try:
         return await service_rest("POST", "rpc/" + name, json=body)
     except SupabaseAPIError as error:
+        if error.detail == "writing_history_pro_required":
+            raise HTTPException(403, "writing_history_pro_required") from error
         raise HTTPException(503, "progress_sync_unavailable") from error
 
 
-class Session(BaseModel):
+class Session(ActivityTime):
     model_config = ConfigDict(extra="forbid")
     key: str = Field(min_length=1, max_length=100)
     started_at: datetime
@@ -60,7 +63,7 @@ async def sync(
             "writing_sync_extension",
             {
                 "p_user": user.id,
-                "p_sessions": [s.model_dump(mode="json") for s in payload.sessions],
+                "p_sessions": [s.model_dump(mode="json", exclude_none=True) for s in payload.sessions],
             },
         )
     }
@@ -141,3 +144,84 @@ async def history(
             {"p_user": user.id, "p_timezone": timezone, "p_offset": offset},
         )
     }
+
+
+@router.get("/summary")
+async def summary(response: Response, timezone: str = "UTC", date: str | None = None,
+                  user: AuthenticatedUser = Depends(require_user)):
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        ZoneInfo(timezone)
+        if date:
+            from datetime import date as calendar_date
+            calendar_date.fromisoformat(date)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(422, "invalid_reporting_period") from None
+    paid = entitlement_is_active(await get_entitlement(user.id))
+    return await rpc("writing_account_summary", {"p_user": user.id, "p_timezone": timezone,
+                                               "p_date": date, "p_unlimited": paid})
+
+
+@router.get("/preferences")
+async def preferences(response: Response, user: AuthenticatedUser = Depends(require_user)):
+    response.headers["Cache-Control"] = "private, no-store"
+    return await rpc("writing_account_preferences", {"p_user": user.id})
+
+
+class Preferences(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_user_id: UUID
+    revision: int = Field(ge=0)
+    daily_goal: int | None = Field(default=None, ge=1, le=1000000)
+    timezone: str | None = None
+    language: str | None = Field(default=None, pattern="^(en|es)$")
+    themes: list[str] | None = Field(default=None, max_length=30)
+
+    @field_validator("timezone")
+    @classmethod
+    def valid_timezone(cls, value):
+        if value is not None:
+            try:
+                ZoneInfo(value)
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValueError("invalid_timezone") from None
+        return value
+
+
+@router.put("/preferences", dependencies=[Depends(trusted_origin)])
+async def update_preferences(payload: Preferences, response: Response,
+                             user: AuthenticatedUser = Depends(require_user)):
+    if str(payload.expected_user_id) != user.id:
+        raise HTTPException(409, "account_changed")
+    response.headers["Cache-Control"] = "private, no-store"
+    result = await rpc("writing_update_preferences", {"p_user": user.id, "p_revision": payload.revision,
+        "p_patch": payload.model_dump(exclude={"expected_user_id", "revision"}, exclude_none=True)})
+    if result.get("conflict"):
+        raise HTTPException(409, {"code": "preferences_changed", "current": result["current"]})
+    return result
+
+
+@router.get("/activity")
+async def activity(response: Response, offset: int = Query(default=0, ge=0),
+                   user: AuthenticatedUser = Depends(require_user)):
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return await user_rest("GET", "writing_activity", user.access_token,
+            params={"user_id":"eq."+user.id,"select":"*","order":"started_at.desc,id.asc","limit":"1000","offset":str(offset)})
+    except SupabaseAPIError as error:
+        raise HTTPException(503,"progress_sync_unavailable") from error
+
+
+@router.get("/statistics")
+async def statistics(response: Response, range: str = "today", timezone: str = "UTC",
+                     user: AuthenticatedUser = Depends(require_user)):
+    if range not in {"today","week","month","year","all"}:
+        raise HTTPException(422,"invalid_range")
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError,ValueError):
+        raise HTTPException(422,"invalid_timezone") from None
+    if range != "today" and not entitlement_is_active(await get_entitlement(user.id)):
+        raise HTTPException(403,"writing_history_pro_required")
+    response.headers["Cache-Control"]="private, no-store"
+    return {"user_id":user.id,**(await rpc("writing_account_statistics",{"p_user":user.id,"p_range":range,"p_timezone":timezone}))}

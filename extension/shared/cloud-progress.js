@@ -4,7 +4,9 @@
   function session(row, now) {
     if (!row?.startedAt || !row.ownerId || row.source === "editor") return null;
     return {
-      key: "session:" + row.startedAt,
+      key: row.progressKey || "session:" + row.startedAt,
+      ...(row.timer ? { timer: clock.checkpoint(row.timer,now), active_intervals: clock.intervals(row, now) } : {}),
+      ...(row.deviceId ? { device_id: row.deviceId } : {}),
       started_at: new Date(row.startedAt).toISOString(),
       typed_words: Math.max(0, Math.floor(row.typedWords || 0)),
       pasted_words: Math.max(0, Math.floor(row.pastedWords || 0)),
@@ -36,7 +38,19 @@
       offline: true,
     };
   }
-  const api = { session, cached };
+  function pendingWords(summary, state, history, owner, today) {
+    if(!summary?.dailySessions)return 0;
+    const saved=new Map(summary.dailySessions.filter(row=>row.source==='extension').map(row=>[row.client_key,row]));
+    const local=new Map();
+    for(const row of [...(history||[]),...(state?.active?[state]:[])]){
+      if(row.cloudActivityId || row.source==='editor' || row.ownerId!==owner || !today(row.startedAt))continue;
+      local.set(row.progressKey||'session:'+row.startedAt,row);
+    }
+    let delta=0;
+    for(const [key,row] of local){const previous=saved.get(key);if(!previous || (row.progressVersion||0)>previous.sequence)delta+=(row.typedWords||0)-(previous?.typed_words||0);}
+    return delta;
+  }
+  const api = { session, cached, pendingWords };
   root.WCCloudProgress = api;
   if (typeof module !== "undefined") module.exports = api;
 })(typeof self !== "undefined" ? self : globalThis);

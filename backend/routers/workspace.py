@@ -275,15 +275,10 @@ async def sync_folder(
     return result[0]
 
 
-class SessionTimer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    status: Literal["active", "paused", "ended"]
-    active_ms: int = Field(ge=0, le=315360000000)
-    paused_ms: int = Field(ge=0, le=315360000000)
-    changed_at: int = Field(ge=0, le=9999999999999)
+from lib.activity_time import ActivityTime, SessionTimer
 
 
-class Activity(Owned):
+class Activity(Owned, ActivityTime):
     id: UUID
     document_id: UUID
     started_at: datetime

@@ -1,5 +1,9 @@
 import WritingRecovery from "@/components/WritingRecovery";
-import { useWritingStreak } from "@/lib/use-writing-streak";
+import {
+  useAccountWriting,
+  useWritingPreferences,
+  formatWritingTime,
+} from "@/lib/use-account-writing";
 import AIUsage from "@/components/AIUsage";
 import WritingTour from "@/components/onboarding/WritingTour";
 import WritingTask from "@/components/WritingTask";
@@ -267,6 +271,15 @@ export default function WritingEditor() {
   const ws = useWritingWorkspace();
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
+  const localActivityIds = ws.localActivityIds.current;
+  const writingDeviceId = useMemo(() => {
+    const key = `uno-writing-device:${userId}`;
+    const id = localStorage.getItem(key) || crypto.randomUUID();
+    localStorage.setItem(key, id);
+    return id;
+  }, [userId]);
+  const lastWritingInput = useRef(Date.now());
+
   const [language, setLanguage] = useState(
     () =>
       localStorage.getItem("uno-writing-language") ||
@@ -422,6 +435,8 @@ export default function WritingEditor() {
     words: 0,
   });
   function saveWritingGoal(value: number) {
+    if (Number.isFinite(value) && value >= 1 && value <= 1000000)
+      savePreferencesRef.current({ daily_goal: Math.floor(value) });
     const next = Math.max(1, Math.min(1000000, value || 1));
     setGoal(next);
     if (ws.user)
@@ -448,6 +463,7 @@ export default function WritingEditor() {
     const delta = writingEngine.classifyDelta(before, after, kind);
     if (!delta) return;
     const timestamp = Date.now();
+    lastWritingInput.current = timestamp;
     if (
       session.current?.timer?.status === "paused" ||
       session.current?.timer?.status === "ended"
@@ -479,6 +495,8 @@ export default function WritingEditor() {
   function storeSession(row: Activity) {
     const next = {
       ...row,
+      active_intervals: sessionClock.intervals(row),
+      ...(row.timer ? { timer: sessionClock.checkpoint(row.timer) } : {}),
       duration_seconds: Math.min(
         86400,
         Math.floor(sessionClock.read(row.timer).active_ms / 1000),
@@ -502,8 +520,11 @@ export default function WritingEditor() {
       session.current.timer?.status !== "ended"
     )
       return;
+    lastWritingInput.current = Date.now();
     storeSession({
       id: crypto.randomUUID(),
+      device_id: writingDeviceId,
+      active_intervals: [],
       document_id: document.id,
       started_at: new Date().toISOString(),
       typed_words: 0,
@@ -514,6 +535,7 @@ export default function WritingEditor() {
     });
   }
   function changeSessionStatus(status: SessionTimer["status"]) {
+    if (status === "active") lastWritingInput.current = Date.now();
     const current = session.current;
     if (!current?.timer || current.timer.status === status) return;
     storeSession({
@@ -743,7 +765,14 @@ export default function WritingEditor() {
       session.current = null;
       sessionOwner.current = ws.user?.id;
     }
-    if (session.current?.document_id === activeDocument?.id) return;
+    if (session.current?.document_id === activeDocument?.id) {
+      if (
+        activeDocument?.completion_status === "completed" &&
+        session.current?.timer?.status !== "ended"
+      )
+        changeSessionStatus("ended");
+      return;
+    }
     if (
       session.current &&
       !ws.documents.some((d) => d.id === session.current?.document_id)
@@ -755,15 +784,50 @@ export default function WritingEditor() {
       changeSessionStatus("paused");
     session.current =
       ws.activities
-        .filter((a) => a.document_id === activeDocument?.id && a.timer)
+        .filter(
+          (a) =>
+            a.document_id === activeDocument?.id &&
+            a.timer &&
+            ((!a.device_id && localActivityIds.has(a.id)) ||
+              a.device_id === writingDeviceId),
+        )
         .sort(
           (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
         )[0] || null;
-  }, [activeDocument?.id, ws.activities, ws.documents, ws.user?.id]);
+    const restored = session.current;
+    if (restored?.timer?.status === "active") {
+      const ranges = restored.active_intervals;
+      const checkpoint = ranges?.length
+        ? ranges[ranges.length - 1][1]
+        : Date.parse(restored.started_at) + restored.duration_seconds * 1000;
+      lastWritingInput.current = checkpoint;
+      if (Date.now() - checkpoint > 90000) {
+        storeSession({
+          ...restored,
+          timer: sessionClock.transition(restored.timer, "paused", checkpoint),
+        });
+      }
+    }
+  }, [
+    activeDocument?.id,
+    activeDocument?.completion_status,
+    ws.activities,
+    ws.documents,
+    ws.user?.id,
+    writingDeviceId,
+    localActivityIds,
+  ]);
   useEffect(() => {
     const snapshot = () => {
-      if (session.current?.timer?.status === "active")
-        storeSession(session.current);
+      const current = session.current;
+      if (current?.timer?.status !== "active") return;
+      const deadline = lastWritingInput.current + 300000;
+      if (Date.now() > deadline) {
+        storeSession({
+          ...current,
+          timer: sessionClock.transition(current.timer, "paused", deadline),
+        });
+      } else storeSession(current);
     };
     const timer = setInterval(() => {
       setNow(Date.now());
@@ -862,13 +926,36 @@ export default function WritingEditor() {
     })),
     ...extensionSessions,
   ];
-  const todayWords = writingProgress.total(progressSessions, now, timeZone);
-  const streakQuery = useWritingStreak(
+  const streakQuery = useAccountWriting(
     userId,
     Boolean(ws.user?.ai_access),
     timeZone,
     ws.activities.map((a) => `${a.id}:${a.sequence}`).join(","),
   );
+  const accountSummary =
+    streakQuery.data &&
+    streakQuery.data.user_id === userId &&
+    streakQuery.data.reportingDate ===
+      writingDates.dayKey(now, streakQuery.data.timezone)
+      ? streakQuery.data
+      : undefined;
+  const todayWords =
+    accountSummary?.dailyWordCount ??
+    writingProgress.total(progressSessions, now, timeZone);
+  const preferences = useWritingPreferences(userId, {
+    daily_goal: goal,
+    timezone: timeZone,
+    language,
+  });
+  const savePreferencesRef = useRef(preferences.change);
+  savePreferencesRef.current = preferences.change;
+  useEffect(() => {
+    const value = preferences.value;
+    if (!value || value.user_id !== userId) return;
+    setGoal(value.daily_goal);
+    if (value.timezone) setTimeZone(value.timezone);
+    setLanguage(value.language);
+  }, [preferences.value, userId]);
   const streak =
     streakQuery.isError || !ws.online
       ? "—"
@@ -903,7 +990,8 @@ export default function WritingEditor() {
           language,
           writing_progress: writingProgress.snapshot(
             goal,
-            writingProgress.total(progressSessions, progressTime, timeZone),
+            accountSummary?.dailyWordCount ??
+              writingProgress.total(progressSessions, progressTime, timeZone),
             timeZone,
             progressTime,
           ),
@@ -1211,7 +1299,10 @@ export default function WritingEditor() {
             className="uw-editor-language"
             aria-label={t("Language")}
             value={language}
-            onChange={(event) => setLanguage(event.target.value)}
+            onChange={(event) => {
+              setLanguage(event.target.value);
+              preferences.change({ language: event.target.value });
+            }}
           >
             <option value="en">EN</option>
             <option value="es">ES</option>
@@ -2008,6 +2099,18 @@ export default function WritingEditor() {
               </details>
             </section>
           )}
+          {(!ws.online || streakQuery.isError) && (
+            <p role="status" className="uw-editor-muted">
+              {language === "es"
+                ? "Los totales de la cuenta muestran la última sincronización. La actividad local se sincronizará al reconectar."
+                : "Account totals show the last sync. Local activity will sync when the connection returns."}
+            </p>
+          )}
+          {preferences.status && (
+            <p role="status" className="uw-editor-muted">
+              {preferences.status}
+            </p>
+          )}
           <footer
             data-tour="stats"
             className="uw-editor-stats"
@@ -2034,6 +2137,30 @@ export default function WritingEditor() {
             </div>
             {!focus && (
               <>
+                <div title="Account-wide saved active time; overlapping sessions count once">
+                  <strong>
+                    {accountSummary
+                      ? formatWritingTime(
+                          accountSummary.dailyActiveWritingSeconds,
+                        )
+                      : "—"}
+                  </strong>{" "}
+                  {language === "es"
+                    ? "Tiempo de escritura de hoy"
+                    : "Today’s Writing Time"}
+                </div>
+                <div>
+                  <strong>
+                    {accountSummary
+                      ? formatWritingTime(
+                          accountSummary.lifetimeActiveWritingSeconds,
+                        )
+                      : "—"}
+                  </strong>{" "}
+                  {language === "es"
+                    ? "Tiempo total de escritura"
+                    : "Total Writing Time"}
+                </div>
                 <div>
                   <strong>
                     {String(Math.floor(seconds / 60)).padStart(2, "0")}:
@@ -2057,11 +2184,12 @@ export default function WritingEditor() {
             {!focus && (
               <div>
                 <strong>
-                  {totalWritten +
-                    extensionSessions.reduce(
-                      (sum, session) => sum + session.typedWords,
-                      0,
-                    )}
+                  {accountSummary?.lifetimeWordCount ??
+                    totalWritten +
+                      extensionSessions.reduce(
+                        (sum, session) => sum + session.typedWords,
+                        0,
+                      )}
                 </strong>{" "}
                 {t("Total written")}
               </div>

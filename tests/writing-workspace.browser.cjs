@@ -14,7 +14,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0;
-  const documents=new Map(),activity=new Map(),folders=[];const requests=[],errors=[];
+  const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
   await context.route(origin+'/api/**',async route=>{
@@ -24,6 +24,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    if(!signedIn){status=401;value={detail:'Authentication required'};}
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
    else if(key==='/auth/refresh')value={authenticated:true};
+   else if(key==='/progress/preferences'){
+    if(method==='PUT')preferenceState={...preferenceState,...body,revision:preferenceState.revision+1};
+    value={...preferenceState,user_id:currentOwner};
+   }
+   else if(key==='/progress/summary')value={user_id:currentOwner,reportingDate:new Date().toISOString().slice(0,10),timezone:'America/Chicago',dailyWordCount:[...activity.values()].reduce((n,a)=>n+a.typed_words,0),dailyActiveWritingSeconds:[...activity.values()].reduce((n,a)=>n+a.duration_seconds,0),lifetimeActiveWritingSeconds:[...activity.values()].reduce((n,a)=>n+a.duration_seconds,0),dailyGoal:preferenceState.daily_goal,displayedStreak:pro?15:7,updatedAt:new Date().toISOString(),sessions:[]};
    else if(key==='/progress/streak')value={user_id:currentOwner,displayedStreak:pro?15:7,hasUnlimitedStreakAccess:pro,streakLimitReached:!pro,journeyContinues:!pro,timezone:'America/Chicago',asOf:new Date().toISOString()};
    else if(key==='/ai/profile'&&method==='GET')value=profile;
    else if(key==='/ai/usage/summary')value={version_id:'v2',version_name:'Coach',legacy_shared:false,timezone:'America/Chicago',daily_reset_at:new Date(Date.now()+86400000).toISOString(),monthly_reset_at:new Date(Date.now()+30*86400000).toISOString(),suggestions_monthly_limit:200,suggestions_monthly_used:aiUsed,suggestions_monthly_remaining:200-aiUsed,guidance_monthly_limit:30,guidance_monthly_used:0,guidance_monthly_remaining:30,warning_percent:80,user_id:currentOwner,date:new Date().toISOString().slice(0,10),daily_limit:100,used_today:aiUsed,pending_today:aiPending,remaining:Math.max(0,100-aiUsed-aiPending)};
@@ -66,7 +71,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     }
    }
    else if(key==='/workspace/activity'&&method==='GET')value=[...activity.values()].map(a=>({...a,user_id:currentOwner,source:'editor',updated_at:new Date().toISOString()}));
-   else if(key==='/workspace/activity'){assert.ok(Object.keys(body).every(k=>['id','document_id','expected_user_id','started_at','typed_words','pasted_words','duration_seconds','sequence','timer'].includes(k)),'Restored sessions strip database-only fields');const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
+   else if(key==='/workspace/activity'){assert.ok(Object.keys(body).every(k=>['id','document_id','expected_user_id','started_at','typed_words','pasted_words','duration_seconds','sequence','timer','device_id','active_intervals'].includes(k)),'Restored sessions strip database-only fields');const prev=activity.get(body.id);if(!prev||prev.sequence<body.sequence)activity.set(body.id,body);value=activity.get(body.id);}
    else if(key==='/workspace/sources')value=sources;
    else if(key==='/processing/run'){
     assert.equal(pro,true);Object.assign(sources[0],{processing_status:'ready',processing_phase:'complete',processing_progress:100});status=202;value={accepted:true};
