@@ -230,5 +230,8 @@ export async function loadWritingCache(
     ),
     adopted,
     activities: [...activity.values()],
+    locallyCreatedActivityIds: records
+      .filter((e) => e.kind === "activity")
+      .map((e) => (e.value as Activity).id),
   };
 }

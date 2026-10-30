@@ -559,3 +559,5 @@ checks identical Free/Pro cache and rotation behavior, no AI requests from
 Original, all four Pro choices, one Free choice, signed-out/offline use,
 subscription changes, rejected forged plan claims, and 180–420px English/Spanish
 layouts. Set `SUGGESTION_SCREENSHOTS` to capture Free/Pro Original screens.
+
+Version 0.20.0 separates Session Time, Today’s Writing Time and Total Writing Time. Signed-in account totals include editor and other-device sessions. See [sync policy and rollout](../docs/unified-account-writing-sync.md).

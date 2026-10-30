@@ -15,7 +15,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     const pages = new Set();
     const errors = [];
     let pro = true;
-    let cloudActivity=[];
+    let cloudActivity=[];let preferenceRevision=1;
     const opened=[];
     const now = Date.now();
     const result = { startedAt: now - 71000, endedAt: now, typedWords: 10, pastedWords: 0, sessionGoal: 250 };
@@ -48,11 +48,23 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
       sendMessage: async message => notify('backgroundListeners', [message]),
     }, tabs: { query: async () => [], sendMessage() {}, create: async item => opened.push(item) } };
     const worker = vm.createContext({ chrome, crypto: webcrypto, Date, Intl, URL, AbortController, FormData, TextEncoder, TextDecoder, console, setTimeout, clearTimeout,
-      fetch: async url => {
+      fetch: async (url,options={}) => {
+        const input=options.body?JSON.parse(options.body):null;
         const route = new URL(url).pathname;
+        if(route==='/api/progress/preferences'){
+          if(input){if(input.daily_goal)storage.wc_settings.wordGoal=input.daily_goal;if(input.language)storage.wc_settings.language=input.language;preferenceRevision++;}
+          return new Response(JSON.stringify({user_id:storage.wc_account.userId,revision:preferenceRevision,daily_goal:storage.wc_settings.wordGoal,timezone:storage.wc_settings.profile.timezone,language:storage.wc_settings.language||'en',themes:storage.wc_settings.themes}));
+        }
+        if(route==='/api/progress/summary'){
+          const rows=storage.wc_history.filter(r=>!r.cloudActivityId && r.source!=='editor');
+          const current=storage.wc_state;
+          const localWords=rows.reduce((n,r)=>n+(r.typedWords||0),0)+(current.active?current.typedWords||0:0);
+          const localTime=rows.reduce((n,r)=>n+(r.timer?worker.WCSessionClock.read(r.timer).active_ms:(r.endedAt||r.startedAt)-r.startedAt),0)+(current.active?worker.WCSessionClock.read(current.timer).active_ms:0);
+          return new Response(JSON.stringify({user_id:storage.wc_account.userId,reportingDate:new Date().toISOString().slice(0,10),timezone:storage.wc_settings.profile.timezone,dailyWordCount:localWords+cloudActivity.reduce((n,r)=>n+r.typed_words,0),dailyActiveWritingSeconds:Math.floor(localTime/1000)+cloudActivity.reduce((n,r)=>n+r.duration_seconds,0),lifetimeActiveWritingSeconds:Math.floor(localTime/1000)+cloudActivity.reduce((n,r)=>n+r.duration_seconds,0),dailySessions:[...rows,...(current.active?[current]:[])].map(r=>({client_key:r.progressKey||'session:'+r.startedAt,source:'extension',typed_words:r.typedWords||0,sequence:r.progressVersion||0})),dailyGoal:storage.wc_settings.wordGoal,displayedStreak:localWords?1:0,updatedAt:new Date().toISOString(),sessions:[]}));
+        }
         const body = route === '/api/auth/me'
           ? { id: storage.wc_account.userId, email: 'fixture@example.com', plan: pro ? 'pro' : 'free', ai_access: pro }
-          : route === '/api/progress/streak' ? {user_id:storage.wc_account.userId,displayedStreak:storage.wc_history.some(r=>r.typedWords>0)||storage.wc_state.active&&storage.wc_state.typedWords>0?1:0,hasUnlimitedStreakAccess:pro,streakLimitReached:false,timezone:storage.wc_settings.profile.timezone,asOf:new Date().toISOString()} : route === '/api/progress/sessions' ? {synced:1} : route === '/api/progress/clear' ? {cleared:true} : route === '/api/workspace/activity' ? cloudActivity : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
+          : route === '/api/progress/streak' ? {user_id:storage.wc_account.userId,displayedStreak:storage.wc_history.some(r=>r.typedWords>0)||storage.wc_state.active&&storage.wc_state.typedWords>0?1:0,hasUnlimitedStreakAccess:pro,streakLimitReached:false,timezone:storage.wc_settings.profile.timezone,asOf:new Date().toISOString()} : route === '/api/progress/sessions' ? {synced:1} : route === '/api/progress/clear' ? {cleared:true} : route === '/api/progress/activity' ? cloudActivity : route === '/api/ai/profile' ? { ai_preferences: { prompt_themes: ['ideas'] } } : [];
         return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
       },
     });
@@ -81,13 +93,19 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://progress.test/popup/popup.html');
     await page.waitForFunction(() => document.querySelector('#daily-word-count').textContent === '10');
-    assert.equal(await page.locator('#dashboard-session-time').textContent(), '01:11');
+    assert.equal(await page.locator('#dashboard-session-time').textContent(), '00:01:11');
+    cloudActivity=[{id:'editor-time-fixture',source:'editor',user_id:storage.wc_account.userId,started_at:new Date().toISOString(),typed_words:500,pasted_words:0,duration_seconds:1200,updated_at:new Date().toISOString()}];
+    await page.locator('#session-panel [data-refresh-progress]').click();
+    await page.waitForFunction(()=>document.querySelector('#dashboard-session-time').textContent==='00:21:11');
+    assert.equal(await page.locator('#duration-value').textContent(),'00:01:11','Session timer remains separate from daily editor+extension time');
+    assert.equal(await page.locator('#dashboard-total-time').textContent(),'00:21:11');
+    cloudActivity=[];
     // Reproduce the screenshot: clearing must erase both history and lastResult.
     await page.click('#nav-progress'); await page.click('#prog-history'); await page.click('#history-clear'); await page.click('#confirm-ok');
     await page.click('#history-back');
     await page.waitForFunction(() => document.querySelector('#count-number').textContent === '0');
     assert.equal(await page.locator('#daily-word-count').textContent(), '0');
-    assert.equal(await page.locator('#dashboard-session-time').textContent(), '00:00');
+    assert.equal(await page.locator('#dashboard-session-time').textContent(), '00:00:00');
     assert.equal(await page.locator('#daily-goal-percent').textContent(), '0%');
     assert.equal(await page.locator('#dashboard-streak').textContent(), '0 days');
     assert.equal(storage.wc_state.lastResult, null);
@@ -98,6 +116,12 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await page.reload(); await page.locator('#primary-btn').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#count-number').textContent(), '0', 'Cleared result stays cleared on reopen');
 
+    cloudActivity=[{id:'editor-only-time',source:'editor',user_id:storage.wc_account.userId,started_at:new Date().toISOString(),typed_words:500,pasted_words:0,duration_seconds:1200}];
+    await page.locator('#session-panel [data-refresh-progress]').click();
+    await page.waitForFunction(()=>document.querySelector('#dashboard-session-time').textContent==='00:20:00');
+    assert.equal(storage.wc_state.active,false,'Editor time displays without an extension session');
+    assert.equal(await page.locator('#daily-word-count').textContent(),'500');
+    cloudActivity=[];await message({type:'CLEAR_HISTORY'});await page.locator('#session-panel [data-refresh-progress]').click();
     // Real content.js input events must decrease the active session and goal ring.
     const editor = await context.newPage(); pages.add(editor);
     editor.on('pageerror', error => errors.push(error.message));
@@ -161,7 +185,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     storage.wc_history = [{ ...result, id: 'missed-event', typedWords: 8 }];
     await page.locator('#progress-panel [data-refresh-progress]').click();
     await page.waitForFunction(() => document.querySelector('#prog-primary').textContent === '8');
-    assert.equal(await page.locator('#progress-refresh-status').textContent(), 'Progress is up to date.');
+    assert.equal(await page.locator('#progress-refresh-status').textContent(), 'Synced');
     await message({ type: 'CLEAR_HISTORY' });
     for (const width of [320, 420]) {
       await page.setViewportSize({ width, height: 600 });

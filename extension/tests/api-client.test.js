@@ -73,6 +73,16 @@ test('extension runtime marker covers JSON, uploads, and automatic session refre
   assert.equal(calls[1].options.headers['Content-Type'],undefined);
 });
 
+test('concurrent expired-token requests share one secure refresh', async () => {
+  let refreshed=false,refreshes=0;
+  global.fetch=async url=>{
+    if(url.endsWith('/auth/refresh')){refreshes++;await new Promise(resolve=>setTimeout(resolve,10));refreshed=true;return {ok:true,status:200};}
+    return {ok:refreshed,status:refreshed?200:401,json:async()=>({ok:refreshed})};
+  };
+  const results=await Promise.all([API.get('/progress/summary'),API.get('/progress/preferences'),API.get('/progress/statistics')]);
+  assert.equal(refreshes,1);assert.ok(results.every(r=>r.ok));
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const [name, fn] of tests) {

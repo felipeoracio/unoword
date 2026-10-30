@@ -79,7 +79,7 @@
 
   const CSV_COLUMNS = [
     'session_id', 'date', 'start_time', 'end_time',
-    'words_written', 'session_goal', 'goal_reached', 'timezone', 'active_ms', 'paused_ms',
+    'words_written', 'session_goal', 'goal_reached', 'timezone', 'active_ms', 'paused_ms', 'source', 'cloud_activity_id', 'progress_key', 'owner_id',
   ];
 
   function csvEscape(v) {
@@ -105,7 +105,7 @@
         goal,
         reached,
         s.timezone || '',
-        timing.active_ms, timing.paused_ms,
+        timing.active_ms, timing.paused_ms, s.source || "", s.cloudActivityId || "", s.progressKey || "", s.ownerId || "",
       ].map(csvEscape).join(','));
     });
     return rows.join('\r\n');
@@ -186,6 +186,10 @@
       }
       records.push({
         ...(timer?{timer}:{}),
+        ...(idx('source')>=0 && cells[idx('source')] ? {source:cells[idx('source')]} : {}),
+        ...(idx('cloud_activity_id')>=0 && cells[idx('cloud_activity_id')] ? {cloudActivityId:cells[idx('cloud_activity_id')]} : {}),
+        ...(idx('progress_key')>=0 && cells[idx('progress_key')] ? {progressKey:cells[idx('progress_key')]} : {}),
+        ...(idx('owner_id')>=0 && cells[idx('owner_id')] ? {ownerId:cells[idx('owner_id')]} : {}),
         id,
         startedAt,
         endedAt: endedAt != null ? endedAt : startedAt,

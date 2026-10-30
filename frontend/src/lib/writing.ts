@@ -100,6 +100,8 @@ export type Activity = {
   pasted_words: number;
   duration_seconds: number;
   sequence: number;
+  device_id?: string | null;
+  active_intervals?: [number, number][] | null;
   timer?: SessionTimer | null;
   dirty?: boolean;
 };
@@ -112,6 +114,8 @@ export function activitySnapshot(row: Activity): Activity {
     pasted_words: row.pasted_words,
     duration_seconds: row.duration_seconds,
     sequence: row.sequence,
+    ...(row.device_id ? { device_id: row.device_id } : {}),
+    ...(row.active_intervals ? { active_intervals: row.active_intervals } : {}),
     ...(row.timer ? { timer: row.timer } : {}),
   };
 }
@@ -125,6 +129,8 @@ export const sessionClock = (
   globalThis as unknown as {
     WCSessionClock: {
       start(now?: number): SessionTimer;
+      intervals(row: Activity, now?: number): [number, number][];
+      checkpoint(timer: SessionTimer, now?: number): SessionTimer;
       read(
         timer?: SessionTimer | null,
         now?: number,

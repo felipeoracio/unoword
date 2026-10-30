@@ -313,8 +313,10 @@ function mountLibraryResources() {
 
 function renderWriteDashboard() {
   if (!settings) return;
+  if(accountWritingSummary?.user_id!==account.userId || !account.authenticated)accountWritingSummary=null;
   const activeWords = state?.active && dayKey(state.startedAt) === dayKey(Date.now()) ? (state.typedWords || 0) : 0;
-  const words = window.WCWritingProgress.withActive(completedWordsToday, state, settings.profile?.timezone);
+  const pending = window.WCCloudProgress.pendingWords(accountWritingSummary,state,[],account.userId,at=>dayKey(at)===dayKey(Date.now()));
+  const words = Number.isFinite(accountWritingSummary?.dailyWordCount) ? Math.max(0,accountWritingSummary.dailyWordCount+pending) : window.WCWritingProgress.withActive(completedWordsToday, state, settings.profile?.timezone);
   const goal = Number(settings.wordGoal || 0);
   const percent = goal > 0 ? Math.min(100, Math.max(0, Math.round(words / goal * 100))) : 0;
   $('daily-word-count').textContent = fmtNumber(words);
@@ -329,13 +331,18 @@ function renderWriteDashboard() {
   const streak = streakValue;
   $('dashboard-streak').textContent = streak == null ? '—' : t('dashboard.days', { n: fmtNumber(streak) });
   const duration = self.WCSessionClock.read(self.WCSessionClock.forSession(state?.active ? state : state?.lastResult)).active_ms;
-  $('dashboard-session-time').textContent = fmtDuration(duration).replace(/^00:/, '');
+  const timeLabel=$('dashboard-session-time').previousElementSibling;
+  timeLabel.setAttribute('data-i18n',account.authenticated?'dashboard.todayTime':'dashboard.sessionTime');
+  timeLabel.textContent=t(account.authenticated?'dashboard.todayTime':'dashboard.sessionTime');
+  $('dashboard-session-time').textContent = account.authenticated ? (Number.isFinite(accountWritingSummary?.dailyActiveWritingSeconds) ? fmtDuration(accountWritingSummary.dailyActiveWritingSeconds*1000) : '—') : fmtDuration(duration);
+  $('dashboard-total-time').textContent = Number.isFinite(accountWritingSummary?.lifetimeActiveWritingSeconds) ? fmtDuration(accountWritingSummary.lifetimeActiveWritingSeconds*1000) : '—';
 }
 
 async function refreshWriteDashboard() {
   return refreshProgress();
 }
 
+let accountWritingSummary = null;
 let progressRequest = 0;
 let progressRefreshTimer = 0;
 async function refreshProgress(manual = false) {
@@ -353,18 +360,19 @@ async function refreshProgress(manual = false) {
       return;
     }
     state = response.payload;
+    accountWritingSummary = response.accountSummary?.user_id === account.userId ? response.accountSummary : null;
     if (response.settings) settings = response.settings;
     completedWordsToday = response.today.totalWords || 0;
     streakValue = response.streak;
     renderSession();
-    renderProgressStats(response.stats, progRange);
+    renderProgressStats(progRange==='today' && Number.isFinite(accountWritingSummary?.dailyWordCount) ? {...response.stats,totalWords:accountWritingSummary.dailyWordCount} : response.stats, progRange);
     els.progStreak.hidden = streakValue === 0;
     els.progStreakText.textContent = streakValue > 0
       ? t(streakValue === 1 ? 'streak.day' : 'streak.days', { n: fmtNumber(streakValue) }) : '';
     historyPlan = response.plan;
     historyHasMore = response.hasMore;
     if (currentPanel === 'history') renderHistory(response.history);
-    $('progress-refresh-status').textContent = manual ? t('dashboard.refreshed') : '';
+    $('progress-refresh-status').textContent = accountWritingSummary ? t('sync.'+accountWritingSummary.syncStatus) : (manual ? t('dashboard.refreshed') : '');
   } finally {
     if (manual) buttons.forEach(button => { button.disabled = false; });
   }
@@ -2472,7 +2480,7 @@ function wire() {
   // the "internet required" notice.
   if (typeof window !== 'undefined') {
     window.addEventListener('offline', () => { account.online = false; renderOfflineBadge(); renderPrompt(); renderUsage(); });
-    window.addEventListener('online', () => { account.online = true; renderOfflineBadge(); renderPrompt(); void refreshUsage(); });
+    window.addEventListener('online', () => {void refreshProgress(true); account.online = true; renderOfflineBadge(); renderPrompt(); void refreshUsage(); });
   }
   els.promptAiReasons.querySelectorAll('.wc__chip').forEach((chip) => {
     chip.addEventListener('click', () => onAiReasonPick(chip.dataset.reason, chip));
@@ -2495,6 +2503,8 @@ function wire() {
   window.addEventListener('focus', scheduleProgressRefresh);
   window.addEventListener('focus', async () => {const r=await sendMessage({type:'GET_ACCOUNT'});if(r.ok){account=r.account;await refreshProgress();}void refreshUsage();});
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { scheduleProgressRefresh(); void refreshUsage(); } });
+  const progressTicker = setInterval(() => {if(!document.hidden)void refreshProgress();},15000);
+  window.addEventListener('unload',()=>clearInterval(progressTicker));
   const usageTicker = setInterval(() => { if (!document.hidden) void refreshUsage(); }, 30000);
   window.addEventListener('unload', () => clearInterval(usageTicker));
   const processingTicker = setInterval(() => void pollSourceProcessing(), 8000);

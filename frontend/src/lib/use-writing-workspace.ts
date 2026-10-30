@@ -42,6 +42,7 @@ export function useWritingWorkspace() {
   const [recovery, setRecovery] = useState<Draft[]>([]);
   const [folders, setFolderState] = useState<Folder[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const localActivityIds = useRef(new Set<string>());
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState("Opening your writing space…");
   const [error, setError] = useState("");
@@ -68,6 +69,7 @@ export function useWritingWorkspace() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     active = useRef(true);
   const syncRef = useRef<() => Promise<void>>(async () => {});
+  const lastRemoteRead = useRef(0);
   const folderRows = useRef<Folder[]>([]);
   const setFolders = useCallback((next: Folder[]) => {
     folderRows.current = next;
@@ -220,6 +222,7 @@ export function useWritingWorkspace() {
     async (row: Activity) => {
       const owner = identity.current;
       if (!owner || !owner.ai_access) return;
+      localActivityIds.current.add(row.id);
       const next = { ...activitySnapshot(row), dirty: true };
       publishActivity([
         ...activityRows.current.filter((a) => a.id !== row.id),
@@ -409,10 +412,99 @@ export function useWritingWorkspace() {
           location.origin,
         );
       }
+      if (Date.now() - lastRemoteRead.current >= 12000) {
+        const [remoteIndex, remoteFolders, remoteActivity] = await Promise.all([
+          fetchDocumentIndex(),
+          apiGet<Folder[]>("/workspace/folders"),
+          fetchWritingActivity(),
+        ]);
+        if (
+          identity.current?.id !== owner ||
+          !identity.current.ai_access ||
+          !active.current
+        )
+          return;
+        const newlyCompleted = new Set(
+          remoteIndex
+            .filter(
+              (remote) =>
+                remote.completion_status === "completed" &&
+                docs.current.some(
+                  (local) =>
+                    local.id === remote.id &&
+                    local.completion_status !== "completed",
+                ),
+            )
+            .map((d) => d.id),
+        );
+        const merged = new Map(
+          remoteIndex.map((remote) => {
+            const local = docs.current.find((d) => d.id === remote.id);
+            if (local?.dirty || completionLock.current === remote.id)
+              return [remote.id, local!];
+            const full = remote.content
+              ? remote
+              : local?.revision === remote.revision &&
+                  local.content_loaded !== false
+                ? local
+                : null;
+            return [
+              remote.id,
+              {
+                ...remote,
+                content: full?.content || EMPTY_DOCUMENT,
+                plain_text: full?.plain_text || "",
+                dirty: false,
+                tab_id: tab,
+                content_loaded: Boolean(full),
+              },
+            ] as const;
+          }),
+        );
+        for (const local of docs.current.filter((d) => d.dirty))
+          merged.set(local.id, local);
+        publish([...merged.values()]);
+        // A completed document arriving from another device must not be reopened
+        // automatically. Unsynchronized local edits remain in the conflict workflow.
+        setSelected((id) => {
+          const document = id ? merged.get(id) : null;
+          if (
+            document?.completion_status === "completed" &&
+            !document.dirty &&
+            newlyCompleted.has(document.id)
+          ) {
+            localStorage.setItem(
+              `uno-writing-selected:${owner}`,
+              FRESH_DOCUMENT,
+            );
+            return null;
+          }
+          return id && !merged.has(id) ? null : id;
+        });
+        const folderMap = new Map(remoteFolders.map((f) => [f.id, f]));
+        folderRows.current
+          .filter((f) => f.dirty)
+          .forEach((f) => folderMap.set(f.id, f));
+        setFolders([...folderMap.values()]);
+        const activityMap = new Map(remoteActivity.map((a) => [a.id, a]));
+        activityRows.current
+          .filter((a) => a.dirty)
+          .forEach((a) => activityMap.set(a.id, a));
+        publishActivity([...activityMap.values()]);
+        await cachePut(owner, "folders", "all", folderRows.current);
+        await cachePut(owner, "activity_index", "all", remoteActivity);
+        for (const document of merged.values())
+          if (!document.dirty) {
+            await cachePut(owner, "document", document.id, document);
+          }
+        lastRemoteRead.current = Date.now();
+      }
       if (!conflictIds.current.size) {
         setError("");
         setStatus(
-          docs.current.some((d) => d.dirty)
+          docs.current.some((d) => d.dirty) ||
+            activityRows.current.some((a) => a.dirty) ||
+            folderRows.current.some((f) => f.dirty)
             ? "Saved on this device · syncing…"
             : "All changes saved",
         );
@@ -734,6 +826,7 @@ export function useWritingWorkspace() {
         }
         publish(cached.documents);
         setFolders(cached.folders);
+        localActivityIds.current = new Set(cached.locallyCreatedActivityIds);
         publishActivity(cached.activities);
         setRecovery(cached.recovery);
         const previousSelection =
@@ -820,10 +913,15 @@ export function useWritingWorkspace() {
     void boot();
     const reconnect = () => {
       setOnline(true);
+      lastRemoteRead.current = 0;
       void syncRef.current();
     };
     const regainFocus = () => {
-      if (document.visibilityState === "visible") void recheckIdentity();
+      if (document.visibilityState === "visible") {
+        lastRemoteRead.current = 0;
+        void recheckIdentity();
+        void syncRef.current();
+      }
     };
     const offline = () => {
       setOnline(false);
@@ -869,7 +967,7 @@ export function useWritingWorkspace() {
     window.addEventListener("storage", accountChanged);
     const retry = setInterval(() => {
       void syncRef.current();
-    }, 30000);
+    }, 15000);
     return () => {
       cancelled = true;
       active.current = false;
@@ -898,6 +996,7 @@ export function useWritingWorkspace() {
     folders,
     createFolder,
     activities,
+    localActivityIds,
     selected,
     setSelected,
     status,

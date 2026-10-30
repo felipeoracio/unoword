@@ -235,6 +235,9 @@ const root = path.resolve(__dirname, "..");
   await evaluate('flushWritingMetadata()');
   const dayRows=[...server.values()].filter(row=>row.owner===other);
   assert.equal(dayRows.length,2);assert.equal(dayRows.reduce((n,row)=>n+row.typed_words,0),10,'Midnight rollover never duplicates words');
+  const idsBeforeClaim=[...server.keys()].sort();
+  await evaluate('adoptDeviceWritingHistory()');
+  assert.deepEqual([...server.keys()].sort(),idsBeforeClaim,'Explicit history import retains an already-synced UUID key');
   // Persistent pause/resume uses the same session on Free; duplicate start is safe.
   workerNow=Date.parse('2026-10-28T15:00:00Z');
   await evaluate('startSession()');const sessionStart=storage.wc_state.startedAt;
@@ -256,6 +259,11 @@ const root = path.resolve(__dirname, "..");
   await evaluate('startSession()');workerNow+=60000;await evaluate('pauseOrResumeSession("paused")');
   workerNow+=5*60000;await evaluate('stopSession()');
   assert.equal(storage.wc_state.lastResult.timer.active_ms,60000,'End while paused excludes the break');
+  await evaluate('startSession()');workerNow+=6*60000;
+  await evaluate('checkpointWritingSession()');
+  assert.equal(storage.wc_state.timer.status,'paused','Idle checkpoints pause at five minutes');
+  assert.equal(storage.wc_state.timer.active_ms,5*60000,'Idle tail does not inflate active time');
+  await evaluate('stopSession()');
   workerNow=null;
   console.log('PASS persistent worker sessions: Free pause/resume, 45 active/10 paused/55 elapsed, input suppression, restored pause, duplicate-start/stop protection, same session identity.');
   // Clear pending debounce timers after this standalone worker test.
