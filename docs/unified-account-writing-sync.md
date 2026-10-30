@@ -1,8 +1,10 @@
 # Unified account writing synchronization
 
-Implemented on `feat/unified-account-writing-sync`. Database migration must be
-applied before deploying this branch. This report does not claim production
-verification before that deployment.
+Deployed to https://unoword.vercel.app/ on October 30, 2026. The database
+migration was applied and verified before [PR #6](https://github.com/felipeoracio/unoword/pull/6)
+merged into `main` as `55dc556b58bd64d01445a82ea161bb105f1cff6b`.
+Vercel reported a successful production deployment. The published extension is
+**0.20.0**; its downloaded ZIP matches the release checksum.
 
 ## Confirmed root cause
 
@@ -234,3 +236,58 @@ worker/browser/API/clock tests, and the packaged 0.20.0 download/release metadat
 
 Integration: `tests/account-writing-sync.browser.cjs`, workspace browser fixtures,
 this report and README links.
+
+
+## Production rollout verification — October 30, 2026
+
+Verified the applied interval/device/preference columns and the shared summary,
+historical time and preference RPCs against the actual Supabase project. Direct
+calls to service-only aggregate RPCs using a normal user token were denied.
+Vercel's production deployment succeeded after the migration was verified.
+
+Using an existing dedicated QA account, a disposable fictional document and
+explicitly identified temporary activity records, production checks verified:
+
+- A persisted **active, unfinished** editor session contributes 20 minutes before
+  End is pressed. Sending the same snapshot twice does not add another row.
+- The actually published 0.20.0 popup/worker code displays those **20 minutes with
+  no extension-local session**. A separate ingested 15-minute external session
+  brings the editor, popup and dashboard to **35 minutes**.
+- Duplicate/stale extension deliveries and a third session whose intervals
+  overlap the first two do not increase account time. Paused gaps stay excluded.
+  Historical chart totals agree with the same interval union.
+- Two independently authenticated production browser contexts see the same
+  account totals and receive automatic document updates. A device does not
+  silently adopt another device's active session.
+- Real editor changes save to the cloud; offline edits survive a page reload,
+  synchronize on reconnect and appear in the second browser. Completing the
+  document reaches the other browser and opens its fresh writing experience.
+- Editor widths 320/390/768/1440px and popup widths 320/420px have no horizontal
+  overflow. No JavaScript exceptions occurred.
+- A new disposable **Free** account has zero access to the QA account's writing,
+  editor and premium history. Attempts to pass an unrelated expected owner are
+  rejected. Its goal/timezone changes persist with revision conflict checks;
+  a different device timezone hint cannot override the configured account zone.
+- The existing QA account's documents, preferences, entitlement, AI usage, words,
+  daily/lifetime writing time and streak presentation match their pre-test
+  values after every disposable fixture and temporary identity was removed.
+
+The twenty- and fifteen-minute durations are fictional checkpoint fixtures,
+not a claim that this check took 35 physical minutes. The extension check used
+the downloaded distribution's actual JavaScript/markup in a Chromium Chrome-API
+harness, with authenticated requests to the real production backend. It does not
+claim a native Chrome Web Store installation was performed. The user must
+update/reload their installed extension to 0.20.0 to receive the new UI.
+
+Production account summaries and writes were real. The QA browser filtered the
+library to disposable documents and suppressed automatic first-device preference
+migration for the existing QA account; settings/CAS checks instead ran against
+the disposable Free identity. No model-generation, source-processing or billing
+operation was executed.
+
+Production screenshots:
+`/workspace/.onboarding/unoword/unified-sync/production-extension-editor-only.png`
+and
+`/workspace/.onboarding/unoword/unified-sync/production-second-device-completion.png`.
+The sanitized result metadata is in
+`/workspace/.onboarding/unoword/unified-sync/production-live-results.json`.
