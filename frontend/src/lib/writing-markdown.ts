@@ -32,6 +32,14 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
     .join(
       ["doc", "listItem", "blockquote"].includes(node.type || "") ? "\n\n" : "",
     );
+  if (
+    node.type === "doc" &&
+    typeof node.attrs?.subtitle === "string" &&
+    node.attrs.subtitle
+  )
+    return (
+      toMarkdown({ type: "text", text: node.attrs.subtitle }) + "\n\n" + text
+    );
   if (node.type === "heading")
     return "#".repeat(Number(node.attrs?.level || 1)) + " " + text;
   if (node.type === "blockquote")

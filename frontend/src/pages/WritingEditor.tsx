@@ -15,6 +15,8 @@ import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { DocumentSubtitle, documentSubtitle } from "@/lib/document-subtitle";
+import { copyWriting } from "@/lib/copy-writing";
 import {
   AlignLeft,
   AlignCenter,
@@ -191,6 +193,16 @@ const spanish: Record<string, string> = {
   Export: "Exportar",
   Import: "Importar",
   "Rename document": "Renombrar documento",
+  Subtitle: "Subtítulo",
+  "Add a subtitle…": "Añade un subtítulo…",
+  "Copy title": "Copiar título",
+  "Copy subtitle": "Copiar subtítulo",
+  "Copy body": "Copiar texto",
+  "Title copied": "Título copiado",
+  "Subtitle copied": "Subtítulo copiado",
+  "Body copied": "Texto copiado",
+  "Could not copy. Select the text and copy it manually.":
+    "No se pudo copiar. Selecciona el texto y cópialo manualmente.",
   "Daily goal": "Meta diaria",
   "Refresh / retry sync": "Actualizar / reintentar sincronización",
   "Different versions found": "Se encontraron versiones diferentes",
@@ -414,19 +426,38 @@ export default function WritingEditor() {
     folderDialog = useRef<HTMLDialogElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const titleInput = useRef<HTMLTextAreaElement>(null);
+  const subtitleInput = useRef<HTMLTextAreaElement>(null);
+  const [copyResult, setCopyResult] = useState<{
+    documentId: string;
+    part: string;
+    message: string;
+  } | null>(null);
+  const [copyBusy, setCopyBusy] = useState(false);
+  useEffect(() => {
+    if (!copyResult) return;
+    const timeout = setTimeout(() => setCopyResult(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [copyResult]);
 
   useEffect(() => {
     const resizeTitle = () => {
-      const input = titleInput.current;
-      if (input) {
-        input.style.height = "auto";
-        input.style.height = `${input.scrollHeight}px`;
+      for (const input of [titleInput.current, subtitleInput.current]) {
+        if (input) {
+          input.style.height = "auto";
+          input.style.height = `${input.scrollHeight}px`;
+        }
       }
     };
     resizeTitle();
     window.addEventListener("resize", resizeTitle);
     return () => window.removeEventListener("resize", resizeTitle);
-  }, [activeDocument?.id, activeDocument?.title, right, focus]);
+  }, [
+    activeDocument?.id,
+    activeDocument?.title,
+    activeDocument?.content.attrs?.subtitle,
+    right,
+    focus,
+  ]);
 
   const [tourObservation, setTourObservation] = useState({
     sequence: 0,
@@ -564,6 +595,7 @@ export default function WritingEditor() {
 
   const editor = useEditor({
     extensions: [
+      DocumentSubtitle,
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         code: false,
@@ -635,6 +667,13 @@ export default function WritingEditor() {
       !editor.state.doc.eq(storedContent)
     ) {
       editor.commands.setContent(activeDocument.content, { emitUpdate: false });
+      // setContent replaces body nodes but does not restore root attributes.
+      // Hydrate metadata explicitly without treating a cloud load as an edit.
+      editor.commands.command(({ tr }) => {
+        tr.setDocAttribute("subtitle", storedContent.attrs.subtitle);
+        tr.setMeta("preventUpdate", true);
+        return true;
+      });
       loadedDocument.current = activeDocument.id;
     }
     // Tiptap emits an update by default even if editable did not change. That
@@ -910,7 +949,7 @@ export default function WritingEditor() {
             (completionFilter === "all" ||
               (d.completion_status || "draft") === completionFilter) &&
             (serverMatches?.has(d.id) ||
-              `${d.title}\n${d.plain_text}`
+              `${d.title}\n${documentSubtitle(d.content)}\n${d.plain_text}`
                 .toLocaleLowerCase()
                 .includes(search.toLocaleLowerCase()))
           );
@@ -1098,15 +1137,94 @@ export default function WritingEditor() {
       ws.setError(editorError(failure));
     }
   }
+  async function copyDocumentPart(part: "title" | "subtitle" | "body") {
+    const document = draftRef.current;
+    if (!document || !editor || copyBusy) return;
+    const owner = ownerRef.current;
+    const text =
+      part === "title"
+        ? document.title
+        : part === "subtitle"
+          ? documentSubtitle(document.content)
+          : editor.getText({ blockSeparator: "\n\n" });
+    if (!text) return;
+    setCopyBusy(true);
+    setCopyResult(null);
+    try {
+      await copyWriting(
+        text,
+        part === "body" ? DOMPurify.sanitize(editor.getHTML()) : undefined,
+      );
+      if (ownerRef.current === owner && draftRef.current?.id === document.id)
+        setCopyResult({
+          documentId: document.id,
+          part,
+          message: {
+            title: "Title copied",
+            subtitle: "Subtitle copied",
+            body: "Body copied",
+          }[part],
+        });
+    } catch {
+      if (ownerRef.current === owner && draftRef.current?.id === document.id)
+        setCopyResult({
+          documentId: document.id,
+          part: "error",
+          message: "Could not copy. Select the text and copy it manually.",
+        });
+    } finally {
+      setCopyBusy(false);
+    }
+  }
+  function copyButton(part: "title" | "subtitle" | "body", empty: boolean) {
+    const label = {
+      title: "Copy title",
+      subtitle: "Copy subtitle",
+      body: "Copy body",
+    }[part];
+    return (
+      <button
+        type="button"
+        className="uw-editor-copy"
+        title={t(label)}
+        aria-label={t(label)}
+        disabled={
+          copyBusy ||
+          empty ||
+          (part === "body" &&
+            (!editor || loadedDocument.current !== activeDocument?.id))
+        }
+        onClick={() => void copyDocumentPart(part)}
+      >
+        {copyResult &&
+        copyResult.documentId === activeDocument?.id &&
+        copyResult.part === part ? (
+          <Check size={16} />
+        ) : (
+          <Copy size={16} />
+        )}
+        <span className={part === "body" ? undefined : "uw-sr-only"}>
+          {t(label)}
+        </span>
+      </button>
+    );
+  }
   async function exportFile(format: string) {
     if (!activeDocument || !editor) return;
     try {
       // Text and Markdown exports use the latest editor content, including offline edits.
       let blob: Blob;
       if (format === "txt")
-        blob = new Blob([editor.getText({ blockSeparator: "\n\n" })], {
-          type: "text/plain;charset=utf-8",
-        });
+        blob = new Blob(
+          [
+            (documentSubtitle(editor.getJSON())
+              ? documentSubtitle(editor.getJSON()) + "\n\n"
+              : "") + editor.getText({ blockSeparator: "\n\n" }),
+          ],
+          {
+            type: "text/plain;charset=utf-8",
+          },
+        );
       else if (format === "md") {
         blob = new Blob([toMarkdown(editor.getJSON())], {
           type: "text/markdown;charset=utf-8",
@@ -1827,25 +1945,62 @@ export default function WritingEditor() {
               )}
               <div className="uw-editor-paper-scroll">
                 <article className="uw-editor-paper">
-                  <textarea
-                    ref={titleInput}
-                    rows={1}
-                    className="uw-editor-title"
-                    aria-label={t("Rename document")}
-                    value={activeDocument.title}
-                    maxLength={300}
-                    readOnly={
-                      activeDocument.status !== "active" ||
-                      activeDocument.completion_status === "completed" ||
-                      ws.completionBusy
-                    }
-                    onChange={(event) =>
-                      ws.update(activeDocument.id, {
-                        title: event.target.value,
-                      })
-                    }
-                    placeholder={t("Untitled")}
-                  />
+                  <div className="uw-editor-heading-field">
+                    <textarea
+                      ref={titleInput}
+                      rows={1}
+                      className="uw-editor-title"
+                      aria-label={t("Rename document")}
+                      value={activeDocument.title}
+                      maxLength={300}
+                      readOnly={
+                        activeDocument.status !== "active" ||
+                        activeDocument.completion_status === "completed" ||
+                        ws.completionBusy
+                      }
+                      onChange={(event) =>
+                        ws.update(activeDocument.id, {
+                          title: event.target.value,
+                        })
+                      }
+                      placeholder={t("Untitled")}
+                    />
+                    {copyButton("title", !activeDocument.title)}
+                  </div>
+                  <div className="uw-editor-heading-field uw-editor-subtitle-field">
+                    <textarea
+                      ref={subtitleInput}
+                      rows={1}
+                      className="uw-editor-subtitle"
+                      aria-label={t("Subtitle")}
+                      value={documentSubtitle(activeDocument.content)}
+                      maxLength={500}
+                      readOnly={
+                        !editor ||
+                        loadedDocument.current !== activeDocument.id ||
+                        activeDocument.status !== "active" ||
+                        activeDocument.completion_status === "completed" ||
+                        ws.completionBusy
+                      }
+                      placeholder={t("Add a subtitle…")}
+                      onChange={(event) =>
+                        editor
+                          ?.chain()
+                          .command(({ tr }) => {
+                            tr.setDocAttribute(
+                              "subtitle",
+                              event.target.value || null,
+                            );
+                            return true;
+                          })
+                          .run()
+                      }
+                    />
+                    {copyButton(
+                      "subtitle",
+                      !documentSubtitle(activeDocument.content),
+                    )}
+                  </div>
                   {activeDocument.completion_status === "completed" && (
                     <p className="uw-editor-completion-badge">
                       <CheckCircle2 size={15} />
@@ -1871,6 +2026,18 @@ export default function WritingEditor() {
                       </span>
                     </div>
                   )}
+                  <div className="uw-editor-body-actions">
+                    <span
+                      role="status"
+                      aria-live="polite"
+                      className="uw-editor-copy-status"
+                    >
+                      {copyResult?.documentId === activeDocument.id
+                        ? t(copyResult.message)
+                        : ""}
+                    </span>
+                    {copyButton("body", !activeDocument.plain_text)}
+                  </div>
                   <EditorContent editor={editor} />
                   {!focus && (
                     <div className="uw-editor-document-options">

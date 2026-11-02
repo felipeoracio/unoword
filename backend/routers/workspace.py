@@ -18,6 +18,7 @@ from lib.supabase_client import user_rest, service_rest, SupabaseAPIError
 from lib.writing_document import (
     clean_document,
     plain_text,
+    export_text,
     markdown,
     to_docx,
     to_pdf,
@@ -115,7 +116,7 @@ async def documents(
         literal = json.dumps(
             "*" + q.replace("*", "").replace("%", "").strip() + "*", ensure_ascii=False
         )
-        params["or"] = f"(title.ilike.{literal},plain_text.ilike.{literal})"
+        params["or"] = f"(title.ilike.{literal},plain_text.ilike.{literal},content->attrs->>subtitle.ilike.{literal})"
     return await rows("writing_documents", user, **params)
 
 
@@ -155,6 +156,13 @@ async def save_document(
     data = payload.model_dump(
         mode="json", exclude={"expected_user_id", "revision", "mutation_id"}, exclude_none=True
     )
+    if payload.revision > 0 and "subtitle" not in payload.content.get("attrs", {}):
+        # Cached older clients do not know about subtitle metadata. Omitting it
+        # must preserve existing writing; newer clients send null to clear it.
+        existing = await document(document_id, user)
+        subtitle = existing["content"].get("attrs", {}).get("subtitle")
+        if subtitle:
+            data["content"].setdefault("attrs", {})["subtitle"] = subtitle
     data["plain_text"] = plain_text(payload.content)
     saved = await rest(
         "POST",
@@ -361,7 +369,7 @@ async def export_document(
     item = await document(document_id, user)
     content = clean_document(item["content"])
     if format == "txt":
-        data = plain_text(content).encode()
+        data = export_text(content).encode()
         mime = "text/plain; charset=utf-8"
     elif format == "md":
         data = markdown(content).encode()
@@ -537,7 +545,7 @@ async def recovery_export(
         data = markdown(content).encode()
         media = "text/markdown"
     else:
-        data = plain_text(content).encode()
+        data = export_text(content).encode()
         media = "text/plain"
     return Response(
         data,

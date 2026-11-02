@@ -670,3 +670,50 @@ def test_folder_sync_retry_is_idempotent_and_owner_scoped(fixture):
         client.put(f"/api/workspace/folders/{folder_id}", json=body).status_code == 403
     )
     assert all(call[2] == "owner-token" for call in calls)
+
+
+def test_subtitle_roundtrip_counts_legacy_save_clear_and_completion(fixture):
+    c, records, _ = fixture
+    doc = str(uuid4())
+    content = {**deepcopy(CONTENT), 'attrs': {'subtitle': 'Small beginnings, lasting ideas'}}
+    r = c.put('/api/workspace/documents/'+doc,json=payload(content=content),headers=ORIGIN)
+    assert r.status_code==200
+    saved=r.json()
+    assert saved['content']['attrs']['subtitle']=='Small beginnings, lasting ideas'
+    assert saved['plain_text']==workspace.plain_text(CONTENT), 'Subtitle is metadata, not counted body text'
+    assert c.get('/api/workspace/documents/'+doc).json()['content']['attrs']['subtitle']=='Small beginnings, lasting ideas'
+    legacy=c.put('/api/workspace/documents/'+doc,json=payload(revision=saved['revision'],content=CONTENT),headers=ORIGIN)
+    assert legacy.status_code==200 and legacy.json()['content']['attrs']['subtitle']=='Small beginnings, lasting ideas'
+    completed=c.post('/api/workspace/documents/'+doc+'/completion',json={'expected_user_id':OWNER,'revision':legacy.json()['revision'],'mutation_id':str(uuid4()),'completion_status':'completed'},headers=ORIGIN)
+    assert completed.status_code==200 and completed.json()['content']['attrs']['subtitle']=='Small beginnings, lasting ideas'
+    cleared=c.put('/api/workspace/documents/'+doc,json=payload(revision=completed.json()['revision'],content={**deepcopy(CONTENT),'attrs':{'subtitle':None}}),headers=ORIGIN)
+    assert cleared.status_code==200 and cleared.json()['content']['attrs']['subtitle'] is None
+
+
+@pytest.mark.parametrize('subtitle', [500*'a'+'b', {'text':'unsafe'}, 123, '\x00'])
+def test_invalid_subtitle_is_rejected_without_writes(fixture,subtitle):
+    c,records,_=fixture
+    r=c.put('/api/workspace/documents/'+str(uuid4()),json=payload(content={**deepcopy(CONTENT),'attrs':{'subtitle':subtitle}}),headers=ORIGIN)
+    assert r.status_code==422 and not records
+
+
+def test_subtitle_exports_plain_safe_text_and_docx_metadata(fixture):
+    c,_,_=fixture
+    from lib.writing_document import plain_text, export_text
+    subtitle='A <quiet> start & a new perspective'
+    content=clean_document({**deepcopy(CONTENT),'attrs':{'subtitle':subtitle,'onclick':'unsafe'}})
+    assert content['attrs']=={'subtitle':subtitle}
+    assert subtitle not in plain_text(content)
+    assert export_text(content).startswith(subtitle+'\n\n')
+    assert markdown(content).startswith('A \\<quiet\\> start & a new perspective\n\n')
+    for format in ['docx','pdf']:
+        response=c.post('/api/workspace/export/'+format,json={'expected_user_id':OWNER,'title':'An essay','content':content},headers=ORIGIN)
+        assert response.status_code==200
+        if format=='docx':
+            doc=Document(BytesIO(response.content))
+            assert doc.paragraphs[0].style.name=='Subtitle' and doc.paragraphs[0].text==subtitle
+            imported=import_docx(response.content)
+            assert imported['attrs']['subtitle']==subtitle
+            assert plain_text(imported)==plain_text(CONTENT)
+        else:
+            assert subtitle in PdfReader(BytesIO(response.content)).pages[0].extract_text()
