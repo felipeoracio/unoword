@@ -539,9 +539,9 @@ preview with zero words on the Free plan. Reload the updated unpacked
 extension after replacing the old folder; a GitHub push does not update an
 already loaded local extension.
 
-### Original writing suggestions on Free and Pro (0.12.0)
+### Quick Prompt on Free and Pro (0.12.0)
 
-Ideas uses one picker. Free offers Original Writing Suggestion; Pro adds New
+Ideas uses one picker. Free offers Quick Prompt; Pro adds New
 Topic, Expand an Idea, and Connect the Dots. Write shortcuts reflect the same
 availability. Original calls the existing `GET_PROMPT` / `ANOTHER_PROMPT` worker
 messages: the bilingual prompt bank, themes, daily cache, recent-history rotation

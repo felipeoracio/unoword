@@ -45,8 +45,7 @@ alternatives for the same remaining goal, not three cumulative assignments.
 
 The three Pro suggestion modes and editor next/continue/block/brainstorm tools
 use this plan. Selected-text improvement preserves its existing scope and never
-pads a passage to meet a word target. Free/Pro Original Writing Suggestion
-(Quick Prompt) remains local and unchanged.
+pads a passage to meet a word target. Free/Pro Quick Prompt remains local and unchanged.
 
 ## Saved suggestions and milestones
 

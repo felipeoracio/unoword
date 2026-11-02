@@ -46,9 +46,9 @@
     [
       "nav-ideas",
       "Your next sentence is waiting",
-      "Open Ideas and select Original Writing Suggestion for the existing Free prompt library. AI modes require Pro.",
+      "Open Ideas and select Quick Prompt for the existing Free prompt library. AI modes require Pro.",
       "Tu siguiente frase te espera",
-      "Abre Ideas y elige la sugerencia original para ver los temas gratis. Los modos IA requieren Pro.",
+      "Abre Ideas y elige Sugerencia rápida para ver los temas gratis. Los modos IA requieren Pro.",
     ],
   ];
   function persist(status) {
