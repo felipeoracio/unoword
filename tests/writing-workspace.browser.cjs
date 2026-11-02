@@ -99,6 +99,59 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.WRITING_SUBTITLE_COPY_ONLY==='1'){
+   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});
+   const until=async fn=>{for(let i=0;i<150;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error('Timed out waiting for subtitle save '+JSON.stringify({attrs:documents.get(saved.id)?.content.attrs,lastSaves:requests.filter(r=>r.key.startsWith('/workspace/documents/')&&r.method==='PUT').slice(-3).map(r=>r.body.content.attrs)}));};
+   const subtitle=page.getByRole('textbox',{name:'Subtitle',exact:true});
+   assert.equal(await subtitle.inputValue(),'');assert.equal(await page.getByRole('button',{name:'Copy subtitle',exact:true}).isDisabled(),true);
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();
+   await until(()=>[...activity.values()].some(a=>a.timer?.status==='paused'));
+   const words=[...activity.values()].reduce((n,a)=>n+a.typed_words,0),sessions=activity.size;
+   const heading='A subtitle about small details and meaningful stories';
+   let body=await canvas.textContent();
+   await subtitle.fill(heading);
+   await until(()=>documents.get(saved.id)?.content.attrs?.subtitle===heading);
+   assert.equal(activity.size,sessions);assert.equal([...activity.values()].reduce((n,a)=>n+a.typed_words,0),words,'Subtitle edits do not change tracked words');
+   assert.equal(await canvas.textContent(),body);
+   const copied=async(label,expected)=>{await page.getByRole('button',{name:label,exact:true}).click();await page.getByText({'Copy title':'Title copied','Copy subtitle':'Subtitle copied','Copy body':'Body copied'}[label],{exact:true}).waitFor();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),expected);};
+   await copied('Copy title','The practice of paying attention');await copied('Copy subtitle',heading);await copied('Copy body',body);
+   const rich=await page.evaluate(async()=>{const data=await navigator.clipboard.read();return data.flatMap(item=>item.types);});assert.ok(rich.includes('text/html')&&rich.includes('text/plain'));
+   await page.reload();await subtitle.waitFor();assert.equal(await subtitle.inputValue(),heading);
+   await copied('Copy subtitle',heading);
+   await canvas.click();await canvas.press('ControlOrMeta+End');await canvas.pressSequentially(' Fresh after reopening.');body=await canvas.textContent();
+   await until(()=>documents.get(saved.id)?.plain_text.includes('Fresh after reopening.'));assert.equal(documents.get(saved.id).content.attrs.subtitle,heading,'Body edits after reload preserve the subtitle');
+   await subtitle.fill('');await until(()=>documents.get(saved.id)?.content.attrs?.subtitle===null);assert.equal(await page.getByRole('button',{name:'Copy subtitle',exact:true}).isDisabled(),true);
+   // Simulate a browser refusing both rich and plain copying; never claim success.
+   await page.evaluate(()=>{navigator.clipboard.write=async()=>{throw Error('denied')};navigator.clipboard.writeText=async()=>{throw Error('denied')};});
+   await page.getByRole('button',{name:'Copy body',exact:true}).click();await page.getByText('Could not copy. Select the text and copy it manually.',{exact:true}).waitFor();
+   await page.reload();await subtitle.waitFor();
+   await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
+   const offlineSubtitle='Offline subtitle: private notes, safely saved';
+   offline=true;await context.setOffline(true);await subtitle.fill(offlineSubtitle);
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
+   await copied('Copy subtitle',offlineSubtitle);await copied('Copy title','The practice of paying attention');await copied('Copy body',body);
+   await page.reload({waitUntil:'domcontentloaded'});await subtitle.waitFor();assert.equal(await subtitle.inputValue(),offlineSubtitle);
+   offline=false;await context.setOffline(false);await until(()=>documents.get(saved.id)?.content.attrs?.subtitle===offlineSubtitle);
+   // All export formats retain subtitle metadata; browser TXT/MD are fully local.
+   for(const format of ['TXT','MD']){await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:format,exact:true}).click();const download=await downloading;assert.ok(fs.readFileSync(await download.path(),'utf8').startsWith(offlineSubtitle+'\n\n'));}
+   for(const width of [1440,768,390,320]){
+    await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    assert.ok(await subtitle.evaluate(e=>e.scrollHeight<=e.clientHeight+2),'Subtitle is not clipped');
+    for(const name of ['Copy title','Copy subtitle','Copy body'])assert.equal(await page.getByRole('button',{name,exact:true}).isVisible(),true);
+    if(process.env.WRITING_SCREENSHOTS && [1440,390].includes(width)){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,'subtitle-copy-'+width+'.png'),fullPage:true});}
+   }
+   await page.setViewportSize({width:1440,height:1000});
+   await page.getByRole('button',{name:'Dark theme',exact:true}).click();
+   if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});const violations=await page.evaluate(async()=>(await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id));assert.deepEqual(violations,[]);}
+   await page.getByRole('button',{name:'Light theme',exact:true}).click();
+   await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();await copied('Copy subtitle',offlineSubtitle);assert.equal(await subtitle.isVisible(),true);await page.keyboard.press('Escape');
+   await page.getByLabel('Language').selectOption('es');await page.getByRole('textbox',{name:'Subtítulo',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Copiar título',exact:true}).isVisible(),true);await page.getByRole('button',{name:'Copiar subtítulo',exact:true}).click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),offlineSubtitle);
+   await page.getByLabel('Idioma').selectOption('en');
+   await page.getByRole('button',{name:'Mark Document as Complete',exact:true}).click();await page.getByRole('button',{name:'Complete & End Session',exact:true}).click();await page.getByRole('heading',{name:'Document Completed!'}).waitFor();
+   await page.locator('.uw-editor-document').filter({hasText:'The practice of paying attention'}).click();await subtitle.waitFor();assert.equal(await subtitle.getAttribute('readonly'),'');await copied('Copy subtitle',offlineSubtitle);await copied('Copy title','The practice of paying attention');await copied('Copy body',body);
+   assert.deepEqual(errors,[]);assert.equal(requests.some(r=>r.key==='/workspace/assistant'),false);
+   console.log('PASS subtitle/copy: metadata autosave/reopen/clear, separate exact title/subtitle/body clipboard and rich body formats, permission failure, offline editing/copy/reload/reconnect, no word/session inflation, TXT/MD exports, completed read-only copying, focus/dark/EN/ES and 320–1440px accessibility.');return;
+  }
   if(process.env.WRITING_SESSION_COMPLETION_ONLY==='1'){
    const snap=async name=>{if(process.env.WRITING_SCREENSHOTS){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,name+'.png'),fullPage:true});}};
    const checkA11y=async()=>{if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});const result=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(result.violations.map(v=>v.id),[]);}};

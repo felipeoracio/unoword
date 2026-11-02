@@ -1344,3 +1344,84 @@
   color: var(--we-text);
   margin: 8px 0;
 }
+
+/* Heading metadata stays separate from the writing canvas and its word count. */
+.uw-editor-heading-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: start;
+  gap: 8px;
+}
+.uw-editor-subtitle-field {
+  margin-top: 12px;
+}
+.uw-editor-subtitle {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  border-radius: 2px;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--we-muted);
+  font-size: 18px !important;
+  line-height: 1.6;
+  font-family: Georgia, "Times New Roman", serif !important;
+}
+.uw-editor-subtitle::placeholder {
+  color: var(--we-muted);
+}
+.uw-editor .uw-editor-copy {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 7px;
+  border: 1px solid var(--we-line);
+  border-radius: 9px;
+  background: var(--we-bg);
+  color: var(--we-blue);
+  font-size: 11px;
+  cursor: pointer;
+}
+.uw-editor .uw-editor-copy:hover:not(:disabled) {
+  background: var(--we-soft);
+}
+.uw-editor .uw-editor-copy:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.uw-editor .uw-editor-copy:focus-visible,
+.uw-editor-subtitle:focus-visible,
+.uw-editor-title:focus-visible {
+  outline: 2px solid var(--we-blue);
+  outline-offset: 3px;
+}
+.uw-editor-body-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+}
+.uw-editor-copy-status {
+  font-size: 11px;
+  color: var(--we-muted);
+}
+.uw-editor-focus .uw-editor-title {
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .uw-editor-heading-field {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+  .uw-editor .uw-editor-copy {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

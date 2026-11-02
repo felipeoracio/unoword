@@ -78,6 +78,11 @@ def clean_document(value):
         else:
             attrs = node.get("attrs") or {}
             allowed = {}
+            if kind == "doc" and "subtitle" in attrs:
+                subtitle = attrs["subtitle"]
+                if subtitle is not None and (not isinstance(subtitle, str) or len(subtitle) > 500 or "\x00" in subtitle):
+                    raise HTTPException(422, "invalid_document_subtitle")
+                allowed["subtitle"] = subtitle
             if kind == "heading":
                 allowed["level"] = max(1, min(3, int(attrs.get("level", 1))))
             if kind in {"heading", "paragraph"} and attrs.get("textAlign") in {
@@ -146,6 +151,16 @@ def plain_text(node):
     return sep.join(plain_text(child) for child in node.get("content", []))
 
 
+def document_subtitle(content):
+    return content.get("attrs", {}).get("subtitle") or ""
+
+
+def export_text(content):
+    subtitle = document_subtitle(content)
+    body = plain_text(content)
+    return subtitle + "\n\n" + body if subtitle else body
+
+
 def markdown(node, depth=0):
     kind = node["type"]
     if kind == "text":
@@ -177,6 +192,8 @@ def markdown(node, depth=0):
     text = ("\n\n" if kind in {"doc", "listItem", "blockquote"} else "").join(
         markdown(child, depth) for child in children
     )
+    if kind == "doc" and document_subtitle(node):
+        return markdown({"type": "text", "text": document_subtitle(node)}) + "\n\n" + text
     if kind == "heading":
         return "#" * node.get("attrs", {}).get("level", 1) + " " + text
     if kind == "blockquote":
@@ -192,6 +209,8 @@ def to_docx(content, title):
     from docx.opc.constants import RELATIONSHIP_TYPE
 
     document = Document()
+    if document_subtitle(content):
+        document.add_paragraph(document_subtitle(content), style="Subtitle")
 
     def block(node, list_style=None):
         kind = node["type"]
@@ -258,6 +277,8 @@ def to_pdf(content, title):
 
     styles = getSampleStyleSheet()
     story = []
+    if document_subtitle(content):
+        story.extend([Paragraph(escape(document_subtitle(content)).replace("\n", "<br/>"), styles["Italic"]), Spacer(1, 12)])
 
     def inline(node):
         if node["type"] == "hardBreak":
@@ -324,7 +345,11 @@ def import_docx(data):
     _validate_docx_archive(data)
     document = Document(BytesIO(data))
     blocks = []
+    subtitle = ""
     for paragraph in document.paragraphs:
+        if not blocks and not subtitle and paragraph.style and paragraph.style.name == "Subtitle" and len(paragraph.text) <= 500:
+            subtitle = paragraph.text
+            continue
         inline = []
         from docx.text.hyperlink import Hyperlink
 
@@ -387,4 +412,4 @@ def import_docx(data):
                     ],
                 }
             )
-    return clean_document({"type": "doc", "content": blocks or EMPTY["content"]})
+    return clean_document({"type": "doc", **({"attrs": {"subtitle": subtitle}} if subtitle else {}), "content": blocks or EMPTY["content"]})
