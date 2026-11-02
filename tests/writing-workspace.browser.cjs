@@ -90,6 +90,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
   });
+  if(process.env.WRITING_IMAGES_ONLY==='1')await context.addInitScript(owner=>localStorage.setItem('uno-tour-launch-hidden:'+owner,'1'),owner);
   const page=await context.newPage();page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
@@ -99,6 +100,45 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.WRITING_IMAGES_ONLY==='1'){
+   const until=async fn=>{for(let i=0;i<180;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error('Timed out waiting for image save');};
+   const imgCount=n=>(n.type==='image'?1:0)+(n.content||[]).reduce((sum,c)=>sum+imgCount(c),0);
+   const png=Buffer.from(await page.evaluate(()=>{const c=document.createElement('canvas');c.width=2048;c.height=1024;const ctx=c.getContext('2d');ctx.fillStyle='#eff6ff';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#0866ff';ctx.fillRect(100,100,1200,600);return c.toDataURL('image/png').split(',')[1];}),'base64');
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();await until(()=>[...activity.values()].some(a=>a.timer?.status==='paused'));
+   const wordTotal=[...activity.values()].reduce((sum,a)=>sum+a.typed_words,0),sessionCount=activity.size;
+   const before=await canvas.textContent();await canvas.click();await canvas.press('ControlOrMeta+End');
+   const insert=async()=>{await page.getByRole('button',{name:'Add image',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Add image',exact:true});await dialog.getByLabel('Image file',{exact:true}).setInputFiles({name:'private-garden.png',mimeType:'image/png',buffer:png});await dialog.getByLabel('Image description (alt text)',{exact:true}).fill('Blue garden illustration');await dialog.getByRole('button',{name:'Insert image',exact:true}).click();await dialog.waitFor({state:'hidden'});};
+   await insert();await canvas.locator('img[alt="Blue garden illustration"]').waitFor();
+   await until(()=>imgCount(documents.get(saved.id).content)===1);
+   const image=documents.get(saved.id).content.content.find(n=>n.type==='image');assert.ok(image.attrs.src.startsWith('data:image/webp;base64,'));assert.equal(image.attrs.width,1600);assert.equal(image.attrs.height,800);
+   assert.equal(await canvas.textContent(),before,'Inserting an image does not replace writing');assert.equal(activity.size,sessionCount);assert.equal([...activity.values()].reduce((sum,a)=>sum+a.typed_words,0),wordTotal);
+   await page.reload();await canvas.locator('img').waitFor();assert.equal(await canvas.locator('img').evaluate(e=>e.complete&&e.naturalWidth>0),true);
+   await canvas.locator('img').click();await page.keyboard.press('Backspace');await until(()=>imgCount(documents.get(saved.id).content)===0);await page.keyboard.press('ControlOrMeta+z');await canvas.locator('img').waitFor();await until(()=>imgCount(documents.get(saved.id).content)===1);
+   await page.getByRole('button',{name:'Add image',exact:true}).click();let dialog=page.getByRole('dialog',{name:'Add image',exact:true});
+   await dialog.getByLabel('Image file',{exact:true}).setInputFiles({name:'unsafe.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg onload="alert(1)"></svg>')});await dialog.getByRole('button',{name:'Insert image',exact:true}).click();await dialog.getByRole('alert').getByText('Choose a PNG, JPEG or WebP image.',{exact:true}).waitFor();
+   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(imgCount(documents.get(saved.id).content),1);
+   await page.getByRole('button',{name:'Add image',exact:true}).click();dialog=page.getByRole('dialog',{name:'Add image',exact:true});await dialog.getByLabel('Image file',{exact:true}).setInputFiles({name:'too-large.png',mimeType:'image/png',buffer:Buffer.alloc(10*1024*1024+1)});await dialog.getByRole('button',{name:'Insert image',exact:true}).click();await dialog.getByRole('alert').getByText('Choose an image smaller than 10 MB.',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+   // Insert privately while offline, reload the shell, then retry the same save.
+   await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));offline=true;await context.setOffline(true);await canvas.click();await canvas.press('ControlOrMeta+End');await insert();await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));assert.equal(await canvas.locator('img').count(),2);
+   await page.reload({waitUntil:'domcontentloaded'});await canvas.locator('img').first().waitFor();assert.equal(await canvas.locator('img').count(),2);assert.ok(await canvas.locator('img').evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0)));
+   offline=false;await context.setOffline(false);await until(()=>imgCount(documents.get(saved.id).content)===2);
+   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});await page.getByRole('button',{name:'Copy body',exact:true}).click();await page.getByText('Body copied',{exact:true}).waitFor();const html=await page.evaluate(async()=>{for(const item of await navigator.clipboard.read())if(item.types.includes('text/html'))return (await item.getType('text/html')).text();return '';});assert.ok(html.includes('data:image/webp;base64,'));
+   await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'MD',exact:true}).click();const md=fs.readFileSync(await (await downloading).path(),'utf8');assert.ok(md.includes('![Blue garden illustration](data:image/webp;base64,'));
+   for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await canvas.locator('img').first().evaluate(img=>img.getBoundingClientRect().width<=img.closest('.uw-writing-canvas').getBoundingClientRect().width+1));if(process.env.WRITING_SCREENSHOTS&&[1440,390].includes(width)){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,'editor-images-'+width+'.png'),fullPage:true});}}
+   await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Dark theme',exact:true}).click();
+   if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});assert.deepEqual(await page.evaluate(async()=>(await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}
+   await page.getByLabel('Language').selectOption('es');await page.getByRole('button',{name:'Añadir imagen',exact:true}).click();await page.getByRole('dialog',{name:'Añadir imagen',exact:true}).getByRole('button',{name:'Cancelar',exact:true}).click();await page.getByLabel('Idioma').selectOption('en');
+   // An image-only document creates no writing activity or word count inflation.
+   await page.getByRole('button',{name:'New document',exact:true}).click();await insert();const second=()=>[...documents.values()].find(d=>d.id!==saved.id);await until(()=>second()&&imgCount(second().content)===1);
+   assert.equal(activity.size,sessionCount);await page.getByRole('button',{name:'Start Session',exact:true}).waitFor();
+   assert.equal(await page.getByRole('button',{name:'Copy body',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Copy body',exact:true}).click();await page.getByText('Body copied',{exact:true}).waitFor();
+   await page.getByRole('button',{name:'Mark Document as Complete',exact:true}).click();await page.getByRole('heading',{name:'Document Completed!'}).waitFor();await page.locator('.uw-editor-document').filter({hasText:'Untitled'}).click();await canvas.locator('img').waitFor();assert.equal(await page.getByRole('button',{name:'Add image',exact:true}).isDisabled(),true);
+   let externalImages=0;await page.route('https://unoword-tracker.invalid/**',route=>{externalImages++;return route.abort();});
+   await page.getByTestId('document-import').setInputFiles({name:'Image roundtrip.md',mimeType:'text/markdown',buffer:Buffer.from(md+'\n\n![remote](https://unoword-tracker.invalid/pixel)\n<img src="https://unoword-tracker.invalid/raw">')});
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-title').value==='Image roundtrip');await until(()=>[...documents.values()].some(d=>d.title==='Image roundtrip'&&imgCount(d.content)===2));assert.equal(await canvas.locator('img').count(),2);assert.equal(externalImages,0,'Markdown import never loads remote image URLs');
+   assert.deepEqual(errors,[]);assert.equal(requests.some(r=>r.key==='/workspace/assistant'),false);
+   console.log('PASS document images: upload, alt text, resize/compression, private embedded save/reopen, removal/undo, SVG/oversize rejection, offline insert/reload/reconnect, rich clipboard and Markdown export, image-only no new activity, completed read-only gate, EN/ES, dark/accessibility and 320–1440px layouts.');return;
+  }
   if(process.env.WRITING_SUBTITLE_COPY_ONLY==='1'){
    await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});
    const until=async fn=>{for(let i=0;i<150;i++){if(fn())return;await new Promise(r=>setTimeout(r,100));}throw Error('Timed out waiting for subtitle save '+JSON.stringify({attrs:documents.get(saved.id)?.content.attrs,lastSaves:requests.filter(r=>r.key.startsWith('/workspace/documents/')&&r.method==='PUT').slice(-3).map(r=>r.body.content.attrs)}));};
@@ -377,7 +417,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.locator('.uw-editor-export summary').click();
   const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'TXT',exact:true}).click();
   const download=await downloading;assert.ok(download.suggestedFilename().endsWith('.txt'));
-  await page.locator('input[type=file]').setInputFiles({name:'Imported thoughts.md',mimeType:'text/markdown',buffer:Buffer.from('# A fresh start\n\n**Bold ideas** and careful words.\n<script>window.compromised=true</script>\n[unsafe](javascript:alert(1))')});
+  await page.getByTestId('document-import').setInputFiles({name:'Imported thoughts.md',mimeType:'text/markdown',buffer:Buffer.from('# A fresh start\n\n**Bold ideas** and careful words.\n<script>window.compromised=true</script>\n[unsafe](javascript:alert(1))')});
   await page.waitForFunction(()=>document.querySelector('.uw-editor-title').value==='Imported thoughts');
   assert.equal(await page.locator('.uw-writing-canvas h1').count(),1);assert.equal(await page.locator('.uw-writing-canvas strong').count(),1);
   assert.equal(await page.evaluate(()=>window.compromised),undefined);assert.equal(await page.locator('.uw-writing-canvas a[href^="javascript"]').count(),0);

@@ -12,6 +12,8 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
     }
     return text;
   }
+  if (node.type === "image")
+    return `![${String(node.attrs?.alt || "").replace(/([\\`*_[\]<>])/g, "\\$1")}](${String(node.attrs?.src || "")})`;
   if (node.type === "hardBreak") return "  \n";
   if (node.type === "horizontalRule") return "\n---\n";
   if (["bulletList", "orderedList"].includes(node.type || ""))

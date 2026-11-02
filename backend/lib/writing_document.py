@@ -7,6 +7,7 @@ from io import BytesIO
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException
+from lib.writing_image import image_attributes, png_image, import_image
 
 EMPTY = {"type": "doc", "content": [{"type": "paragraph"}]}
 NODES = {
@@ -20,6 +21,7 @@ NODES = {
     "blockquote",
     "horizontalRule",
     "hardBreak",
+    "image",
 }
 MARKS = {"bold", "italic", "underline", "strike", "link"}
 
@@ -52,6 +54,11 @@ def clean_document(value):
             raise HTTPException(422, "unsupported_document_structure")
         kind = node["type"]
         out = {"type": kind}
+        if kind == "image":
+            if node.get("content"):
+                raise HTTPException(422, "invalid_document_structure")
+            out["attrs"] = image_attributes(node.get("attrs") or {})
+            return out
         if kind == "text":
             out["text"] = str(node.get("text", ""))
             marks = []
@@ -107,6 +114,7 @@ def clean_document(value):
                     "orderedList",
                     "blockquote",
                     "horizontalRule",
+                    "image",
                 }
                 allowed_children = {
                     "doc": blocks,
@@ -173,6 +181,9 @@ def markdown(node, depth=0):
                 wrapper = {"bold": "**", "italic": "*", "strike": "~~"}[name]
                 text = wrapper + text + wrapper
         return text
+    if kind == "image":
+        alt = re.sub(r"([\\`*_\[\]<>])", r"\\\1", node["attrs"].get("alt", ""))
+        return f'![{alt}]({node["attrs"]["src"]})'
     if kind == "hardBreak":
         return "  \n"
     if kind == "horizontalRule":
@@ -203,6 +214,7 @@ def markdown(node, depth=0):
 
 def to_docx(content, title):
     from docx import Document
+    from docx.shared import Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
@@ -226,6 +238,12 @@ def to_docx(content, title):
             )
             for child in node.get("content", []):
                 block(child, style)
+            return
+        if kind == "image":
+            data, (width, height) = png_image(node["attrs"]["src"])
+            scale = min(6 / (width / 96), 7.2 / (height / 96), 1)
+            picture = document.add_paragraph().add_run().add_picture(BytesIO(data), width=Inches(width / 96 * scale))
+            picture._inline.docPr.set("descr", node["attrs"].get("alt", ""))
             return
         paragraph = document.add_paragraph(style=list_style)
         if kind == "heading":
@@ -272,7 +290,7 @@ def to_docx(content, title):
 
 
 def to_pdf(content, title):
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Image as PDFImage
     from reportlab.lib.styles import getSampleStyleSheet
 
     styles = getSampleStyleSheet()
@@ -299,6 +317,11 @@ def to_pdf(content, title):
 
     def block(node, prefix=None, quoted=False):
         kind = node["type"]
+        if kind == "image":
+            data, (width, height) = png_image(node["attrs"]["src"])
+            scale = min(420 / width, 600 / height, 1)
+            story.extend([PDFImage(BytesIO(data), width=width*scale, height=height*scale, hAlign="LEFT"), Spacer(1, 12)])
+            return
         if kind == "horizontalRule":
             story.extend([HRFlowable(width="100%", color="#b8c5d9"), Spacer(1, 12)])
             return
@@ -346,6 +369,7 @@ def import_docx(data):
     document = Document(BytesIO(data))
     blocks = []
     subtitle = ""
+    imported_images = {}
     for paragraph in document.paragraphs:
         if not blocks and not subtitle and paragraph.style and paragraph.style.name == "Subtitle" and len(paragraph.text) <= 500:
             subtitle = paragraph.text
@@ -399,6 +423,30 @@ def import_docx(data):
             blocks[-1]["content"].append({"type": "listItem", "content": [node]})
         else:
             blocks.append(node)
+        for picture in paragraph._p.xpath('.//pic:pic'):
+            blips=picture.xpath('.//a:blip')
+            if not blips:
+                continue
+            from docx.oxml.ns import qn
+            relationship=blips[0].get(qn('r:embed'))
+            if not relationship:
+                continue  # External relationships are never fetched.
+            part=document.part.related_parts.get(relationship)
+            if part is None:
+                continue
+            if relationship not in imported_images:
+                imported_images[relationship]=import_image(part.blob)
+            description=picture.xpath('.//pic:cNvPr')
+            alt=(description[0].get('descr','') if description else '')[:500]
+            # python-docx writes accessibility text on the drawing wrapper.
+            drawing=picture.getparent()
+            while drawing is not None and not drawing.tag.endswith('}inline'):
+                drawing=drawing.getparent()
+            if drawing is not None:
+                doc_pr=drawing.find(qn('wp:docPr'))
+                if doc_pr is not None:
+                    alt=doc_pr.get('descr',alt)[:500]
+            blocks.append({'type':'image','attrs':image_attributes({'src':imported_images[relationship],'alt':alt})})
     for table in document.tables:
         for row in table.rows:
             blocks.append(
