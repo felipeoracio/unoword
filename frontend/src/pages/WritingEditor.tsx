@@ -18,6 +18,14 @@ import DOMPurify from "dompurify";
 import { DocumentSubtitle, documentSubtitle } from "@/lib/document-subtitle";
 import { copyWriting } from "@/lib/copy-writing";
 import {
+  DocumentImage,
+  prepareDocumentImage,
+  imageDocumentFits,
+  containsDocumentImage,
+  safeImageSource,
+} from "@/lib/document-image";
+import type { SelectionBookmark } from "@tiptap/pm/state";
+import {
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -36,6 +44,7 @@ import {
   Plus,
   Search,
   FileText,
+  ImagePlus,
   FolderPlus,
   Star,
   Archive,
@@ -195,6 +204,24 @@ const spanish: Record<string, string> = {
   "Rename document": "Renombrar documento",
   Subtitle: "Subtítulo",
   "Add a subtitle…": "Añade un subtítulo…",
+  "Add image": "Añadir imagen",
+  "Image file": "Archivo de imagen",
+  "Image description (alt text)":
+    "Descripción de la imagen (texto alternativo)",
+  "Insert image": "Insertar imagen",
+  "Preparing image…": "Preparando imagen…",
+  "PNG, JPEG or WebP · up to 10 MB. Large images are resized automatically.":
+    "PNG, JPEG o WebP · hasta 10 MB. Las imágenes grandes se redimensionan automáticamente.",
+  "Images save privately with your document and remain available offline.":
+    "Las imágenes se guardan de forma privada con tu documento y siguen disponibles sin conexión.",
+  "Choose a PNG, JPEG or WebP image.": "Elige una imagen PNG, JPEG o WebP.",
+  "Choose an image smaller than 10 MB.": "Elige una imagen de menos de 10 MB.",
+  "This image could not be opened. Try another image.":
+    "No se pudo abrir esta imagen. Prueba con otra.",
+  "The image would exceed this document’s size limit. Try a smaller image or another document.":
+    "La imagen superaría el límite de tamaño del documento. Prueba con una imagen más pequeña u otro documento.",
+  "The document changed while preparing the image. Open your draft and try again.":
+    "El documento cambió mientras se preparaba la imagen. Abre tu borrador e inténtalo de nuevo.",
   "Copy title": "Copiar título",
   "Copy subtitle": "Copiar subtítulo",
   "Copy body": "Copiar texto",
@@ -424,6 +451,23 @@ export default function WritingEditor() {
   const profileDialog = useRef<HTMLDialogElement>(null),
     linkDialog = useRef<HTMLDialogElement>(null),
     folderDialog = useRef<HTMLDialogElement>(null);
+  const [imageOpen, setImageOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageAlt, setImageAlt] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const imageDialog = useRef<HTMLDialogElement>(null);
+  const imageFileInput = useRef<HTMLInputElement>(null);
+  const imageRequest = useRef(0);
+  const imagePosition = useRef<{
+    owner: string;
+    documentId: string;
+    bookmark: SelectionBookmark;
+  } | null>(null);
+  useEffect(() => {
+    if (imageOpen) imageDialog.current?.showModal();
+    else imageDialog.current?.close();
+  }, [imageOpen]);
   const importInput = useRef<HTMLInputElement>(null);
   const titleInput = useRef<HTMLTextAreaElement>(null);
   const subtitleInput = useRef<HTMLTextAreaElement>(null);
@@ -596,6 +640,7 @@ export default function WritingEditor() {
   const editor = useEditor({
     extensions: [
       DocumentSubtitle,
+      DocumentImage,
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         code: false,
@@ -646,11 +691,21 @@ export default function WritingEditor() {
         content: editor.getJSON(),
         plain_text: text,
       });
-      recordEdit(oldText, text, inputKind.current);
+      if (!transaction.getMeta("unoImageInsertion"))
+        recordEdit(oldText, text, inputKind.current);
       inputKind.current = "insertText";
     },
     onSelectionUpdate: () => setToolbarVersion((version) => version + 1),
-    onTransaction: () => setToolbarVersion((version) => version + 1),
+    onTransaction: ({ transaction }) => {
+      const position = imagePosition.current;
+      if (
+        position &&
+        position.owner === ownerRef.current &&
+        position.documentId === draftRef.current?.id
+      )
+        position.bookmark = position.bookmark.map(transaction.mapping);
+      setToolbarVersion((version) => version + 1);
+    },
   });
 
   useEffect(() => {
@@ -1078,7 +1133,8 @@ export default function WritingEditor() {
         content: JSONContent;
       if (/\.(txt|md|markdown)$/i.test(file.name)) {
         const text = await file.text();
-        if (text.length > 200000) throw new ApiError(413, {});
+        if (text.length > (/\.txt$/i.test(file.name) ? 200000 : 1048576))
+          throw new ApiError(413, {});
         if (/\.txt$/i.test(file.name))
           content = {
             type: "doc",
@@ -1110,12 +1166,32 @@ export default function WritingEditor() {
                 "a",
                 "hr",
                 "br",
+                "img",
               ],
-              ALLOWED_ATTR: ["href", "start"],
+              ALLOWED_ATTR: [
+                "href",
+                "start",
+                "src",
+                "alt",
+                "title",
+                "width",
+                "height",
+              ],
+              RETURN_DOM_FRAGMENT: true,
             },
           );
+          // Strip external images before any content enters the live editor.
+          // Embedded raster images remain inside the same private document.
+          html.querySelectorAll("img").forEach((image) => {
+            if (!safeImageSource(image.getAttribute("src"))) image.remove();
+          });
+          const container = document.createElement("div");
+          container.appendChild(html);
           // Tiptap parses supported schema nodes only; no raw HTML is rendered.
-          content = generateJSON(html, editor!.extensionManager.extensions);
+          content = generateJSON(
+            container.innerHTML,
+            editor!.extensionManager.extensions,
+          );
         }
       } else {
         const form = new FormData();
@@ -1131,10 +1207,109 @@ export default function WritingEditor() {
         content = result.content;
       }
       if (ownerRef.current !== owner) return;
+      if (
+        toPlain(content).length > 200000 ||
+        (containsDocumentImage(content) && !imageDocumentFits(content))
+      )
+        throw new ApiError(413, {});
       await ws.create(title, { content, plain_text: toPlain(content) });
       setFilter("active");
     } catch (failure) {
       ws.setError(editorError(failure));
+    }
+  }
+  function closeImageDialog() {
+    imageRequest.current++;
+    setImageOpen(false);
+    setImageFile(null);
+    setImageAlt("");
+    setImageError("");
+    setImageBusy(false);
+    imagePosition.current = null;
+    if (imageFileInput.current) imageFileInput.current.value = "";
+  }
+  function openImageDialog() {
+    if (
+      !editor?.isEditable ||
+      !draftRef.current ||
+      !ws.user ||
+      loadedDocument.current !== draftRef.current.id
+    )
+      return;
+    imagePosition.current = {
+      owner: ws.user.id,
+      documentId: draftRef.current.id,
+      bookmark: editor.state.selection.getBookmark(),
+    };
+    setImageFile(null);
+    setImageAlt("");
+    setImageError("");
+    setImageOpen(true);
+  }
+  async function insertDocumentImage() {
+    if (!imageFile || !editor || imageBusy || !imagePosition.current) return;
+    const request = ++imageRequest.current,
+      position = imagePosition.current;
+    setImageBusy(true);
+    setImageError("");
+    try {
+      const image = await prepareDocumentImage(imageFile);
+      if (request !== imageRequest.current) return;
+      const doc = draftRef.current;
+      if (
+        position.owner !== ownerRef.current ||
+        position.documentId !== doc?.id ||
+        doc.status !== "active" ||
+        doc.completion_status === "completed" ||
+        !editor.isEditable
+      )
+        throw new Error("image_document_changed");
+      const selection = position.bookmark.resolve(editor.state.doc);
+      const resolved = editor.state.doc.resolve(selection.to);
+      // Images are blocks: keep the current paragraph's writing intact rather
+      // than splitting a word or replacing selected text.
+      const insertion =
+        resolved.depth > 0 && resolved.parent.isTextblock
+          ? resolved.after(resolved.depth)
+          : selection.to;
+      const node = {
+        type: "image",
+        attrs: { ...image, alt: imageAlt, title: null },
+      };
+      const candidate = {
+        ...editor.getJSON(),
+        content: [...(editor.getJSON().content || []), node],
+      };
+      if (!imageDocumentFits(candidate))
+        throw new Error("image_document_limit");
+      const inserted = editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          tr.setMeta("unoImageInsertion", true);
+          return true;
+        })
+        .insertContentAt(insertion, node)
+        .run();
+      if (!inserted) throw new Error("image_document_changed");
+      closeImageDialog();
+    } catch (error) {
+      if (request !== imageRequest.current) return;
+      const code = error instanceof Error ? error.message : "image_invalid";
+      setImageError(
+        t(
+          code === "image_format"
+            ? "Choose a PNG, JPEG or WebP image."
+            : code === "image_too_large"
+              ? "Choose an image smaller than 10 MB."
+              : code === "image_document_limit"
+                ? "The image would exceed this document’s size limit. Try a smaller image or another document."
+                : code === "image_document_changed"
+                  ? "The document changed while preparing the image. Open your draft and try again."
+                  : "This image could not be opened. Try another image.",
+        ),
+      );
+      setImageBusy(false);
     }
   }
   async function copyDocumentPart(part: "title" | "subtitle" | "body") {
@@ -1147,7 +1322,8 @@ export default function WritingEditor() {
         : part === "subtitle"
           ? documentSubtitle(document.content)
           : editor.getText({ blockSeparator: "\n\n" });
-    if (!text) return;
+    if (!text && (part !== "body" || !containsDocumentImage(editor.getJSON())))
+      return;
     setCopyBusy(true);
     setCopyResult(null);
     try {
@@ -1660,6 +1836,7 @@ export default function WritingEditor() {
             <input
               ref={importInput}
               type="file"
+              data-testid="document-import"
               accept=".txt,.md,.markdown,.docx"
               hidden
               onChange={(event) => {
@@ -1875,6 +2052,11 @@ export default function WritingEditor() {
                     },
                     editor?.isActive("link"),
                   )}
+                  {toolbarButton(
+                    t("Add image"),
+                    <ImagePlus size={16} />,
+                    openImageDialog,
+                  )}
                   {toolbarButton("Divider", <Minus size={17} />, () =>
                     editor?.chain().focus().setHorizontalRule().run(),
                   )}
@@ -2036,7 +2218,11 @@ export default function WritingEditor() {
                         ? t(copyResult.message)
                         : ""}
                     </span>
-                    {copyButton("body", !activeDocument.plain_text)}
+                    {copyButton(
+                      "body",
+                      !activeDocument.plain_text &&
+                        !containsDocumentImage(activeDocument.content),
+                    )}
                   </div>
                   <EditorContent editor={editor} />
                   {!focus && (
@@ -2680,6 +2866,69 @@ export default function WritingEditor() {
           setFocus(false);
         }}
       />
+      <dialog
+        ref={imageDialog}
+        aria-label={t("Add image")}
+        className="uw-editor-dialog"
+        onCancel={closeImageDialog}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void insertDocumentImage();
+          }}
+        >
+          <h2>{t("Add image")}</h2>
+          <p>
+            {t(
+              "PNG, JPEG or WebP · up to 10 MB. Large images are resized automatically.",
+            )}
+          </p>
+          <label>
+            {t("Image file")}
+            <input
+              ref={imageFileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={imageBusy}
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setImageFile(file);
+                setImageError("");
+                if (file)
+                  setImageAlt(file.name.replace(/\.[^.]+$/, "").slice(0, 500));
+              }}
+            />
+          </label>
+          <label>
+            {t("Image description (alt text)")}
+            <input
+              value={imageAlt}
+              maxLength={500}
+              disabled={imageBusy}
+              onChange={(event) => setImageAlt(event.target.value)}
+            />
+          </label>
+          <p>
+            {t(
+              "Images save privately with your document and remain available offline.",
+            )}
+          </p>
+          {imageError && <p role="alert">{imageError}</p>}
+          <div>
+            <button type="button" onClick={closeImageDialog}>
+              {t("Cancel")}
+            </button>
+            <button
+              className="uw-editor-primary"
+              type="submit"
+              disabled={!imageFile || imageBusy}
+            >
+              {t(imageBusy ? "Preparing image…" : "Insert image")}
+            </button>
+          </div>
+        </form>
+      </dialog>
       <dialog
         ref={linkDialog}
         aria-label={language === "es" ? "Añadir enlace" : "Add a link"}

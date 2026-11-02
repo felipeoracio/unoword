@@ -17,6 +17,7 @@ export async function copyWriting(text: string, html?: string): Promise<void> {
       // Some browsers support text copying but reject formatted clipboard data.
     }
   }
+  if (html && !text.trim()) throw new Error("clipboard_image_unsupported");
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
     return;

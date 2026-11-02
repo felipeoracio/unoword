@@ -717,3 +717,79 @@ def test_subtitle_exports_plain_safe_text_and_docx_metadata(fixture):
             assert plain_text(imported)==plain_text(CONTENT)
         else:
             assert subtitle in PdfReader(BytesIO(response.content)).pages[0].extract_text()
+
+
+def image_document():
+    import base64
+    from PIL import Image
+    data=BytesIO();Image.new('RGB',(48,32),(30,100,240)).save(data,format='PNG')
+    source='data:image/png;base64,'+base64.b64encode(data.getvalue()).decode()
+    return {'type':'doc','content':[deepcopy(CONTENT['content'][1]),{'type':'image','attrs':{'src':source,'alt':'Blue garden illustration','width':999999,'onclick':'unsafe'}},deepcopy(CONTENT['content'][1])]}
+
+
+def test_embedded_images_save_private_metadata_and_do_not_count_alt_text(fixture):
+    c,records,_=fixture;doc=str(uuid4())
+    response=c.put('/api/workspace/documents/'+doc,json=payload(content=image_document()),headers=ORIGIN)
+    assert response.status_code==200
+    saved=response.json();image=saved['content']['content'][1]
+    assert image['attrs']['width']==48 and image['attrs']['height']==32
+    assert image['attrs']['alt']=='Blue garden illustration' and 'onclick' not in image['attrs']
+    assert 'Blue garden illustration' not in saved['plain_text'] and 'data:' not in saved['plain_text']
+    assert c.get('/api/workspace/documents/'+doc).json()['content']['content'][1]==image
+    assert markdown(saved['content']).find('![Blue garden illustration](data:image/png;base64,')>=0
+
+
+@pytest.mark.parametrize('source',[
+    'https://example.com/tracker.png', 'file:///etc/passwd','javascript:alert(1)',
+    'data:image/svg+xml;base64,PHN2Zz48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ+PC9zdmc+',
+    'data:image/png;base64,PGh0bWw+bm90IGFuIGltYWdlPC9odG1sPg==',
+    'data:image/png;base64,'+'A'*(192*1024*4//3+100),
+])
+def test_untrusted_or_oversized_images_are_rejected_without_writes(fixture,source):
+    c,records,_=fixture;content={'type':'doc','content':[{'type':'image','attrs':{'src':source,'alt':'Unsafe'}}]}
+    r=c.put('/api/workspace/documents/'+str(uuid4()),json=payload(content=content),headers=ORIGIN)
+    assert r.status_code==422 and not records
+
+
+def test_images_reject_spoofed_mime_and_oversized_dimensions():
+    import base64
+    from PIL import Image
+    from fastapi import HTTPException
+    src=image_document()['content'][1]['attrs']['src'].replace('image/png','image/jpeg')
+    with pytest.raises(HTTPException):clean_document({'type':'doc','content':[{'type':'image','attrs':{'src':src}}]})
+    output=BytesIO();Image.new('RGB',(1700,1)).save(output,format='PNG')
+    src='data:image/png;base64,'+base64.b64encode(output.getvalue()).decode()
+    with pytest.raises(HTTPException):clean_document({'type':'doc','content':[{'type':'image','attrs':{'src':src}}]})
+
+
+def test_embedded_images_export_docx_pdf_and_import_docx(fixture):
+    import zipfile
+    c,_,_=fixture
+    content=clean_document(image_document())
+    for format in ['docx','pdf']:
+        r=c.post('/api/workspace/export/'+format,json={'expected_user_id':OWNER,'title':'An illustrated draft','content':content},headers=ORIGIN)
+        assert r.status_code==200
+        if format=='docx':
+            with zipfile.ZipFile(BytesIO(r.content)) as z:assert any(name.startswith('word/media/') for name in z.namelist())
+            restored=import_docx(r.content)
+            images=[node for node in restored['content'] if node['type']=='image']
+            assert len(images)==1 and images[0]['attrs']['alt']=='Blue garden illustration'
+        else:
+            pdf=PdfReader(BytesIO(r.content));assert any(len(page.images)>0 for page in pdf.pages)
+            assert 'Some thoughtful words.' in pdf.pages[0].extract_text()
+
+
+
+def test_image_exports_preserve_palette_transparency_and_photo_orientation():
+    import base64
+    from PIL import Image
+    from lib.writing_image import png_image
+    image=Image.new('P',(2,2));image.putpalette([0,0,0,0,100,255]+[0]*762)
+    data=BytesIO();image.save(data,format='PNG',transparency=0)
+    src='data:image/png;base64,'+base64.b64encode(data.getvalue()).decode()
+    exported,_=png_image(src)
+    assert Image.open(BytesIO(exported)).getpixel((0,0))[3]==0
+    image=Image.new('RGB',(3,2),'blue');exif=Image.Exif();exif[274]=6
+    data=BytesIO();image.save(data,format='JPEG',exif=exif)
+    src='data:image/jpeg;base64,'+base64.b64encode(data.getvalue()).decode()
+    _,size=png_image(src);assert size==(2,3)

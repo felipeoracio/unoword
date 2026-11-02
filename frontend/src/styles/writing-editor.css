@@ -1425,3 +1425,19 @@
     min-height: 44px;
   }
 }
+
+.uw-writing-canvas img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 20px 0;
+}
+.uw-writing-canvas img.ProseMirror-selectednode {
+  outline: 3px solid var(--we-blue);
+  outline-offset: 3px;
+}
+.uw-editor-dialog input[type="file"] {
+  max-width: 100%;
+  padding: 8px 0;
+}
