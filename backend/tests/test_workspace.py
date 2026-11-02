@@ -777,3 +777,19 @@ def test_embedded_images_export_docx_pdf_and_import_docx(fixture):
         else:
             pdf=PdfReader(BytesIO(r.content));assert any(len(page.images)>0 for page in pdf.pages)
             assert 'Some thoughtful words.' in pdf.pages[0].extract_text()
+
+
+
+def test_image_exports_preserve_palette_transparency_and_photo_orientation():
+    import base64
+    from PIL import Image
+    from lib.writing_image import png_image
+    image=Image.new('P',(2,2));image.putpalette([0,0,0,0,100,255]+[0]*762)
+    data=BytesIO();image.save(data,format='PNG',transparency=0)
+    src='data:image/png;base64,'+base64.b64encode(data.getvalue()).decode()
+    exported,_=png_image(src)
+    assert Image.open(BytesIO(exported)).getpixel((0,0))[3]==0
+    image=Image.new('RGB',(3,2),'blue');exif=Image.Exif();exif[274]=6
+    data=BytesIO();image.save(data,format='JPEG',exif=exif)
+    src='data:image/jpeg;base64,'+base64.b64encode(data.getvalue()).decode()
+    _,size=png_image(src);assert size==(2,3)

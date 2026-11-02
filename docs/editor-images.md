@@ -38,7 +38,7 @@ Validation performed:
 
 - Production build and TypeScript compilation passed. Lint has only four existing
   UI/admin warnings; branding and whitespace checks passed.
-- 62 selected backend tests passed, including save/reopen, source/MIME/dimension
+- 63 selected backend tests passed, including save/reopen, source/MIME/dimension
   validation, metadata sanitization, no image/alt word-count pollution, Markdown,
   real DOCX/PDF image embedding and DOCX image import.
 - Dedicated production-bundle Chromium tests passed for upload, alt text,

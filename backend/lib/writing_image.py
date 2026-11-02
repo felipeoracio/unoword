@@ -5,7 +5,7 @@ import re
 import warnings
 from io import BytesIO
 from functools import lru_cache
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from fastapi import HTTPException
 
 MAX_IMAGE_BYTES = 192 * 1024
@@ -48,8 +48,10 @@ def image_attributes(attrs):
 def png_image(source):
     data, size = read_image(source)
     with Image.open(BytesIO(data)) as image:
+        image = ImageOps.exif_transpose(image)
+        size = image.size
         output = BytesIO()
-        image.convert("RGBA" if "A" in image.getbands() else "RGB").save(output, format="PNG")
+        image.convert("RGBA" if "A" in image.getbands() or "transparency" in image.info else "RGB").save(output, format="PNG")
     return output.getvalue(), size
 
 
@@ -63,7 +65,8 @@ def import_image(data):
             with Image.open(BytesIO(data)) as source:
                 if source.format not in MIMES or source.width*source.height>40000000:
                     raise ValueError("image_dimensions")
-                image=source.convert("RGBA" if "A" in source.getbands() else "RGB")
+                source=ImageOps.exif_transpose(source)
+                image=source.convert("RGBA" if "A" in source.getbands() or "transparency" in source.info else "RGB")
                 image.thumbnail((1600,1600))
         for _ in range(8):
             buffer=BytesIO();image.save(buffer,format="WEBP",quality=82)
