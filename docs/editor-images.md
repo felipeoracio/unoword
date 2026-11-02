@@ -56,3 +56,27 @@ existing backend document sanitizer/import/export helpers, backend requirements,
 and workspace backend/browser tests. Billing and extension behavior are unchanged.
 
 Screenshots are in `/workspace/.onboarding/unoword/editor-images/`.
+
+## Production verification — November 2, 2026
+
+Merged [PR #8](https://github.com/felipeoracio/unoword/pull/8) and deployed through
+Vercel successfully (`5fb3badcec3e8ba96eb8b107a42cdbc120c15db0`). No database
+migration or extension update was required.
+
+The actual production editor passed file selection, description entry,
+automatic WebP conversion, autosave/reopen, offline addition/reload/reconnect
+with three intact embedded images, formatted body copying and responsive
+320/390/768/1440px layouts. No JavaScript exceptions or new writing-activity
+records occurred. Production API checks verified private image persistence,
+external image URL rejection and embedded Markdown/DOCX/PDF exports, including
+WebP images uploaded through the real browser.
+
+Only a disposable fictional QA document was changed and then removed. Existing
+documents, preferences, word/time totals and streaks match their pre-check
+values. No AI generation or billing calls occurred. The test browser filtered
+the library to that disposable document and suppressed first-device preference
+migration for the existing QA account.
+
+Sanitized results and a production screenshot are in
+`/workspace/.onboarding/unoword/editor-images/production-results.json` and
+`/workspace/.onboarding/unoword/editor-images/production-editor-images.png`.
