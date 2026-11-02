@@ -48,3 +48,26 @@ Local screenshots:
 Files: editor UI/CSS, new document-subtitle and copy-writing helpers, client
 Markdown serialization, existing backend document validation/export/API helpers,
 and workspace backend/browser tests. The extension and billing are unchanged.
+
+## Production verification — November 2, 2026
+
+Merged [PR #7](https://github.com/felipeoracio/unoword/pull/7) and deployed through
+Vercel successfully (`c8b5f924f89778cf07b157193bb6d301f99af6b7`). No migration or
+extension update was required.
+
+Live API checks passed for subtitle create/read, cached-client preservation,
+explicit clearing, subtitle search and TXT/Markdown/DOCX/PDF exports. The live
+Chromium editor verified exact title/subtitle/body clipboard contents, bold HTML
+body copying, subtitle autosave/reopen, offline editing/copy/reload/reconnect,
+completed read-only copying and 320/390/768/1440px layouts with no JavaScript
+exceptions. Editing metadata and copying created zero writing-activity records.
+
+Only one disposable fictional QA document was changed, and it was removed.
+Existing writing, preferences, progress/streaks and AI usage match their
+pre-check values. No AI generation or billing calls occurred. As in other live
+checks, the test library was filtered to the disposable fixture and automatic
+first-device preference migration was suppressed for the existing QA account.
+
+Sanitized results and a production screenshot are in
+`/workspace/.onboarding/unoword/subtitle-copy/production-results.json` and
+`/workspace/.onboarding/unoword/subtitle-copy/production-editor-subtitle-copy.png`.
