@@ -16,6 +16,7 @@ load_dotenv(ROOT_DIR / ".env")
 from routers.product import router as product_router
 from routers.ai import router as ai_router
 from routers.auth import router as auth_router
+from routers.mobile import router as mobile_router
 from routers.google_auth import router as google_auth_router
 from routers.email_signup import router as email_signup_router
 from routers.documents import router as documents_router
@@ -38,6 +39,7 @@ api_router.include_router(ai_router)
 api_router.include_router(documents_router)
 api_router.include_router(links_router)
 api_router.include_router(auth_router)
+api_router.include_router(mobile_router)
 api_router.include_router(google_auth_router)
 api_router.include_router(email_signup_router)
 api_router.include_router(admin_router)

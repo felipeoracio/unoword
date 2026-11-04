@@ -1,0 +1,4 @@
+.expo/
+expo-env.d.ts
+src/generated/
+web-build/
