@@ -70,7 +70,7 @@ on iOS or live IAP verification is made.
 - 108 backend tests passed across native public configuration, workspace,
   assistant, progress permissions, browser security and existing auth signup/login.
 - TypeScript and mobile lint passed without warnings. Expo Doctor passed **20/20**;
-  SDK 58's iOS/Hermes export succeeded (1,418 modules, approximately 4.6 MB bundle).
+  SDK 58's iOS/Hermes export succeeded (approximately 4.6 MB bundle).
 - The web production build passed. Web lint retains its four pre-existing UI/admin
   warnings; existing bundle-size/dynamic-import notices are unchanged.
 - Actual native screen components rendered through React Native Web passed
@@ -111,3 +111,19 @@ Native Google OAuth, iOS keyboard/external-keyboard interactions, reminder deliv
 background behavior on a physical OS, VoiceOver and true iPhone-to-iPad execution
 remain device acceptance checks. The core algorithms, layout fixtures and real
 backend interoperability were tested as described above.
+
+## Publication and final live bootstrap verification
+
+Merged [PR #9](https://github.com/felipeoracio/unoword/pull/9) into `main`
+(`dd989ec`). Vercel reported success for the production backend/web deployment.
+The native app is source code for Expo Go testing, not an App Store release.
+A fresh `npm ci` completed successfully and its postinstall rebuilt the local
+editing canvas, so both documented startup command paths work after checkout.
+
+The deployed `/api/auth/client-config` returned HTTP 200 with exactly the two
+public connection fields and the expected existing Supabase project. Using those
+published values, the Supabase JavaScript client signed into the dedicated
+existing QA account and received matching account and progress identities from
+the production bearer APIs. An anonymous request could not read private writing
+documents. This final read/sign-in check made no document, preference, AI or
+billing writes. No migrations or billing activation were required.
