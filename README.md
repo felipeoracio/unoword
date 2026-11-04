@@ -237,3 +237,10 @@ disabled until Stripe and the billing migration are configured. See
 UnoWord helps writers write; it does not write for them. See [versioned AI allowances, Pro permissions, streak architecture, migration and rollout instructions](docs/writing-coach-plans-and-streaks.md) and [prepared social advertising briefs](marketing/paid-social-briefs.md). The new backend requires the two documented migrations before deployment.
 
 Account-wide time and multi-device sync: [architecture, tests and migration](docs/unified-account-writing-sync.md).
+
+## iPhone and iPad app
+
+The native Expo client lives in [apps/mobile](apps/mobile/README.md). It uses the
+same UnoWord accounts, protected APIs, documents, subscriptions and writing
+statistics. See the [iOS implementation report](docs/mobile-ios.md) for Expo Go
+setup, executed checks and the separate App Store production roadmap.
