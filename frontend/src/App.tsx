@@ -13,6 +13,8 @@ const Information = lazy(() => import("@/pages/Information"));
 const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("@/admin/AdminDashboard"));
 
+const Rewards = lazy(() => import("./pages/Rewards"));
+
 export default function App() {
   const location = useLocation();
   const confirmation = emailConfirmationRequest(location);
@@ -41,6 +43,7 @@ export default function App() {
             <Route path="/lifetime" element={<Lifetime />} />
             <Route path="/account" element={<Account />} />
             <Route path="/editor" element={<WritingEditor />} />
+            <Route path="/rewards" element={<Rewards />} />
             <Route path="/account/security" element={<AccountSecurity />} />
             <Route path="/privacy" element={<Information kind="privacy" />} />
             <Route path="/terms" element={<Information kind="terms" />} />

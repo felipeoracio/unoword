@@ -1,3 +1,4 @@
+import { RewardSettings } from "./Rewards";
 import React, { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import * as WebBrowser from "expo-web-browser";
@@ -166,6 +167,7 @@ export default function Profile() {
           newer setting is kept rather than silently overwritten.
         </Label>
       </Card>
+      <RewardSettings />
       <Card>
         <Heading>Appearance</Heading>
         <Row>

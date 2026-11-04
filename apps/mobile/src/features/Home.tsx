@@ -1,3 +1,4 @@
+import { RewardWidget } from "./Rewards";
 import React from "react";
 import { View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
@@ -138,6 +139,7 @@ export default function Home() {
           <Label muted>No open sessions recorded.</Label>
         )}
       </Card>
+      <RewardWidget />
       {!!error && <Label muted>{error}</Label>}
     </Screen>
   );

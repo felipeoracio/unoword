@@ -50,6 +50,10 @@ api_router.include_router(account_security_router)
 api_router.include_router(workspace_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(processing_router)
+from routers.rewards import router as rewards_router
+from routers.reward_admin import router as reward_admin_router
+api_router.include_router(rewards_router)
+api_router.include_router(reward_admin_router)
 from routers.progress import router as progress_router
 api_router.include_router(progress_router)
 
