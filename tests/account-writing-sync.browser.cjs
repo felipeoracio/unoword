@@ -13,7 +13,7 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(n.type==='
  create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create extension vector with schema extensions;set search_path=public,extensions;`);
  await db.exec(fs.readFileSync('supabase/migrations/20260929010000_ai_writing_coach_foundation.sql','utf8').split('-- Private Supabase Storage bucket.')[0].replace(/create extension if not exists pgcrypto;/g,''));
- for(const f of ['20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
+ for(const f of ['20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql','20261104010000_personal_writing_rewards.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
  const owner=randomUUID(),other=randomUUID();await db.query('insert into auth.users values($1),($2)',[owner,other]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',10)",[owner]);
  await db.query('select writing_update_preferences($1,0,$2)',[owner,JSON.stringify({daily_goal:1000,timezone:'UTC',language:'en'})]);
@@ -29,6 +29,8 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(n.type==='
    const req=route.request(),url=new URL(req.url()),key=url.pathname.slice(4),body=req.postData()?JSON.parse(req.postData()):null,method=req.method();
    try{
     const value=await sql(null,async()=>{
+     if(key==='/rewards')return rpc('writing_rewards',[who,who===owner,'en']);
+     if(key==='/rewards/celebrations/claim')return {achievement_id:await rpc('writing_reward_claim',[who,who===owner])};
      if(key==='/auth/me')return {id:who,email:'isolated@example.com',plan:who===owner?'pro':'free',ai_access:who===owner};
      if(key==='/onboarding')return {version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
      if(key==='/progress/preferences')return method==='GET'?rpc('writing_account_preferences',[who]):rpc('writing_update_preferences',[who,body.revision,JSON.stringify(body)]);

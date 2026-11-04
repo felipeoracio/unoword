@@ -1,3 +1,4 @@
+import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingRecovery from "@/components/WritingRecovery";
 import {
   useAccountWriting,
@@ -2319,6 +2320,7 @@ export default function WritingEditor() {
                   : "YOUR NEXT CHAPTER"}
               </p>
               <h1>{t("Ready for Your Next Idea?")}</h1>
+              <RewardsWidget owner={ws.user.id} language={language} celebrate={session.current?.timer?.status !== "active"} />
               <p>{t("Every idea starts with UnoWord.")}</p>
               <button
                 className="uw-editor-primary"
@@ -2828,6 +2830,7 @@ export default function WritingEditor() {
                   )}
                 </>
               )}
+              <RewardsSettings owner={ws.user.id} language={language} />
               <label data-tour="goal" className="uw-editor-goal">
                 {t("Daily goal")}
                 <input

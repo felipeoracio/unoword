@@ -94,3 +94,6 @@ credentials.json
 
 # Reviewed public extension release; other archives remain ignored.
 !frontend/public/downloads/unoword-extension.zip
+
+# Local visual test output
+/tests/artifacts/

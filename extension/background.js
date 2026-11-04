@@ -914,6 +914,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, profile: synced });
           return;
         }
+        case 'WRITING_REWARDS': {
+          try {
+            const owner = await refreshAccount();
+            if (!owner.authenticated || owner.userId !== msg.expectedUserId) throw new Error('account_changed');
+            let data;
+            if (msg.action === 'preferences') {
+              data = await self.WCApi.put('/rewards/preferences', {
+                ...msg.patch, expected_user_id: owner.userId, revision: msg.revision,
+              });
+            } else if (msg.action === 'claim') {
+              data = await self.WCApi.post('/rewards/celebrations/claim', { expected_user_id: owner.userId });
+            } else if (msg.action === 'read') {
+              data = await self.WCApi.get('/rewards?language=' + (msg.language === 'es' ? 'es' : 'en'));
+            } else throw new Error('invalid_action');
+            const current = await getAccount();
+            if (!current.authenticated || current.userId !== owner.userId ||
+                (msg.action === 'read' && data?.user_id !== owner.userId)) throw new Error('account_changed');
+            sendResponse({ ok: true, data });
+          } catch (error) {
+            sendResponse({ ok: false, error: error.message === 'account_changed' ? 'account_changed' : 'rewards_unavailable' });
+          }
+          return;
+        }
         case 'GET_ACCOUNT': {
           const account = msg.refresh === false ? await getAccount() : await refreshAccount();
           sendResponse({ ok: true, account });

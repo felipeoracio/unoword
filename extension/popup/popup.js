@@ -746,6 +746,7 @@ function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
     if (identityChanged && typeof clearSecurityForms === 'function') clearSecurityForms();
   }
   account = next;
+  window.dispatchEvent(new Event('uno-rewards-refresh'));
   if (refreshOptions && settings) {
     renderModePicker();
     if (currentPanel === 'ideas' && selectedSuggestionMode === 'original' && (identityChanged || accessChanged)) loadOriginalPrompt();

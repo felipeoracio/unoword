@@ -717,3 +717,5 @@ html:has(body.wc--wide), body.wc--wide { width: 720px; }
 #session-paused {color:#2563eb;font-weight:600;font-size:13px;}
 #session-timing-details {font-size:12px;margin:8px 0;color:inherit;}
 #session-timing-details summary {cursor:pointer;}
+
+.wc-reward-next,.wc-rewards-settings,.wc-reward-notice{margin:14px 0;padding:16px;border:1px solid #c5d9fa;border-radius:16px;background:var(--card-bg,#eff6ff);color:var(--text,#0b1b4d);text-align:left;overflow-wrap:break-word}.wc-rewards-settings h3,.wc-reward-next h3{margin:5px 0;font-size:15px}.wc-rewards-settings p,.wc-reward-next p{font-size:12px;line-height:1.6}.wc-rewards-settings label{display:flex;align-items:center;gap:10px;min-height:44px;font-size:13px}.wc-rewards-settings input{flex-shrink:0;accent-color:#0866ff}.wc-reward-next progress{width:100%;accent-color:#0866ff}.wc-reward-notice button{border:0;background:transparent;color:inherit;font-size:22px;min-width:40px;min-height:40px}

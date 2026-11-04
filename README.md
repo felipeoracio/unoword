@@ -244,3 +244,5 @@ The native Expo client lives in [apps/mobile](apps/mobile/README.md). It uses th
 same UnoWord accounts, protected APIs, documents, subscriptions and writing
 statistics. See the [iOS implementation report](docs/mobile-ios.md) for Expo Go
 setup, executed checks and the separate App Store production roadmap.
+
+Optional private achievements: [catalog, cross-platform behavior, migration and rollout](docs/personal-writing-rewards.md).

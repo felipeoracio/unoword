@@ -1,3 +1,4 @@
+import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingStreak from "@/components/WritingStreak";
 import AIUsage from "@/components/AIUsage";
 import { useAIUsage } from "@/lib/use-ai-usage";
@@ -418,6 +419,8 @@ export default function Account() {
               </p>
               {lifetimeIntent && <LifetimeAccount key={user.id} user={user} />}
               <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
+              <RewardsWidget key={"reward-widget-" + user.id} owner={user.id} celebrate />
+              <RewardsSettings key={"reward-settings-" + user.id} owner={user.id} />
               {proIntent && !user.ai_access && (
                 <form
                   className="uw-plan-intent"
