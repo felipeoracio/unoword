@@ -99,4 +99,17 @@ WRITING_TEST_ORIGIN=http://127.0.0.1:4186 node tests/account-writing-sync.browse
 WRITING_TEST_ORIGIN=http://127.0.0.1:4186 node tests/writing-workspace.browser.cjs
 ```
 
-Screenshots are generated in ignored `tests/artifacts/rewards`, or the `WRITING_SCREENSHOTS` directory you configure. This implementation has not run the production migration or performed a production rewards deployment.
+Screenshots are generated in ignored `tests/artifacts/rewards`, or the `WRITING_SCREENSHOTS` directory you configure. Initial implementation validation preceded the production rollout recorded below.
+
+
+## Production rollout — November 4, 2026
+
+- The owner applied the SQL migration; a subsequent service-only schema check confirmed all 53 definitions. Anonymous direct reads of every new rewards table were denied.
+- PR #10 was merged as `64a7df9`, and the Vercel production deployment succeeded at https://unoword.vercel.app. The rewards page is https://unoword.vercel.app/rewards (sign-in required).
+- Bounded historical backfill completed in two batches for 31 existing accounts, persisting 13 verified awards quietly. No writing history, subscriptions, prices, or AI allowances were changed.
+- Production API smoke checks passed on both existing paid QA accounts: 53 definitions, owner-bound summaries, English/Spanish localization, private/no-store caching, repeated-read consistency, quiet historical claims, stale-owner rejection and fabricated-total rejection.
+- A disposable Free account received 41 eligible definitions. Document achievements and streak thresholds beyond seven days were absent. Authenticated direct reward-table access, paid editor access and admin access were denied. The disposable account was deleted afterward.
+- Existing admin sign-in and the live 53-definition admin catalog passed. No definition or entitlement was changed during these production checks.
+- Real production Chromium checks passed for the paid dashboard, 1440/768/320px layouts without horizontal scrolling, axe WCAG A/AA checks, automatic preference synchronization between two browsers, quiet restoration after re-enabling, and loading the existing editor. There were no browser JavaScript errors; original QA settings were restored. Screenshots were captured locally.
+- Production extension download 0.21.0 includes the rewards module and matches its published ZIP checksum. Existing unpacked extension installations need to update/reload this package to receive the new controls.
+- Temporary QA sessions were ended and the private browser authentication file was removed. No AI generation or payment operation was invoked. Physical iPad/iPhone rewards interaction remains untested; the existing native export/typecheck results above still apply.
