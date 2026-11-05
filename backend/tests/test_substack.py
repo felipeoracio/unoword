@@ -284,3 +284,22 @@ def test_native_billing_credentials_cannot_be_reused(system,monkeypatch,name,nat
     monkeypatch.setenv(native,os.environ[name])
     with pytest.raises(HTTPException) as error:integration.config()
     assert 'separate' in error.value.detail
+
+
+async def test_source_sdk_logs_cannot_disclose_lookup_email_but_native_logs_remain(system,caplog):
+    import logging
+    logger=logging.getLogger('stripe')
+    caplog.set_level(logging.INFO,logger='stripe')
+    def provider():
+        logger.info('customer lookup email=fixture-only@example.com')
+        return {'ok':True}
+    assert await integration.call(provider)=={'ok':True}
+    assert 'fixture-only@example.com' not in caplog.text
+    logger.info('native billing correlation remains available')
+    assert 'native billing correlation remains available' in caplog.text
+
+@pytest.mark.parametrize('verbose',['debug','info'])
+async def test_opt_in_sdk_console_payload_logging_blocks_source_calls(system,monkeypatch,verbose):
+    monkeypatch.setenv('STRIPE_LOG',verbose)
+    with pytest.raises(HTTPException) as error:await integration.call(lambda:{'ok':True})
+    assert error.value.detail=='substack_disable_verbose_stripe_logging'

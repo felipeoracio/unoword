@@ -43,11 +43,15 @@ Create a restricted key with only these **read** permissions (Dashboard labels v
 
 **No write permission is needed.** No Charges, PaymentIntents, Checkout or payment-method write access is needed. Events-read is not required: signed events are durably recorded, and current invoices/subscriptions are retrieved using their references. Creation of the destination is done manually by the owner in Dashboard, not with this API key.
 
+Keep Stripe console payload debugging (`STRIPE_LOG=debug` or `info`, or `stripe.log`) disabled for this source. Its provider calls refuse those settings and suppress only their own SDK URL/body logs; native billing correlation logs remain available.
+
 Some Substack/Stripe Connect account types may not expose `GET /v1/account` or webhook endpoint listing to restricted keys. The connection check reports an error and activation stays blocked; do not bypass the check or assume the account ID. Obtain appropriate read permissions or review the account arrangement with Stripe/Substack. A separate account-scoped secret key is supported where restricted permissions genuinely cannot provide the required reads, but it must remain backend-only.
 
 Copy eligible Substack `price_…` IDs and/or `prod_…` IDs from Stripe. Verify they represent **unoword.substack.com paid subscriptions**. Product names and customer-email matches are not sufficient authority. The allowlist must be explicit; other subscriptions in the account never qualify automatically. Archived prices can remain valid for existing paid subscriptions.
 
 ## 3. Configure backend secrets
+
+In Resend, add a domain you control, add its verification/DKIM/SPF records at your DNS provider, and wait for **Verified** status. Create a sending-only API key for that domain and choose a From address on it. A Substack-hosted `unoword.substack.com` address or a Gmail address cannot be verified as your own sending domain unless you control that domain's DNS. Keep the Resend key in backend settings; no verification emails are sent by the setup tests.
 
 Set these in Vercel → UnoWord project → **Settings → Environment Variables**, for the intended deployment environment, and redeploy. Keep keys out of chat, source files, frontend/Vite/Expo variables and extension storage.
 
@@ -174,7 +178,7 @@ No actual Substack Stripe permission, paid-record format, live webhook delivery 
 
 ### Executed checks for this implementation
 
-- **256 backend tests passed**, including 40 dedicated Substack boundary tests and existing billing/Lifetime, rewards, workspace, quota, origin/security and processing regressions.
+- **259 backend tests passed**, including 43 dedicated Substack boundary tests and existing billing/Lifetime, rewards, workspace, quota, origin/security and processing regressions.
 - **Real PostgreSQL/RLS integration passed** with the existing migrations and the new migration, including native Monthly/Lifetime independence, active-Free-row precedence, source gating, one-time proof/attempts/expiry, owner uniqueness, editor/AI/ingestion access, durable event leases, signing-secret rotation receipts, disconnect/expiration, policy changes and repeat application.
 - **Production-bundle Substack browser tests passed** with explicitly synthetic HTTP/mail fixtures at 1440/768/320px, reduced motion and axe WCAG A/AA checks. Invalid codes, verified-proof recovery without another email, immediate Pro/account refresh, cancel-vs-disconnect, Lifetime preservation, account switching, CSV staging and live-activation blocking passed.
 - Existing production-editor browser regression passed for authentication isolation, autosave/reopen, formatting, counts, library/folders/trash, conflicts, coaching restrictions, import/export, focus/themes, offline recovery, Free restrictions and Pro/Lifetime access.

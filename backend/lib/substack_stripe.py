@@ -8,9 +8,11 @@ import hashlib
 import hmac
 import io
 import json
+import logging
 import os
 import re
 import secrets
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlsplit
@@ -25,6 +27,19 @@ from lib.supabase_client import service_rest, SupabaseAPIError
 EVENT_TYPES = frozenset({'customer.subscription.created', 'customer.subscription.updated',
     'customer.subscription.deleted', 'invoice.paid', 'invoice.payment_failed'})
 API_VERSION = '2026-09-30.endive'
+
+# Stripe's INFO URL logs can include customer email filters. Keep native billing
+# logging unchanged while suppressing SDK payload/URL logs in this call context.
+_provider_context = ContextVar('substack_provider_log_context', default=False)
+
+
+class _PrivateProviderLogs(logging.Filter):
+    def filter(self, record):
+        return not _provider_context.get()
+
+
+logging.getLogger('stripe').addFilter(_PrivateProviderLogs())
+
 
 
 @dataclass(frozen=True)
@@ -81,6 +96,11 @@ def client(c):
 
 
 async def call(method, *args):
+    if os.getenv('STRIPE_LOG', '').lower() in {'debug','info'} or getattr(stripe, 'log', None) in {'debug','info'}:
+        # Stripe's opt-in console logger bypasses Python filters. Refuse it for
+        # this source rather than mutating logging options for native billing.
+        raise HTTPException(503,'substack_disable_verbose_stripe_logging')
+    token = _provider_context.set(True)
     try:
         result = await asyncio.to_thread(method, *args)
         return result.to_dict() if isinstance(result, stripe.StripeObject) else result
@@ -91,6 +111,8 @@ async def call(method, *args):
     except stripe.StripeError as error:
         # Never log provider messages, customer emails, tokens or payloads.
         raise HTTPException(502, 'substack_stripe_unavailable') from error
+    finally:
+        _provider_context.reset(token)
 
 
 async def db(method, path, **kwargs):
