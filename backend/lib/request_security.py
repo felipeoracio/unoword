@@ -90,7 +90,7 @@ class BrowserSecurityMiddleware:
             request = Request(scope)
             webhook = (
                 request.method == "POST"
-                and request.url.path == "/api/subscription/webhook"
+                and request.url.path in {"/api/subscription/webhook", "/api/webhooks/substack-stripe"}
             )
             if not webhook and request.method != "OPTIONS":
                 try:

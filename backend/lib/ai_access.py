@@ -19,7 +19,17 @@ async def get_entitlement(user_id: str) -> dict | None:
         )
     except SupabaseAPIError as error:
         raise_http(error)
-    return rows[0] if rows else None
+    native = rows[0] if rows else None
+    if entitlement_is_active(native) or not os.getenv("SUBSTACK_STRIPE_SECRET_KEY"):
+        return native
+    # Independent source; never overwrite UnoWord's native Stripe/Lifetime row.
+    from lib import substack_stripe
+    try:
+        config = substack_stripe.config()
+        external = await substack_stripe.rpc("entitlement", user=user_id, account=config.account, live=config.live)
+    except HTTPException:
+        return native  # A failed external integration never removes native access.
+    return external or native
 
 
 def entitlement_is_active(entitlement: dict | None) -> bool:
@@ -33,6 +43,10 @@ def entitlement_is_active(entitlement: dict | None) -> bool:
         bool(entitlement.get('billing_livemode')) != key.startswith(('sk_live_', 'rk_live_'))
     ):
         return False
+    if entitlement.get('billing_source') == 'substack_stripe':
+        external_key = os.getenv('SUBSTACK_STRIPE_SECRET_KEY', '')
+        if not external_key or bool(entitlement.get('billing_livemode')) != external_key.startswith(('sk_live_', 'rk_live_')):
+            return False
     valid_until = entitlement.get("valid_until")
     return not valid_until or datetime.fromisoformat(valid_until.replace("Z", "+00:00")) >= datetime.now(timezone.utc)
 

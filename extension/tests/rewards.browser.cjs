@@ -108,6 +108,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await enabled.uncheck();await page.getByText('Your achievements stay saved while rewards are off.',{exact:true}).waitFor();assert.equal(rewards.enabled,false);assert.ok(await page.locator('.wc-reward-next').isHidden());
     await enabled.check();await page.locator('.wc-rewards-settings').getByRole('button',{name:'View Rewards →'}).waitFor();assert.equal(rewards.enabled,true);
     await page.locator('.wc-rewards-settings').getByRole('button',{name:'View Rewards →'}).click();await page.waitForTimeout(100);assert.equal(opened.at(-1).url,'https://unoword.vercel.app/rewards');
+    await page.locator('#settings-connect-substack').click();await page.waitForTimeout(100);assert.equal(opened.at(-1).url,'https://unoword.vercel.app/account#subscription');
     assert.equal((await message({type:'WRITING_REWARDS',action:'read',expectedUserId:'different-owner'})).ok,false);
     const original=storage.wc_account.userId;await local.set({wc_account:{...storage.wc_account,userId:'00000000-0000-4000-8000-000000000002'}});
     const changed=await message({type:'WRITING_REWARDS',action:'read',expectedUserId:original});assert.equal(changed.error,'account_changed');assert.ok(claimed>=0);

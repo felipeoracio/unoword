@@ -1,3 +1,4 @@
+import SubstackIntegration from "./SubstackIntegration";
 import Achievements from "./Achievements";
 import AIManagement from "./AIManagement";
 import { useEffect, useState } from "react";
@@ -13,7 +14,7 @@ import {
 import { adminGet, adminPost, adminDelete, errorText } from "@/lib/adminApi";
 import { makeT, type Lang } from "./i18n";
 
-type Tab = "achievements" | "ai" | "overview" | "users" | "subscriptions" | "writing" | "feedback" | "health" | "settings";
+type Tab = "integrations" | "achievements" | "ai" | "overview" | "users" | "subscriptions" | "writing" | "feedback" | "health" | "settings";
 const PIE = ["#6366f1", "#22c55e"];
 
 function Card({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
     { id: "writing", icon: <PenLine size={18} />, key: "nav.writing" },
     { id: "feedback", icon: <MessageSquare size={18} />, key: "nav.feedback" },
     { id: "health", icon: <Activity size={18} />, key: "nav.health" },
+    { id: "integrations", icon: <ShieldCheck size={18} />, key: "nav.integrations" },
     { id: "achievements", icon: <ShieldCheck size={18} />, key: "nav.achievements" },
     { id: "ai", icon: <Activity size={18} />, key: "nav.ai" },
     { id: "settings", icon: <SettingsIcon size={18} />, key: "nav.settings" },
@@ -118,6 +120,7 @@ export default function AdminDashboard() {
           {tab === "feedback" && <Feedback t={t} />}
           {tab === "health" && <Health t={t} />}
           {tab === "ai" && <AIManagement language={lang} />}
+          {tab === "integrations" && <SubstackIntegration language={lang} />}
           {tab === "achievements" && <Achievements language={lang} />}
           {tab === "settings" && <SettingsTab t={t} email={email} />}
         </main>

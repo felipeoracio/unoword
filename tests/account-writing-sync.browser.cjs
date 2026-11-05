@@ -29,6 +29,7 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(n.type==='
    const req=route.request(),url=new URL(req.url()),key=url.pathname.slice(4),body=req.postData()?JSON.parse(req.postData()):null,method=req.method();
    try{
     const value=await sql(null,async()=>{
+     if(key==='/subscription/substack')return {user_id:who,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null};
      if(key==='/rewards')return rpc('writing_rewards',[who,who===owner,'en']);
      if(key==='/rewards/celebrations/claim')return {achievement_id:await rpc('writing_reward_claim',[who,who===owner])};
      if(key==='/auth/me')return {id:who,email:'isolated@example.com',plan:who===owner?'pro':'free',ai_access:who===owner};
