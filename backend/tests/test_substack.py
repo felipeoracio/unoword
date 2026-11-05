@@ -303,3 +303,32 @@ async def test_opt_in_sdk_console_payload_logging_blocks_source_calls(system,mon
     monkeypatch.setenv('STRIPE_LOG',verbose)
     with pytest.raises(HTTPException) as error:await integration.call(lambda:{'ok':True})
     assert error.value.detail=='substack_disable_verbose_stripe_logging'
+
+
+async def test_admin_can_diagnose_missing_runtime_settings_without_secret_values(system,monkeypatch):
+    monkeypatch.delenv('SUBSTACK_STRIPE_ACCOUNT_ID')
+    monkeypatch.delenv('RESEND_API_KEY')
+    monkeypatch.delenv('SUBSTACK_EMAIL_FROM')
+    status=await integration.admin_status()
+    assert status['configured'] is False and status['enabled'] is False
+    checks=status['configuration_checks']
+    assert checks['SUBSTACK_STRIPE_ACCOUNT_ID']=='missing'
+    assert checks['RESEND_API_KEY']=='missing'
+    assert checks['SUBSTACK_EMAIL_FROM']=='missing'
+    assert checks['SUBSTACK_STRIPE_SECRET_KEY']=='format_ok'
+    assert checks['SUBSTACK_LINK_HMAC_SECRET']=='length_ok'
+    encoded=json.dumps(status)
+    for value in ['rk_test_separate','whsec_separate','independent-server-secret-32-characters-minimum','re_fixture']:
+        assert value not in encoded
+    assert not system.calls
+
+@pytest.mark.parametrize('name,value,result',[
+    ('SUBSTACK_STRIPE_SECRET_KEY','pk_test_do_not_echo','invalid_format'),
+    ('SUBSTACK_STRIPE_ACCOUNT_ID','SUBSTACK_STRIPE_ACCOUNT_ID=acct_wrong','invalid_format'),
+    ('SUBSTACK_LINK_HMAC_SECRET','private-short','too_short'),
+    ('SUBSTACK_STRIPE_PRICE_IDS','price_good;price_other','invalid_format'),
+])
+def test_configuration_diagnostics_identify_bad_format_without_echoing_input(system,monkeypatch,name,value,result):
+    monkeypatch.setenv(name,value)
+    checks=integration.configuration_checks()
+    assert checks[name]==result and value not in json.dumps(checks)

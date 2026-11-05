@@ -550,9 +550,33 @@ async def worker():
     return {'events': events, 'subscriptions': subscriptions}
 
 
+def configuration_checks():
+    """Admin-only presence/format diagnostics. Never return settings values."""
+    checks = {}
+    key = os.getenv('SUBSTACK_STRIPE_SECRET_KEY', '').strip()
+    checks['SUBSTACK_STRIPE_SECRET_KEY'] = ('missing' if not key else
+        'same_as_unoword_key' if key == os.getenv('STRIPE_SECRET_KEY') else
+        'format_ok' if key.startswith(('rk_test_', 'rk_live_', 'sk_test_', 'sk_live_')) else 'invalid_format')
+    account = os.getenv('SUBSTACK_STRIPE_ACCOUNT_ID', '').strip()
+    checks['SUBSTACK_STRIPE_ACCOUNT_ID'] = 'missing' if not account else 'format_ok' if re.fullmatch(r'acct_[A-Za-z0-9]+', account) else 'invalid_format'
+    allowlist_present = False
+    for name, prefix in [('SUBSTACK_STRIPE_PRICE_IDS', 'price_'), ('SUBSTACK_STRIPE_PRODUCT_IDS', 'prod_')]:
+        items = [item.strip() for item in os.getenv(name, '').split(',') if item.strip()]
+        checks[name] = 'not_set' if not items else 'format_ok' if all(re.fullmatch(prefix + r'[A-Za-z0-9]+', item) for item in items) else 'invalid_format'
+        allowlist_present = allowlist_present or bool(items)
+    checks['ELIGIBLE_PRICE_OR_PRODUCT_IDS'] = 'present' if allowlist_present else 'missing'
+    secret = os.getenv('SUBSTACK_LINK_HMAC_SECRET', '')
+    checks['SUBSTACK_LINK_HMAC_SECRET'] = 'missing' if not secret else 'length_ok' if len(secret) >= 32 else 'too_short'
+    checks['RESEND_API_KEY'] = 'present' if os.getenv('RESEND_API_KEY') else 'missing'
+    sender = os.getenv('SUBSTACK_EMAIL_FROM', '')
+    checks['SUBSTACK_EMAIL_FROM'] = 'missing' if not sender else 'present' if '\r' not in sender and '\n' not in sender else 'invalid_format'
+    checks['SUBSTACK_STRIPE_WEBHOOK_SECRET'] = 'present' if os.getenv('SUBSTACK_STRIPE_WEBHOOK_SECRET') else 'not_set'
+    return checks
+
+
 async def admin_status():
     base = {'configured': False, 'enabled': False, 'live_approval': False, 'publication_url': os.getenv('SUBSTACK_PUBLICATION_URL', 'https://unoword.substack.com'),
-        'webhook_path': '/api/webhooks/substack-stripe', 'required_events': sorted(EVENT_TYPES), 'email_configured': mail_configured()}
+        'webhook_path': '/api/webhooks/substack-stripe', 'required_events': sorted(EVENT_TYPES), 'email_configured': mail_configured(), 'configuration_checks': configuration_checks()}
     try:
         c = config()
     except HTTPException as error:

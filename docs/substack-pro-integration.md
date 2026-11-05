@@ -78,6 +78,8 @@ The HMAC secret protects email indexes, one-time-code hashes and encrypted pendi
 
 ## 4. Inspect and import, without granting access
 
+If production reports **Not configured**, expand **Backend settings received** in this admin page. It lists missing/invalid variable names and presence/format checks only; it never displays values. Confirm the values were saved to the UnoWord project serving `unoword.vercel.app`, targeted to Production and available to the backend, then redeploy. A format check is not a successful Stripe permission test.
+
 Sign in to **Admin → Integrations → Substack**.
 
 1. Select **Check Stripe connection**. This makes read-only permission probes, checks the account ID, explicit recurring prices/products and representative subscription fields. Missing configuration or permission produces a clear failed check. It never enables access.

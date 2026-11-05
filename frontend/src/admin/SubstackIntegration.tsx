@@ -4,6 +4,7 @@ import type { Lang } from "./i18n";
 type Status = {
   configured: boolean;
   configuration_error?: string;
+  configuration_checks?: Record<string, string>;
   last_worker_at?: string;
   enabled: boolean;
   live_approval: boolean;
@@ -166,6 +167,35 @@ export default function SubstackIntegration({ language }: { language: Lang }) {
           </div>
           {data.configuration_error && (
             <p role="status">{data.configuration_error}</p>
+          )}
+          {data.configuration_checks && (
+            <details
+              className="rounded border border-slate-700 p-3"
+              open={!data.configured}
+            >
+              <summary>
+                {t(
+                  "Backend settings received",
+                  "Configuración recibida por el backend",
+                )}
+              </summary>
+              <p>
+                {t(
+                  "Only presence and format are shown. Secret values are never displayed; format checks do not verify provider access.",
+                  "Solo se muestran presencia y formato. No se muestran secretos; el formato no verifica el acceso al proveedor.",
+                )}
+              </p>
+              <dl className="grid gap-3 mt-3">
+                {Object.entries(data.configuration_checks).map(
+                  ([name, status]) => (
+                    <div key={name} className="grid gap-1">
+                      <dt className="break-words font-mono text-sm">{name}</dt>
+                      <dd>{status}</dd>
+                    </div>
+                  ),
+                )}
+              </dl>
+            </details>
           )}
           {!data.configured && (
             <p>
