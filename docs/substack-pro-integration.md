@@ -78,6 +78,11 @@ The HMAC secret protects email indexes, one-time-code hashes and encrypted pendi
 
 ## 4. Inspect and import, without granting access
 
+If the publication has no paid subscribers yet, use the separate
+[sandbox rehearsal](substack-sandbox-testing.md). An empty eligible-subscriber
+result is expected; do not change valid live price IDs just to manufacture a
+match, or point sandbox notifications at the live-configured production route.
+
 If production reports **Not configured**, expand **Backend settings received** in this admin page. It lists missing/invalid variable names and presence/format checks only; it never displays values. Confirm the values were saved to the UnoWord project serving `unoword.vercel.app`, targeted to Production and available to the backend, then redeploy. A format check is not a successful Stripe permission test.
 
 Sign in to **Admin → Integrations → Substack**.
