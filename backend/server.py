@@ -50,6 +50,8 @@ api_router.include_router(account_security_router)
 api_router.include_router(workspace_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(processing_router)
+from routers.substack import router as substack_router
+api_router.include_router(substack_router)
 from routers.rewards import router as rewards_router
 from routers.reward_admin import router as reward_admin_router
 api_router.include_router(rewards_router)

@@ -2417,6 +2417,10 @@ function wire() {
   els.editThemes.addEventListener('click', toggleThemesEditor);
   els.editLanguage.addEventListener('click', toggleLanguageEditor);
   els.planAction.addEventListener('click', planAction);
+  $('settings-connect-substack').addEventListener('click', () => {
+    const url = 'https://unoword.vercel.app/account#subscription';
+    try { chrome.tabs.create({ url }); } catch { window.open(url, '_blank', 'noopener,noreferrer'); }
+  });
   els.accountAction.addEventListener('click', accountAction);
   els.accountSignIn.addEventListener('click', () => submitAccount('login'));
   els.accountCreate.addEventListener('click', () => submitAccount('signup'));

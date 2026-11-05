@@ -1,3 +1,4 @@
+import ConnectSubstack from "@/components/substack/ConnectSubstack";
 import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingRecovery from "@/components/WritingRecovery";
 import {
@@ -2830,6 +2831,7 @@ export default function WritingEditor() {
                   )}
                 </>
               )}
+              <ConnectSubstack owner={ws.user.id} language={language} onAccessChange={async()=>{await ws.recheckIdentity();}} />
               <RewardsSettings owner={ws.user.id} language={language} />
               <label data-tour="goal" className="uw-editor-goal">
                 {t("Daily goal")}

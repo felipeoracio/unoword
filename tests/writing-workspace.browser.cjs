@@ -22,6 +22,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
    if(!signedIn){status=401;value={detail:'Authentication required'};}
+   else if(key==='/subscription/substack'){value={user_id:currentOwner,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null};}
    else if(key==='/rewards'){status=503;value={detail:'rewards_setup_required'};}
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
    else if(key==='/auth/refresh')value={authenticated:true};

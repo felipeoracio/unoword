@@ -1,3 +1,4 @@
+import ConnectSubstack from "@/components/substack/ConnectSubstack";
 import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingStreak from "@/components/WritingStreak";
 import AIUsage from "@/components/AIUsage";
@@ -92,6 +93,7 @@ type Subscription = {
   managed_by_stripe: boolean;
   trial_eligible: boolean;
   status: string;
+  billing_status?: string | null;
   period_end: string | null;
   cancel_at_period_end: boolean;
 };
@@ -421,6 +423,7 @@ export default function Account() {
               <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
               <RewardsWidget key={"reward-widget-" + user.id} owner={user.id} celebrate />
               <RewardsSettings key={"reward-settings-" + user.id} owner={user.id} />
+              <ConnectSubstack key={"substack-" + user.id} owner={user.id} onAccessChange={async()=>{const fresh=await currentUser();if(fresh?.id===user.id){setUser(fresh);const next=await apiGet<Subscription>("/subscription");if(next.user_id===user.id)setSubscription(next);}}}/>
               {proIntent && !user.ai_access && (
                 <form
                   className="uw-plan-intent"
@@ -500,7 +503,7 @@ export default function Account() {
                   >
                     <h2>Your subscription</h2>
                     <p>
-                      Status: {subscription.status.replaceAll("_", " ")}
+                      Status: {(subscription.billing_status || subscription.status).replaceAll("_", " ")}
                       {subscription.period_end && (
                         <>
                           {" "}

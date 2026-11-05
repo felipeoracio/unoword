@@ -246,3 +246,5 @@ statistics. See the [iOS implementation report](docs/mobile-ios.md) for Expo Go
 setup, executed checks and the separate App Store production roadmap.
 
 Optional private achievements: [catalog, cross-platform behavior, migration and rollout](docs/personal-writing-rewards.md).
+
+Substack subscription linking (disabled until verified and approved): [architecture, migration, restricted-key permissions and activation handoff](docs/substack-pro-integration.md).

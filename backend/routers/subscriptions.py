@@ -43,10 +43,11 @@ async def subscription(user: AuthenticatedUser = Depends(require_billing_user)):
         "access_source": (entitlement or {}).get("billing_source"),
         "plan": "pro" if entitlement_is_active(entitlement) else "free",
         "status": (
-            state["status"]
+            entitlement["status"] if (entitlement or {}).get("billing_source") == "substack_stripe" else state["status"]
             if state and state.get("subscription_id")
             else (entitlement or {}).get("status", "inactive")
         ),
+        "billing_status": (state or {}).get("status"),
         "billing_available": billing.billing_available(),
         "managed_by_stripe": bool(state and state.get("customer_id")),
         "period_end": (state or {}).get("period_end"),

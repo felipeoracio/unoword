@@ -120,6 +120,15 @@ export default function Profile() {
           this Expo Go version.
         </Label>
         <Button
+          title={language === "es" ? "Conectar Substack" : "Connect Substack"}
+          secondary
+          onPress={() =>
+            void WebBrowser.openBrowserAsync(
+              WEB_URL + "/account#subscription",
+            ).catch((e) => setError(message(e)))
+          }
+        />
+        <Button
           title="Refresh account access"
           secondary
           onPress={() => void refresh()}
