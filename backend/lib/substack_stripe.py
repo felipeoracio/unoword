@@ -103,6 +103,13 @@ async def call(method, *args):
     token = _provider_context.set(True)
     try:
         result = await asyncio.to_thread(method, *args)
+        # StripeClient.raw_request returns StripeResponse, unlike the typed
+        # services which return StripeObject. Read the decoded JSON, never the
+        # response headers/body (which must not enter diagnostics).
+        if isinstance(result, stripe.StripeResponse):
+            if not isinstance(result.data, dict):
+                raise HTTPException(502, 'substack_stripe_response_invalid')
+            return result.data
         return result.to_dict() if isinstance(result, stripe.StripeObject) else result
     except stripe.PermissionError as error:
         raise HTTPException(503, 'substack_stripe_read_permission_denied') from error

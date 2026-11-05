@@ -40,7 +40,7 @@ def system(monkeypatch):
         'SUBSTACK_STRIPE_LIVE_ACCESS_APPROVED':'false','RESEND_API_KEY':'re_fixture','SUBSTACK_EMAIL_FROM':'UnoWord <verify@example.com>',
         'AI_AUTH_MODE':'supabase','PUBLIC_APP_URL':'https://unoword.vercel.app','STRIPE_SECRET_KEY':'sk_test_NATIVE_UNCHANGED'}.items():monkeypatch.setenv(key,value)
     state=SimpleNamespace(subscription=subscription(),invoices=[invoice()],saved=[],calls=[],events={},sent=[],rows={},claim=True)
-    provider=Mock();provider.raw_request.return_value={'id':'acct_publication'}
+    provider=Mock();provider.raw_request.return_value=stripe.StripeResponse(json.dumps({'id':'acct_publication'}),200,{})
     provider.v1.subscriptions.retrieve.side_effect=lambda ref:copy.deepcopy(state.subscription)
     provider.v1.subscriptions.list.side_effect=lambda params: {'data':[copy.deepcopy(state.subscription)],'has_more':False}
     provider.v1.customers.retrieve.return_value={'id':'cus_reader','email':'substack.reader@example.com'}
@@ -131,9 +131,17 @@ async def test_separate_read_only_client_and_scope_verification(system):
     assert 'substack.reader@example.com' not in json.dumps(system.saved)
     system.provider.v1.subscriptions.create.assert_not_called();system.provider.v1.subscriptions.cancel.assert_not_called();system.provider.v1.charges.create.assert_not_called()
     system.provider.raw_request.assert_called_with('get','/v1/account')
-    system.provider.raw_request.return_value={'id':'acct_WRONG'}
+    system.provider.raw_request.return_value=stripe.StripeResponse(json.dumps({'id':'acct_WRONG'}),200,{})
     with pytest.raises(HTTPException) as error:await integration.refresh_subscription(c,'sub_paid')
     assert error.value.detail=='substack_stripe_account_mismatch'
+
+
+async def test_account_raw_response_rejects_unexpected_json_without_disclosure(system):
+    system.provider.raw_request.return_value=stripe.StripeResponse('["private-provider-payload"]',200,{'request-id':'private-header'})
+    with pytest.raises(HTTPException) as error:
+        await integration.verify_account(integration.config(),system.provider)
+    assert error.value.status_code==502
+    assert error.value.detail=='substack_stripe_response_invalid'
 
 
 async def test_allowlist_and_scope_mode_fail_closed(system):
