@@ -278,6 +278,36 @@ async def webhook_destinations(c, provider, webhook_url):
     return [row for row in matching if valid(row)], summary
 
 
+async def inspect_destination(destination_id):
+    """Admin-only, read-only lookup of an owner-supplied public destination ID."""
+    if not re.fullmatch(r'(we|ed)_[A-Za-z0-9_]+', destination_id):
+        raise HTTPException(422, 'substack_destination_id_invalid')
+    c = config(); provider = client(c)
+    await verify_account(c, provider)
+    legacy = destination_id.startswith('we_')
+    try:
+        row = await call(provider.v1.webhook_endpoints.retrieve, destination_id) if legacy else await call(
+            provider.v2.core.event_destinations.retrieve, destination_id, {'include': ['webhook_endpoint.url']})
+    except HTTPException as error:
+        cause = error.__cause__
+        if isinstance(cause, stripe.InvalidRequestError) and cause.code == 'resource_missing':
+            raise HTTPException(404, 'substack_destination_not_found_in_configured_mode') from error
+        raise
+    if row.get('id') != destination_id:
+        raise HTTPException(502, 'substack_destination_reference_mismatch')
+    from lib.billing import app_url
+    expected = app_url() + '/api/webhooks/substack-stripe'
+    url = row.get('url') if legacy else (row.get('webhook_endpoint') or {}).get('url')
+    # Do not return provider URLs, secret fields, metadata or error messages.
+    return {'found': True, 'mode': 'live' if c.live else 'test', 'expected_webhook_url': expected,
+        'url_matches': url == expected, 'enabled': row.get('status') == 'enabled',
+        'mode_matches': bool(row.get('livemode')) == c.live,
+        'snapshot': legacy or (row.get('type') == 'webhook_endpoint' and row.get('event_payload') == 'snapshot'),
+        'self_scope': not row.get('connect', False) if legacy else set(row.get('events_from') or []) == {'@self'},
+        'missing_events': [] if '*' in (row.get('enabled_events') or []) else sorted(EVENT_TYPES - set(row.get('enabled_events') or [])),
+        'access_changes_performed': False}
+
+
 async def observe(c=None):
     """Read-only permission and field probes; never enables entitlement changes."""
     c = c or config()

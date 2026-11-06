@@ -239,6 +239,43 @@ async def test_connected_account_legacy_destination_cannot_prove_self_account_re
     assert not (await integration.observe())['ready']
 
 
+def test_direct_destination_diagnostic_requires_admin_origin_and_valid_id(system):
+    path='/api/admin/integrations/substack/reconcile'
+    payload={'operation':'destination','destination_id':'we_fixture'}
+    assert system.client.post(path,json=payload,headers=ORIGIN).status_code==401
+    system.app.dependency_overrides[require_admin]=lambda:{'sub':OWNER}
+    assert system.client.post(path,json=payload,headers={'Origin':'https://untrusted.example'}).status_code==403
+    assert system.client.post(path,json={'operation':'destination'},headers=ORIGIN).status_code==422
+    assert system.client.post(path,json={**payload,'destination_id':'we_bad/../private'},headers=ORIGIN).status_code==422
+    endpoint=copy.deepcopy(system.provider.v1.webhook_endpoints.list.return_value['data'][0]);endpoint['id']='we_fixture'
+    system.provider.v1.webhook_endpoints.retrieve.return_value=endpoint
+    response=system.client.post(path,json=payload,headers=ORIGIN)
+    assert response.status_code==200
+    data=response.json()
+    assert data['found'] and data['url_matches'] and data['mode_matches'] and data['snapshot'] and data['self_scope']
+    assert not data['access_changes_performed'] and not data['missing_events']
+    assert not system.saved and not system.calls
+    system.provider.v1.webhook_endpoints.retrieve.assert_called_once_with('we_fixture')
+
+
+async def test_direct_lookup_missing_resource_is_distinguished_without_provider_disclosure(system):
+    system.provider.v1.webhook_endpoints.retrieve.side_effect=stripe.InvalidRequestError('private-provider-payload','id',code='resource_missing')
+    with pytest.raises(HTTPException) as error:
+        await integration.inspect_destination('we_fixture')
+    assert error.value.status_code==404 and error.value.detail=='substack_destination_not_found_in_configured_mode'
+    assert 'private-provider-payload' not in error.value.detail
+
+
+async def test_direct_new_destination_lookup_requests_url_only_and_never_returns_secrets(system):
+    row=modern_destination(id='ed_fixture',webhook_endpoint={'url':'https://other.example.com/private?token=private-token','signing_secret':'whsec_private'})
+    system.provider.v2.core.event_destinations.retrieve.return_value=row
+    result=await integration.inspect_destination('ed_fixture')
+    assert not result['url_matches'] and not result['access_changes_performed']
+    system.provider.v2.core.event_destinations.retrieve.assert_called_once_with('ed_fixture',{'include':['webhook_endpoint.url']})
+    for value in ('other.example.com','private-token','whsec_private','ed_fixture'):
+        assert value not in json.dumps(result)
+
+
 async def test_live_activation_refuses_without_explicit_approval(system,monkeypatch):
     monkeypatch.setenv('SUBSTACK_STRIPE_SECRET_KEY','rk_live_external')
     with pytest.raises(HTTPException) as error:await integration.set_enabled(True,True,'admin')

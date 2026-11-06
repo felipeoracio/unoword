@@ -129,9 +129,10 @@ class Control(BaseModel):
 
 class Reconcile(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    operation: Literal['inspect','import','events','subscriptions','csv','retry_failed']
+    operation: Literal['inspect','import','events','subscriptions','csv','retry_failed','destination']
     cursor: str|None=Field(default=None,pattern=r'^sub_[A-Za-z0-9]+$')
     row_hash: str|None=Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    destination_id: str|None=Field(default=None,max_length=160,pattern=r'^(we|ed)_[A-Za-z0-9_]+$')
 
 
 @router.post('/admin/integrations/substack/activation',dependencies=[Depends(trusted_origin)])
@@ -144,6 +145,9 @@ async def activate(payload:Control,response:Response,admin=Depends(require_admin
 async def reconcile(payload:Reconcile,response:Response,admin=Depends(require_admin)):
     private(response);limit_sensitive('substack-admin:'+str(admin['sub']),30,300)
     if payload.operation=='inspect':return await integration.observe()
+    if payload.operation=='destination':
+        if not payload.destination_id:raise HTTPException(422,'substack_destination_id_required')
+        return await integration.inspect_destination(payload.destination_id)
     if payload.operation=='import':return await integration.import_batch(payload.cursor)
     if payload.operation=='retry_failed':
         c=integration.config();return {'queued':await integration.rpc('retry_events',account=c.account,live=c.live)}

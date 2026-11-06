@@ -94,6 +94,12 @@ query strings, endpoint IDs or signing secrets.
 The check supports both legacy endpoints and newer snapshot Event Destinations.
 Newer destinations must receive snapshot events from `@self`; thin events and
 connected-account or organization streams are not compatible with this flow.
+For a destination visible in Dashboard but absent from lists, the protected
+admin reconciliation service also accepts `operation=destination` and its
+public `destination_id` (`we_…` or `ed_…`). It retrieves that exact object with
+the configured account's key, reports only safe URL/mode/scope/event checks,
+and distinguishes a resource missing in the configured mode. It does not
+create destinations, store secrets, or change access.
 Keep the shared-database source disabled. Readiness does not activate access.
 
 Only on an isolated test database, enable the sandbox linking flow and test
