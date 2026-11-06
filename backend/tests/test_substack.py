@@ -162,6 +162,29 @@ async def test_readiness_verifies_permissions_and_webhook_event_set(system):
     assert error.value.detail=='substack_stripe_read_permission_denied'
 
 
+async def test_destination_diagnostics_identify_missing_preview_url_without_disclosure(system,monkeypatch):
+    monkeypatch.setenv('PUBLIC_APP_URL','https://sandbox.example.com')
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[{
+        'id':'we_private','url':'https://other.example.com/private?token=private-secret',
+        'status':'enabled','livemode':False,'enabled_events':sorted(integration.EVENT_TYPES)}]}
+    report=await integration.observe()
+    assert report['expected_webhook_url']=='https://sandbox.example.com/api/webhooks/substack-stripe'
+    assert not report['webhook_destination_verified']
+    assert report['webhook_destination_checks']=={'listed':1,'has_more':False,'matching_url':0,'matching_destinations':[]}
+    for private in ('private-secret','we_private','other.example.com'):
+        assert private not in json.dumps(report)
+
+
+async def test_destination_diagnostics_explain_status_mode_and_event_mismatch(system):
+    endpoint=system.provider.v1.webhook_endpoints.list.return_value['data'][0]
+    endpoint.update(status='disabled',livemode=True,enabled_events=['invoice.paid'])
+    report=await integration.observe()
+    checks=report['webhook_destination_checks']
+    assert not report['webhook_destination_verified'] and checks['matching_url']==1
+    assert checks['matching_destinations']==[{'enabled':False,'mode_matches':False,
+        'missing_events':sorted(integration.EVENT_TYPES-{'invoice.paid'})}]
+
+
 async def test_live_activation_refuses_without_explicit_approval(system,monkeypatch):
     monkeypatch.setenv('SUBSTACK_STRIPE_SECRET_KEY','rk_live_external')
     with pytest.raises(HTTPException) as error:await integration.set_enabled(True,True,'admin')

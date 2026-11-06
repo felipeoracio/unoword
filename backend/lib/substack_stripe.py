@@ -260,7 +260,11 @@ async def observe(c=None):
     destinations = await call(provider.v1.webhook_endpoints.list, {'limit': 100})
     from lib.billing import app_url
     webhook_url = app_url() + '/api/webhooks/substack-stripe'
-    endpoints = [e for e in destinations.get('data', []) if e.get('url') == webhook_url and e.get('status') == 'enabled'
+    matching_urls = [e for e in destinations.get('data', []) if e.get('url') == webhook_url]
+    endpoint_checks = [{'enabled': e.get('status') == 'enabled', 'mode_matches': bool(e.get('livemode')) == c.live,
+        'missing_events': [] if '*' in (e.get('enabled_events') or []) else sorted(EVENT_TYPES - set(e.get('enabled_events') or []))}
+        for e in matching_urls]
+    endpoints = [e for e in matching_urls if e.get('status') == 'enabled'
         and bool(e.get('livemode')) == c.live and (set(e.get('enabled_events') or []) >= EVENT_TYPES or '*' in (e.get('enabled_events') or []))]
     samples = [s for s in subs.get('data', []) if any(allowed_price(c, item_price(i)) for i in (s.get('items') or {}).get('data', []))]
     # Explicit subscription/customer/invoice retrieval permissions are probed,
@@ -280,6 +284,11 @@ async def observe(c=None):
     report = {'account_verified': True, 'read_permissions_verified': True, 'api_version': API_VERSION,
         'eligible_sample_verified': inspection is not None, 'eligible_sample_paid': bool(inspection and inspection['eligible']),
         'webhook_delivery_verified':bool(deliveries), 'webhook_destination_verified': bool(endpoints), 'webhook_api_versions': sorted({str(e.get('api_version') or 'account-default') for e in endpoints}),
+        # Admin-only diagnostics. Never expose other destination URLs (which
+        # may contain authentication query strings), IDs, or signing secrets.
+        'expected_webhook_url': webhook_url, 'webhook_destination_checks': {
+            'listed': len(destinations.get('data', [])), 'has_more': bool(destinations.get('has_more')),
+            'matching_url': len(matching_urls), 'matching_destinations': endpoint_checks},
         'mode': 'live' if c.live else 'test', 'policy': 'paid_through_only_no_extra_grace',
         'restricted_key': c.key.startswith('rk_'),
         'ready': bool(endpoints) and bool(deliveries) and bool(inspection and inspection['eligible']) and bool(c.webhook_secret)}

@@ -5,8 +5,9 @@ eligible paid subscription is expected in that case; it does not mean that the
 publication's configured prices are wrong. Sandbox records exercise UnoWord's
 linking mechanism, not the existence of an actual paid Substack subscriber.
 
-The `test/substack-sandbox` branch contains the same application implementation
-as production plus this guide. Its Vercel Preview is for testing. Do not promote
+The `test/substack-sandbox` branch contains production's billing/linking
+implementation plus this guide and safe admin destination diagnostics. Its
+Vercel Preview is for testing. Do not promote
 it to Production or replace the Production Stripe settings with sandbox values.
 
 ## Preview settings
@@ -86,6 +87,10 @@ performed manually in Stripe's sandbox. The integration key remains read-only.
 In Preview Admin → Integrations → Substack, check the connection and import
 existing sandbox subscriptions. Verify account, mode, read permissions,
 positive-paid eligible sample, destination and current signing-secret delivery.
+If the destination fails verification, the admin report shows the expected
+webhook URL, a count of exact matches, and matching destinations' enabled/mode
+checks and missing required events. It does not reveal other destination URLs,
+query strings, endpoint IDs or signing secrets.
 Keep the shared-database source disabled. Readiness does not activate access.
 
 Only on an isolated test database, enable the sandbox linking flow and test
