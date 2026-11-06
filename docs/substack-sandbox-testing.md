@@ -14,6 +14,11 @@ it to Production or replace the Production Stripe settings with sandbox values.
 Use the exact Preview URL supplied by Vercel after this branch deploys. Save
 these variables for **Preview only**, then redeploy this branch:
 
+Current branch Preview:
+`https://unoword-git-test-substack-sandbox-unoword.vercel.app`.
+Use this same origin for `PUBLIC_APP_URL`, `AUTH_ALLOWED_ORIGINS`, and
+`CORS_ORIGINS`. The branch to deploy is `test/substack-sandbox`.
+
 | Setting | Preview value |
 | --- | --- |
 | `SUBSTACK_STRIPE_SECRET_KEY` | The sandbox restricted read-only key |
@@ -36,6 +41,13 @@ admin authentication, `AI_AUTH_MODE=supabase`, stable
 `SUBSTACK_LINK_HMAC_SECRET`, `RESEND_API_KEY`, and `SUBSTACK_EMAIL_FROM`
 configuration. A variable scoped only to Production is not automatically a
 Preview variable. Keep all secret values in secure backend settings.
+
+If the Preview still reports authentication/database configuration missing,
+check the Preview scope and any branch restrictions on the shared variables.
+The selected deployment must come from `test/substack-sandbox`; redeploying
+Production does not refresh this branch's runtime configuration. Preserve
+Production values when adding the shared variables to Preview, and keep the
+sandbox Stripe values as separate Preview overrides.
 
 If using the existing Supabase database for read-only verification and staging
 subscription snapshots, keep the Substack source **disabled** in Admin. These
