@@ -49,6 +49,7 @@ def system(monkeypatch):
     provider.v1.invoices.retrieve.side_effect=lambda ref:copy.deepcopy(state.invoices[0])
     provider.v1.prices.retrieve.return_value={'id':'price_publication','livemode':False,'recurring':{'interval':'month'},'unit_amount':700}
     provider.v1.webhook_endpoints.list.return_value={'data':[{'id':'we_endpoint','url':'https://unoword.vercel.app/api/webhooks/substack-stripe','status':'enabled','livemode':False,'api_version':'2026-09-30.endive','enabled_events':sorted(integration.EVENT_TYPES)}]}
+    provider.v2.core.event_destinations.list.return_value={'data':[],'next_page_url':None}
     async def config_state(c):return {'policy_hash':c.policy,'enabled':False,'verification':{'read_permissions_verified':True}}
     async def rpc(name,**data):
         state.calls.append((name,copy.deepcopy(data)))
@@ -181,8 +182,61 @@ async def test_destination_diagnostics_explain_status_mode_and_event_mismatch(sy
     report=await integration.observe()
     checks=report['webhook_destination_checks']
     assert not report['webhook_destination_verified'] and checks['matching_url']==1
-    assert checks['matching_destinations']==[{'enabled':False,'mode_matches':False,
+    assert checks['matching_destinations']==[{'api':'v1','enabled':False,'mode_matches':False,'snapshot':True,'self_scope':True,
         'missing_events':sorted(integration.EVENT_TYPES-{'invoice.paid'})}]
+
+
+def modern_destination(**patch):
+    return {'type':'webhook_endpoint','event_payload':'snapshot','events_from':['@self'],
+        'webhook_endpoint':{'url':'https://unoword.vercel.app/api/webhooks/substack-stripe'},
+        'status':'enabled','livemode':False,'snapshot_api_version':'2026-09-30.endive',
+        'enabled_events':sorted(integration.EVENT_TYPES),**patch}
+
+
+async def test_new_snapshot_event_destinations_are_verified_when_legacy_list_is_empty(system):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination()],'next_page_url':None}
+    report=await integration.observe()
+    assert report['webhook_destination_verified'] and report['ready']
+    assert report['webhook_api_versions']==['2026-09-30.endive']
+    assert report['webhook_destination_checks']['matching_destinations'][0]['api']=='v2'
+    system.provider.v2.core.event_destinations.list.assert_called_once_with({'limit':100,'include':['webhook_endpoint.url']})
+
+
+@pytest.mark.parametrize('patch',[
+    {'event_payload':'thin'}, {'events_from':['@accounts']}, {'events_from':['@self','@organization_members']},
+    {'events_from':None}, {'livemode':True}, {'status':'disabled'}, {'enabled_events':['invoice.paid']},
+    {'type':'amazon_eventbridge'}, {'webhook_endpoint':None}])
+async def test_new_destinations_fail_closed_for_wrong_payload_scope_mode_or_events(system,patch):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination(**patch)]}
+    report=await integration.observe()
+    assert not report['webhook_destination_verified'] and not report['ready']
+
+
+async def test_valid_legacy_endpoint_does_not_require_new_api_permissions(system):
+    assert (await integration.observe())['ready']
+    system.provider.v2.core.event_destinations.list.assert_not_called()
+
+
+async def test_new_destination_permission_failure_is_reported_without_provider_payload(system):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.side_effect=stripe.PermissionError('private-provider-payload')
+    report=await integration.observe()
+    assert not report['ready'] and not report['webhook_destination_verified']
+    assert report['webhook_destination_checks']['lookup_errors']=={'v2':'substack_stripe_read_permission_denied'}
+    assert 'private-provider-payload' not in json.dumps(report)
+
+
+async def test_new_endpoint_can_prove_readiness_when_legacy_permission_is_unavailable(system):
+    system.provider.v1.webhook_endpoints.list.side_effect=stripe.PermissionError('fixture-only')
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination()]}
+    assert (await integration.observe())['ready']
+
+
+async def test_connected_account_legacy_destination_cannot_prove_self_account_readiness(system):
+    system.provider.v1.webhook_endpoints.list.return_value['data'][0]['connect']=True
+    assert not (await integration.observe())['ready']
 
 
 async def test_live_activation_refuses_without_explicit_approval(system,monkeypatch):

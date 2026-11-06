@@ -39,7 +39,7 @@ Create a restricted key with only these **read** permissions (Dashboard labels v
 | Invoices — list/retrieve, including returned invoice lines | Verify positive paid invoices, subscription association and paid-through dates |
 | Prices — retrieve | Verify configured recurring price IDs; use read/list for manual discovery if needed |
 | Products — retrieve, if product allowlisting is used | Verify configured product IDs and mode |
-| Webhook endpoints/event destinations — list/read | Verify destination URL, enabled status, API versions and selected events |
+| Webhook endpoints/event destinations — list/read | Verify destination URL, enabled status, API versions and selected events; newer destinations use `GET /v2/core/event_destinations` with URL inclusion |
 
 **No write permission is needed.** No Charges, PaymentIntents, Checkout or payment-method write access is needed. Events-read is not required: signed events are durably recorded, and current invoices/subscriptions are retrieved using their references. Creation of the destination is done manually by the owner in Dashboard, not with this API key.
 
@@ -106,6 +106,13 @@ In the Substack account's Stripe Dashboard, open **Workbench → Webhooks / Even
 - `invoice.payment_failed`
 
 Use snapshot events for these v1 objects. Keep sandbox and live destinations, keys and signing secrets separate. Choose an API version supported by the account; the handler accepts the relevant older invoice `subscription` field and newer `parent.subscription_details.subscription` reference. Provider reads explicitly request `2026-09-30.endive`. The readiness report records the destination's actual API version(s); it does not pretend the Dashboard defaults are the same as the application's read version.
+
+The checker accepts both legacy webhook endpoints and newer snapshot Event
+Destinations. Newer destinations must use the webhook transport and only
+`@self` events; thin events and organization/connected-account streams do not
+satisfy readiness. If no matching legacy endpoint is available, the checker
+reads the newer list with `include=webhook_endpoint.url`, never signing secrets.
+Its admin-only report identifies permission failures without provider payloads.
 
 Copy the signing secret into **`SUBSTACK_STRIPE_WEBHOOK_SECRET`** in backend environment settings and redeploy. Do not put it in a URL, browser field or repository.
 

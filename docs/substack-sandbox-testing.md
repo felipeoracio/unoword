@@ -91,6 +91,9 @@ If the destination fails verification, the admin report shows the expected
 webhook URL, a count of exact matches, and matching destinations' enabled/mode
 checks and missing required events. It does not reveal other destination URLs,
 query strings, endpoint IDs or signing secrets.
+The check supports both legacy endpoints and newer snapshot Event Destinations.
+Newer destinations must receive snapshot events from `@self`; thin events and
+connected-account or organization streams are not compatible with this flow.
 Keep the shared-database source disabled. Readiness does not activate access.
 
 Only on an isolated test database, enable the sandbox linking flow and test

@@ -237,6 +237,47 @@ async def verify_account(c, provider):
     return account
 
 
+async def webhook_destinations(c, provider, webhook_url):
+    """Read legacy endpoints and, when needed, newer snapshot destinations."""
+    rows = []; errors = {}; has_more = False
+    try:
+        page = await call(provider.v1.webhook_endpoints.list, {'limit': 100})
+        has_more = bool(page.get('has_more'))
+        rows.extend({**row, 'api': 'v1', 'snapshot': True, 'self_scope': not row.get('connect', False)}
+            for row in page.get('data', []))
+    except HTTPException as error:
+        errors['v1'] = error.detail
+
+    def checks(row):
+        return {'api': row['api'], 'enabled': row.get('status') == 'enabled',
+            'mode_matches': bool(row.get('livemode')) == c.live,
+            'snapshot': row['snapshot'], 'self_scope': row['self_scope'],
+            'missing_events': [] if '*' in (row.get('enabled_events') or []) else sorted(EVENT_TYPES - set(row.get('enabled_events') or []))}
+
+    def valid(row):
+        check = checks(row)
+        return row.get('url') == webhook_url and all(check[k] for k in ('enabled','mode_matches','snapshot','self_scope')) and not check['missing_events']
+
+    if not any(valid(row) for row in rows):
+        try:
+            # V2 redacts URLs by default. Explicitly include only the URL, never
+            # the signing secret. Thin/organization/connected-account streams
+            # cannot satisfy this account's snapshot webhook readiness.
+            page = await call(provider.v2.core.event_destinations.list, {'limit': 100, 'include': ['webhook_endpoint.url']})
+            has_more |= bool(page.get('next_page_url'))
+            rows.extend({**row, 'api': 'v2', 'url': (row.get('webhook_endpoint') or {}).get('url'),
+                'api_version': row.get('snapshot_api_version'),
+                'snapshot': row.get('type') == 'webhook_endpoint' and row.get('event_payload') == 'snapshot',
+                'self_scope': set(row.get('events_from') or []) == {'@self'}} for row in page.get('data', []))
+        except HTTPException as error:
+            errors['v2'] = error.detail
+    matching = [row for row in rows if row.get('url') == webhook_url]
+    summary = {'listed': len(rows), 'has_more': has_more, 'matching_url': len(matching),
+        'matching_destinations': [checks(row) for row in matching]}
+    if errors: summary['lookup_errors'] = errors
+    return [row for row in matching if valid(row)], summary
+
+
 async def observe(c=None):
     """Read-only permission and field probes; never enables entitlement changes."""
     c = c or config()
@@ -257,15 +298,9 @@ async def observe(c=None):
     invoice_probe = await call(provider.v1.invoices.list, {'limit': 1})
     if invoice_probe.get('data'):
         await call(provider.v1.invoices.retrieve, invoice_probe['data'][0]['id'])
-    destinations = await call(provider.v1.webhook_endpoints.list, {'limit': 100})
     from lib.billing import app_url
     webhook_url = app_url() + '/api/webhooks/substack-stripe'
-    matching_urls = [e for e in destinations.get('data', []) if e.get('url') == webhook_url]
-    endpoint_checks = [{'enabled': e.get('status') == 'enabled', 'mode_matches': bool(e.get('livemode')) == c.live,
-        'missing_events': [] if '*' in (e.get('enabled_events') or []) else sorted(EVENT_TYPES - set(e.get('enabled_events') or []))}
-        for e in matching_urls]
-    endpoints = [e for e in matching_urls if e.get('status') == 'enabled'
-        and bool(e.get('livemode')) == c.live and (set(e.get('enabled_events') or []) >= EVENT_TYPES or '*' in (e.get('enabled_events') or []))]
+    endpoints, destination_checks = await webhook_destinations(c, provider, webhook_url)
     samples = [s for s in subs.get('data', []) if any(allowed_price(c, item_price(i)) for i in (s.get('items') or {}).get('data', []))]
     # Explicit subscription/customer/invoice retrieval permissions are probed,
     # not inferred from Dashboard visibility or the ability to list records.
@@ -286,9 +321,7 @@ async def observe(c=None):
         'webhook_delivery_verified':bool(deliveries), 'webhook_destination_verified': bool(endpoints), 'webhook_api_versions': sorted({str(e.get('api_version') or 'account-default') for e in endpoints}),
         # Admin-only diagnostics. Never expose other destination URLs (which
         # may contain authentication query strings), IDs, or signing secrets.
-        'expected_webhook_url': webhook_url, 'webhook_destination_checks': {
-            'listed': len(destinations.get('data', [])), 'has_more': bool(destinations.get('has_more')),
-            'matching_url': len(matching_urls), 'matching_destinations': endpoint_checks},
+        'expected_webhook_url': webhook_url, 'webhook_destination_checks': destination_checks,
         'mode': 'live' if c.live else 'test', 'policy': 'paid_through_only_no_extra_grace',
         'restricted_key': c.key.startswith('rk_'),
         'ready': bool(endpoints) and bool(deliveries) and bool(inspection and inspection['eligible']) and bool(c.webhook_secret)}
