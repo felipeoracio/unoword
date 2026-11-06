@@ -49,6 +49,7 @@ def system(monkeypatch):
     provider.v1.invoices.retrieve.side_effect=lambda ref:copy.deepcopy(state.invoices[0])
     provider.v1.prices.retrieve.return_value={'id':'price_publication','livemode':False,'recurring':{'interval':'month'},'unit_amount':700}
     provider.v1.webhook_endpoints.list.return_value={'data':[{'id':'we_endpoint','url':'https://unoword.vercel.app/api/webhooks/substack-stripe','status':'enabled','livemode':False,'api_version':'2026-09-30.endive','enabled_events':sorted(integration.EVENT_TYPES)}]}
+    provider.v2.core.event_destinations.list.return_value={'data':[],'next_page_url':None}
     async def config_state(c):return {'policy_hash':c.policy,'enabled':False,'verification':{'read_permissions_verified':True}}
     async def rpc(name,**data):
         state.calls.append((name,copy.deepcopy(data)))
@@ -160,6 +161,119 @@ async def test_readiness_verifies_permissions_and_webhook_event_set(system):
     system.provider.v1.invoices.list.side_effect=stripe.PermissionError('fixture denied')
     with pytest.raises(HTTPException) as error:await integration.observe()
     assert error.value.detail=='substack_stripe_read_permission_denied'
+
+
+async def test_destination_diagnostics_identify_missing_preview_url_without_disclosure(system,monkeypatch):
+    monkeypatch.setenv('PUBLIC_APP_URL','https://sandbox.example.com')
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[{
+        'id':'we_private','url':'https://other.example.com/private?token=private-secret',
+        'status':'enabled','livemode':False,'enabled_events':sorted(integration.EVENT_TYPES)}]}
+    report=await integration.observe()
+    assert report['expected_webhook_url']=='https://sandbox.example.com/api/webhooks/substack-stripe'
+    assert not report['webhook_destination_verified']
+    assert report['webhook_destination_checks']=={'listed':1,'has_more':False,'matching_url':0,'matching_destinations':[]}
+    for private in ('private-secret','we_private','other.example.com'):
+        assert private not in json.dumps(report)
+
+
+async def test_destination_diagnostics_explain_status_mode_and_event_mismatch(system):
+    endpoint=system.provider.v1.webhook_endpoints.list.return_value['data'][0]
+    endpoint.update(status='disabled',livemode=True,enabled_events=['invoice.paid'])
+    report=await integration.observe()
+    checks=report['webhook_destination_checks']
+    assert not report['webhook_destination_verified'] and checks['matching_url']==1
+    assert checks['matching_destinations']==[{'api':'v1','enabled':False,'mode_matches':False,'snapshot':True,'self_scope':True,
+        'missing_events':sorted(integration.EVENT_TYPES-{'invoice.paid'})}]
+
+
+def modern_destination(**patch):
+    return {'type':'webhook_endpoint','event_payload':'snapshot','events_from':['@self'],
+        'webhook_endpoint':{'url':'https://unoword.vercel.app/api/webhooks/substack-stripe'},
+        'status':'enabled','livemode':False,'snapshot_api_version':'2026-09-30.endive',
+        'enabled_events':sorted(integration.EVENT_TYPES),**patch}
+
+
+async def test_new_snapshot_event_destinations_are_verified_when_legacy_list_is_empty(system):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination()],'next_page_url':None}
+    report=await integration.observe()
+    assert report['webhook_destination_verified'] and report['ready']
+    assert report['webhook_api_versions']==['2026-09-30.endive']
+    assert report['webhook_destination_checks']['matching_destinations'][0]['api']=='v2'
+    system.provider.v2.core.event_destinations.list.assert_called_once_with({'limit':100,'include':['webhook_endpoint.url']})
+
+
+@pytest.mark.parametrize('patch',[
+    {'event_payload':'thin'}, {'events_from':['@accounts']}, {'events_from':['@self','@organization_members']},
+    {'events_from':None}, {'livemode':True}, {'status':'disabled'}, {'enabled_events':['invoice.paid']},
+    {'type':'amazon_eventbridge'}, {'webhook_endpoint':None}])
+async def test_new_destinations_fail_closed_for_wrong_payload_scope_mode_or_events(system,patch):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination(**patch)]}
+    report=await integration.observe()
+    assert not report['webhook_destination_verified'] and not report['ready']
+
+
+async def test_valid_legacy_endpoint_does_not_require_new_api_permissions(system):
+    assert (await integration.observe())['ready']
+    system.provider.v2.core.event_destinations.list.assert_not_called()
+
+
+async def test_new_destination_permission_failure_is_reported_without_provider_payload(system):
+    system.provider.v1.webhook_endpoints.list.return_value={'data':[]}
+    system.provider.v2.core.event_destinations.list.side_effect=stripe.PermissionError('private-provider-payload')
+    report=await integration.observe()
+    assert not report['ready'] and not report['webhook_destination_verified']
+    assert report['webhook_destination_checks']['lookup_errors']=={'v2':'substack_stripe_read_permission_denied'}
+    assert 'private-provider-payload' not in json.dumps(report)
+
+
+async def test_new_endpoint_can_prove_readiness_when_legacy_permission_is_unavailable(system):
+    system.provider.v1.webhook_endpoints.list.side_effect=stripe.PermissionError('fixture-only')
+    system.provider.v2.core.event_destinations.list.return_value={'data':[modern_destination()]}
+    assert (await integration.observe())['ready']
+
+
+async def test_connected_account_legacy_destination_cannot_prove_self_account_readiness(system):
+    system.provider.v1.webhook_endpoints.list.return_value['data'][0]['connect']=True
+    assert not (await integration.observe())['ready']
+
+
+def test_direct_destination_diagnostic_requires_admin_origin_and_valid_id(system):
+    path='/api/admin/integrations/substack/reconcile'
+    payload={'operation':'destination','destination_id':'we_fixture'}
+    assert system.client.post(path,json=payload,headers=ORIGIN).status_code==401
+    system.app.dependency_overrides[require_admin]=lambda:{'sub':OWNER}
+    assert system.client.post(path,json=payload,headers={'Origin':'https://untrusted.example'}).status_code==403
+    assert system.client.post(path,json={'operation':'destination'},headers=ORIGIN).status_code==422
+    assert system.client.post(path,json={**payload,'destination_id':'we_bad/../private'},headers=ORIGIN).status_code==422
+    endpoint=copy.deepcopy(system.provider.v1.webhook_endpoints.list.return_value['data'][0]);endpoint['id']='we_fixture'
+    system.provider.v1.webhook_endpoints.retrieve.return_value=endpoint
+    response=system.client.post(path,json=payload,headers=ORIGIN)
+    assert response.status_code==200
+    data=response.json()
+    assert data['found'] and data['url_matches'] and data['mode_matches'] and data['snapshot'] and data['self_scope']
+    assert not data['access_changes_performed'] and not data['missing_events']
+    assert not system.saved and not system.calls
+    system.provider.v1.webhook_endpoints.retrieve.assert_called_once_with('we_fixture')
+
+
+async def test_direct_lookup_missing_resource_is_distinguished_without_provider_disclosure(system):
+    system.provider.v1.webhook_endpoints.retrieve.side_effect=stripe.InvalidRequestError('private-provider-payload','id',code='resource_missing')
+    with pytest.raises(HTTPException) as error:
+        await integration.inspect_destination('we_fixture')
+    assert error.value.status_code==404 and error.value.detail=='substack_destination_not_found_in_configured_mode'
+    assert 'private-provider-payload' not in error.value.detail
+
+
+async def test_direct_new_destination_lookup_requests_url_only_and_never_returns_secrets(system):
+    row=modern_destination(id='ed_fixture',webhook_endpoint={'url':'https://other.example.com/private?token=private-token','signing_secret':'whsec_private'})
+    system.provider.v2.core.event_destinations.retrieve.return_value=row
+    result=await integration.inspect_destination('ed_fixture')
+    assert not result['url_matches'] and not result['access_changes_performed']
+    system.provider.v2.core.event_destinations.retrieve.assert_called_once_with('ed_fixture',{'include':['webhook_endpoint.url']})
+    for value in ('other.example.com','private-token','whsec_private','ed_fixture'):
+        assert value not in json.dumps(result)
 
 
 async def test_live_activation_refuses_without_explicit_approval(system,monkeypatch):

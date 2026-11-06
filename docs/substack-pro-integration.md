@@ -39,7 +39,7 @@ Create a restricted key with only these **read** permissions (Dashboard labels v
 | Invoices — list/retrieve, including returned invoice lines | Verify positive paid invoices, subscription association and paid-through dates |
 | Prices — retrieve | Verify configured recurring price IDs; use read/list for manual discovery if needed |
 | Products — retrieve, if product allowlisting is used | Verify configured product IDs and mode |
-| Webhook endpoints/event destinations — list/read | Verify destination URL, enabled status, API versions and selected events |
+| Webhook endpoints/event destinations — list/read | Verify destination URL, enabled status, API versions and selected events; newer destinations use `GET /v2/core/event_destinations` with URL inclusion |
 
 **No write permission is needed.** No Charges, PaymentIntents, Checkout or payment-method write access is needed. Events-read is not required: signed events are durably recorded, and current invoices/subscriptions are retrieved using their references. Creation of the destination is done manually by the owner in Dashboard, not with this API key.
 
@@ -78,6 +78,11 @@ The HMAC secret protects email indexes, one-time-code hashes and encrypted pendi
 
 ## 4. Inspect and import, without granting access
 
+If the publication has no paid subscribers yet, use the separate
+[sandbox rehearsal](substack-sandbox-testing.md). An empty eligible-subscriber
+result is expected; do not change valid live price IDs just to manufacture a
+match, or point sandbox notifications at the live-configured production route.
+
 If production reports **Not configured**, expand **Backend settings received** in this admin page. It lists missing/invalid variable names and presence/format checks only; it never displays values. Confirm the values were saved to the UnoWord project serving `unoword.vercel.app`, targeted to Production and available to the backend, then redeploy. A format check is not a successful Stripe permission test.
 
 Sign in to **Admin → Integrations → Substack**.
@@ -102,6 +107,13 @@ In the Substack account's Stripe Dashboard, open **Workbench → Webhooks / Even
 
 Use snapshot events for these v1 objects. Keep sandbox and live destinations, keys and signing secrets separate. Choose an API version supported by the account; the handler accepts the relevant older invoice `subscription` field and newer `parent.subscription_details.subscription` reference. Provider reads explicitly request `2026-09-30.endive`. The readiness report records the destination's actual API version(s); it does not pretend the Dashboard defaults are the same as the application's read version.
 
+The checker accepts both legacy webhook endpoints and newer snapshot Event
+Destinations. Newer destinations must use the webhook transport and only
+`@self` events; thin events and organization/connected-account streams do not
+satisfy readiness. If no matching legacy endpoint is available, the checker
+reads the newer list with `include=webhook_endpoint.url`, never signing secrets.
+Its admin-only report identifies permission failures without provider payloads.
+
 Copy the signing secret into **`SUBSTACK_STRIPE_WEBHOOK_SECRET`** in backend environment settings and redeploy. Do not put it in a URL, browser field or repository.
 
 A disabled source may observe properly signed events without granting Pro. Before automatic **live** access is enabled, the owner must review this handoff, complete testing and explicitly approve activation. The code does not create/enable a live destination or grant live access on its own.
@@ -113,6 +125,15 @@ Run **Check Stripe connection** again after delivery. Readiness requires an elig
 ## 6. Configure recovery
 
 Schedule **GET `https://unoword.vercel.app/api/internal/substack-sync`** about every five minutes using the existing authenticated scheduler pattern. Send `Authorization: Bearer <CRON_SECRET>` as a secret header. Do not put the secret in the URL. If using an external scheduler, create a second job alongside `/api/internal/ingestion` rather than replacing the existing knowledge-processing job.
+
+For Supabase Cron, run [the Substack scheduler SQL](../supabase/setup/substack-cron.sql)
+in SQL Editor after deploying the backend. It reuses the existing
+`unoword_ingestion_token` Vault secret matching Production's `CRON_SECRET`;
+Supabase Cron and pg_net must be enabled. It replaces only its own named job,
+preserves source processing, refuses to duplicate a differently named active
+schedule for the same Production route, and returns safe schedule metadata.
+It does not enable the Substack source or change approval flags. Confirm a
+successful scheduled HTTP call and a fresh `last_worker_at` in admin status.
 
 The endpoint resumes persisted event leases, retries queued work, refreshes the oldest linked subscription snapshots, and clears expired encrypted verification-email copies. Stripe receives an error while a durably queued event is still unresolved so it continues its own retries too. Admin controls can process/retry failed events and reconcile linked subscriptions manually. The worker updates a heartbeat; stale/error conditions remain visible through synchronization timestamps and failed-event status.
 
