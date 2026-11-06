@@ -126,6 +126,15 @@ Run **Check Stripe connection** again after delivery. Readiness requires an elig
 
 Schedule **GET `https://unoword.vercel.app/api/internal/substack-sync`** about every five minutes using the existing authenticated scheduler pattern. Send `Authorization: Bearer <CRON_SECRET>` as a secret header. Do not put the secret in the URL. If using an external scheduler, create a second job alongside `/api/internal/ingestion` rather than replacing the existing knowledge-processing job.
 
+For Supabase Cron, run [the Substack scheduler SQL](../supabase/setup/substack-cron.sql)
+in SQL Editor after deploying the backend. It reuses the existing
+`unoword_ingestion_token` Vault secret matching Production's `CRON_SECRET`;
+Supabase Cron and pg_net must be enabled. It replaces only its own named job,
+preserves source processing, refuses to duplicate a differently named active
+schedule for the same Production route, and returns safe schedule metadata.
+It does not enable the Substack source or change approval flags. Confirm a
+successful scheduled HTTP call and a fresh `last_worker_at` in admin status.
+
 The endpoint resumes persisted event leases, retries queued work, refreshes the oldest linked subscription snapshots, and clears expired encrypted verification-email copies. Stripe receives an error while a durably queued event is still unresolved so it continues its own retries too. Admin controls can process/retry failed events and reconcile linked subscriptions manually. The worker updates a heartbeat; stale/error conditions remain visible through synchronization timestamps and failed-event status.
 
 A session cannot process an event twice concurrently. A worker that loses its lease cannot commit. Processing retrieves the **current** subscription while holding a per-subscription database lease, so older webhook bodies do not restore stale access. No raw webhook body, card data or verification code is stored. Only minimal references, a payload digest and delivery state are retained.
