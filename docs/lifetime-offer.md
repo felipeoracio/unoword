@@ -42,8 +42,10 @@ they are not evidence of a completed Stripe sandbox charge.
    - `STRIPE_LIFETIME_ENABLED=true`
    Keep the existing `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as test values.
    Keep `STRIPE_LIVE_BILLING_APPROVED=false`. Redeploy after updating settings.
-4. Keep using the existing signed webhook URL:
-   `https://unoword.vercel.app/api/subscription/webhook`. Add these event types to
+4. The canonical signed webhook URL after domain cutover is:
+   `https://unoword.app/api/subscription/webhook`. Existing legacy destinations
+   remain supported; follow [domain migration](primary-domain-migration.md)
+   before editing an existing destination. Add these event types to
    its sandbox destination, alongside the existing subscription events:
    `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`,
    `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`.

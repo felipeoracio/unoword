@@ -237,9 +237,10 @@ async def verify_account(c, provider):
     return account
 
 
-async def webhook_destinations(c, provider, webhook_url):
+async def webhook_destinations(c, provider, webhook_url, accepted_urls=None):
     """Read legacy endpoints and, when needed, newer snapshot destinations."""
     rows = []; errors = {}; has_more = False
+    allowed_urls = set(accepted_urls or [webhook_url])
     try:
         page = await call(provider.v1.webhook_endpoints.list, {'limit': 100})
         has_more = bool(page.get('has_more'))
@@ -256,7 +257,7 @@ async def webhook_destinations(c, provider, webhook_url):
 
     def valid(row):
         check = checks(row)
-        return row.get('url') == webhook_url and all(check[k] for k in ('enabled','mode_matches','snapshot','self_scope')) and not check['missing_events']
+        return row.get('url') in allowed_urls and all(check[k] for k in ('enabled','mode_matches','snapshot','self_scope')) and not check['missing_events']
 
     if not any(valid(row) for row in rows):
         try:
@@ -271,7 +272,7 @@ async def webhook_destinations(c, provider, webhook_url):
                 'self_scope': set(row.get('events_from') or []) == {'@self'}} for row in page.get('data', []))
         except HTTPException as error:
             errors['v2'] = error.detail
-    matching = [row for row in rows if row.get('url') == webhook_url]
+    matching = [row for row in rows if row.get('url') in allowed_urls]
     summary = {'listed': len(rows), 'has_more': has_more, 'matching_url': len(matching),
         'matching_destinations': [checks(row) for row in matching]}
     if errors: summary['lookup_errors'] = errors
@@ -297,10 +298,13 @@ async def inspect_destination(destination_id):
         raise HTTPException(502, 'substack_destination_reference_mismatch')
     from lib.billing import app_url
     expected = app_url() + '/api/webhooks/substack-stripe'
+    from lib.site_urls import webhook_urls
+    accepted = webhook_urls('/api/webhooks/substack-stripe')
     url = row.get('url') if legacy else (row.get('webhook_endpoint') or {}).get('url')
     # Do not return provider URLs, secret fields, metadata or error messages.
     return {'found': True, 'mode': 'live' if c.live else 'test', 'expected_webhook_url': expected,
         'url_matches': url == expected, 'enabled': row.get('status') == 'enabled',
+        'legacy_url_compatible': url in accepted and url != expected,
         'mode_matches': bool(row.get('livemode')) == c.live,
         'snapshot': legacy or (row.get('type') == 'webhook_endpoint' and row.get('event_payload') == 'snapshot'),
         'self_scope': not row.get('connect', False) if legacy else set(row.get('events_from') or []) == {'@self'},
@@ -330,7 +334,9 @@ async def observe(c=None):
         await call(provider.v1.invoices.retrieve, invoice_probe['data'][0]['id'])
     from lib.billing import app_url
     webhook_url = app_url() + '/api/webhooks/substack-stripe'
-    endpoints, destination_checks = await webhook_destinations(c, provider, webhook_url)
+    from lib.site_urls import webhook_urls
+    accepted_urls = webhook_urls('/api/webhooks/substack-stripe')
+    endpoints, destination_checks = await webhook_destinations(c, provider, webhook_url, accepted_urls)
     samples = [s for s in subs.get('data', []) if any(allowed_price(c, item_price(i)) for i in (s.get('items') or {}).get('data', []))]
     # Explicit subscription/customer/invoice retrieval permissions are probed,
     # not inferred from Dashboard visibility or the ability to list records.
@@ -352,6 +358,8 @@ async def observe(c=None):
         # Admin-only diagnostics. Never expose other destination URLs (which
         # may contain authentication query strings), IDs, or signing secrets.
         'expected_webhook_url': webhook_url, 'webhook_destination_checks': destination_checks,
+        'canonical_webhook_destination_verified': any(e.get('url') == webhook_url for e in endpoints),
+        'legacy_webhook_destination_compatible': any(e.get('url') != webhook_url for e in endpoints),
         'mode': 'live' if c.live else 'test', 'policy': 'paid_through_only_no_extra_grace',
         'restricted_key': c.key.startswith('rk_'),
         'ready': bool(endpoints) and bool(deliveries) and bool(inspection and inspection['eligible']) and bool(c.webhook_secret)}

@@ -15,12 +15,12 @@ from lib.supabase_client import SupabaseAPIError
 from lib.request_security import _bursts
 
 OWNER = "00000000-0000-4000-8000-000000000001"
-ORIGIN = {"Origin": "https://unoword.vercel.app"}
+ORIGIN = {"Origin": "https://unoword.app"}
 
 
 @pytest.fixture
 def system(monkeypatch):
-    monkeypatch.setenv("PUBLIC_APP_URL", "https://unoword.vercel.app")
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://unoword.app")
     monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
     calls = []
     used = False
@@ -53,7 +53,7 @@ def system(monkeypatch):
     monkeypatch.setattr(google, "auth_request", auth)
     _bursts.clear()
     with TestClient(
-        app, base_url="https://unoword.vercel.app", follow_redirects=False
+        app, base_url="https://unoword.app", follow_redirects=False
     ) as client:
         yield SimpleNamespace(client=client, calls=calls, monkeypatch=monkeypatch)
     _bursts.clear()
@@ -68,6 +68,24 @@ def start(f, intent="account"):
     cookie = f.client.cookies.get(google.GOOGLE_OAUTH_COOKIE)
     saved = json.loads(base64.urlsafe_b64decode(cookie))
     return r, params, flow, cookie, saved
+
+
+@pytest.mark.parametrize('origin',['https://unoword.vercel.app','https://www.unoword.app'])
+def test_legacy_recovery_keeps_pkce_cookie_on_its_original_host(system,origin):
+    with TestClient(app,base_url=origin,follow_redirects=False) as client:
+        response=client.post('/api/auth/google/start?domain_recovery=1',json={'intent':'editor'},headers={'Origin':origin})
+        assert response.status_code==200
+        target=parse_qs(urlsplit(response.json()['url']).query)['redirect_to'][0]
+        assert target.startswith(origin+'/api/auth/google/callback?')
+        query=parse_qs(urlsplit(target).query)
+        assert query['domain_recovery']==['1']
+        callback=client.get('/api/auth/google/callback',params={'flow':query['flow'][0],'code':'one-use','domain_recovery':'1'})
+        assert callback.status_code==303
+        assert callback.headers['location']==origin+'/account?next=%2Feditor&oauth=success&domain_recovery=1'
+        cookies=callback.headers.get_list('set-cookie')
+        assert any('uno_session=' in value and 'HttpOnly' in value and 'Secure' in value for value in cookies)
+        assert all('Domain=' not in value for value in cookies)
+        assert 'secret' not in callback.headers['location']
 
 
 @pytest.mark.parametrize(
@@ -101,7 +119,7 @@ def test_secure_pkce_google_session_and_intent(system, intent, path):
     )
     assert (
         response.status_code == 303
-        and response.headers["location"] == "https://unoword.vercel.app" + path
+        and response.headers["location"] == "https://unoword.app" + path
     )
     assert (
         response.headers["cache-control"] == "private, no-store"
@@ -180,12 +198,12 @@ def test_bad_state_never_exchanges_or_sets_session(system, bad):
             else base64.urlsafe_b64encode(json.dumps(saved).encode()).decode()
         )
         f.client.cookies.set(
-            google.GOOGLE_OAUTH_COOKIE, value, domain="unoword.vercel.app", path="/"
+            google.GOOGLE_OAUTH_COOKIE, value, domain="unoword.app", path="/"
         )
     r = f.client.get("/api/auth/google/callback", params={"flow": flow, "code": "code"})
     assert (
         r.status_code == 303
-        and r.headers["location"] == "https://unoword.vercel.app/account?oauth=expired"
+        and r.headers["location"] == "https://unoword.app/account?oauth=expired"
     )
     assert not f.calls and not any(
         "uno_session=" in x for x in r.headers.get_list("set-cookie")
@@ -221,7 +239,7 @@ def test_code_is_one_use_even_if_old_state_cookie_is_restored(system):
         .endswith("oauth=success")
     )
     f.client.cookies.set(
-        google.GOOGLE_OAUTH_COOKIE, cookie, domain="unoword.vercel.app", path="/"
+        google.GOOGLE_OAUTH_COOKIE, cookie, domain="unoword.app", path="/"
     )
     r = f.client.get(
         "/api/auth/google/callback", params={"flow": flow, "code": "same-code"}
@@ -296,7 +314,7 @@ def test_unreachable_provider_fails_closed(monkeypatch):
 @pytest.mark.parametrize(
     "origin",
     [
-        "http://unoword.vercel.app",
+        "http://unoword.app",
         "https://example.com/bad",
         "https://example.com?bad=1",
     ],

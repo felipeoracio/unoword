@@ -3,11 +3,11 @@
 import base64
 import hashlib
 import json
-import os
 import secrets
 import time
 from urllib.parse import urlsplit
 from fastapi import HTTPException
+from lib.site_urls import public_app_url, LEGACY_ORIGINS
 
 DESTINATIONS = {
     "account": "/account",
@@ -18,7 +18,7 @@ DESTINATIONS = {
 
 
 def app_origin():
-    value = os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app").rstrip("/")
+    value = public_app_url()
     try:
         p = urlsplit(value)
         valid = (
@@ -31,6 +31,14 @@ def app_origin():
     if not valid:
         raise HTTPException(503, "authentication_unavailable")
     return value
+
+
+def flow_origin(request):
+    """A deliberate legacy recovery login must keep its host-bound PKCE cookie."""
+    candidate = 'https://' + (request.url.hostname or '')
+    if request.query_params.get('domain_recovery') == '1' and candidate in LEGACY_ORIGINS:
+        return candidate
+    return app_origin()
 
 
 def private(response):

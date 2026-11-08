@@ -239,7 +239,7 @@ const catalog = {
     assert.ok((await page.title()).includes("AI Writing Companion"));
     assert.equal(
       await page.locator("link[rel=canonical]").getAttribute("href"),
-      "https://unoword.vercel.app/",
+      "https://unoword.app/",
     );
     assert.ok(
       (

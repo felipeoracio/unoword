@@ -153,7 +153,8 @@ async def request_recovery(payload: RecoveryRequest, request: Request):
     limit_sensitive('recovery:' + (request.client.host if request.client else 'unknown'), 5, 300)
     if os.getenv('AUTH_SECURITY_EMAILS_CONFIGURED', 'false').lower() != 'true':
         raise HTTPException(503, 'email_workflow_not_configured')
-    redirect = os.getenv('PUBLIC_APP_URL', 'https://unoword.vercel.app').rstrip('/') + '/account/security'
+    from lib.site_urls import public_app_url
+    redirect = public_app_url() + '/account/security'
     try:
         await auth_request('POST', 'recover?redirect_to=' + quote(redirect, safe=''), json={'email': str(payload.email)})
     except SupabaseAPIError:

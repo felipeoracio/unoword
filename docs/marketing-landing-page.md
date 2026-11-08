@@ -1,6 +1,6 @@
 # UnoWord marketing website
 
-The official landing page is `/` in **felipeoracio/unoword**, the current repository connected to `https://unoword.vercel.app`. The older `felipeoracio/app` copy was inspected; the user explicitly chose the current repository.
+The official landing page is `/` in **felipeoracio/unoword**, the current repository connected to `https://unoword.app`. The older `felipeoracio/app` copy was inspected; the user explicitly chose the current repository.
 
 ## Routes and components
 
@@ -29,7 +29,7 @@ Regenerate the ZIP whenever distributing an updated extension:
 python frontend/scripts/package-extension.py
 ```
 
-`PUBLIC_APP_URL` configures the canonical origin, social-image URL, and structured data at build time; the existing production default is `https://unoword.vercel.app`. It also configures trusted origins in the existing backend. When using a different site, configure the variable for both services.
+`PUBLIC_APP_URL` configures the canonical origin, social-image URL, and structured data at build time; the existing production default is `https://unoword.app`. It also configures trusted origins in the existing backend. When using a different site, configure the variable for both services.
 
 Once an actual store listing is published and verified, set `PUBLIC_CHROME_STORE_URL` in the backend deployment and redeploy. The public endpoint accepts only HTTPS links on `chromewebstore.google.com/detail/...`; the primary CTAs then use the configured listing. Do not enter a guessed listing URL.
 

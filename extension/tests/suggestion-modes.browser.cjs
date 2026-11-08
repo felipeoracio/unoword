@@ -91,7 +91,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
       const contentType=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html';
       await route.fulfill({body:fs.readFileSync(file),contentType});
     });
-    await page.route('https://unoword.vercel.app/api/**',async route=>{
+    await page.route('https://unoword.app/api/**',async route=>{
       const response=await fetchFixture(route.request().url(),{method:route.request().method(),body:route.request().postData()});
       await route.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});
     });

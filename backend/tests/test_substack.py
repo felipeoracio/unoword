@@ -18,7 +18,7 @@ from lib.admin_auth import require_admin
 from lib.request_security import BrowserSecurityMiddleware, _bursts
 from routers.substack import router
 
-OWNER=str(uuid4());OTHER=str(uuid4());ORIGIN={'Origin':'https://unoword.vercel.app'}
+OWNER=str(uuid4());OTHER=str(uuid4());ORIGIN={'Origin':'https://unoword.app'}
 
 
 def subscription(**patch):
@@ -38,7 +38,7 @@ def system(monkeypatch):
         'SUBSTACK_STRIPE_PRICE_IDS':'price_publication','SUBSTACK_STRIPE_PRODUCT_IDS':'',
         'SUBSTACK_LINK_HMAC_SECRET':'independent-server-secret-32-characters-minimum','SUBSTACK_LINKING_ENABLED':'true',
         'SUBSTACK_STRIPE_LIVE_ACCESS_APPROVED':'false','RESEND_API_KEY':'re_fixture','SUBSTACK_EMAIL_FROM':'UnoWord <verify@example.com>',
-        'AI_AUTH_MODE':'supabase','PUBLIC_APP_URL':'https://unoword.vercel.app','STRIPE_SECRET_KEY':'sk_test_NATIVE_UNCHANGED'}.items():monkeypatch.setenv(key,value)
+        'AI_AUTH_MODE':'supabase','PUBLIC_APP_URL':'https://unoword.app','STRIPE_SECRET_KEY':'sk_test_NATIVE_UNCHANGED'}.items():monkeypatch.setenv(key,value)
     state=SimpleNamespace(subscription=subscription(),invoices=[invoice()],saved=[],calls=[],events={},sent=[],rows={},claim=True)
     provider=Mock();provider.raw_request.return_value=stripe.StripeResponse(json.dumps({'id':'acct_publication'}),200,{})
     provider.v1.subscriptions.retrieve.side_effect=lambda ref:copy.deepcopy(state.subscription)
@@ -48,7 +48,7 @@ def system(monkeypatch):
     provider.v1.invoices.list.side_effect=lambda params:{'data':copy.deepcopy(state.invoices),'has_more':False}
     provider.v1.invoices.retrieve.side_effect=lambda ref:copy.deepcopy(state.invoices[0])
     provider.v1.prices.retrieve.return_value={'id':'price_publication','livemode':False,'recurring':{'interval':'month'},'unit_amount':700}
-    provider.v1.webhook_endpoints.list.return_value={'data':[{'id':'we_endpoint','url':'https://unoword.vercel.app/api/webhooks/substack-stripe','status':'enabled','livemode':False,'api_version':'2026-09-30.endive','enabled_events':sorted(integration.EVENT_TYPES)}]}
+    provider.v1.webhook_endpoints.list.return_value={'data':[{'id':'we_endpoint','url':'https://unoword.app/api/webhooks/substack-stripe','status':'enabled','livemode':False,'api_version':'2026-09-30.endive','enabled_events':sorted(integration.EVENT_TYPES)}]}
     provider.v2.core.event_destinations.list.return_value={'data':[],'next_page_url':None}
     async def config_state(c):return {'policy_hash':c.policy,'enabled':False,'verification':{'read_permissions_verified':True}}
     async def rpc(name,**data):
@@ -188,9 +188,17 @@ async def test_destination_diagnostics_explain_status_mode_and_event_mismatch(sy
 
 def modern_destination(**patch):
     return {'type':'webhook_endpoint','event_payload':'snapshot','events_from':['@self'],
-        'webhook_endpoint':{'url':'https://unoword.vercel.app/api/webhooks/substack-stripe'},
+        'webhook_endpoint':{'url':'https://unoword.app/api/webhooks/substack-stripe'},
         'status':'enabled','livemode':False,'snapshot_api_version':'2026-09-30.endive',
         'enabled_events':sorted(integration.EVENT_TYPES),**patch}
+
+
+async def test_domain_change_preserves_verified_old_stripe_destination(system):
+    system.provider.v1.webhook_endpoints.list.return_value['data'][0]['url']='https://unoword.vercel.app/api/webhooks/substack-stripe'
+    result=await integration.observe()
+    assert result['ready'] and result['webhook_destination_verified']
+    assert result['legacy_webhook_destination_compatible'] and not result['canonical_webhook_destination_verified']
+    assert result['expected_webhook_url']=='https://unoword.app/api/webhooks/substack-stripe'
 
 
 async def test_new_snapshot_event_destinations_are_verified_when_legacy_list_is_empty(system):

@@ -849,7 +849,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'DELTA': {
           try {
             const source = new URL(sender.url || '');
-            if (source.origin === 'https://unoword.vercel.app' && (source.pathname === '/editor' || source.pathname.startsWith('/editor/'))) { sendResponse({ ok: true }); return; }
+            if (['https://unoword.app', 'https://www.unoword.app', 'https://unoword.vercel.app'].includes(source.origin) && (source.pathname === '/editor' || source.pathname.startsWith('/editor/'))) { sendResponse({ ok: true }); return; }
           } catch (_error) { /* ordinary extension / fixture sender */ }
           await applyDelta(msg.delta || {});
           sendResponse({ ok: true });
@@ -1201,7 +1201,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'OPEN_WRITING_EDITOR': {
           const settings = await getSettings();
-          const url = new URL('https://unoword.vercel.app/editor');
+          const url = new URL('https://unoword.app/editor');
           if (settings.wordGoal) url.searchParams.set('goal', String(settings.wordGoal));
           if (settings.profile.timezone) url.searchParams.set('timezone', settings.profile.timezone);
           await chrome.tabs.create({ url: url.href });

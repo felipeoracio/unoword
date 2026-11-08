@@ -19,6 +19,30 @@
           "destination": "/lifetime/index.html"
         },
         {
+          "source": "/privacy",
+          "destination": "/privacy/index.html"
+        },
+        {
+          "source": "/privacy/",
+          "destination": "/privacy/index.html"
+        },
+        {
+          "source": "/terms",
+          "destination": "/terms/index.html"
+        },
+        {
+          "source": "/terms/",
+          "destination": "/terms/index.html"
+        },
+        {
+          "source": "/support",
+          "destination": "/support/index.html"
+        },
+        {
+          "source": "/support/",
+          "destination": "/support/index.html"
+        },
+        {
           "source": "/(.*)",
           "destination": "/index.html"
         }
@@ -37,6 +61,136 @@
       "destination": {
         "service": "frontend"
       }
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.unoword.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "code"
+        }
+      ],
+      "destination": "https://unoword.app/",
+      "statusCode": 301
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "unoword.vercel.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "code"
+        }
+      ],
+      "destination": "https://unoword.app/",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path(editor(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "unoword.vercel.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "domain_recovery",
+          "value": "1"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path(account(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "unoword.vercel.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "domain_recovery",
+          "value": "1"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path((?!(?:api|assets|editor|account)(?:/|$)|writing-sw\\.js$).+)",
+      "has": [
+        {
+          "type": "host",
+          "value": "unoword.vercel.app"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path(editor(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.unoword.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "domain_recovery",
+          "value": "1"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path(account(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.unoword.app"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "domain_recovery",
+          "value": "1"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path((?!(?:api|assets|editor|account)(?:/|$)|writing-sw\\.js$).+)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.unoword.app"
+        }
+      ],
+      "destination": "https://unoword.app/:path",
+      "statusCode": 301
     }
   ]
 }

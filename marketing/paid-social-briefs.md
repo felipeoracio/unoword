@@ -21,7 +21,7 @@ Use the existing logo, bright blue #0866FF, white, navy #0B1B4D, soft blue #EFF6
 - Primary text: Every great writing habit starts somewhere. Track your words, set daily goals, and build your first seven-day writing streak with UnoWord—for free. Keep writing after Day 7. Your activity continues being recorded, and Pro can unlock your full qualifying streak.
 - Meta headline: Start Your Writing Habit Free
 - CTA: Sign Up
-- Destination: https://unoword.vercel.app/account?mode=signup
+- Destination: https://unoword.app/account?mode=signup
 - Visual: daily word goal, supported Chrome tracking, and seven habit markers. Do not depict the editor, formatting, documents, folders, personalized profile, or personalized AI as Free features.
 - Qualification: signed-in progress metadata synchronizes across surfaces; offline metadata queues locally. Available older device history requires explicit synchronization. Missing historical records cannot be reconstructed.
 
@@ -32,7 +32,7 @@ Use the existing logo, bright blue #0866FF, white, navy #0B1B4D, soft blue #EFF6
 - Primary text: Build better writing habits with UnoWord Pro. Get a dedicated writing editor, organized documents, unlimited writing streaks, and personalized AI guidance that helps you overcome writer's block. All for $20/month.
 - Meta headline: UnoWord Pro — $20/Month
 - CTA: Learn More
-- Destination: https://unoword.vercel.app/account?plan=pro
+- Destination: https://unoword.app/account?plan=pro
 - Visual: actual Pro editor and document navigation, a coaching question, and a clearly illustrative streak preview. Label paid features. Never show AI prose insertion.
 - Trial: include “7-day free trial for eligible accounts” only when the public billing configuration and account eligibility support it. Explain the $20/month charge after the trial, payment method requirement, and cancellation terms. No promise of unlimited AI.
 
@@ -43,7 +43,7 @@ Use the existing logo, bright blue #0866FF, white, navy #0B1B4D, soft blue #EFF6
 - Primary text: Writer's block doesn't have to stop your progress. UnoWord Pro helps you discover what to write next with personalized suggestions and thoughtful guidance—without writing for you.
 - Meta headline: Break Through Writer's Block
 - CTA: Learn More
-- Destination: https://unoword.vercel.app/#ai-companion
+- Destination: https://unoword.app/#ai-companion
 - Visual: a short reflective question, not a paragraph of generated writing. Keep the author’s blank canvas central. Clearly mark personalized guidance as Pro.
 
 ## Campaign D — Lifetime offer
@@ -54,7 +54,7 @@ Use the existing logo, bright blue #0866FF, white, navy #0B1B4D, soft blue #EFF6
 - Primary text: Your writing companion for life. Get the complete UnoWord Pro experience—including the writing editor, document organization, unlimited streaks, and personalized AI guidance—for one $100 payment. Limited to the first 25 qualifying purchasers.
 - Meta headline: UnoWord Lifetime Access — $100
 - CTA: Shop Now
-- Destination: https://unoword.vercel.app/lifetime
+- Destination: https://unoword.app/lifetime
 - Visual: Pro editor/library illustration, one-time price, and the limited capacity label. Do not imply a separate or smaller AI plan.
 - Terms: same applicable features and allowances as Monthly Pro; no recurring lifetime payment; 14-day refund window. Lifetime does not mean unlimited AI or storage. Refunded purchases do not reopen sold places.
 

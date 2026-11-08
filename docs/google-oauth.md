@@ -23,7 +23,7 @@ access to your Google Cloud and Supabase dashboards; do not send secrets in chat
 
    This is Google's return address **to Supabase**, not the UnoWord callback.
    If the console asks for an authorized JavaScript origin, use
-   `https://unoword.vercel.app` (the integration uses a server redirect rather than
+   `https://unoword.app` (the integration uses a server redirect rather than
    a Google JavaScript SDK). For a consent screen in Testing, add the Google
    accounts you control as test users before trying sign-in. Choose the appropriate
    audience; an Internal consent screen excludes people outside your organization.
@@ -35,19 +35,19 @@ access to your Google Cloud and Supabase dashboards; do not send secrets in chat
    No additional Google secret environment variable is needed in Vercel.
 
 3. In **Supabase → Authentication → URL Configuration**, set the Site URL to
-   `https://unoword.vercel.app`. Add this to the **Redirect URLs** allowlist:
+   `https://unoword.app`. Add this to the **Redirect URLs** allowlist:
 
    ```text
-   https://unoword.vercel.app/api/auth/google/callback**
+   https://unoword.app/api/auth/google/callback**
    ```
 
    The final `**` permits the per-attempt `?flow=…` query. Keep the exact trusted
    hostname and callback path; do not allow arbitrary hosts. Preserve existing
    `/account/security` email-recovery/change redirects. The Vercel backend's
-   `PUBLIC_APP_URL` must be `https://unoword.vercel.app` (also the default).
+   `PUBLIC_APP_URL` must be `https://unoword.app` (also the default).
 
 4. Wait up to 30 seconds for the provider-settings cache, then reload
-   [the account page](https://unoword.vercel.app/account). Choose **Continue with
+   [the account page](https://unoword.app/account). Choose **Continue with
    Google** and finish consent with a test account you control. New Google users
    start with Free access. Existing access is read from the same permanent
    Supabase account ID. Supabase handles identity linking; the application never

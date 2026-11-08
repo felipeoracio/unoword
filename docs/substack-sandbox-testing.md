@@ -16,7 +16,7 @@ Use the exact Preview URL supplied by Vercel after this branch deploys. Save
 these variables for **Preview only**, then redeploy this branch:
 
 Current branch Preview:
-`https://unoword-git-test-substack-sandbox-unoword.vercel.app`.
+`https://unoword-git-test-substack-sandbox-unoword.app`.
 Use this same origin for `PUBLIC_APP_URL`, `AUTH_ALLOWED_ORIGINS`, and
 `CORS_ORIGINS`. The branch to deploy is `test/substack-sandbox`.
 

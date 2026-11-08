@@ -2,10 +2,10 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const {test}=require('node:test');
-test('Editor content bridge sends metadata requests only, validates origin and skips normal typing listeners',()=>{
+for (const origin of ['https://unoword.app','https://unoword.vercel.app','https://www.unoword.app']) test('Editor bridge retains origin isolation at '+origin,()=>{
  const listeners={},sent=[],posted=[];let storageListener;
  const window={addEventListener:(event,listener)=>listeners[event]=listener,postMessage:(message,origin)=>posted.push({message,origin})};
- const location={origin:'https://unoword.vercel.app',pathname:'/editor'};
+ const location={origin,pathname:'/editor'};
  const chrome={runtime:{sendMessage:(message,callback)=>{sent.push(message);callback?.({ok:true,ownerId:'writer',sessions:[]})}},storage:{onChanged:{addListener(listener){storageListener=listener;}}}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../content.js'),'utf8'),{window,location,chrome});
  assert.deepEqual(Object.keys(listeners),['message']);

@@ -68,7 +68,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   await page.exposeFunction('backgroundMessage',message);
   await page.addInitScript(()=>{window.backgroundListeners=[];window.chrome={runtime:{onMessage:{addListener:l=>window.backgroundListeners.push(l)},getManifest:()=>({version:'test'}),sendMessage:(m,cb)=>window.backgroundMessage(m).then(cb)}};});
   await page.route('http://popup.test/**',async r=>{const file=path.join(root,new URL(r.request().url()).pathname);await r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html'});});
-  await page.route('https://unoword.vercel.app/api/**',async r=>{const response=await fixture(r.request().url(),{method:r.request().method(),body:r.request().postData()});await r.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});});
+  await page.route('https://unoword.app/api/**',async r=>{const response=await fixture(r.request().url(),{method:r.request().method(),body:r.request().postData()});await r.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});});
   async function layout(label){assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' horizontal overflow');}
   async function capture(name){await layout(name);await page.evaluate(()=>scrollTo(0,0));if(process.env.DASHBOARD_SCREENSHOTS){fs.mkdirSync(process.env.DASHBOARD_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.DASHBOARD_SCREENSHOTS,name+'.png'),fullPage:true});}}
   await page.goto('http://popup.test/popup/popup.html');
@@ -251,10 +251,10 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
     assert.equal(await frame.locator('#account-password').inputValue(),'');
     assert.equal(await frame.locator('#account-google-note').isVisible(),true);
   }
-  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleDestinations),Array(2).fill('https://unoword.vercel.app/account?mode=signin'));
+  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleDestinations),Array(2).fill('https://unoword.app/account?mode=signin'));
   await frame.locator('html').evaluate(()=>{delete window.chrome.tabs;window.open=(url,target,features)=>{window.googleFallback={url,target,features};};});
   await frame.locator('#account-google').click();
-  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleFallback),{url:'https://unoword.vercel.app/account?mode=signin',target:'_blank',features:'noopener,noreferrer'});
+  assert.deepEqual(await frame.locator('html').evaluate(()=>window.googleFallback),{url:'https://unoword.app/account?mode=signin',target:'_blank',features:'noopener,noreferrer'});
   assert.deepEqual(errors,[]);
   console.log('PASS: four views; real session statistics; 180–420px; native intrinsic width; embedded 194px Free preview; English/Spanish; long text; all website actions; safe extracted preview; edit/toggle/refresh; library resources; Free access panels; Google website sign-in in EN/ES, new tab/fallback, password cleanup.');
  }finally{await browser.close();}

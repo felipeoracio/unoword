@@ -17,7 +17,7 @@ USER_B = ("unoword.e2e.b@example.com", os.environ.get("UNOWORD_TEST_USER_B_PASSW
 
 
 def _token(creds) -> str:
-    r = httpx.post(f"{API_URL}/auth/login", json={"email": creds[0], "password": creds[1]}, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}, timeout=30)
+    r = httpx.post(f"{API_URL}/auth/login", json={"email": creds[0], "password": creds[1]}, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.app")}, timeout=30)
     r.raise_for_status()
     for part in r.headers.get("set-cookie", "").split(","):
         if "uno_session=" in part:

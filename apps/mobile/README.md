@@ -38,7 +38,7 @@ restart with `npm start -- --clear`.
 
 No credentials need to be pasted into the mobile source. The app fetches only
 the existing public Supabase URL/publishable-or-anon key from
-`https://unoword.vercel.app/api/auth/client-config`. The backend rejects secret,
+`https://unoword.app/api/auth/client-config`. The backend rejects secret,
 service-role and non-anon JWT values. Public configuration is cached for offline
 startup and pinned to the expected project. The server route must be deployed
 before the default connection works.

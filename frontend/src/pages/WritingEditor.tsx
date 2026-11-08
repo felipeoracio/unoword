@@ -1,4 +1,5 @@
 import ConnectSubstack from "@/components/substack/ConnectSubstack";
+import { recoveryPath } from "@/lib/domain-recovery";
 import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingRecovery from "@/components/WritingRecovery";
 import {
@@ -1531,7 +1532,7 @@ export default function WritingEditor() {
           )}
         </p>
         {ws.error && <p role="alert">{ws.error}</p>}
-        <Link to="/account?next=%2Feditor">
+        <Link to={recoveryPath("/account?next=%2Feditor")}>
           {t("Sign in to write")} <ArrowRight size={16} />
         </Link>
         <Link to="/">UnoWord</Link>
@@ -1603,7 +1604,7 @@ export default function WritingEditor() {
             <option value="en">EN</option>
             <option value="es">ES</option>
           </select>
-          <Link className="uw-editor-account" to="/account">
+          <Link className="uw-editor-account" to={recoveryPath("/account")}>
             {ws.user.email?.slice(0, 1).toUpperCase() || "U"}
             <span className="uw-sr-only">{t("Account")}</span>
           </Link>

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 const base =
-  process.env.UNOWORD_TEST_API_URL || "https://unoword.vercel.app/api";
+  process.env.UNOWORD_TEST_API_URL || "https://unoword.app/api";
 const url = process.env.SUPABASE_URL,
   key = process.env.SUPABASE_ANON_KEY,
   service = process.env.SUPABASE_SERVICE_ROLE_KEY,

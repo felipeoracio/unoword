@@ -11,7 +11,8 @@ begin
     raise exception 'Create the matching unoword_ingestion_token Vault secret first';
   end if;
   if exists(select 1 from cron.job where active and jobname<>'unoword-substack-sync'
-    and position('https://unoword.vercel.app/api/internal/substack-sync' in command)>0) then
+    and (position('https://unoword.app/api/internal/substack-sync' in command)>0
+      or position('https://unoword.vercel.app/api/internal/substack-sync' in command)>0)) then
     raise exception 'A different active job already schedules Substack sync; review that job before adding another';
   end if;
   select jobid into existing from cron.job where jobname='unoword-substack-sync';
@@ -19,7 +20,7 @@ begin
   perform cron.schedule('unoword-substack-sync','*/5 * * * *',
     $schedule$
       select net.http_get(
-        url:='https://unoword.vercel.app/api/internal/substack-sync',
+        url:='https://unoword.app/api/internal/substack-sync',
         headers:=jsonb_build_object('Authorization','Bearer '||(
           select decrypted_secret from vault.decrypted_secrets
           where name='unoword_ingestion_token' limit 1)),

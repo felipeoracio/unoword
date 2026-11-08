@@ -83,7 +83,7 @@ If the publication has no paid subscribers yet, use the separate
 result is expected; do not change valid live price IDs just to manufacture a
 match, or point sandbox notifications at the live-configured production route.
 
-If production reports **Not configured**, expand **Backend settings received** in this admin page. It lists missing/invalid variable names and presence/format checks only; it never displays values. Confirm the values were saved to the UnoWord project serving `unoword.vercel.app`, targeted to Production and available to the backend, then redeploy. A format check is not a successful Stripe permission test.
+If production reports **Not configured**, expand **Backend settings received** in this admin page. It lists missing/invalid variable names and presence/format checks only; it never displays values. Confirm the values were saved to the UnoWord project serving `unoword.app`, targeted to Production and available to the backend, then redeploy. A format check is not a successful Stripe permission test.
 
 Sign in to **Admin → Integrations → Substack**.
 
@@ -95,7 +95,12 @@ Sign in to **Admin → Integrations → Substack**.
 
 Exact production endpoint:
 
-**`https://unoword.vercel.app/api/webhooks/substack-stripe`**
+**`https://unoword.app/api/webhooks/substack-stripe`**
+
+During the [primary-domain migration](primary-domain-migration.md), existing
+legacy signed destinations remain operational through direct API compatibility.
+Review their current mode and URL before editing them; update an existing
+destination in place and verify delivery before retiring its legacy URL.
 
 In the Substack account's Stripe Dashboard, open **Workbench → Webhooks / Event destinations → Add destination**. Select events from **this account** (not unrelated connected accounts or an organization-wide stream). Choose:
 
@@ -124,7 +129,7 @@ Run **Check Stripe connection** again after delivery. Readiness requires an elig
 
 ## 6. Configure recovery
 
-Schedule **GET `https://unoword.vercel.app/api/internal/substack-sync`** about every five minutes using the existing authenticated scheduler pattern. Send `Authorization: Bearer <CRON_SECRET>` as a secret header. Do not put the secret in the URL. If using an external scheduler, create a second job alongside `/api/internal/ingestion` rather than replacing the existing knowledge-processing job.
+Schedule **GET `https://unoword.app/api/internal/substack-sync`** about every five minutes using the existing authenticated scheduler pattern. Send `Authorization: Bearer <CRON_SECRET>` as a secret header. Do not put the secret in the URL. If using an external scheduler, create a second job alongside `/api/internal/ingestion` rather than replacing the existing knowledge-processing job.
 
 For Supabase Cron, run [the Substack scheduler SQL](../supabase/setup/substack-cron.sql)
 in SQL Editor after deploying the backend. It reuses the existing

@@ -3,3 +3,6 @@ Allow: /
 Disallow: /account
 Disallow: /admin
 Disallow: /terms
+Disallow: /editor
+Disallow: /rewards
+Sitemap: https://unoword.app/sitemap.xml

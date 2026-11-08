@@ -1,6 +1,6 @@
 # UnoWord writing coach, plans, streaks, and marketing delivery
 
-Merged in [PR #4](https://github.com/felipeoracio/unoword/pull/4) and deployed to [unoword.vercel.app](https://unoword.vercel.app/). The owner applied the database migrations; live schema and permission checks passed. Vercel confirmed production deployments for merge `a338d03` and coaching reliability follow-up `ce0a717`. No Stripe mode, prices/products, subscriber terms, or live campaigns were changed.
+Historical rollout: [PR #4](https://github.com/felipeoracio/unoword/pull/4) deployed to [unoword.vercel.app](https://unoword.vercel.app/). The current primary origin is [unoword.app](https://unoword.app/); see [domain migration](primary-domain-migration.md). The owner applied the database migrations; live schema and permission checks passed at that rollout. Vercel confirmed deployments for merge `a338d03` and follow-up `ce0a717`. No Stripe mode, prices/products, subscriber terms, or live campaigns were changed.
 
 ## Delivered behavior
 

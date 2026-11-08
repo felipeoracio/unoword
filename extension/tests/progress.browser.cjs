@@ -214,7 +214,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     await page.click('#pause-btn');assert.equal((await message({type:'GET_STATE'})).payload.timer.status,'paused','Free retains Pause');
     await message({type:'DELTA',delta:{kind:'typed',words:500}});assert.equal((await message({type:'GET_STATE'})).payload.typedWords,0);
     await page.click('#pause-btn');assert.equal((await message({type:'GET_STATE'})).payload.timer.status,'active','Free retains Resume');
-    await message({type:'DELTA',delta:{kind:'typed',words:100}},{url:'https://unoword.vercel.app/editor'});
+    for(const origin of ['https://unoword.app','https://unoword.vercel.app','https://www.unoword.app'])await message({type:'DELTA',delta:{kind:'typed',words:100}},{url:origin+'/editor'});
     assert.equal((await message({type:'GET_STATE'})).payload.typedWords,0);
     await message({type:'DELTA',delta:{kind:'typed',words:2}},{url:'https://example.com/draft'});
     await message({type:'STOP_SESSION'});

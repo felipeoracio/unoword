@@ -1,4 +1,5 @@
 import Lifetime from "./pages/Lifetime";
+import Information from "./pages/Information";
 import { StrictMode, Suspense } from "react";
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom";
@@ -38,4 +39,8 @@ export function renderLifetime() {
       </QueryClientProvider>
     </StrictMode>,
   );
+}
+
+export function renderInformation(kind: "privacy" | "terms" | "support") {
+  return renderToString(<StaticRouter location={`/${kind}`}><Suspense><Information kind={kind} /></Suspense></StaticRouter>);
 }

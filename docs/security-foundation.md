@@ -14,11 +14,13 @@ the endpoint still verifies that caller's token and permissions. The exact POST
 require Stripe signature and mode verification. Top-level OAuth GET callbacks
 can arrive without an Origin header.
 
-Allowed web origins come from `PUBLIC_APP_URL`, `AUTH_ALLOWED_ORIGINS`, and explicit
+The primary and explicitly owned legacy origins remain allowed during the domain
+migration; see `primary-domain-migration.md`. Additional web origins come from
+`PUBLIC_APP_URL`, `AUTH_ALLOWED_ORIGINS`, and explicit
 `CORS_ORIGINS` entries. Wildcards, malformed values, URL credentials, and paths
 are ignored. A deployment that previously used `CORS_ORIGINS=*` now fails closed
 for unrelated sites. The default production origin is
-`https://unoword.vercel.app`. Set explicit localhost origins in local development
+`https://unoword.app`. Set explicit localhost origins in local development
 settings, or explicit preview origins in the corresponding preview deployment.
 
 Only correctly formed Chrome extension origins are accepted. Unpacked extension
@@ -73,7 +75,7 @@ PKCE helpers as before and retains its existing callback and nonce protection.
 1. Authentication → Email: **Confirm email must be enabled**. The application
    refuses new email signups when Supabase reports automatic confirmation.
 2. Authentication → URL Configuration: Site URL must be
-   **`https://unoword.vercel.app`**. Keep the existing Google callback allowlist.
+   **`https://unoword.app`**. Keep the existing Google callback allowlist.
    Email signup returns to the Site URL and needs no new callback path.
 3. Authentication → Email Templates → Confirm signup: retain the standard
    provider confirmation link, for example:

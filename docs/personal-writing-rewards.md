@@ -105,7 +105,7 @@ Screenshots are generated in ignored `tests/artifacts/rewards`, or the `WRITING_
 ## Production rollout — November 4, 2026
 
 - The owner applied the SQL migration; a subsequent service-only schema check confirmed all 53 definitions. Anonymous direct reads of every new rewards table were denied.
-- PR #10 was merged as `64a7df9`, and the Vercel production deployment succeeded at https://unoword.vercel.app. The rewards page is https://unoword.vercel.app/rewards (sign-in required).
+- PR #10 was merged as `64a7df9`, and the production deployment succeeded at the historical hostname https://unoword.vercel.app. The current canonical rewards URL is https://unoword.app/rewards (sign-in required).
 - Bounded historical backfill completed in two batches for 31 existing accounts, persisting 13 verified awards quietly. No writing history, subscriptions, prices, or AI allowances were changed.
 - Production API smoke checks passed on both existing paid QA accounts: 53 definitions, owner-bound summaries, English/Spanish localization, private/no-store caching, repeated-read consistency, quiet historical claims, stale-owner rejection and fabricated-total rejection.
 - A disposable Free account received 41 eligible definitions. Document achievements and streak thresholds beyond seven days were absent. Authenticated direct reward-table access, paid editor access and admin access were denied. The disposable account was deleted afterward.

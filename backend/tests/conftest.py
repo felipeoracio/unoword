@@ -128,7 +128,7 @@ def _login_access_token(email: str, password: str) -> str:
     """
     if os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1" or not password:
         pytest.skip("Live QA tests require opt-in and private QA credential settings")
-    with httpx.Client(base_url=API_URL, timeout=90.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")}) as c:
+    with httpx.Client(base_url=API_URL, timeout=90.0, headers={"Origin": os.getenv("PUBLIC_APP_URL", "https://unoword.app")}) as c:
         response = c.post("/auth/login", json={"email": email, "password": password})
         response.raise_for_status()
         token = response.cookies.get("uno_session")

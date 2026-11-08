@@ -7,6 +7,7 @@ const titles: Record<string, string> = {
   "/account": "Your account — UnoWord",
   "/account/security": "Account & Security — UnoWord",
   "/editor": "Your writing space — UnoWord",
+  "/rewards": "Writing rewards — UnoWord",
   "/privacy": "Privacy & data — UnoWord",
   "/terms": "Terms of service — UnoWord",
   "/support": "Support — UnoWord",
@@ -25,7 +26,11 @@ export default function PageMetadata() {
         ? "Explore UnoWord Pro’s $100 USD lifetime offer for the first 25 purchasers. Includes Pro writing tools, daily AI limits, and a 14-day refund policy."
         : pathname === "/"
           ? "Build better writing habits with UnoWord. Track daily goals for free, unlock unlimited streaks, and overcome writer's block with personalized AI guidance in Pro."
-          : null;
+          : pathname === "/privacy"
+            ? "Privacy and data practices for UnoWord writing, accounts, and cloud features."
+            : pathname === "/support"
+              ? "Installation, account help, and recovery of offline writing for UnoWord."
+              : null;
     if (publicDescription)
       for (const selector of [
         'meta[name="description"]',
@@ -35,7 +40,7 @@ export default function PageMetadata() {
         const meta = document.querySelector<HTMLMetaElement>(selector);
         if (meta) meta.content = publicDescription;
       }
-    if (pathname === "/" || pathname === "/lifetime")
+    if (titles[pathname])
       for (const selector of [
         'meta[property="og:title"]',
         'meta[name="twitter:title"]',
@@ -54,6 +59,7 @@ export default function PageMetadata() {
         robots.dataset.deploymentPolicy?.startsWith("noindex") ||
         pathname.startsWith("/account") ||
         pathname === "/editor" ||
+        pathname === "/rewards" ||
         pathname.startsWith("/admin") ||
         pathname === "/terms" ||
         !titles[pathname]
@@ -63,6 +69,8 @@ export default function PageMetadata() {
       'link[rel="canonical"]',
     );
     if (canonical) canonical.href = new URL(pathname, canonical.href).href;
+    const socialUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+    if (socialUrl && canonical) socialUrl.content = canonical.href;
   }, [pathname]);
   return null;
 }
