@@ -21,7 +21,7 @@ Privacy Control may suppress your test visit. Standard reports can take
 
 ## Collection boundaries
 
-Only `/`, `/lifetime`, `/privacy`, `/terms`, and `/support` are allowlisted, with
+Only `/`, `/privacy`, `/terms`, and `/support` are allowlisted, with
 fixed titles. Queries/fragments never appear in explicit page-view parameters.
 Authentication callback/credential parameters suppress tracking. Referrers are
 reduced to an external origin or an allowlisted internal path. Editor, account,

@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { trackPublicPage } from "@/lib/analytics";
 
 const titles: Record<string, string> = {
-  "/lifetime": "UnoWord Pro — $100 Lifetime Deal",
   "/": "UnoWord — Your Words. Your Voice. Your Story.",
   "/account": "Your account — UnoWord",
   "/account/security": "Account & Security — UnoWord",
@@ -24,9 +23,7 @@ export default function PageMetadata() {
         ? "Admin — UnoWord"
         : "Page not found — UnoWord");
     const publicDescription =
-      pathname === "/lifetime"
-        ? "Explore UnoWord Pro’s $100 USD lifetime offer for the first 25 purchasers. Includes Pro writing tools, daily AI limits, and a 14-day refund policy."
-        : pathname === "/"
+      pathname === "/"
           ? "Build better writing habits with UnoWord. Track daily goals for free, unlock unlimited streaks, and overcome writer's block with personalized AI guidance in Pro."
           : pathname === "/privacy"
             ? "Privacy and data practices for UnoWord writing, accounts, and cloud features."

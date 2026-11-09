@@ -1,4 +1,3 @@
-import Lifetime from "./pages/Lifetime";
 import Information from "./pages/Information";
 import { StrictMode, Suspense } from "react";
 import { renderToString } from "react-dom/server";
@@ -16,25 +15,6 @@ export function renderLanding() {
       <QueryClientProvider client={client}>
         <StaticRouter location="/">
           <App />
-        </StaticRouter>
-      </QueryClientProvider>
-    </StrictMode>,
-  );
-}
-
-// The promotional route is public static content with the same Suspense boundary
-// as App; authentication and billing still happen only in the existing account flow.
-export function renderLifetime() {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return renderToString(
-    <StrictMode>
-      <QueryClientProvider client={client}>
-        <StaticRouter location="/lifetime">
-          <Suspense>
-            <Lifetime />
-          </Suspense>
         </StaticRouter>
       </QueryClientProvider>
     </StrictMode>,

@@ -1,42 +1,68 @@
-/** Synthetic HTTP fixtures: never starts an actual charge or changes an account. */
-const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+/** Retired offer and existing-purchase management; synthetic API only. */
+const assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'./node_modules/playwright');
 const origin=process.env.LIFETIME_TEST_ORIGIN||'http://localhost:4175',owner='00000000-0000-4000-8000-000000000001';
-(async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox']});try{
-const c=await b.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});let signed=false,offer={amount:10000,currency:'usd',capacity:25,test_mode:true,checkout_available:true,purchased:1,remaining:24,reserved:2,available:22,refund_days:14,daily_ai_limit:10,ai_allowance:{suggestions_daily:10,suggestions_monthly:200,guidance_monthly:30}},purchaseStatus='none',canCheckout=true,canRefund=false,requests=[],redirects=0,checkoutError='',refundRequests=0;
-await c.route(origin+'/api/**',async route=>{const r=route.request(),p=new URL(r.url()).pathname;requests.push([p,r.method()]);
- if(p==='/api/auth/google')return route.fulfill({json:{enabled:false}});
- if(p==='/api/product')return route.fulfill({json:{name:'UnoWord',billing_available:true,chrome_store_url:null,plans:[{id:'pro',features:{writing_editor:true,editor_ai:true,knowledge_sources:true,goals_analytics:true}}],features:[]}});
- if(p==='/api/subscription/lifetime/offer')return route.fulfill({json:offer});
- if(!signed)return route.fulfill({status:401,json:{detail:'Authentication required'}});
- if(p==='/api/auth/me')return route.fulfill({json:{id:owner,email:'fixture@example.com',plan:purchaseStatus==='paid'?'pro':'free',ai_access:purchaseStatus==='paid'}});
- if(p==='/api/progress/streak')return route.fulfill({json:{user_id:owner,displayedStreak:7,hasUnlimitedStreakAccess:purchaseStatus==='paid',streakLimitReached:purchaseStatus!=='paid',journeyContinues:true,timezone:'UTC',asOf:new Date().toISOString()}});
- if(p==='/api/ai/usage/summary')return route.fulfill({status:503,json:{detail:'ai_usage_unavailable'}});
- if(p==='/api/subscription')return route.fulfill({json:{user_id:owner,status:'inactive',billing_available:true}});
- if(p==='/api/onboarding')return route.fulfill({json:{version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0}});
- if(p==='/api/subscription/lifetime'&&r.method()==='GET')return route.fulfill({json:{user_id:owner,status:purchaseStatus,can_checkout:canCheckout,can_refund:canRefund}});
- if(p==='/api/subscription/lifetime'&&r.method()==='POST'){const body=r.postDataJSON();assert.deepEqual(body,{expected_user_id:owner,confirmed:true});if(checkoutError)return route.fulfill({status:409,json:{detail:checkoutError}});return route.fulfill({json:{url:'https://checkout.stripe.com/c/pay/fixture',destination:'checkout'}});}
- if(p==='/api/subscription/lifetime/refund'){refundRequests++;assert.equal(r.postDataJSON().confirmed,true);purchaseStatus='refunded';canRefund=false;return route.fulfill({json:{status:'refund_requested'}});}
- throw Error('Unexpected endpoint '+p);
-});
-await c.route('https://checkout.stripe.com/**',r=>{redirects++;return r.fulfill({contentType:'text/html',body:'<h1>Stripe test checkout fixture</h1>'});});
-const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(origin+'/lifetime');await p.getByRole('link',{name:'Get the $100 Lifetime Deal',exact:true}).waitFor();await p.evaluate(()=>document.fonts.ready);
-assert.equal(await p.title(),'UnoWord Pro — $100 Lifetime Deal');assert.equal(await p.getByRole('link',{name:'Sign In',exact:true}).getAttribute('href'),'/account?mode=signin&offer=lifetime');assert.equal(await p.locator('h1').count(),1);
-assert.ok((await p.locator('.lt-stock').textContent()).includes('24 of 25 lifetime deals left'));assert.ok((await p.locator('.lt-stock').textContent()).includes('2 held in checkout'));
-await p.getByRole('heading',{name:'AI allowance & fair use'}).waitFor();assert.ok((await p.locator('.lt-terms').innerText()).includes('10 personalized suggestions per day'));assert.ok((await p.locator('.lt-terms').innerText()).includes('14 days'));assert.ok((await p.locator('.lt-terms').innerText()).includes('Refunds do not reopen'));
-if(process.env.LIFETIME_SCREENSHOTS)fs.mkdirSync(process.env.LIFETIME_SCREENSHOTS,{recursive:true});
-for(const w of [320,390,640,768,1024,1440,1920]){await p.setViewportSize({width:w,height:1000});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth),w,'Horizontal overflow '+w);const clipped=await p.locator('a,button,summary').evaluateAll(es=>es.filter(e=>{const r=e.getBoundingClientRect();return r.width&&(r.right>innerWidth+1||r.left < -1||e.scrollWidth>e.clientWidth+2)}).map(e=>e.textContent));assert.deepEqual(clipped,[],'Clipped controls '+w);if([390,768,1440].includes(w)&&process.env.LIFETIME_SCREENSHOTS){await p.screenshot({path:path.join(process.env.LIFETIME_SCREENSHOTS,'lifetime-'+w+'.png'),fullPage:true});await p.screenshot({path:path.join(process.env.LIFETIME_SCREENSHOTS,'lifetime-'+w+'-viewport.png')});}}
-await p.setViewportSize({width:1440,height:1000});if(process.env.AXE_SCRIPT){await p.addScriptTag({path:process.env.AXE_SCRIPT});const v=await p.evaluate(async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));assert.deepEqual(v,[]);}
-assert.ok(!/Uno\s+[Ww]ord|Uno(?:word)/.test(await p.locator('.lt-site').innerText()));
-for(const href of await p.locator('a[href^="#"]').evaluateAll(es=>es.map(e=>e.getAttribute('href'))))assert.equal(await p.locator(href).count(),1);
-await p.getByRole('link',{name:'Get the $100 Lifetime Deal',exact:true}).click();await p.getByRole('heading',{name:'Welcome back to your words.'}).waitFor();assert.ok(new URL(p.url()).search.includes('offer=lifetime'));assert.equal(redirects,0);
-await p.getByRole('link',{name:'Create a free account',exact:true}).click();assert.ok(new URL(p.url()).search.includes('offer=lifetime'));assert.ok(new URL(p.url()).search.includes('signup'));
-signed=true;await p.goto(origin+'/account?offer=lifetime&billing=success');const section=p.getByRole('region',{name:'Lifetime offer'});await section.getByRole('button',{name:'Continue to $100 Test Checkout'}).waitFor();assert.equal(await section.getByRole('button',{name:'Continue to $100 Test Checkout'}).isDisabled(),true);assert.equal(await p.getByRole('button',{name:'Confirm plan request'}).count(),0);assert.equal((await p.getByText('Current plan',{exact:false}).innerText()).replace(/\s+/g,' '),'Current plan Free');
-await section.getByRole('checkbox').check();await section.getByRole('button',{name:'Continue to $100 Test Checkout'}).click();await p.getByRole('heading',{name:'Stripe test checkout fixture'}).waitFor();assert.equal(redirects,1);assert.equal(requests.some(([key])=>key==='/api/subscription/change'),false,'Lifetime must never use monthly checkout');
-checkoutError='lifetime_existing_subscription';await p.goto(origin+'/account?offer=lifetime');await section.getByRole('checkbox').check();await section.getByRole('button',{name:'Continue to $100 Test Checkout'}).click();await section.getByRole('alert').getByText(/already have a subscription/).waitFor();assert.equal(redirects,1);
-// Only verified paid state enables the refund UI; never the success redirect.
-purchaseStatus='paid';canCheckout=false;canRefund=true;await p.reload();await section.getByText('Your lifetime payment is verified.',{exact:false}).waitFor();await section.getByRole('checkbox').check();await section.getByRole('button',{name:'Request 14-Day Test Refund'}).click();await section.getByText('Your lifetime purchase is refunded.',{exact:false}).waitFor();assert.equal(refundRequests,1);
-offer={...offer,purchased:25,remaining:0,reserved:0,available:0,checkout_available:false};await p.goto(origin+'/lifetime');await p.getByText(/All 25 lifetime deals are sold/).waitFor();assert.equal(await p.getByRole('link',{name:'Lifetime Deal Sold Out',exact:true}).getAttribute('href'),'/#pricing');assert.equal(await p.getByRole('link',{name:'Get the $100 Lifetime Deal',exact:true}).count(),0);
-offer={...offer,purchased:null,remaining:null,reserved:null,available:null,checkout_available:false};await p.reload();await p.getByText('Limited to 25 lifetime purchases. Availability will appear when the offer opens.',{exact:true}).waitFor();assert.equal(await p.locator('.lt-stock').getByText(/25 of 25/).count(),0);
-assert.deepEqual(errors,[]);console.log('PASS lifetime page: prerender hydration/SEO, first-25 verified-sale counts separate from holds, seven viewport widths, WCAG, full terms/AI/refund copy, sign-in/signup intent, confirmed one-time checkout only, redirect is not Pro, active-subscription error, refund action, sold-out/unknown inventory.');
-}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ try{
+  const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+  let signed=false,state='none',canRefund=false,refundRequests=0;
+  const requests=[],errors=[];
+  await context.route(origin+'/api/**',async route=>{
+   const req=route.request(),key=new URL(req.url()).pathname;
+   requests.push([key,req.method()]);
+   if(key==='/api/auth/google')return route.fulfill({json:{enabled:false}});
+   if(key==='/api/product')return route.fulfill({json:{name:'UnoWord',billing_available:true,plans:[],features:[]}});
+   if(!signed)return route.fulfill({status:401,json:{detail:'Authentication required'}});
+   const paid=state==='paid';
+   if(key==='/api/auth/me')return route.fulfill({json:{id:owner,email:'fixture@example.com',plan:paid?'pro':'free',ai_access:paid}});
+   if(key==='/api/subscription')return route.fulfill({json:{user_id:owner,plan:paid?'pro':'free',status:paid?'active':'inactive',billing_available:true,managed_by_stripe:false,access_source:paid?'stripe_lifetime':null}});
+   if(key==='/api/subscription/substack')return route.fulfill({json:{user_id:owner,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null}});
+   if(key==='/api/subscription/lifetime'&&req.method()==='GET')return route.fulfill({json:{user_id:owner,status:state,can_checkout:true,can_refund:canRefund}});
+   if(key==='/api/subscription/lifetime/refund'){
+    refundRequests++;assert.deepEqual(req.postDataJSON(),{expected_user_id:owner,confirmed:true});state='refunded';canRefund=false;
+    return route.fulfill({json:{status:'refund_requested'}});
+   }
+   if(key==='/api/progress/streak')return route.fulfill({json:{user_id:owner,displayedStreak:0,hasUnlimitedStreakAccess:paid,streakLimitReached:false,timezone:'UTC',asOf:new Date().toISOString()}});
+   if(key==='/api/progress/summary')return route.fulfill({json:{user_id:owner,reportingDate:'2026-11-09',timezone:'UTC',dailyWordCount:0,dailyActiveWritingSeconds:0,lifetimeActiveWritingSeconds:0,dailyGoal:250,dailyGoalProgress:0,displayedStreak:0,updatedAt:new Date().toISOString(),sessions:[]}});
+   if(key==='/api/progress/preferences')return route.fulfill({json:{user_id:owner,revision:1,daily_goal:250,timezone:'UTC',language:'en',themes:[]}});
+   if(key.startsWith('/api/rewards')||key==='/api/ai/usage/summary')return route.fulfill({status:503,json:{detail:'isolated_fixture'}});
+   if(key==='/api/onboarding')return route.fulfill({json:{version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[]}});
+   throw Error('Unexpected fixture request '+key);
+  });
+  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.name));
+  // Local preview has no Vercel edge: this exercises the SPA fallback too.
+  for(const pathname of ['/lifetime','/lifetime/','/lifetime/index.html?source=old']){
+   await page.goto(origin+pathname);await page.waitForURL(origin+'/#pricing');
+   await page.getByRole('heading',{name:'Start free. Grow at your own pace.'}).waitFor();
+   assert.ok(!(await page.locator('main').innerText()).includes('$100'));
+  }
+  await page.goto(origin+'/account?offer=lifetime&billing=success');
+  await page.getByText('Sign in to manage an existing lifetime purchase.',{exact:false}).waitFor();
+  signed=true;await page.reload();
+  const section=page.getByRole('region',{name:'Lifetime purchase',exact:true});
+  await section.getByRole('heading',{name:'Your lifetime purchase'}).waitFor();
+  assert.ok((await section.innerText()).includes('closed to new purchases'));
+  assert.equal(await section.getByRole('checkbox').count(),0,'old success redirect and stale can_checkout cannot create a purchase');
+  assert.equal(await section.getByRole('button',{name:/Checkout|Purchase/}).count(),0);
+  state='paid';canRefund=true;await page.reload();
+  await section.getByText('Your lifetime payment is verified.',{exact:false}).waitFor();
+  assert.ok((await page.locator('.uw-account-plan').innerText()).includes('Pro'));
+  const refund=section.getByRole('button',{name:'Request 14-Day Test Refund'});
+  assert.equal(await refund.isDisabled(),true);
+  for(const width of [320,390,768,1440]){
+   await page.setViewportSize({width,height:1000});
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+'px layout');
+  }
+  await section.getByRole('checkbox').check();await refund.click();
+  await section.getByText('Your lifetime purchase is refunded.',{exact:false}).waitFor();
+  assert.equal(refundRequests,1);
+  assert.equal(requests.some(([key,method])=>method==='POST'&&(key==='/api/subscription/lifetime'||key==='/api/subscription/change')),false);
+  assert.equal(requests.some(([key])=>key==='/api/subscription/lifetime/offer'),false,'management does not promote or fetch new offers');
+  await section.getByRole('link',{name:'Lifetime purchase terms'}).click();
+  await page.getByRole('heading',{name:'Existing lifetime purchases'}).waitFor();
+  assert.equal(await page.locator('a[href^="/lifetime"]').count(),0);
+  assert.deepEqual(errors,[]);
+  console.log('PASS retired lifetime: SPA deep-link redirects; closed offer with no purchase UI/requests despite stale availability and success URL; verified Pro retained; eligible refund confirmation preserved; purchase terms; 320–1440px. No real charges or refunds.');
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1});

@@ -1,7 +1,6 @@
 // Only public, fixed page names belong in analytics; never use document.title.
 const pages: Record<string, string> = {
   "/": "UnoWord — Your Words. Your Voice. Your Story.",
-  "/lifetime": "UnoWord Pro — Lifetime Offer",
   "/privacy": "Privacy & data — UnoWord",
   "/terms": "Terms of service — UnoWord",
   "/support": "Support — UnoWord",
