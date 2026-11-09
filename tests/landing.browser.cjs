@@ -68,8 +68,7 @@ const catalog = {
       viewport: { width: 1440, height: 1000 },
       reducedMotion: "reduce",
     });
-    let unavailable = false,
-      soldout = false;
+    let unavailable = false;
     const errors = [],
       calls = [];
     await context.route(origin + "/api/**", async (route) => {
@@ -81,22 +80,6 @@ const catalog = {
         return route.fulfill({
           status: unavailable ? 503 : 200,
           json: unavailable ? { detail: "unavailable" } : catalog,
-        });
-      if (endpoint === "/api/subscription/lifetime/offer")
-        return route.fulfill({
-          json: {
-            amount: 10000,
-            currency: "usd",
-            capacity: 25,
-            test_mode: true,
-            checkout_available: !soldout,
-            purchased: soldout ? 25 : 4,
-            remaining: soldout ? 0 : 21,
-            reserved: 0,
-            available: soldout ? 0 : 21,
-            refund_days: 14,
-            ai_allowance: catalog.ai_allowance,
-          },
         });
       if (endpoint === "/api/auth/google")
         return route.fulfill({ json: { enabled: false } });
@@ -143,27 +126,35 @@ const catalog = {
     );
     assert.equal(await page.locator("h1").count(), 1);
     const cards = page.locator(".lp-price-card");
-    assert.equal(await cards.count(), 3);
+    assert.equal(await cards.count(), 2);
     const freeCard = cards.filter({
       has: page.getByRole("heading", { name: "Free", exact: true }),
     });
     const proCard = cards.filter({
       has: page.getByRole("heading", { name: "Pro Monthly", exact: true }),
     });
-    const lifetime = cards.filter({
-      has: page.getByRole("heading", { name: "Lifetime", exact: true }),
-    });
-    await lifetime
-      .getByText("First 25 qualifying purchasers.", { exact: false })
-      .waitFor();
+    assert.equal(await page.locator('a[href="/lifetime"]').count(), 0);
+    assert.ok(!/\$100|first 25|limited one-time offer|lifetime/i.test(await page.locator('.lp-site').innerText()));
     assert.ok(
       !(await freeCard.innerText()).includes("Built-in writing editor"),
     );
     assert.ok((await freeCard.innerText()).includes("up to 7 days"));
     assert.ok((await proCard.innerText()).includes("$20"));
     assert.ok((await proCard.innerText()).includes("10 suggestions/day"));
-    assert.ok((await lifetime.innerText()).includes("$100"));
-    assert.ok((await lifetime.innerText()).includes("21 places remain"));
+    assert.deepEqual(await page.locator('.lp-plan-comparison thead th').allTextContents(), ['Feature', 'Free', 'Pro Monthly']);
+    const touchIcon = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+    const iconResponse = await page.request.get(origin + touchIcon);
+    const icon = await iconResponse.body();
+    assert.equal(iconResponse.status(), 200);
+    assert.equal(icon.readUInt32BE(16), 180);
+    assert.equal(icon.readUInt32BE(20), 180);
+    const manifest = await (await page.request.get(origin + '/site.webmanifest')).json();
+    assert.equal(manifest.name, 'UnoWord');
+    assert.equal(manifest.start_url, '/');
+    for (const entry of manifest.icons) {
+      const asset = await page.request.get(origin + entry.src);
+      assert.equal(asset.status(), 200);
+    }
     assert.equal(
       await page.locator(".lp-plan-comparison tbody tr").count(),
       16,
@@ -256,20 +247,6 @@ const catalog = {
       .waitFor();
     assert.equal(new URL(page.url()).search, "?plan=pro");
     await page.goto(origin);
-    await page
-      .getByRole("link", { name: "Get Lifetime Access", exact: true })
-      .click();
-    assert.equal(new URL(page.url()).pathname, "/lifetime");
-    soldout = true;
-    await page.goto(origin);
-    await page
-      .getByRole("link", { name: "Offer sold out — view plans" })
-      .waitFor();
-    assert.ok(
-      (await page.locator(".lp-lifetime-price").innerText()).includes(
-        "0 places remain",
-      ),
-    );
     unavailable = true;
     await page.reload();
     await page
@@ -288,7 +265,7 @@ const catalog = {
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS landing: new brand/SEO, 3 plans, verified quotas/capacity, 16-row comparison, paid labels, coaching demos, FAQ keyboard, 320–1440px layouts, signup/Pro/lifetime routes, sold out/configuration errors, no AI/payment calls.",
+      "PASS landing: Free/Pro plans, lifetime promotion hidden, UnoWord browser/Home Screen icons, verified quotas, 16-row comparison, paid labels, coaching demos, FAQ keyboard, 320–1440px layouts, signup/Pro routes, configuration errors, no AI/payment calls.",
     );
   } finally {
     await browser.close();

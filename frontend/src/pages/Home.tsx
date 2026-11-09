@@ -21,7 +21,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useLifetimeOffer } from "@/lib/lifetime";
 import Brand from "@/components/marketing/Brand";
 import ProductPreview, {
   FeaturePreview,
@@ -125,7 +124,7 @@ const faqs = [
   ],
   [
     "Can I write directly in UnoWord?",
-    "Yes. With Pro Monthly or Lifetime, sign in and open the writing editor to create, format, and organize documents. It saves drafts in your browser and synchronizes them to your account when cloud storage is available. Previously opened documents can be edited offline after an initial online visit.",
+    "Yes. With Pro, sign in and open the writing editor to create, format, and organize documents. It saves drafts in your browser and synchronizes them to your account when cloud storage is available. Previously opened documents can be edited offline after an initial online visit.",
   ],
   [
     "How does UnoWord count words?",
@@ -137,7 +136,7 @@ const faqs = [
   ],
   [
     "Can I use UnoWord without AI?",
-    "Yes. All plans can track writing, set goals, and use unlimited prewritten non-AI Quick Prompts. The built-in editor, formatting, document library, and folders require Pro Monthly or Lifetime. Quick Prompt uses the existing prompt library and does not call an AI provider.",
+    "Yes. All plans can track writing, set goals, and use unlimited prewritten non-AI Quick Prompts. The built-in editor, formatting, document library, and folders require Pro. Quick Prompt uses the existing prompt library and does not call an AI provider.",
   ],
   [
     "Can I change my subscription later?",
@@ -157,7 +156,7 @@ const faqs = [
   ],
   [
     "Does Free include the editor?",
-    "No. The built-in editor, rich-text formatting, document library, folders, and personalized Writing Profile require Pro Monthly or Lifetime. Existing documents are preserved if you downgrade.",
+    "No. The built-in editor, rich-text formatting, document library, folders, and personalized Writing Profile require Pro. Existing documents are preserved if you downgrade.",
   ],
   [
     "Does UnoWord generate content for me?",
@@ -169,13 +168,9 @@ const faqs = [
   ],
   [
     "What is included in Pro?",
-    "The built-in writing editor, rich-text formatting, document library and folders, unlimited visible streaks and full available qualifying history, personalized Writing Profile, context-aware suggestions, AI Writing Guidance, and an AI usage dashboard. Lifetime includes exactly the same paid features.",
+    "The built-in writing editor, rich-text formatting, document library and folders, unlimited visible streaks and full available qualifying history, personalized Writing Profile, context-aware suggestions, AI Writing Guidance, and an AI usage dashboard.",
   ],
   ["What are the AI limits?", "__AI_ALLOWANCE__"],
-  [
-    "Does Lifetime include everything in Pro?",
-    "Yes. Lifetime has exactly the same paid features and applicable AI allowances as Monthly Pro, without a recurring subscription payment. The $100 offer is limited to the first 25 qualifying purchasers, with the published 14-day refund policy. Existing protected allowance versions remain in force.",
-  ],
 ];
 
 const freeFeatures = [
@@ -650,7 +645,6 @@ export default function Home() {
                 product={product.data}
                 failed={product.isError}
               />
-              <LifetimePricing />
             </div>
             <PlanComparison product={product.data} />
             <p className="lp-billing-note">
@@ -689,7 +683,7 @@ export default function Home() {
                   <p>
                     {answer === "__AI_ALLOWANCE__"
                       ? product.data?.ai_allowance
-                        ? `New Monthly Pro and Lifetime accounts receive ${product.data.ai_allowance.suggestions_daily} suggestions per day, ${product.data.ai_allowance.suggestions_monthly} per calendar month, and ${product.data.ai_allowance.guidance_monthly} Writing Guidance requests per calendar month. Each generation or regeneration uses one request; viewing saved ideas is free. Failed requests release their reserved credit. Existing protected terms remain in force. No rollover.`
+                        ? `New Pro accounts receive ${product.data.ai_allowance.suggestions_daily} suggestions per day, ${product.data.ai_allowance.suggestions_monthly} per calendar month, and ${product.data.ai_allowance.guidance_monthly} Writing Guidance requests per calendar month. Each generation or regeneration uses one request; viewing saved ideas is free. Failed requests release their reserved credit. Existing protected terms remain in force. No rollover.`
                         : "See the current published limits in your account when configuration is available."
                       : answer}
                   </p>
@@ -746,75 +740,6 @@ export default function Home() {
   );
 }
 
-function LifetimePricing() {
-  const offer = useLifetimeOffer();
-  const value = offer.data;
-  return (
-    <article className="lp-price-card lp-lifetime-price">
-      <span className="lp-plan-badge">Limited one-time offer</span>
-      <h3>Lifetime</h3>
-      <p>Your writing companion for life.</p>
-      <div className="lp-price">
-        {value ? (
-          <>
-            <strong>
-              {new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: value.currency,
-                maximumFractionDigits: 0,
-              }).format(value.amount / 100)}
-            </strong>
-            <span>one-time</span>
-          </>
-        ) : (
-          <span>See published offer terms</span>
-        )}
-      </div>
-      <ul>
-        <li>
-          <Check size={14} />
-          Every Pro Monthly feature
-        </li>
-        <li>
-          <Check size={14} />
-          Editor, formatting, documents & folders
-        </li>
-        <li>
-          <Check size={14} />
-          Unlimited streaks & qualifying history
-        </li>
-        <li>
-          <Check size={14} />
-          Identical AI features and allowances
-        </li>
-        <li>
-          <Check size={14} />
-          No recurring lifetime payment
-        </li>
-      </ul>
-      {value?.ai_allowance && (
-        <p className="lp-trial">
-          {value.ai_allowance.suggestions_daily} suggestions/day ·{" "}
-          {value.ai_allowance.suggestions_monthly}/month ·{" "}
-          {value.ai_allowance.guidance_monthly} guidance/month. No rollover.
-        </p>
-      )}
-      <p className="lp-trial">
-        First 25 qualifying purchasers.{" "}
-        {value?.remaining != null
-          ? `${value.remaining} places remain, based on verified paid orders.`
-          : "Live availability is shown on the lifetime offer page."}{" "}
-        14-day refund window.
-      </p>
-      <Link className="lp-button lp-button-outline" to="/lifetime">
-        {value?.remaining === 0
-          ? "Offer sold out — view plans"
-          : "Get Lifetime Access"}
-        <ArrowRight size={16} />
-      </Link>
-    </article>
-  );
-}
 function PlanComparison({ product }: { product: Product | undefined }) {
   const free = product?.plans.find((p) => p.id === "free")?.features,
     pro = product?.plans.find((p) => p.id === "pro")?.features;
@@ -860,7 +785,6 @@ function PlanComparison({ product }: { product: Product | undefined }) {
             <th scope="col">Feature</th>
             <th scope="col">Free</th>
             <th scope="col">Pro Monthly</th>
-            <th scope="col">Lifetime</th>
           </tr>
         </thead>
         <tbody>
@@ -868,7 +792,6 @@ function PlanComparison({ product }: { product: Product | undefined }) {
             <tr key={label}>
               <th scope="row">{label}</th>
               <td>{cell(key, false)}</td>
-              <td>{cell(key, true)}</td>
               <td>{cell(key, true)}</td>
             </tr>
           ))}
