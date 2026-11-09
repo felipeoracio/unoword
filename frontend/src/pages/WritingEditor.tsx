@@ -1779,16 +1779,6 @@ export default function WritingEditor() {
                       {new Date(d.updated_at).toLocaleDateString(language)}
                     </time>
                   </button>
-                  {d.completion_status === "completed" && (
-                    <button
-                      className="uw-editor-mark-draft"
-                      disabled={ws.completionBusy}
-                      aria-label={`${t("Mark as Draft")}: ${d.title}`}
-                      onClick={() => void ws.changeCompletion(d.id, "draft")}
-                    >
-                      {t("Mark as Draft")}
-                    </button>
-                  )}
                 </div>
               ))}
               {!filtered.length && (

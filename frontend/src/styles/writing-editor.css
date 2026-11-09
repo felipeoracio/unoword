@@ -1255,7 +1255,6 @@
   color: var(--we-blue);
   font-size: 12px;
 }
-.uw-editor-mark-draft,
 .uw-editor-complete,
 .uw-editor-browse {
   border: 1px solid #dbeafe;
