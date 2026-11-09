@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { trackPublicPage } from "@/lib/analytics";
 
 const titles: Record<string, string> = {
   "/lifetime": "UnoWord Pro — $100 Lifetime Deal",
@@ -15,6 +16,7 @@ const titles: Record<string, string> = {
 export default function PageMetadata() {
   const location = useLocation();
   const pathname = location.pathname.replace(/\/+$/, "") || "/";
+  useEffect(() => { trackPublicPage(); }, [location.key]);
   useEffect(() => {
     document.title =
       titles[pathname] ||

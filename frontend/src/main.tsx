@@ -6,6 +6,9 @@ import "./index.css";
 import App from "./App.tsx";
 import { queryClient } from "./lib/queryClient";
 import { emailConfirmationRequest } from "./lib/email-link";
+import { initializeAnalytics } from "./lib/analytics";
+
+initializeAnalytics();
 
 const root = document.getElementById("root")!;
 const app = (
