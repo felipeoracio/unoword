@@ -46,11 +46,11 @@ function safeReferrer() {
 export function initializeAnalytics() {
   if (installed || !enabled()) return;
   installed = true;
-  // Block automatic tag collection before history changes, before React commits
-  // private content. This also covers back/forward and auth URL replacements.
+  // Pause collection during history changes, before Google's history handlers
+  // or React can expose a new URL. The route effect resumes public pages only.
   const guard = (url: URL) => {
     const privatePage = pageFor(url) === null;
-    disabled(privatePage || !enabled());
+    disabled(true);
     if (privatePage) lastPage = null;
   };
   guard(new URL(window.location.href));
@@ -79,7 +79,13 @@ export function trackPublicPage() {
     started = true;
     w.dataLayer = w.dataLayer || [];
     w.gtag = function () { w.dataLayer!.push(arguments); };
+    w.gtag("consent", "default", {
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+    });
     w.gtag("set", {
+      send_page_view: false,
       page_location: origin + path,
       page_title: pages[path],
       page_referrer: safeReferrer(),

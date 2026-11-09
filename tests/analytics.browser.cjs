@@ -37,6 +37,9 @@ const dist=path.resolve('frontend/dist'),primary='https://unoword.app',id='G-H6H
   let data=await events();
   assert.equal(f.loads.length,1);
   const config=data.find(args=>args[0]==='config');
+  assert.deepEqual(data.find(args=>args[0]==='consent'), ['consent','default',{
+   ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',
+  }]);
   assert.equal(config[1],id);assert.equal(config[2].send_page_view,false);
   assert.equal(config[2].allow_google_signals,false);
   assert.equal(config[2].allow_ad_personalization_signals,false);

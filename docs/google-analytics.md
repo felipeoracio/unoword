@@ -31,7 +31,8 @@ forward navigation; explicit page views resume on public pages.
 
 No user IDs, document titles/content, emails, AI inputs/outputs, checkout session
 IDs, subscription data or purchase events are sent. Google Signals and ad
-personalization signals are disabled. A successful billing redirect is never
+personalization signals are disabled; ad storage, ad user data and ad
+personalization consent defaults are denied. A successful billing redirect is never
 recorded as a purchase. The extension and native application are unchanged.
 
 The production build runs analytics only at `https://unoword.app`; localhost,
