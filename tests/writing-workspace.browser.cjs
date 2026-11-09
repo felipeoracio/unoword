@@ -244,9 +244,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    assert.equal(await page.getByRole('textbox',{name:'Document content'}).count(),0,'A completed last document never automatically reopens');
    await page.getByLabel('Completion status',{exact:true}).selectOption('completed');
    assert.equal(await page.locator('.uw-editor-document').count(),1);
+   assert.equal(await page.getByRole('button',{name:/Mark as Draft/}).count(),0,'Mark as Draft is unavailable until a completed document is opened');
    await page.locator('.uw-editor-document').filter({hasText:'The practice of paying attention'}).click();
    await canvas.waitFor();assert.equal(await canvas.getAttribute('contenteditable'),'false');
    assert.equal(await page.getByRole('button',{name:'Mark as Draft',exact:true}).count(),1);
+   assert.equal(await page.locator('.uw-editor-document-list').getByRole('button',{name:/Mark as Draft/}).count(),0,'The library has no completion mutation controls');
    for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Completed view fits ${width}`);}await page.setViewportSize({width:1440,height:1000});
    await page.getByRole('button',{name:'Mark as Draft',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('[aria-label="Document content"]')?.getAttribute('contenteditable')==='true');
