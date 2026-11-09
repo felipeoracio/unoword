@@ -88,6 +88,18 @@ export default function Information({
               period dates to manage access. Card details are entered on
               Stripe’s pages.
             </p>
+            <h2>Website analytics</h2>
+            <p>
+              UnoWord uses Google Analytics 4 on public website pages to
+              understand page visits and general browser and device information.
+              Google Analytics uses analytics cookies. Our integration sends
+              fixed public page names and paths, excluding query strings and
+              fragments. It does not send document text or titles, email
+              addresses, account IDs, or authentication tokens. Editor, account,
+              billing-return, and admin pages are excluded. Tracking is disabled
+              when your browser signals Do Not Track or Global Privacy Control.
+              Browser extensions or tracking protection may also block analytics.
+            </p>
             <h2>Your choices</h2>
             <p>
               You can edit your Writing Profile, choose whether to save writing
@@ -100,8 +112,8 @@ export default function Information({
             </p>
             <h2>Current limits and support</h2>
             <p>
-              No visitor tracking or paid AI generation is used for the
-              landing-page examples. This notice does not specify a legal
+              Landing-page AI examples are static demonstrations and do not call
+              paid AI services. This notice does not specify a legal
               retention schedule or additional regulatory guarantees. Formal
               legal terms and privacy contact details still require publication
               by the product owner. For verified project help, use{" "}
