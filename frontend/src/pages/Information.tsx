@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import Brand from "@/components/marketing/Brand";
+import { LEGACY_ORIGINS } from "@/lib/domain-recovery";
 import "@/styles/marketing.css";
 import "@/styles/account.css";
 
@@ -207,6 +208,16 @@ export default function Information({
               canvas-based main document editor is not currently supported.
             </p>
             <h2>Plans and account recovery</h2>
+            <p>
+              If writing saved offline on the previous website is missing here,
+              open its recovery workspace on the same browser and device. Sign in
+              to the same account, then synchronize or export those drafts.
+              Browser-local drafts stay on their original website until saved.
+            </p>
+            <ul>
+              <li><a href={LEGACY_ORIGINS[0] + "/editor?domain_recovery=1"}>Recover drafts from the previous Vercel address</a></li>
+              <li><a href={LEGACY_ORIGINS[1] + "/editor?domain_recovery=1"}>Recover drafts from the previous www address</a></li>
+            </ul>
             <p>
               Sign in to your account to start Pro through Stripe Checkout or
               manage a Stripe subscription. You can update payment details and

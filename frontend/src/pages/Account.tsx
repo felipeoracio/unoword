@@ -1,4 +1,5 @@
 import ConnectSubstack from "@/components/substack/ConnectSubstack";
+import { legacyRecovery, recoveryPath } from "@/lib/domain-recovery";
 import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
 import WritingStreak from "@/components/WritingStreak";
 import AIUsage from "@/components/AIUsage";
@@ -159,7 +160,7 @@ export default function Account() {
         if (!cancelled) {
           setUser(data);
           if (data && oauth === "success" && next === "/editor")
-            window.location.replace("/editor");
+            window.location.replace(recoveryPath("/editor"));
         }
       })
       .catch(() => {
@@ -319,7 +320,7 @@ export default function Account() {
       const fresh = await currentUser();
       setUser(fresh);
       if (fresh && params.get("next") === "/editor")
-        window.location.assign("/editor");
+        window.location.assign(recoveryPath("/editor"));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
       setMessage(messageFor(error));
@@ -400,6 +401,7 @@ export default function Account() {
       </header>
       <main className="uw-account-main">
         <section className="uw-account-card" aria-labelledby="account-heading">
+          {legacyRecovery() && <p role="status">Previous-domain recovery: sign in to the same account to sync or export drafts saved on this browser.</p>}
           {loading ? (
             <p role="status">Checking your session…</p>
           ) : user ? (
@@ -551,7 +553,7 @@ export default function Account() {
               <div className="uw-install-card" id="install">
                 <Link
                   className="uw-button"
-                  to={user.ai_access ? "/editor" : "/account?plan=pro"}
+                  to={recoveryPath(user.ai_access ? "/editor" : "/account?plan=pro")}
                 >
                   {user.ai_access
                     ? "Open Writing Editor"

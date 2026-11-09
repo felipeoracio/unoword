@@ -16,7 +16,7 @@ from lib.auth import require_user
 from lib.request_security import _bursts
 
 OWNER = "00000000-0000-4000-8000-000000000001"
-ORIGIN = {"Origin": "https://unoword.vercel.app"}
+ORIGIN = {"Origin": "https://unoword.app"}
 
 
 @pytest.fixture

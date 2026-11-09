@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { recoveryPath } from "@/lib/domain-recovery";
 export default function GoogleSignIn({
   intent,
   busy,
@@ -22,7 +23,7 @@ export default function GoogleSignIn({
     setBusy(true);
     onError("");
     try {
-      const result = await apiPost<{ url: string }>("/auth/google/start", {
+      const result = await apiPost<{ url: string }>(recoveryPath("/auth/google/start"), {
         intent,
       });
       const url = new URL(result.url);

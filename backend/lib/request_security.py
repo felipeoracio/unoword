@@ -7,13 +7,16 @@ from collections import OrderedDict
 from urllib.parse import urlsplit
 from fastapi import HTTPException, Request
 from starlette.responses import JSONResponse
+from lib.site_urls import PRIMARY_ORIGIN, LEGACY_ORIGINS, public_app_url
 
 _bursts = OrderedDict()
 
 
 def web_origins():
     """Explicit origins only. Legacy wildcard settings cannot enable credentials."""
-    candidates = [os.getenv("PUBLIC_APP_URL", "https://unoword.vercel.app")]
+    # Legacy cookie-based clients retain direct API access during migration.
+    # Only the explicitly owned hosts are accepted; wildcard CORS stays invalid.
+    candidates = [public_app_url(), PRIMARY_ORIGIN, *LEGACY_ORIGINS]
     for setting in ("AUTH_ALLOWED_ORIGINS", "CORS_ORIGINS"):
         candidates.extend(os.getenv(setting, "").split(","))
     allowed = set()

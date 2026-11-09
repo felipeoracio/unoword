@@ -15,7 +15,7 @@ begin
   perform cron.schedule('unoword-source-processing','* * * * *',
     $schedule$
       select net.http_get(
-        url:='https://unoword.vercel.app/api/internal/ingestion',
+        url:='https://unoword.app/api/internal/ingestion',
         headers:=jsonb_build_object('Authorization','Bearer '||(
           select decrypted_secret from vault.decrypted_secrets where name='unoword_ingestion_token' limit 1)),
         timeout_milliseconds:=60000

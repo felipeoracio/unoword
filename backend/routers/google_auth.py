@@ -15,6 +15,7 @@ from routers.auth import GOOGLE_OAUTH_COOKIE, _set_session_cookies
 from lib.browser_auth import (
     DESTINATIONS,
     app_origin,
+    flow_origin,
     private,
     issue_flow,
     read_flow,
@@ -77,7 +78,10 @@ async def start(payload: Start, request: Request, response: Response):
     if not await enabled():
         raise HTTPException(503, "google_oauth_not_configured")
     nonce, challenge = issue_flow(response, GOOGLE_OAUTH_COOKIE, payload.intent, TTL)
-    callback = app_origin() + "/api/auth/google/callback?" + urlencode({"flow": nonce})
+    origin = flow_origin(request)
+    query = {"flow": nonce}
+    if origin != app_origin(): query['domain_recovery'] = '1'
+    callback = origin + "/api/auth/google/callback?" + urlencode(query)
     url = (
         provider_origin()
         + "/auth/v1/authorize?"
@@ -96,16 +100,18 @@ async def start(payload: Start, request: Request, response: Response):
     return {"url": url}
 
 
-def finish(intent, outcome):
+def finish(intent, outcome, request=None):
     path = DESTINATIONS.get(intent, DESTINATIONS["account"])
     if intent == "editor":
         path = "/account?next=%2Feditor"
     location = (
-        app_origin()
+        (flow_origin(request) if request is not None else app_origin())
         + path
         + ("&" if "?" in path else "?")
         + urlencode({"oauth": outcome})
     )
+    if request is not None and flow_origin(request) != app_origin():
+        location += '&domain_recovery=1'
     result = private(RedirectResponse(location, status_code=303))
     clear_flow(result, GOOGLE_OAUTH_COOKIE)
     return result
@@ -124,17 +130,17 @@ async def callback(request: Request):
         verifier = saved["verifier"]
         intent = saved["intent"]
     except (ValueError, TypeError, KeyError):
-        return finish("account", "expired")
+        return finish("account", "expired", request)
     if request.query_params.get("error"):
         # Never reflect a provider error description or authorization code.
-        return finish(intent, "canceled")
+        return finish(intent, "canceled", request)
     code = request.query_params.get("code", "")
     if not code or len(code) > 4096:
-        return finish(intent, "failed")
+        return finish(intent, "failed", request)
     try:
         session, _identity = await verified_code_session(auth_request, code, verifier)
-        result = finish(intent, "success")
+        result = finish(intent, "success", request)
         _set_session_cookies(result, session)
         return result
     except (SupabaseAPIError, ValueError, TypeError):
-        return finish(intent, "failed")
+        return finish(intent, "failed", request)

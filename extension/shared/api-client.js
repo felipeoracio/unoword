@@ -1,6 +1,6 @@
 /** UnoWord backend client for the extension service worker. */
 (function attach(scope) {
-  const API_BASE = 'https://unoword.vercel.app/api';
+  const API_BASE = 'https://unoword.app/api';
 
   class ApiError extends Error {
     constructor(status, body) {

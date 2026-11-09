@@ -49,7 +49,7 @@ const root = path.resolve(__dirname, '..');
   await page.exposeFunction('backgroundMessage',message);
   await page.addInitScript(()=>{window.chrome={runtime:{onMessage:{addListener(){}},getManifest:()=>({version:'test'}),sendMessage:(msg,cb)=>window.backgroundMessage(msg).then(cb)}};});
   await page.route('http://popup.test/**',async r=>{const file=path.join(root,new URL(r.request().url()).pathname);await r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});});
-  await page.route('https://unoword.vercel.app/api/**',async r=>{const response=await fixture(r.request().url(),{method:r.request().method(),body:r.request().postData()});await r.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});});
+  await page.route('https://unoword.app/api/**',async r=>{const response=await fixture(r.request().url(),{method:r.request().method(),body:r.request().postData()});await r.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});});
   await page.goto('http://popup.test/popup/popup.html');await page.click('#nav-library');
   await page.waitForFunction(()=>!document.querySelector('#writing-profile-form').hidden);
   assert.equal(await page.locator('#writing-profile-goal').inputValue(),'Educational urban gardening posts');

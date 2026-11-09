@@ -13,14 +13,14 @@ from lib.request_security import _bursts
 from lib.supabase_client import SupabaseAPIError
 
 OWNER = "00000000-0000-4000-8000-000000000001"
-ORIGIN = {"Origin": "https://unoword.vercel.app"}
+ORIGIN = {"Origin": "https://unoword.app"}
 CREDS = {"email": "writer@example.com", "password": "fixture-password-not-an-account"}
 
 
 @pytest.fixture
 def system(monkeypatch):
     _bursts.clear()
-    monkeypatch.setenv("PUBLIC_APP_URL", "https://unoword.vercel.app")
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://unoword.app")
     state = {
         "autoconfirm": False,
         "confirmed": True,
@@ -92,7 +92,7 @@ def system(monkeypatch):
 
     monkeypatch.setattr(auth, "auth_request", provider)
     monkeypatch.setattr(email_signup, "auth_request", provider)
-    with TestClient(app, base_url="https://unoword.vercel.app") as client:
+    with TestClient(app, base_url="https://unoword.app") as client:
         yield SimpleNamespace(client=client, state=state, calls=calls)
     _bursts.clear()
 
@@ -119,7 +119,7 @@ def test_signup_waits_for_email_and_never_returns_or_sets_session(system):
     )
     sent = system.calls[1]
     assert parse_qs(urlsplit(sent[1]).query)["redirect_to"] == [
-        "https://unoword.vercel.app/"
+        "https://unoword.app/"
     ]
     assert set(sent[2]["json"]) == {
         "email",
@@ -200,7 +200,7 @@ def test_wrong_browser_code_or_unconfirmed_identity_cannot_sign_in(system, probl
         system.client.cookies.set(
             auth.EMAIL_SIGNUP_COOKIE,
             base64.urlsafe_b64encode(json.dumps(saved).encode()).decode(),
-            domain="unoword.vercel.app",
+            domain="unoword.app",
             path="/",
         )
     r = system.client.post(

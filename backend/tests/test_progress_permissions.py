@@ -10,7 +10,7 @@ from routers import progress, workspace
 
 OWNER = str(uuid4())
 OTHER = str(uuid4())
-ORIGIN = {"Origin": "https://unoword.vercel.app"}
+ORIGIN = {"Origin": "https://unoword.app"}
 
 
 @pytest.fixture

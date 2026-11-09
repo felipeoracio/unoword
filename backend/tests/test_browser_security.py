@@ -11,7 +11,7 @@ from lib.request_security import (
     _bursts,
 )
 
-SITE = "https://unoword.vercel.app"
+SITE = "https://unoword.app"
 EXT = "chrome-extension://" + "a" * 32
 
 
@@ -61,8 +61,8 @@ def system(monkeypatch):
     [
         "https://untrusted.example",
         "null",
-        "https://unoword.vercel.app.evil.example",
-        "https://unoword.vercel.app/path",
+        "https://unoword.app.evil.example",
+        "https://unoword.app/path",
         "chrome-extension://fake",
         EXT + "/path",
     ],

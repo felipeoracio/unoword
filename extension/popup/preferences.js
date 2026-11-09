@@ -82,7 +82,7 @@ function setupProfileAndPlans() {
   $('account-google').addEventListener('click', () => {
     els.accountPassword.value = '';
     $('account-google-note').hidden = false;
-    const url = 'https://unoword.vercel.app/account?mode=signin';
+    const url = 'https://unoword.app/account?mode=signin';
     try { chrome.tabs.create({url}); } catch (_e) { window.open(url, '_blank', 'noopener,noreferrer'); }
   });
   setupAccountSecurity();

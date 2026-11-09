@@ -86,7 +86,8 @@ async def call(method, *args, operation="provider", **kwargs):
 
 
 def app_url():
-    url = os.getenv('PUBLIC_APP_URL', 'https://unoword.vercel.app').rstrip('/')
+    from lib.site_urls import public_app_url
+    url = public_app_url()
     parsed = urlsplit(url)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path:
         raise HTTPException(503, 'billing_unavailable')

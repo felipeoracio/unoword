@@ -86,7 +86,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    these settings before selling a subscription and explicitly uses that portal
    configuration. Set public business information and support details in Stripe.
 4. In Stripe Workbench → Webhooks, add an HTTPS event destination:
-   `https://unoword.vercel.app/api/subscription/webhook`.
+   `https://unoword.app/api/subscription/webhook`.
    Use API version **2026-09-30.endive** and enable:
    - `customer.subscription.created`
    - `customer.subscription.updated`
@@ -107,7 +107,7 @@ sandbox entitlements cannot unlock Pro when the backend uses live keys.
    | `STRIPE_WEBHOOK_SECRET` | Endpoint signing secret from step 4 |
    | `STRIPE_BILLING_ENABLED` | `true` after steps 1–4, using sandbox keys |
    | `STRIPE_LIVE_BILLING_APPROVED` | `false` — leave this disabled |
-   | `PUBLIC_APP_URL` | `https://unoword.vercel.app` |
+   | `PUBLIC_APP_URL` | `https://unoword.app` |
 
    Existing Supabase URL, anonymous key and service-role key remain required.
    Add the same test values to secure cloud environment settings if Codex is to
@@ -286,7 +286,7 @@ These isolated tests do not constitute a real Stripe payment or live webhook tes
 
 ## Deployed sandbox verification — 2026-10-22
 
-A disposable Free QA account was used against `https://unoword.vercel.app` and
+A disposable Free QA account was used against `https://unoword.app` and
 Stripe's actual sandbox Checkout and Customer Portal, using Stripe's public
 `4242` test card. No real charges, AI requests or changes to existing users were made.
 

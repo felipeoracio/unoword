@@ -2418,7 +2418,7 @@ function wire() {
   els.editLanguage.addEventListener('click', toggleLanguageEditor);
   els.planAction.addEventListener('click', planAction);
   $('settings-connect-substack').addEventListener('click', () => {
-    const url = 'https://unoword.vercel.app/account#subscription';
+    const url = 'https://unoword.app/account#subscription';
     try { chrome.tabs.create({ url }); } catch { window.open(url, '_blank', 'noopener,noreferrer'); }
   });
   els.accountAction.addEventListener('click', accountAction);

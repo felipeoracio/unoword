@@ -9,7 +9,7 @@ from lib.request_security import _bursts
 from routers import account_security as security
 from routers import subscriptions
 
-ORIGIN = {'Origin': 'https://unoword.vercel.app'}
+ORIGIN = {'Origin': 'https://unoword.app'}
 OWNER = 'writer-a'
 CURRENT = 'current-secret-never-reflect'
 NEW = 'replacement-secret-never-reflect'

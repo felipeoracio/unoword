@@ -24,7 +24,7 @@
     return el;
   }
   function open() {
-    const url = "https://unoword.vercel.app/rewards";
+    const url = "https://unoword.app/rewards";
     try {
       chrome.tabs.create({ url });
     } catch {

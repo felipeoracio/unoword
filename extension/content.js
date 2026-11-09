@@ -23,7 +23,7 @@
 
   // The full-page editor records its own metadata-only activity. Never send
   // ordinary DELTA messages for its canvas (or show a second live counter).
-  if (location.origin === 'https://unoword.vercel.app' && (location.pathname === '/editor' || location.pathname.startsWith('/editor/'))) {
+  if (['https://unoword.app', 'https://www.unoword.app', 'https://unoword.vercel.app'].includes(location.origin) && (location.pathname === '/editor' || location.pathname.startsWith('/editor/'))) {
     function localProgress() {
       try {
         chrome.runtime.sendMessage({ type: 'GET_LOCAL_WRITING_PROGRESS' }, response => {

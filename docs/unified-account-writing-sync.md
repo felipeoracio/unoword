@@ -1,6 +1,6 @@
 # Unified account writing synchronization
 
-Deployed to https://unoword.vercel.app/ on October 30, 2026. The database
+Historically deployed to https://unoword.vercel.app/ on October 30, 2026. The database
 migration was applied and verified before [PR #6](https://github.com/felipeoracio/unoword/pull/6)
 merged into `main` as `55dc556b58bd64d01445a82ea161bb105f1cff6b`.
 Vercel reported a successful production deployment. The published extension is

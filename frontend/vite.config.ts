@@ -14,7 +14,9 @@ if (!hotReloadDisabled) {
 
 // https://vite.dev/config/
 export default defineConfig(async () => {
-  const candidate = process.env.PUBLIC_APP_URL || "https://unoword.vercel.app";
+  const configured = (process.env.PUBLIC_APP_URL || "https://unoword.app").trim().replace(/\/+$/, "");
+  const candidate = ["https://unoword.vercel.app", "https://www.unoword.app"].includes(configured)
+    ? "https://unoword.app" : configured;
   const parsedSite = new URL(candidate);
   const siteUrl = parsedSite.origin + "/";
   if (parsedSite.protocol !== "https:" && parsedSite.hostname !== "localhost") throw new Error("PUBLIC_APP_URL must use HTTPS");

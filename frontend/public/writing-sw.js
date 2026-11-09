@@ -14,7 +14,10 @@ self.addEventListener('message', event => {
     // Interrupted updates keep the previous working shell instead of mixing builds.
     const assets=[...new Set(urls.filter(value=>new URL(value,self.location.origin).pathname!=='/editor'))];
     await cache.addAll(assets.map(url=>new Request(url,{credentials:'omit'})));
-    await cache.add(new Request('/editor',{credentials:'omit'}));
+    const legacy = ['https://unoword.vercel.app', 'https://www.unoword.app'].includes(self.location.origin);
+    const shell = await fetch(new Request(legacy ? '/editor?domain_recovery=1' : '/editor',{credentials:'omit'}));
+    if (!shell.ok || new URL(shell.url).origin !== self.location.origin) throw new Error('Editor shell must remain on its storage origin');
+    await cache.put('/editor', shell);
   }).catch(()=>{}));
 });
 self.addEventListener('fetch', event => {

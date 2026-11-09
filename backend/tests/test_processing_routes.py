@@ -9,7 +9,7 @@ from lib import request_security
 from lib.request_security import BrowserSecurityMiddleware
 from routers import documents, processing
 
-ORIGIN={"Origin":"https://unoword.vercel.app"}
+ORIGIN={"Origin":"https://unoword.app"}
 
 
 @pytest.fixture

@@ -1,9 +1,13 @@
 # Persistent sessions, document completion, and Empty Trash
 
-Deployed to [unoword.vercel.app](https://unoword.vercel.app/) after the owner
+Historical rollout: deployed to [unoword.vercel.app](https://unoword.vercel.app/) after the owner
 applied the migration. [PR #5](https://github.com/felipeoracio/unoword/pull/5)
 merged as `d1acc1d`; Vercel confirmed production deployment and the live checks
 below passed. Extension **0.19.0** is published.
+
+Current primary domain and migration instructions: [unoword.app](https://unoword.app/)
+and [domain migration](primary-domain-migration.md). The historical checks below
+refer to the deployment hostname used at that time.
 
 This change extends the existing Tiptap/React writing workspace, FastAPI API,
 Supabase owner/Pro policies, revision-safe document RPCs, IndexedDB drafts, and

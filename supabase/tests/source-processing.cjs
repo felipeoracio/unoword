@@ -107,7 +107,7 @@ const {vector}=require(process.env.PGLITE_VECTOR_MODULE||'@electric-sql/pglite-p
  assert.equal(schedules.length,1);assert.ok(!schedules[0].command.includes(secret));
  await db.exec(schedules[0].command);
  const scheduled=(await db.query('select * from net.test_calls')).rows[0];
- assert.equal(scheduled.url,'https://unoword.vercel.app/api/internal/ingestion');
+ assert.equal(scheduled.url,'https://unoword.app/api/internal/ingestion');
  assert.equal(scheduled.headers.Authorization,'Bearer '+secret);assert.equal(scheduled.timeout_milliseconds,60000);
  await db.close();
  console.log('PASS: actual SQL/pgvector migration + reapply; owner isolation; duplicate enqueue; leases and crash recovery; batch checkpoints; atomic publication/rollback; retries/backoff/resume; consent/revocation; delete cleanup; downgrade/expiry; private tables/RPCs.');

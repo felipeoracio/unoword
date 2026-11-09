@@ -1,5 +1,9 @@
 # UnoWord
 
+Primary website: **https://unoword.app**. See the
+[domain migration and compatibility guide](docs/primary-domain-migration.md)
+for Vercel/Supabase cutover, legacy redirects, offline recovery and client updates.
+
 [Session controls, document completion, and Empty Trash](docs/session-controls-and-completion.md)
 documents the new controls, required additive migration, and verification results.
 

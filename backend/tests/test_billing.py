@@ -18,14 +18,14 @@ from lib.request_security import _bursts
 from server import app
 
 USER = '00000000-0000-4000-8000-000000000001'
-ORIGIN = {'Origin': 'https://unoword.vercel.app'}
+ORIGIN = {'Origin': 'https://unoword.app'}
 PRICE = {'id': 'price_pro', 'active': True, 'type': 'recurring', 'unit_amount': 2000,
          'currency': 'usd', 'livemode': False, 'recurring': {'interval': 'month', 'interval_count': 1, 'usage_type': 'licensed'}}
 
 @pytest.fixture
 def fixture(monkeypatch):
     for key,value in {'STRIPE_SECRET_KEY':'sk_test_fixture', 'STRIPE_WEBHOOK_SECRET':'whsec_fixture',
-        'STRIPE_PRO_PRICE_ID':'price_pro','STRIPE_BILLING_ENABLED':'true','STRIPE_LIVE_BILLING_APPROVED':'false','PUBLIC_APP_URL':'https://unoword.vercel.app'}.items():
+        'STRIPE_PRO_PRICE_ID':'price_pro','STRIPE_BILLING_ENABLED':'true','STRIPE_LIVE_BILLING_APPROVED':'false','PUBLIC_APP_URL':'https://unoword.app'}.items():
         monkeypatch.setenv(key,value)
     state={'user_id':USER,'customer_id':None,'subscription_id':None,'subscription_created':0,
            'status':'inactive','trial_used':False,'checkout_id':None,'checkout_attempt':str(uuid4())}
@@ -95,7 +95,7 @@ def test_new_checkout_is_bound_to_owner_with_one_trial_and_no_client_entitlement
     assert params['line_items']==[{'price':'price_pro','quantity':1}]
     assert params['managed_payments']=={'enabled':False}, 'Standard Checkout must not inherit Managed Payments defaults'
     assert params['subscription_data']['trial_period_days']==7 and params['payment_method_collection']=='always'
-    assert params['success_url']=='https://unoword.vercel.app/account?billing=success'
+    assert params['success_url']=='https://unoword.app/account?billing=success'
     assert f.entitlement=={}
     # Ownership mapping was persisted before creating a subscription session.
     assert f.calls[0][0]=='rpc/ai_assign_allowance'

@@ -27,11 +27,13 @@ test('Substack schedule is repeatable, preserves other jobs and uses Vault only 
   assert.ok(!scheduled.command.includes(token),'no literal token is stored in the scheduled command');
   await db.exec(scheduled.command);
   const request=(await db.query('select * from net.requests')).rows[0];
-  assert.equal(request.url,'https://unoword.vercel.app/api/internal/substack-sync');
+  assert.equal(request.url,'https://unoword.app/api/internal/substack-sync');
   assert.deepEqual(request.headers,{Authorization:'Bearer '+token});assert.equal(request.timeout_ms,60000);
   await db.query('insert into cron.job(jobname,schedule,command) values($1,$2,$3)',['existing-custom-substack-job','*/5 * * * *',scheduled.command]);
   const unchanged=(await db.query('select * from cron.job order by jobid')).rows;
   await assert.rejects(()=>db.exec(sql),/different active job already schedules/);
   assert.deepEqual((await db.query('select * from cron.job order by jobid')).rows,unchanged,'another schedule is never silently duplicated or changed');
+  await db.query('update cron.job set command=$1 where jobname=$2',[scheduled.command.replace('https://unoword.app','https://unoword.vercel.app'),'existing-custom-substack-job']);
+  await assert.rejects(()=>db.exec(sql),/different active job already schedules/,'legacy custom schedules are not duplicated during domain migration');
  }finally{await db.close()}
 });

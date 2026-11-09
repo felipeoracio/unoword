@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-const api = process.env.EXPO_PUBLIC_API_URL || "https://unoword.vercel.app/api";
-export const API_URL = api.replace(/\/$/, "");
+import { apiBase, cachedPublicConnection } from "../domain/site";
+export const API_URL = apiBase(process.env.EXPO_PUBLIC_API_URL);
 export const WEB_URL = new URL(API_URL).origin;
 export function publicKey(value: string) {
   if (value.startsWith("sb_publishable_")) return true;
@@ -36,9 +36,7 @@ export async function publicConnection(offline = false) {
           throw new Error("Public auth configuration is unavailable.");
         value = await response.json();
       } catch (error) {
-        const cached = await AsyncStorage.getItem(
-          "uno.mobile.public-config:" + API_URL,
-        );
+        const cached = await cachedPublicConnection(API_URL, key => AsyncStorage.getItem(key));
         if (!cached) throw error;
         value = JSON.parse(cached);
       }

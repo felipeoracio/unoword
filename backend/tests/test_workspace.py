@@ -18,7 +18,7 @@ from routers import workspace
 
 OWNER = "00000000-0000-4000-8000-000000000001"
 OTHER = "00000000-0000-4000-8000-000000000002"
-ORIGIN = {"Origin": "https://unoword.vercel.app"}
+ORIGIN = {"Origin": "https://unoword.app"}
 CONTENT = {
     "type": "doc",
     "content": [
