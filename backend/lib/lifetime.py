@@ -1,4 +1,4 @@
-"""One-time, test-only lifetime purchases. Stripe verifies money; SQL owns capacity."""
+"""Retired lifetime offer; preserve existing order, webhook and refund handling."""
 
 import os
 import asyncio
@@ -11,6 +11,7 @@ from lib.supabase_client import SupabaseAPIError, service_rest
 PRICE = {"amount": 10000, "currency": "usd", "capacity": 25}
 REFUND_DAYS = 14
 OFFER = "lifetime_100_first_25_v1"
+SALES_CLOSED = True
 
 
 def test_mode():
@@ -19,6 +20,8 @@ def test_mode():
 
 
 def configured():
+    if SALES_CLOSED:
+        return False
     try:
         test_mode()
     except HTTPException:
@@ -134,6 +137,8 @@ async def expired(c, item):
 
 
 async def checkout(user):
+    if SALES_CLOSED:
+        raise HTTPException(410, "lifetime_offer_closed")
     test_mode()
     if not configured():
         raise HTTPException(503, "lifetime_unavailable")

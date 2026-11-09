@@ -11,7 +11,11 @@ function redirectFor(input){
   const capture=new RegExp(rule.src).exec(url.pathname);
   if(!capture||!(rule.has||[]).every(matches)||(rule.missing||[]).some(matches))continue;
   let location=rule.headers.Location.replace(/\$(\d+)/g,(_,index)=>capture[Number(index)]||'');
-  if(url.search)location+=(location.includes('?')?'&':'?')+url.search.slice(1);
+  if(url.search){
+   const hash=location.indexOf('#'),fragment=hash<0?'':location.slice(hash);
+   location=hash<0?location:location.slice(0,hash);
+   location+=(location.includes('?')?'&':'?')+url.search.slice(1)+fragment;
+  }
   return {status:rule.status,location};
  }
  return null;

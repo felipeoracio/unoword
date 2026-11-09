@@ -629,7 +629,7 @@ export default function Account() {
               </h1>
               <p>
                 {lifetimeIntent
-                  ? "Sign in to view the $100 USD lifetime offer. Signing in does not purchase a plan. Test checkout requires your confirmation."
+                  ? "Sign in to manage an existing lifetime purchase. The lifetime offer is closed to new purchases."
                   : proIntent
                     ? "Sign in to review your account and continue your Pro request."
                     : mode === "signup"

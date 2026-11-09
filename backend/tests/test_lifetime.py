@@ -19,8 +19,14 @@ OWNER = "00000000-0000-4000-8000-000000000001"
 ORIGIN = {"Origin": "https://unoword.app"}
 
 
+def test_offer_is_retired_by_default():
+    assert lifetime.SALES_CLOSED is True
+
+
 @pytest.fixture
 def system(monkeypatch):
+    # Historical sale fixtures continue testing existing order/payment behavior.
+    monkeypatch.setattr(lifetime, "SALES_CLOSED", False)
     for k, v in {
         "AI_AUTH_MODE": "supabase",
         "STRIPE_SECRET_KEY": "sk_test_fixture",
@@ -147,7 +153,8 @@ def system(monkeypatch):
                 return False
             events.add(body["p_event"])
             orders[0].update(
-                status=body["p_status"], payment_intent_id=body["p_payment_intent"]
+                status=body["p_status"], payment_intent_id=body["p_payment_intent"],
+                paid_at=body["p_paid_at"],
             )
             entitlement.update(
                 status="active" if body["p_status"] == "paid" else "inactive",
@@ -199,6 +206,41 @@ def buy(f, **patch):
         json={"expected_user_id": OWNER, "confirmed": True, **patch},
         headers=ORIGIN,
     )
+
+
+@pytest.mark.parametrize("key", ["sk_test_fixture", "sk_live_fixture"])
+def test_retired_offer_rejects_new_checkout_before_provider_or_storage(system, monkeypatch, key):
+    monkeypatch.setattr(lifetime, "SALES_CLOSED", True)
+    monkeypatch.setenv("STRIPE_SECRET_KEY", key)
+    monkeypatch.setenv("STRIPE_LIVE_BILLING_APPROVED", "true")
+    response = buy(system)
+    assert response.status_code == 410
+    assert response.json()["detail"] == "lifetime_offer_closed"
+    assert not lifetime.configured()
+    assert not system.calls and not system.provider.mock_calls
+
+
+def test_retired_offer_keeps_existing_verified_payment_and_refund_access(system, monkeypatch):
+    assert buy(system).status_code == 200
+    monkeypatch.setattr(lifetime, "SALES_CLOSED", True)
+    system.session.update(status="complete", payment_status="paid")
+    assert event(system).status_code == 200
+    assert system.entitlement["status"] == "active"
+    status = system.client.get("/api/subscription/lifetime").json()
+    assert status["status"] == "paid" and status["can_refund"]
+    assert status["can_checkout"] is False
+    offer = system.client.get("/api/subscription/lifetime/offer").json()
+    assert offer["checkout_available"] is False
+    assert buy(system).status_code == 410
+    assert system.entitlement["status"] == "active"
+    def refund(*args, **kwargs):
+        system.provider.v1.charges.retrieve.return_value.update(refunded=True, amount_refunded=10000)
+        return {"id": "re_test", "status": "succeeded"}
+    system.provider.v1.refunds.create.side_effect = refund
+    response = system.client.post("/api/subscription/lifetime/refund",
+        json={"expected_user_id": OWNER, "confirmed": True}, headers=ORIGIN)
+    assert response.status_code == 200
+    assert system.entitlement["status"] == "inactive"
 
 
 def event(f, kind="checkout.session.completed", event_id="evt_paid", signature=True):

@@ -11,14 +11,6 @@
       "framework": "vite",
       "rewrites": [
         {
-          "source": "/lifetime",
-          "destination": "/lifetime/index.html"
-        },
-        {
-          "source": "/lifetime/",
-          "destination": "/lifetime/index.html"
-        },
-        {
           "source": "/privacy",
           "destination": "/privacy/index.html"
         },
@@ -64,6 +56,33 @@
     }
   ],
   "redirects": [
+    {
+      "source": "/:retired(lifetime(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "unoword.vercel.app"
+        }
+      ],
+      "destination": "https://unoword.app/#pricing",
+      "statusCode": 301
+    },
+    {
+      "source": "/:retired(lifetime(?:/.*)?)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.unoword.app"
+        }
+      ],
+      "destination": "https://unoword.app/#pricing",
+      "statusCode": 301
+    },
+    {
+      "source": "/:retired(lifetime(?:/.*)?)",
+      "destination": "/#pricing",
+      "statusCode": 301
+    },
     {
       "source": "/",
       "has": [

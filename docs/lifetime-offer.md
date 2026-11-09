@@ -1,5 +1,14 @@
 # $100 lifetime Pro offer — first 25 purchasers
 
+> **Current status: closed to new purchases.** `/lifetime` and its child URLs
+> permanently redirect to `/#pricing`; the promotion is absent from the sitemap
+> and Analytics allowlist. New Lifetime checkout is rejected server-side with
+> `410 lifetime_offer_closed`, including when old environment flags are enabled.
+> Existing order records, verified access, webhook processing and eligible
+> refunds remain intact at `/account?offer=lifetime`. Existing purchase terms
+> are at `/terms#lifetime-purchases`. The original offer/setup details below are
+> historical reference, not instructions to reactivate sales.
+
 > Current plan, allowance, coaching, and streak behavior is documented in [the updated plan rollout](writing-coach-plans-and-streaks.md). Historical allowance descriptions below are superseded; existing protected versions remain honored.
 
 Public page: `/lifetime`. Account/purchase flow: `/account?offer=lifetime`.

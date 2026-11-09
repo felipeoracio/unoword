@@ -1,10 +1,9 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { emailConfirmationRequest } from "@/lib/email-link";
 import Home from "@/pages/Home";
 import PageMetadata from "@/components/PageMetadata";
 
-const Lifetime = lazy(() => import("@/pages/Lifetime"));
 const Account = lazy(() => import("@/pages/Account"));
 const WritingEditor = lazy(() => import("@/pages/WritingEditor"));
 const AccountSecurity = lazy(() => import("@/pages/AccountSecurity"));
@@ -40,7 +39,7 @@ export default function App() {
         ) : (
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/lifetime" element={<Lifetime />} />
+            <Route path="/lifetime/*" element={<Navigate to="/#pricing" replace />} />
             <Route path="/account" element={<Account />} />
             <Route path="/editor" element={<WritingEditor />} />
             <Route path="/rewards" element={<Rewards />} />
