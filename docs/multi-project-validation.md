@@ -9,6 +9,7 @@ Completed on November 10, 2026. Tests used fictional users/documents and isolate
 | Production frontend build + TypeScript | Passed |
 | Frontend lint | Passed with four pre-existing warnings in shared UI components/AdminDashboard; no new warnings |
 | Existing production-editor browser regression | Passed: authentication isolation; autosave/reopen; formatting; typed/pasted counts; folders/trash; document conflicts/recovery; AI consent; source/profile editing; import/export; focus/themes; offline/reconnect; Free/Pro/Lifetime gates; English/Spanish; 320/390/768/1440 px |
+| Guided onboarding browser regression | Passed: typing/paste distinction, focus preservation, refresh/resume of an active session, profile/prompt/goal actions, replay, account isolation, Free restriction, responsive layouts and accessibility |
 | Dedicated project browser flow | Passed: creation; switching; shared document membership without copies; actual scoped AI request body; override reset; offline switching/edit/reconnect; failed-save preservation; custom guided answers; private/noindex route; responsive screenshots |
 | Extension JavaScript unit tests | 36 passed |
 | Actual extension service-worker integration with fake network | Passed: historical Free/Pro streak behavior; persistent offline outbox; pause/resume; owner isolation; owner-bound project reads/selection; wrong-account rejection before network; explicit AI scope forwarding |
@@ -18,7 +19,7 @@ Completed on November 10, 2026. Tests used fictional users/documents and isolate
 | Expo iOS export | Passed |
 | Diff whitespace check | Passed |
 
-Browser testing exposed startup/new-document and switching races. Startup now restores durable cached workspace state without requiring an unrelated cloud save, while explicit online project switches still require confirmation. Create/duplicate/recovery actions wait for restoration. Recovering a draft cannot delete its old copy unless the replacement exists. Recovered conflict copies retain project memberships.
+Browser testing exposed startup/new-document and switching races. Startup now restores durable cached workspace state without requiring an unrelated cloud save or pausing an already-active session, while explicit online project switches still require confirmation. Create/duplicate/recovery actions wait for restoration. Recovering a draft cannot delete its old copy unless the replacement exists. Recovered conflict copies retain project memberships.
 
 ## Main implementation files
 

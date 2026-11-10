@@ -15,15 +15,22 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
   let signedIn=true,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner;
   let tour={version:1,status:'not_started',current_step:'welcome',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
+  let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};
   const documents=new Map(),activity=new Map(),folders=[];const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
+  const projectFixture=require('./helpers/project-fixture.cjs').projectsFixture(()=>currentOwner,()=>[...documents.values()]);
   await context.route(origin+'/api/**',async route=>{
    if(offline)return route.abort('internetdisconnected');
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
    if(!signedIn){status=401;value={detail:'Authentication required'};}
+   else if(key.startsWith('/workspace/projects')){const result=projectFixture(key,method,body);status=result.status;value=result.value;}
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
+   else if(key==='/progress/preferences'){if(method==='PUT')preferenceState={...preferenceState,...body,revision:preferenceState.revision+1};value={...preferenceState,user_id:currentOwner};}
+   else if(key==='/progress/summary')value={user_id:currentOwner,reportingDate:new Intl.DateTimeFormat('en-CA',{timeZone:preferenceState.timezone}).format(new Date()),timezone:preferenceState.timezone,dailyWordCount:[...activity.values()].reduce((n,a)=>n+a.typed_words,0),dailyActiveWritingSeconds:[...activity.values()].reduce((n,a)=>n+a.duration_seconds,0),lifetimeActiveWritingSeconds:[...activity.values()].reduce((n,a)=>n+a.duration_seconds,0),dailyGoal:preferenceState.daily_goal,displayedStreak:pro?15:7,updatedAt:new Date().toISOString(),sessions:[]};
+   else if(key==='/subscription/substack')value={user_id:currentOwner,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null};
+   else if(key==='/rewards'){status=503;value={detail:'rewards_setup_required'};}
    else if(key==='/subscription')value={user_id:currentOwner,billing_available:false,status:'inactive',trial_eligible:true};
    else if(key==='/product')value={name:'UnoWord',billing_available:false,chrome_store_url:null,plans:[],features:[]};
    else if(key==='/auth/google')value={enabled:false};

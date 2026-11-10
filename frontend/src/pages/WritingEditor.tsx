@@ -1081,7 +1081,7 @@ export default function WritingEditor() {
     editor?.setEditable(false, false);
     const owner = userId;
     try {
-      if (session.current?.timer?.status === "active")
+      if (!initial && session.current?.timer?.status === "active")
         changeSessionStatus("paused");
       if (!(await ws.flushWrites(initial))) throw Error("save");
       const state = projects.snapshot();
@@ -1276,6 +1276,7 @@ export default function WritingEditor() {
     setProfileEdits(values);
     setProjectOpen(false);
     setProfileOpen(true);
+    window.dispatchEvent(new CustomEvent("unoword-tour-action",{detail:"ai_profile_started"}));
   }, [profile]);
   const profileLinkOpened = useRef(false);
   useEffect(() => {

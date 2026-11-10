@@ -487,6 +487,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const secondCanvas=second.getByRole('textbox',{name:'Document content'});await secondCanvas.waitFor();
   await second.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Offline draft from the first tab.'));
   assert.notEqual(await second.evaluate(()=>sessionStorage.getItem('uno-writing-tab')),clonedStorage['uno-writing-tab'],'Duplicated tabs get independent draft identities');
+  // Restoring the account's workspace briefly locks editing while the durable
+  // draft and project selection hydrate; wait for the real editable canvas.
+  await second.locator('[aria-label="Document content"][contenteditable="true"]').waitFor();
   await secondCanvas.fill('Offline draft from the second tab.');
   await second.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
   offline=false;await context.setOffline(false);
