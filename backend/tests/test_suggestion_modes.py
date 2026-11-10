@@ -76,6 +76,8 @@ def system(monkeypatch, quota_store):
     monkeypatch.setattr(ai.knowledge,'heal_missing_embeddings',noop)
     monkeypatch.setattr(ai.knowledge,'disabled_source_ids',disabled)
     monkeypatch.setattr(suggestion_knowledge,'user_rest',rest)
+    from tests.project_helpers import install_project_boundary
+    install_project_boundary(monkeypatch, rows, disabled=disabled)
     app = FastAPI()
     app.include_router(ai.router,prefix='/api')
     def user(x_user:str=Header(default='a')):

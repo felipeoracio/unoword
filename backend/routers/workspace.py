@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from lib.auth import AuthenticatedUser, require_user
 from models.writing_goal import WritingProgress
+from models.projects import ProjectContextFields
 from lib.ai_access import require_ai_user, get_entitlement, entitlement_is_active
 from lib.request_security import trusted_origin
 from lib.supabase_client import user_rest, service_rest, SupabaseAPIError
@@ -460,10 +461,10 @@ async def source_permission(
     return {"id": str(source_id), "enabled": payload.enabled}
 
 
-class Assistance(Owned):
+class Assistance(Owned, ProjectContextFields):
     writing_progress: WritingProgress | None = None
     document_id: UUID
-    action: Literal["next", "guidance", "continue", "block", "brainstorm"]
+    action: Literal["next", "guidance", "continue", "block", "brainstorm", "organization", "research", "feedback"]
     request_id: UUID | None = None
     consent: bool = False
     current_text: str = Field(default="", max_length=200000)
@@ -478,7 +479,8 @@ async def assistant(
     owner(payload, user)
     if not payload.consent:
         raise HTTPException(422, "document_ai_consent_required")
-    await document(payload.document_id, user)
+    if not await rows("writing_documents", user, id=f"eq.{payload.document_id}", select="id", limit="1"):
+        raise HTTPException(404, "document_not_found")
     # Older extension/editor clients may still send continue; it now means guidance.
     if payload.action == "continue":
         payload = payload.model_copy(update={"action": "guidance"})

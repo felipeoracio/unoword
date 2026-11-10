@@ -5,11 +5,12 @@ import json
 from models.ai import AISuggestionRequest, SuggestionInspiration
 
 
-def encode_details(context: str, mode: str, questions: list[str], inspired_by: list[SuggestionInspiration], writing_task=None) -> str:
+def encode_details(context: str, mode: str, questions: list[str], inspired_by: list[SuggestionInspiration], writing_task=None, project_id=None) -> str:
     return json.dumps({
         "unoword_suggestion_version": 1, "context": context[:2000], "mode": mode,
         "questions": questions, "inspired_by": [source.model_dump() for source in inspired_by],
         **({"writing_task": writing_task.model_dump()} if writing_task is not None else {}),
+        **({"project_id": str(project_id)} if project_id is not None else {}),
     }, ensure_ascii=False)
 
 
@@ -40,7 +41,8 @@ def evidence_catalog(payload: AISuggestionRequest, profile, answers, memories, s
         if chunk.source_id in catalog:
             continue
         title = chunk.source_title or ("Escritura guardada" if es else "Saved writing")
-        add(chunk.source_id, title, chunk.source_type, parent)
+        kind = {'document_chunk':'source','writing_chunk':'writing_session','editor_document':'document'}.get(chunk.source_type,chunk.source_type)
+        catalog[str(chunk.source_id)] = (SuggestionInspiration(source_id=parent,title=title,kind=kind),parent)
     if payload.mode == "expand_idea" and payload.idea_source_id and payload.idea_source_id in catalog:
         # The draft was loaded from this selected source, not an active tab.
         catalog["current_writing"] = catalog[payload.idea_source_id]

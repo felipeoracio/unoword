@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from models.writing_goal import WritingProgress, WritingTask
+from models.projects import ProjectContextFields
 
 
 def utc_now() -> datetime:
@@ -121,6 +122,7 @@ LinkCategory = Literal["personal_story", "writing_sample", "interests", "researc
 
 
 class AILinkCreate(AIModel):
+    expected_user_id: UUID | None = None
     url: str = Field(min_length=4, max_length=2000)
     title: str | None = Field(default=None, max_length=300)
     description: str | None = Field(default=None, max_length=2000)
@@ -231,6 +233,7 @@ class SuggestionInspiration(AIModel):
 
 
 class AISuggestion(AIModel):
+    project_id: str | None = None
     writing_task: WritingTask | None = None
     id: str = Field(default_factory=lambda: str(uuid4()))
     user_id: str
@@ -262,7 +265,7 @@ class AISuggestion(AIModel):
         return data
 
 
-class AISuggestionRequest(AIModel):
+class AISuggestionRequest(AIModel, ProjectContextFields):
     request_id: UUID | None = None
     writing_progress: WritingProgress | None = None
     current_writing: str | None = Field(default=None, max_length=20_000)

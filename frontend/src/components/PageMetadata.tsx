@@ -7,6 +7,7 @@ const titles: Record<string, string> = {
   "/account": "Your account — UnoWord",
   "/account/security": "Account & Security — UnoWord",
   "/editor": "Your writing space — UnoWord",
+  "/projects": "Your projects — UnoWord",
   "/rewards": "Writing rewards — UnoWord",
   "/privacy": "Privacy & data — UnoWord",
   "/terms": "Terms of service — UnoWord",
@@ -58,6 +59,7 @@ export default function PageMetadata() {
         robots.dataset.deploymentPolicy?.startsWith("noindex") ||
         pathname.startsWith("/account") ||
         pathname === "/editor" ||
+        pathname === "/projects" ||
         pathname === "/rewards" ||
         pathname.startsWith("/admin") ||
         pathname === "/terms" ||

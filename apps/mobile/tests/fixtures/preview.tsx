@@ -4,10 +4,13 @@ import { createRoot } from "react-dom/client";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {ProjectProvider} from "../../src/providers/ProjectProvider";
+import {emptyProjectState} from "../../../../shared/projects";
 import { FixtureProvider } from "./context";
 import { Repository } from "../../src/core/repository";
 import { WriterSessions } from "../../src/core/writer-sessions";
 import type { Store, Transport } from "../../src/core/types";
+import Projects from "../../src/features/Projects";
 import Home from "../../src/features/Home";
 import Write from "../../src/features/Write";
 import Ideas from "../../src/features/Ideas";
@@ -77,7 +80,14 @@ const store: Store = {
     map.delete(k);
   },
 };
+let projectState=emptyProjectState(owner);
 const api: Transport = async (method, path, body: any) => {
+  if(path==='/workspace/projects')return projectState as any;
+  if(/^\/workspace\/projects\/[0-9a-f-]+$/.test(path)&&method==='PUT'){const id=path.split('/').pop()!;const row={...body,id,user_id:owner,revision:body.revision+1,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};projectState.projects=[row,...projectState.projects.filter(p=>p.id!==id)];return row as any}
+  if(path==='/workspace/projects/active'){projectState.preferences={...projectState.preferences,...body,active_project_id:body.project_id,revision:body.revision+1};return projectState.preferences as any}
+  if(path.startsWith('/workspace/projects/profile/questions'))return [{id:'types',title:'What do you enjoy writing?',title_es:'¿Qué te gusta escribir?',multiple:true,options:[{id:'memoir',label:'Memoir',label_es:'Memorias'}]}] as any;
+  if(path.startsWith('/workspace/projects/profile/answers'))return [] as any;
+  if(path.startsWith('/workspace/projects/resources'))return [] as any;
   if (path === "/auth/me") return account as any;
   if (path === "/progress/preferences")
     return {
@@ -198,13 +208,15 @@ function Preview() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={new QueryClient()}>
-        <FixtureProvider value={value}>
+        <FixtureProvider value={value}><ProjectProvider>
           <View style={{ flex: 1, height: "100dvh" }}>
             <View style={{ flex: 1, minHeight: 0 }}>
               {route === "Home" ? (
                 <Home />
               ) : route === "Write" ? (
                 <Write />
+              ) : route === "Projects" ? (
+                <Projects/>
               ) : route === "Ideas" ? (
                 <Ideas />
               ) : route === "Progress" ? (
@@ -222,7 +234,7 @@ function Preview() {
               }}
             >
               <Row>
-                {["Home", "Write", "Progress", "Ideas", "Profile"].map(
+                {["Home", "Write", "Projects", "Progress", "Ideas", "Profile"].map(
                   (name) => (
                     <View key={name} style={{ flex: 1 }}>
                       <Button
@@ -236,7 +248,7 @@ function Preview() {
               </Row>
             </View>
           </View>
-        </FixtureProvider>
+        </ProjectProvider></FixtureProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

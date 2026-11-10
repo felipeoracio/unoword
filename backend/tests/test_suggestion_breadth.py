@@ -133,6 +133,8 @@ async def test_suggestion_route_includes_library_and_only_this_users_enabled_con
         return retrieved
     monkeypatch.setattr(ai, "diverse_passages", passages)
     monkeypatch.setattr(ai, "get_suggestion_provider", Provider)
+    from tests.project_helpers import install_project_boundary
+    install_project_boundary(monkeypatch, rows, retrieval=retrieve, disabled=disabled)
     payload = AISuggestionRequest(current_writing="Continue my poem about rain." if focused else None)
     result = await ai.create_suggestion(payload, user)
     for text in ("astronomy", "music", "Urban gardens", "Family meals", "Yesterday's topic"):

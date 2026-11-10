@@ -29,6 +29,8 @@ const root = path.resolve(__dirname, "..");
   const server = new Map(),
     requests = [];
   let listener;
+  const projectId="00000000-0000-4000-8000-000000000099";
+  let projectRevision=0,activeProject=null;
   const chrome = {
     storage: {
       local: {
@@ -78,7 +80,11 @@ const root = path.resolve(__dirname, "..");
         body = options.body ? JSON.parse(options.body) : null;
       requests.push({ key, body });
       let result = {};
-      if (key === "/api/auth/me")
+      if(key==='/api/workspace/projects')result={user_id:storage.wc_account.userId,projects:[{id:projectId,name:'Synthetic project',status:'planning'}],preferences:{user_id:storage.wc_account.userId,active_project_id:activeProject,revision:projectRevision,last_documents:{}}};
+      else if(key==='/api/workspace/projects/active'){assert.equal(body.expected_user_id,storage.wc_account.userId);assert.equal(body.revision,projectRevision);activeProject=body.project_id;projectRevision++;result={user_id:storage.wc_account.userId,active_project_id:activeProject,revision:projectRevision,last_documents:{}}}
+      else if(key==='/api/workspace/projects/resources'){assert.equal(new URL(url).searchParams.get('expected_user_id'),storage.wc_account.userId);result=[]}
+      else if(key==='/api/ai/suggestion')result={id:'synthetic-idea',title:'A writing direction',suggestion:'Consider a new observation.',questions:[],source_ids:[]};
+      else if (key === "/api/auth/me")
         result = {
           id: storage.wc_account.userId,
           plan: paid ? "pro" : "free",
@@ -266,6 +272,16 @@ const root = path.resolve(__dirname, "..");
   await evaluate('stopSession()');
   workerNow=null;
   console.log('PASS persistent worker sessions: Free pause/resume, 45 active/10 paused/55 elapsed, input suppression, restored pause, duplicate-start/stop protection, same session identity.');
+  paid=true;await evaluate('refreshAccount()');
+  const send=msg=>new Promise(resolve=>listener(msg,{},resolve));
+  let connected=await send({type:'GET_PROJECT_WORKSPACE',expectedUserId:other});
+  assert.equal(connected.ok,true);assert.equal(connected.ownerId,other);assert.equal(connected.value.user_id,other);
+  let switched=await send({type:'SET_ACTIVE_PROJECT',expectedUserId:other,projectId,revision:0});assert.equal(switched.ok,true);assert.equal(switched.value.active_project_id,projectId);
+  assert.equal((await send({type:'GET_PROJECT_RESOURCES',expectedUserId:other})).ok,true);
+  const beforeWrongOwner=requests.length;assert.equal((await send({type:'GET_PROJECT_WORKSPACE',expectedUserId:user})).ok,false);assert.equal(requests.length,beforeWrongOwner,'Wrong-owner requests never retrieve private project metadata');
+  const generated=await send({type:'GET_AI_SUGGESTION',expectedUserId:other,mode:'new_topic',projectContext:{project_id:projectId,context_scope:'profile_only',selected_resources:[]}});
+  assert.equal(generated.ok,true);const sent=requests.filter(r=>r.key==='/api/ai/suggestion').at(-1);assert.equal(sent.body.project_id,projectId);assert.equal(sent.body.context_scope,'profile_only');assert.deepEqual(sent.body.selected_resources,[]);
+  console.log('PASS project worker: owner-bound project loading and selection; wrong-account rejection before network; resource ownership; explicit AI scope forwarding; no live AI calls.');
   // Clear pending debounce timers after this standalone worker test.
   vm.runInContext(
     "if(writingMetadataTimer)clearTimeout(writingMetadataTimer)",

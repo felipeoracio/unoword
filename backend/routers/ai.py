@@ -148,7 +148,9 @@ def _compose_prompt_context(
         themes = prompt_themes(item)
         if themes:
             fields.append((f"Selected prompt themes: {', '.join(themes)}", [item["id"]]))
-        section("My Writing Profile — current explicit preferences (highest priority):", fields, int(available * 0.35), 9)
+        for question, values in (item.get('ai_preferences', {}).get('guided_profile') or {}).items():
+            fields.append((question + ': ' + '; '.join(values), [item['id']]))
+        section("My Writing Profile — general preferences:", fields, int(available * 0.40), 20)
     section("Onboarding answers:", [
         (f'{a.get("answer")} (question: {a.get("question")})', [a["id"]]) for a in answers
     ], int(available * 0.05), 4)
@@ -412,81 +414,26 @@ async def create_suggestion(
 
 
 async def _generate_suggestion(payload: AISuggestionRequest, user: AuthenticatedUser, quota: AIRequest) -> AISuggestion:
+    from lib.projects import resolve_scope
+    from lib.project_context import load_project_context
+    scope = await resolve_scope(user, payload)
+    if scope['scope'] in {'none','profile_only'}:
+        payload = payload.model_copy(update={'current_writing':None,'current_project':None,'idea_source_id':None})
     if payload.mode == "expand_idea":
         if payload.idea_source_id:
-            try:
+            allowed = set(scope['source_ids'] + scope['memory_ids'] + scope['document_ids'])
+            if payload.idea_source_id not in allowed: raise HTTPException(404, "Idea not found")
+            if payload.idea_source_id in scope['document_ids']:
+                from lib.projects import project_rpc
+                passages = await project_rpc('workspace_document_passages',user,{'p_ids':[payload.idea_source_id], 'p_query':''})
+                idea_text = passages[0]['plain_text'] if passages else ''
+            else:
                 idea_text = await selected_idea_text(user, payload.idea_source_id)
-            except SupabaseAPIError as error:
-                raise_http(error)
-            text = idea_text + (f"\nWriter's focus: {payload.current_writing}" if payload.current_writing else "")
-            payload = payload.model_copy(update={"current_writing": text[:MAX_DRAFT_CHARS]})
-        elif not (payload.current_writing or "").strip():
-            raise HTTPException(422, "idea_required")
-
-    profile = await _user_rows("ai_profiles", user, extra={"limit": "1"})
-    answers = await _user_rows(
-        "ai_onboarding_answers",
-        user,
-        extra={"order": "updated_at.desc", "limit": "20"},
-    )
-    if profile:
-        profile = [effective_profile(profile[0], answers)]
-        answers = contextual_answers(profile[0], answers)
-    memories = await _user_rows(
-        "ai_memories",
-        user,
-        extra={
-            "select": "id,source_id,memory_type,memory,importance",
-            "order": "importance.desc,updated_at.desc",
-            "limit": "200",
-        },
-    )
-    sources = await _user_rows(
-        "ai_documents", user,
-        extra={
-            "select": "id,document_title,source_kind,summary,description",
-            "enabled": "eq.true", "processing_status": "eq.ready",
-            "order": "updated_at.desc", "limit": "200",
-        },
-    )
-    try:
-        disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
-    except SupabaseAPIError as error:
-        raise_http(error)
-    memories = [m for m in memories if str(m.get("source_id")) not in disabled]
-    previous = await _user_rows(
-        "ai_suggestions",
-        user,
-        extra={"order": "created_at.desc", "limit": "15"},
-    )
-
-    try:
-        memories, unavailable_ideas = await available_saved_memories(
-            user, memories, previous, evidence_catalog(payload, profile, answers, memories, sources, []))
-    except SupabaseAPIError as error:
-        raise_http(error)
-
-    query_parts = [
-        payload.current_writing or "",
-        payload.current_project or "",
-    ]
-    if not any(query_parts):
-        # Seed retrieval with the user's stated goal so a first-time suggestion
-        # still surfaces relevant private context.
-        if profile:
-            query_parts.append(profile[0].get("writing_goal") or "")
-            query_parts.extend(profile[0].get("primary_topics") or [])
-            query_parts.extend(profile[0].get("favorite_subjects") or [])
-            query_parts.extend(prompt_themes(profile[0]))
-        # Include less recently surfaced interests beyond the same goal/nearest
-        # source on every request. All summaries remain user-scoped.
-        query_parts.extend(text[:350] for text, _ in library_overview(sources, memories, previous)[:3])
-    query = "\n".join(part for part in query_parts if part).strip()[:MAX_DRAFT_CHARS]
-    await knowledge.heal_missing_embeddings(user.id)
-    retrieved = await retrieve_user_chunks(user.id, query) if query else []
+            payload = payload.model_copy(update={'current_writing': (idea_text + (f"\nWriter's focus: {payload.current_writing}" if payload.current_writing else ''))[:MAX_DRAFT_CHARS]})
+        elif not (payload.current_writing or '').strip(): raise HTTPException(422, 'idea_required')
+    data = await load_project_context(user, payload, payload.current_writing or '', scope)
+    profile, answers, memories, previous, sources, retrieved = [data[key] for key in ('profile','answers','memories','previous','sources','retrieved')]
     retrieved = await diverse_passages(user, retrieved, sources, mode=payload.mode, selected_id=payload.idea_source_id)
-    unavailable = disabled | unavailable_ideas
-    retrieved = [chunk for chunk in retrieved if str(chunk.parent_id) not in unavailable and chunk.source_id not in unavailable]
     logger.info(
         "suggestion_context user=%s retrieved=%d vector=%d memories=%d",
         user.id, len(retrieved), sum(c.match == "vector" for c in retrieved), len(memories),
@@ -502,9 +449,9 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
     task = task_budget(payload.writing_progress)
     budget = budget_context(task)
     context, source_ids = _compose_prompt_context(
-        payload, profile, answers, memories, previous, retrieved, sources, reserved_chars=len(budget)
+        payload, profile, answers, memories, previous, retrieved, sources, reserved_chars=len(budget)+len(data["project_context"])+1
     )
-    context += budget
+    context = data["project_context"] + "\n" + context + budget
     allowed_ids = set(source_ids) | ({"current_writing"} if payload.current_writing else set())
     _, available_parents = attributed_sources(allowed_ids, allowed_ids, catalog)
 
@@ -556,11 +503,11 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
 
     from uuid import uuid4
     record = {
-        "id": str(uuid4()), "user_id": user.id,
+        "id": str(uuid4()), "user_id": user.id, "project_id": scope["project_id"],
         "title": response.result.title, "suggestion": response.result.suggestion,
         "reason": response.result.why if inspirations else "",
         "context_summary": encode_details(context, payload.mode, response.result.questions, inspirations,
-            with_outline(task, response.result.outline, payload.language)),
+            with_outline(task, response.result.outline, payload.language), project_id=scope["project_id"]),
         "related_topics": response.result.related_topics, "source_ids": source_ids, "status": "shown",
     }
     suggestion = AISuggestion(**record)
@@ -579,21 +526,13 @@ async def _generate_suggestion(payload: AISuggestionRequest, user: Authenticated
 @router.get("/idea-options")
 async def idea_options(user: AuthenticatedUser = Depends(require_ai_user)) -> list[dict]:
     """Private, usable choices for expansion; generation reloads their actual text."""
-    sources = await _user_rows("ai_documents", user, extra={
-        "select": "id,document_title,source_kind,summary", "enabled": "eq.true",
-        "processing_status": "eq.ready", "order": "updated_at.desc", "limit": "100",
-    })
-    memories = await _user_rows("ai_memories", user, extra={
-        "select": "id,memory,source_id", "order": "importance.desc,updated_at.desc", "limit": "100",
-    })
-    try:
-        disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
-    except SupabaseAPIError as error:
-        raise_http(error)
-    source_ids = {str(s["id"]) for s in sources} | disabled
+    payload = AISuggestionRequest()
+    scope = await resolve_scope(user, payload)
+    from lib.projects import scoped_rows
+    sources = await scoped_rows("ai_documents", user, scope, "source_ids")
+    memories = await scoped_rows("ai_memories", user, scope, "memory_ids")
     return ([{"id": s["id"], "title": s["document_title"], "kind": s["source_kind"]} for s in sources] +
-            [{"id": m["id"], "title": m["memory"][:100], "kind": "memory"}
-             for m in memories if str(m.get("source_id")) not in source_ids])[:100]
+            [{"id": m["id"], "title": m["memory"][:100], "kind": "memory"} for m in memories])[:100]
 
 
 @router.get("/ideas", response_model=list[AISuggestion])

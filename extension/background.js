@@ -389,7 +389,7 @@ function dayKey(ts, tz) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-async function requestAISuggestion({ currentWriting = '', currentProject = '', mode = 'new_topic', language = 'en', ideaSourceId = null, expectedUserId = null } = {}) {
+async function requestAISuggestion({ currentWriting = '', currentProject = '', mode = 'new_topic', language = 'en', ideaSourceId = null, expectedUserId = null, projectContext = null } = {}) {
   const account = await refreshAccount();
   if (expectedUserId && account.userId !== expectedUserId) {
     return { ok: false, reason: 'account_changed', account };
@@ -401,6 +401,11 @@ async function requestAISuggestion({ currentWriting = '', currentProject = '', m
     return { ok: false, reason, account };
   }
   const payload = { mode, language };
+  if(projectContext){
+    payload.project_id=projectContext.project_id||null;
+    payload.context_scope=['current_project','selected_resources','all_projects','profile_only','none'].includes(projectContext.context_scope)?projectContext.context_scope:'current_project';
+    payload.selected_resources=Array.isArray(projectContext.selected_resources)?projectContext.selected_resources.slice(0,200):[];
+  }
   const progressRead = sessionChanges.then(() => Promise.all([getSettings(), getHistory(), getState()]));
   sessionChanges = progressRead.then(() => {}, () => {});
   const [settings, history, state] = await progressRead;
@@ -1137,6 +1142,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             currentProject: msg.currentProject || '',
             mode: msg.mode || 'new_topic', language: msg.language || settings.language || 'en', ideaSourceId: msg.ideaSourceId || null,
             expectedUserId: msg.expectedUserId || null,
+            projectContext:msg.projectContext||null,
           });
           sendResponse(result);
           return;
@@ -1198,6 +1204,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }));
           if (state.active) local.push({id:String(state.startedAt),startedAt:state.startedAt,typedWords:state.typedWords || 0});
           sendResponse({ok:true,ownerId:account.userId,sessions:local});return;
+        }
+        case 'GET_PROJECT_WORKSPACE':
+        case 'GET_PROJECT_RESOURCES':
+        case 'SET_ACTIVE_PROJECT': {
+          try {
+            const account=await getAccount();
+            if(!account.authenticated||!account.aiAccess||!msg.expectedUserId||account.userId!==msg.expectedUserId)throw Error('account_changed');
+            const path=msg.type==='GET_PROJECT_RESOURCES'?'/workspace/projects/resources?expected_user_id='+account.userId:'/workspace/projects';
+            const value=msg.type==='SET_ACTIVE_PROJECT'?await self.WCApi.put('/workspace/projects/active',{
+              expected_user_id:account.userId,project_id:msg.projectId||null,revision:msg.revision,mutation_id:crypto.randomUUID(),last_documents:{}
+            }):await self.WCApi.get(path);
+            if(value?.user_id&&value.user_id!==account.userId)throw Error('account_changed');
+            if((await getAccount()).userId!==account.userId)throw Error('account_changed');
+            sendResponse({ok:true,value,ownerId:account.userId});
+          } catch(error){sendResponse({ok:false,error:error.message==='account_changed'?'account_changed':apiErrorCode(error)})}
+          return;
+        }
+        case 'OPEN_PROJECTS':
+        case 'OPEN_GUIDED_PROFILE': {
+          await chrome.tabs.create({url:msg.type==='OPEN_PROJECTS'?'https://unoword.app/projects':'https://unoword.app/editor?profile=1'});
+          sendResponse({ok:true});return;
         }
         case 'OPEN_WRITING_EDITOR': {
           const settings = await getSettings();

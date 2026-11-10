@@ -561,3 +561,16 @@ subscription changes, rejected forged plan claims, and 180–420px English/Spani
 layouts. Set `SUGGESTION_SCREENSHOTS` to capture Free/Pro Original screens.
 
 Version 0.20.0 separates Session Time, Today’s Writing Time and Total Writing Time. Signed-in account totals include editor and other-device sessions. See [sync policy and rollout](../docs/unified-account-writing-sync.md).
+
+### Project workspaces (0.24.0)
+
+Signed-in Pro accounts can select the active project and one of five AI context
+scopes in the popup. A selected-resource picker uses metadata only; the backend
+checks actual ownership, permissions, and retrieval scope before loading text.
+Context overrides reset on project changes. Projects & Writing Profile opens the
+existing authenticated web library, including guided profile setup.
+
+Apply the project migration before deploying this release. Reload the extension
+after installing the updated package. Free Quick Prompt, tracking, and the shared
+writing statistics remain unchanged. See
+[workspace architecture and rollout](../docs/multi-project-workspace.md).

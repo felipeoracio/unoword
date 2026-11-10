@@ -12,6 +12,8 @@ const Information = lazy(() => import("@/pages/Information"));
 const AdminLogin = lazy(() => import("@/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("@/admin/AdminDashboard"));
 
+const Projects = lazy(() => import("./pages/Projects"));
+
 const Rewards = lazy(() => import("./pages/Rewards"));
 
 export default function App() {
@@ -42,6 +44,7 @@ export default function App() {
             <Route path="/lifetime/*" element={<Navigate to="/#pricing" replace />} />
             <Route path="/account" element={<Account />} />
             <Route path="/editor" element={<WritingEditor />} />
+            <Route path="/projects" element={<Projects />} />
             <Route path="/rewards" element={<Rewards />} />
             <Route path="/account/security" element={<AccountSecurity />} />
             <Route path="/privacy" element={<Information kind="privacy" />} />

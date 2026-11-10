@@ -41,6 +41,14 @@
           </button>
         </div>
       </header>
+      <section id="project-controls" hidden aria-label="Project and AI context" style="padding:8px 18px;border-bottom:1px solid #e7edf6">
+        <label class="wc__helper" for="project-active">Project</label><select id="project-active" style="width:100%;min-height:36px"></select>
+        <label class="wc__helper" for="project-ai-scope">AI Context</label><select id="project-ai-scope" style="width:100%;min-height:36px"></select>
+        <button type="button" class="wc__btn wc__btn--text" id="project-choose-resources" hidden>Choose resources</button>
+        <p class="wc__helper" id="project-sync-status" role="status"></p>
+        <button type="button" class="wc__btn wc__btn--text" id="project-open-library">Projects &amp; Writing Profile</button>
+      </section>
+
 
       <nav class="wc__main-nav" id="main-nav" aria-label="UnoWord" role="tablist">
         <button id="nav-write" data-page="session" role="tab" aria-controls="session-panel" aria-selected="true" data-i18n="nav.write">Write</button>
@@ -817,8 +825,10 @@
   <script src="../shared/writing-progress.js"></script>
   <script src="../shared/cloud-progress.js"></script>
   <script src="../shared/writing-task.js"></script>
+    <dialog id="project-resource-dialog" aria-label="Choose AI resources" style="max-width:90vw;width:390px;max-height:80vh;overflow:auto;border:1px solid #dce5f3;border-radius:14px;padding:18px"><h2 id="project-resource-title">Choose resources</h2><input id="project-resource-search" aria-label="Search resources" placeholder="Search resources" style="width:100%;box-sizing:border-box;min-height:36px"/><div id="project-resource-list"></div><button type="button" class="wc__btn" id="project-resources-clear">Clear selection</button><button type="button" class="wc__btn wc__btn--primary" id="project-resources-done">Done</button></dialog>
     <script src="popup.js"></script>
     <script src="preferences.js"></script>
+    <script src="projects.js"></script>
     <script src="security.js"></script>
     <script src="tour.js"></script>
     <script src="rewards.js"></script>

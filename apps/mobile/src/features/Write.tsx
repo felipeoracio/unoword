@@ -1,3 +1,5 @@
+import ProjectControls from "./ProjectControls";
+import {useProjects,inProject} from "../providers/ProjectProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -35,6 +37,9 @@ import { message } from "../core/api";
 import type { Draft, DocumentIndex } from "../core/types";
 import { Coach } from "./coach";
 export default function Write() {
+  const projects=useProjects();
+  const activeProjectRef=useRef<string|null|undefined>(undefined);
+  const projectsRef=useRef(projects);projectsRef.current=projects;
   const { account, writer, online } = useApp(),
     repo = useRepository(),
     p = useTheme(),
@@ -81,6 +86,7 @@ export default function Write() {
         setDoc(next);
         setCanvas((n) => n + 1);
         setError("");
+        await projectsRef.current.remember(next.completion_status==="completed"?null:id);
         await repo.store.set(
           "last-document",
           next.completion_status === "completed" ? "__new__" : id,
@@ -100,13 +106,16 @@ export default function Write() {
     };
   }, [repo]);
   useEffect(() => {
-    if (!repo || auto.current || !paid) return;
-    auto.current = true;
-    void repo.store.get<string>("last-document").then((previous) => {
-      const id = documentToReopen(repo.index, previous);
-      if (id) void open(id, false);
-    });
-  }, [repo, paid, open]);
+    if(!repo||!paid||!projects.ready||!projects.state||activeProjectRef.current===projects.active&&auto.current)return;
+    const currentProject=projects.active;activeProjectRef.current=currentProject;auto.current=true;
+    void (async()=>{try{await repo.flush();const state=projects.snapshot();if(!state)return;
+      const previous=state.preferences.last_documents[currentProject||'general'] || await repo.store.get<string>('last-document');
+      const candidates=repo.index.filter(d=>inProject(state,'document',d.id,currentProject));
+      const id=documentToReopen(candidates,previous);if(activeProjectRef.current!==currentProject)return;
+      if(id)await open(id,false);else {setDoc(null);docRef.current=null;setCanvas(n=>n+1)}
+    }catch(e){setError(message(e))}})();
+  },[repo,paid,projects.ready,projects.active,open]);
+
   useEffect(() => {
     if (!repo) return;
     return repo.subscribe(() => {
@@ -235,10 +244,11 @@ export default function Write() {
         .catch((e) => setError(message(e)));
   };
   const create = async () => {
-    if (!repo) return;
+    if (!repo || !projects.ready || projects.busy) return;
     opening.current++;
     try {
       const next = await repo.create("Untitled", undefined, folder);
+      await projects.assign("document",next.id,projects.active?[projects.active]:[]);
       setDoc(next);
       docRef.current = next;
       setCanvas((n) => n + 1);
@@ -285,7 +295,7 @@ export default function Write() {
         },
       ],
     );
-  const items = (repo?.index || []).filter(
+  const items = (repo?.index || []).filter(d=>!projects.state||inProject(projects.state,"document",d.id,projects.active)).filter(
     (d) =>
       (filter === "trash"
         ? d.status === "trashed"
@@ -311,7 +321,7 @@ export default function Write() {
       contentContainerStyle={{ padding: 16, gap: 12 }}
     >
       <Heading>Documents</Heading>
-      <Button title="New document" onPress={() => run(create)} />
+      <Button title="New document" disabled={!projects.ready||projects.busy} onPress={() => run(create)} />
       <Input
         accessibilityLabel="Search documents"
         placeholder="Search your writing…"
@@ -387,6 +397,7 @@ export default function Write() {
   if (!doc)
     return (
       <Screen scroll={false}>
+        <ProjectControls/>
         <View style={{ padding: 20 }}>
           <Heading>Ready for Your Next Idea?</Heading>
           <Label muted>Every idea starts with UnoWord.</Label>
@@ -401,6 +412,7 @@ export default function Write() {
   void tick;
   return (
     <Screen scroll={false}>
+      <ProjectControls/>
       <Modal
         visible={details}
         animationType="slide"
@@ -415,7 +427,7 @@ export default function Write() {
             placeholder="Add a subtitle…"
             value={String(doc.content.attrs?.subtitle || "")}
             maxLength={500}
-            editable={canEdit(doc)}
+            editable={!projects.busy && canEdit(doc)}
             onChangeText={(subtitle) =>
               void update({
                 content: {
@@ -474,6 +486,7 @@ export default function Write() {
                   doc.folder_id,
                 );
                 if (copy) {
+                  await projects.assign("document",copy.id,projects.active?[projects.active]:[]);
                   setDoc(copy);
                   setCanvas((n) => n + 1);
                 }
@@ -566,7 +579,7 @@ export default function Write() {
               accessibilityLabel="Document title"
               value={doc.title}
               maxLength={300}
-              editable={canEdit(doc)}
+              editable={!projects.busy && canEdit(doc)}
               onChangeText={(title) =>
                 void update({ title: title || "Untitled" })
               }
@@ -694,7 +707,7 @@ export default function Write() {
             ref={editor}
             id={doc.id}
             content={doc.content}
-            editable={canEdit(doc) && !doc.conflict}
+            editable={!projects.busy && canEdit(doc) && !doc.conflict}
             onChange={change}
             onError={setError}
           />

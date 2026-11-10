@@ -68,8 +68,6 @@ def system(monkeypatch, quota_store):
 
     async def rows(table, owner, *, extra):
         assert owner is user
-        if table == "writing_documents":
-            assert extra["ai_allowed"] == "eq.true" and extra["status"] == "eq.active"
         return state.get(table, [])
 
     async def entitlement(_):
@@ -129,6 +127,8 @@ def system(monkeypatch, quota_store):
     monkeypatch.setattr(workspace_ai, "user_rest", save)
     monkeypatch.setattr(workspace_ai.knowledge, "disabled_source_ids", disabled)
     monkeypatch.setattr(workspace_ai, "retrieve_user_chunks", retrieval)
+    from tests.project_helpers import install_project_boundary
+    install_project_boundary(monkeypatch, rows, retrieval=retrieval, disabled=disabled)
     payload = SimpleNamespace(
         document_id="current-draft",
         action="next",

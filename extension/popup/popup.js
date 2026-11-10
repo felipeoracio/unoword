@@ -747,6 +747,7 @@ function updateSuggestionAccount(next, { refreshOptions = true } = {}) {
   }
   account = next;
   window.dispatchEvent(new Event('uno-rewards-refresh'));
+  window.dispatchEvent(new Event('uno-project-refresh'));
   if (refreshOptions && settings) {
     renderModePicker();
     if (currentPanel === 'ideas' && selectedSuggestionMode === 'original' && (identityChanged || accessChanged)) loadOriginalPrompt();
@@ -902,7 +903,7 @@ async function getNextPrompt({ draft = '', project = '', mode = selectedSuggesti
     const statusKey = (account.authenticated && account.aiAccess && isOffline) ? 'prompt.ai.offline' : null;
     return { mode: 'static', prompt: staticResp.ok ? staticResp.prompt : null, statusKey };
   }
-  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId, expectedUserId: account.userId });
+  const aiResp = await sendMessage({ type: 'GET_AI_SUGGESTION', currentWriting: draft, currentProject: project, mode, language: getLang(), ideaSourceId, expectedUserId: account.userId, projectContext:window.unoProjectContext||null });
   if (requestVersion !== suggestionRequestVersion) return { mode: 'stale' };
   if (aiResp.account) updateSuggestionAccount(aiResp.account);
   if (aiResp.ok && aiResp.suggestion) {

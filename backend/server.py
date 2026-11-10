@@ -25,6 +25,7 @@ from routers.admin import router as admin_router
 from routers.subscriptions import router as subscription_router
 from routers.account_security import router as account_security_router
 from routers.workspace import router as workspace_router
+from routers.projects import router as projects_router
 from routers.onboarding import router as onboarding_router
 from routers.processing import router as processing_router
 
@@ -48,6 +49,7 @@ api_router.include_router(ai_management_router)
 api_router.include_router(subscription_router)
 api_router.include_router(account_security_router)
 api_router.include_router(workspace_router)
+api_router.include_router(projects_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(processing_router)
 from routers.substack import router as substack_router

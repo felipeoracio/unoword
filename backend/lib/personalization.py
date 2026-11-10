@@ -11,6 +11,12 @@ ALIASES.update(dict(zip(('onboard-ai-goal','onboard-ai-style','onboard-ai-audien
 
 def effective_profile(profile, answers):
     result = deepcopy(profile)
+    from lib.profile_setup import guided_profile
+    preferences = dict(result.get('ai_preferences') or {})
+    guided = guided_profile(answers)
+    if guided: preferences['guided_profile'] = guided
+    else: preferences.pop('guided_profile', None)
+    if preferences or 'ai_preferences' in result: result['ai_preferences'] = preferences
     if (result.get('ai_preferences') or {}).get('profile_edited'):
         return result
     for answer in answers:

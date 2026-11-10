@@ -21,6 +21,9 @@ ACTIONS = {
     "next": "Return exactly three DISTINCT personalized writing directions, each grounded in the author’s interests. Do not repeat earlier ideas.",
     "guidance": "Offer one concise coaching direction with three guiding questions or structural steps for what the author could explore next. Never supply a sentence, paragraph, sample or replacement for their writing.",
     "block": "Offer three specific, open-ended questions or creative prompts that help this writer move forward.",
+    "organization": "Offer structural questions about gaps, repeated ideas, section order and opportunities for reflection; do not supply prose.",
+    "research": "Identify research questions and missing information in the authorized evidence. Do not claim inaccessible sources were read.",
+    "feedback": "Offer constructive questions or concise feedback on clarity, organization, voice and audience alignment. Never rewrite the passage.",
     "brainstorm": "Offer three distinct angles, each with a compact outline. Develop the author’s ideas instead of replacing them.",
 }
 
@@ -37,7 +40,7 @@ async def generate_assistance(payload, user):
         request_type="workspace_assistant",
         payload=payload,
         feature=(
-            "guidance" if payload.action in {"guidance", "continue"} else "suggestion"
+            "guidance" if payload.action in {"guidance", "continue", "organization", "research", "feedback"} else "suggestion"
         ),
     ) as quota:
         if quota.replay is not None:
@@ -48,91 +51,27 @@ async def generate_assistance(payload, user):
 async def _generate_assistance(payload, user, provider, quota):
     from routers.ai import _user_rows, _compose_prompt_context
 
-    profile = await _user_rows("ai_profiles", user, extra={"limit": "1"})
-    answers = await _user_rows(
-        "ai_onboarding_answers", user, extra={"limit": "20", "order": "updated_at.desc"}
-    )
-    if profile:
-        profile = [effective_profile(profile[0], answers)]
-        answers = contextual_answers(profile[0], answers)
-    disabled = await knowledge.disabled_source_ids(user.id, user.access_token)
-    memories = await _user_rows(
-        "ai_memories",
-        user,
-        extra={"limit": "100", "order": "importance.desc,updated_at.desc"},
-    )
-    memories = [m for m in memories if str(m.get("source_id")) not in disabled]
-    previous = await _user_rows(
-        "ai_suggestions", user, extra={"limit": "10", "order": "created_at.desc"}
-    )
-    feedback = await _user_rows(
-        "ai_feedback",
-        user,
-        extra={
-            "limit": "10",
-            "order": "created_at.desc",
-            "select": "helpful,reason,note",
-        },
-    )
-    sources = await _user_rows(
-        "ai_documents",
-        user,
-        extra={"enabled": "eq.true", "processing_status": "eq.ready", "limit": "100"},
-    )
-    query = (payload.selected_text or payload.current_text)[-2000:]
-    retrieved = await retrieve_user_chunks(user.id, query) if query else []
-    retrieved = [
-        c
-        for c in retrieved
-        if str(c.parent_id) not in disabled and str(c.source_id) not in disabled
-    ]
-    authorized = await _user_rows(
-        "writing_documents",
-        user,
-        extra={
-            "ai_allowed": "eq.true",
-            "status": "eq.active",
-            "select": "id,title,plain_text",
-            "order": "updated_at.desc",
-            "limit": "8",
-        },
-    )
-    available = {
-        str(row["id"])
-        for row in profile + answers + memories + sources + authorized
-        if row.get("id")
-    } | {str(c.source_id) for c in retrieved}
-    # A previous suggestion can quote a deleted or disabled source. Only reuse
-    # history whose complete evidence is still authorized on this request.
-    previous = [
-        s
-        for s in previous
-        if s.get("source_ids") and set(map(str, s["source_ids"])).issubset(available)
-    ]
-    context, source_ids = _compose_prompt_context(
-        AISuggestionRequest(
-            mode="new_topic", current_writing=query, language=payload.language
-        ),
-        profile,
-        answers,
-        memories,
-        previous,
-        retrieved,
-        sources,
-    )
-    context += "\nRecent feedback (respect these preferences):\n" + "\n".join(
-        f'Helpful: {f["helpful"]}; {f.get("reason") or ""}; {(f.get("note") or "")[:300]}'
-        for f in feedback
-    )
-    context += (
-        "\nPreviously written documents explicitly authorized for personalization:\n"
-        + "\n".join(f'{d["title"]}: {d["plain_text"][:700]}' for d in authorized)
-    )
-    context += (
-        "\nCurrent document (one-request consent):\n" + payload.current_text[-10000:]
-    )
-    if payload.selected_text:
-        context += "\nSelected passage:\n" + payload.selected_text
+    from lib.project_context import load_project_context, request_text
+    from lib.projects import resolve_scope
+    from lib.suggestion_details import evidence_catalog, attributed_sources
+    scope = await resolve_scope(user, payload)
+    current = request_text(scope, payload.document_id, payload.current_text)
+    selected = request_text(scope, payload.document_id, payload.selected_text)
+    query = (selected or current)[-2000:]
+    data = await load_project_context(user, payload, query, scope)
+    profile, answers, memories, previous, sources, retrieved, authorized, feedback = [data[key] for key in ('profile','answers','memories','previous','sources','retrieved','documents','feedback')]
+    request = AISuggestionRequest(mode='new_topic', current_writing=query, language=payload.language)
+    catalog = evidence_catalog(request, profile, answers, memories, sources, retrieved)
+    if current:
+        from models.ai import SuggestionInspiration
+        catalog['current_writing'] = (SuggestionInspiration(source_id=str(payload.document_id), title='Tu documento actual' if payload.language=='es' else 'Your current document',kind='editor_document'),str(payload.document_id))
+    available = set(catalog)
+    previous = [s for s in previous if s.get('source_ids') and set(map(str,s['source_ids'])).issubset(available)]
+    context, source_ids = _compose_prompt_context(request,profile,answers,memories,previous,retrieved,sources)
+    context = data['project_context'] + '\n' + context
+    context += '\nRecent authorized feedback:\n' + '\n'.join(f'Helpful: {f["helpful"]}; {f.get("reason") or ""}; {(f.get("note") or "")[:300]}' for f in feedback)
+    if current: context += '\nCurrent document (one-request consent):\n' + current[-10000:]
+    if selected: context += '\nSelected passage:\n' + selected
     count = 3 if payload.action in {"next", "brainstorm", "block"} else 1
     task = task_budget(getattr(payload, "writing_progress", None))
     if task is not None:
@@ -152,13 +91,14 @@ async def _generate_assistance(payload, user, provider, quota):
                         "properties": {
                             "title": {"type": "string", "maxLength": 100},
                             "text": {"type": "string", "maxLength": 1100},
+                            "source_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
                             "outline": {
                                 "type": "array",
                                 "items": {"type": "string", "maxLength": 100},
                                 "maxItems": 5,
                             },
                         },
-                        "required": ["title", "text", "outline"],
+                        "required": ["title", "text", "outline", "source_ids"],
                         "additionalProperties": False,
                     },
                 }
@@ -173,7 +113,7 @@ async def _generate_assistance(payload, user, provider, quota):
             "be a short topic label of at most ten words and 100 characters. Each "
             "text must be coaching advice or questions, at most 70 words. Start "
             "with a direct question or coaching action such as Explore or Consider. "
-            "Never include sample prose, quoted narration or replacement writing."
+            "Never include sample prose, quoted narration or replacement writing. Include source_ids only for labeled evidence actually used; use an empty list for general guidance."
         )
         # Structured JSON can still contain non-coaching prose or invalid topic
         # labels. Retry that boundary once before saving anything, within the
@@ -228,11 +168,14 @@ async def _generate_assistance(payload, user, provider, quota):
         # into permission to quote that document in future personalization.
         dependencies = list(
             dict.fromkeys(
-                source_ids + [str(payload.document_id)] + [d["id"] for d in authorized]
+                source_ids + ([str(payload.document_id)] if current else []) + [d["id"] for d in authorized]
             )
         )
         saved = []
         for item in items:
+            citations, _ = attributed_sources(item.get('source_ids', []), set(source_ids) | ({'current_writing'} if current else set()), catalog)
+            item['inspired_by'] = [citation.model_dump() for citation in citations]
+            item.pop('source_ids', None)
             item["id"] = str(uuid4())
             item_task = (
                 with_outline(task, item.get("outline"), payload.language)
@@ -245,6 +188,7 @@ async def _generate_assistance(payload, user, provider, quota):
                 {
                     "id": item["id"],
                     "user_id": user.id,
+                    "project_id": scope["project_id"],
                     "title": item["title"][:300],
                     "suggestion": item["text"][:12000],
                     "reason": "",
@@ -252,8 +196,8 @@ async def _generate_assistance(payload, user, provider, quota):
                         "",
                         "new_topic" if payload.action == "next" else "expand_idea",
                         [],
-                        [],
-                        writing_task=item_task,
+                        citations,
+                        writing_task=item_task, project_id=scope["project_id"],
                     ),
                     "related_topics": [],
                     "source_ids": dependencies,
@@ -261,7 +205,7 @@ async def _generate_assistance(payload, user, provider, quota):
                 }
             )
         usage = result.usage
-        response = {"items": items, "request_id": quota.id}
+        response = {"items": items, "request_id": quota.id, "context_scope": scope["scope"], "project_id": scope["project_id"], "resource_count": scope["resource_count"]}
         await quota.complete(
             getattr(usage, "prompt_tokens", None),
             getattr(usage, "completion_tokens", None),
