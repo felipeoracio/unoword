@@ -27,6 +27,8 @@ import { beginSession } from "@/lib/session";
 import { useProduct } from "@/lib/product";
 import "@/styles/marketing.css";
 import "@/styles/account.css";
+import AppShell from "@/components/studio/AppShell";
+import { useStudioPreferences } from "@/lib/studio-preferences";
 
 async function currentUser(): Promise<AuthUser | null> {
   try {
@@ -109,6 +111,7 @@ function redirectToBilling(result: { url: string; destination: string }) {
   window.location.assign(url.href);
 }
 export default function Account() {
+  const { language: studioLanguage } = useStudioPreferences();
   const [params] = useSearchParams();
   const requested = params.get("mode");
   const mode =
@@ -391,7 +394,7 @@ export default function Account() {
       setBusy(false);
     }
   }
-  return (
+  const content = (
     <div className="uw-site uw-account-page">
       <header className="uw-account-header uw-container">
         <Brand />
@@ -418,7 +421,7 @@ export default function Account() {
               <p className="uw-account-email">
                 Signed in as <strong>{user.email}</strong>
               </p>
-              <p className="uw-account-plan">
+              <p className="uw-account-plan" id="account-settings" tabIndex={-1}>
                 Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
               {lifetimeIntent && <LifetimeAccount key={user.id} user={user} />}
@@ -548,9 +551,16 @@ export default function Account() {
                     </button>
                   </form>
                 )}
-              <WritingStreak owner={user.id} paid={user.ai_access} />
+              <div id="writing-progress" tabIndex={-1}>
+                <WritingStreak owner={user.id} paid={user.ai_access} />
+              </div>
+              {!user.ai_access && <section id="quick-prompt" className="uw-studio-prompt-help" tabIndex={-1} aria-labelledby="quick-prompt-heading">
+                <h2 id="quick-prompt-heading">Quick Prompt</h2>
+                <p>{studioLanguage === "es" ? "Encuentra tu próxima idea en la extensión de Chrome de UnoWord. Quick Prompt está incluido en Free y Pro y no consume créditos de IA." : "Find your next idea in the UnoWord Chrome extension. Quick Prompt is included with Free and Pro and does not use AI credits."}</p>
+                <Link to="/account#install">{studioLanguage === "es" ? "Configurar la extensión de Chrome" : "Set up the Chrome extension"}</Link>
+              </section>}
               {user.ai_access && <><AIUsage usage={aiUsage.data} /><Link className="uw-button" to="/projects">Projects &amp; Writing Library <ArrowRight size={16}/></Link></>}
-              <div className="uw-install-card" id="install">
+              <div className="uw-install-card" id="install" tabIndex={-1}>
                 <Link
                   className="uw-button"
                   to={recoveryPath(user.ai_access ? "/editor" : "/account?plan=pro")}
@@ -771,6 +781,7 @@ export default function Account() {
       </main>
     </div>
   );
+  return user ? <AppShell user={user}>{content}</AppShell> : content;
 }
 function PencilMark() {
   return <Chrome />;

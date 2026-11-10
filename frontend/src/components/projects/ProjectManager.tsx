@@ -74,13 +74,16 @@ export default function ProjectManager({
   onOpen,
   onProfile,
   language = "en",
+  headingLevel = 1,
 }: {
   workspace: Workspace;
   active: string | null;
   onOpen: (id: string | null) => void;
   onProfile: () => void;
   language?: string;
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   const es = language === "es",
     t = (en: string, spanish: string) => (es ? spanish : en);
   const [query, setQuery] = useState(""),
@@ -280,9 +283,9 @@ export default function ProjectManager({
               "TUS PALABRAS. TU VOZ. TU HISTORIA.",
             )}
           </p>
-          <h1>
+          <Heading>
             <FolderKanban size={26} /> {t("Projects", "Proyectos")}
-          </h1>
+          </Heading>
           <p>
             {t(
               "A space for every idea. Your writing stays yours.",

@@ -203,8 +203,8 @@ export function RewardsWidget({
     </>
   );
 }
-export function RewardsContent({ owner }: { owner: string }) {
-  const rewards = useRewards(owner),
+export function RewardsContent({ owner, language = "auto" }: { owner: string; language?: string }) {
+  const rewards = useRewards(owner, language),
     data = rewards.data,
     [error, setError] = useState("");
   const t = translate(data);
@@ -214,7 +214,7 @@ export function RewardsContent({ owner }: { owner: string }) {
         {rewards.error ? t("Rewards setup is not available yet.") : "…"}
       </p>
     );
-  if (!data.enabled) return <RewardsSettings owner={owner} />;
+  if (!data.enabled) return <RewardsSettings owner={owner} language={language} />;
   const earned = data.achievements.filter((a) => a.unlocked),
     categories = [
       ["words", "Words"],

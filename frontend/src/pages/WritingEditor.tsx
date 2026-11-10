@@ -21,8 +21,9 @@ import AIUsage from "@/components/AIUsage";
 import WritingTour from "@/components/onboarding/WritingTour";
 import WritingTask from "@/components/WritingTask";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
+import AppShell from "@/components/studio/AppShell";
 import { generateJSON } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
@@ -321,6 +322,7 @@ const toPlain = (content: JSONContent): string =>
         );
 
 export default function WritingEditor() {
+  const routeLocation = useLocation();
   const ws = useWritingWorkspace();
   const projects = useProjectWorkspace(
     ws.user?.id,
@@ -369,6 +371,12 @@ export default function WritingEditor() {
   const [focus, setFocus] = useState(false),
     [left, setLeft] = useState(false),
     [right, setRight] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(routeLocation.search).get("assistant") === "1") {
+      setRight(true);
+      setFocus(false);
+    }
+  }, [routeLocation.search]);
   const [filter, setFilter] = useState("active"),
     [search, setSearch] = useState("");
   const [serverMatches, setServerMatches] = useState<Set<string> | null>(null);
@@ -1849,6 +1857,8 @@ export default function WritingEditor() {
     );
 
   return (
+    <AppShell user={ws.user} editor focusMode={focus} beforeNavigate={ws.flushWrites}
+      theme={theme === "dark" ? "dark" : "light"} language={language === "es" ? "es" : "en"}>
     <main
       className={`uw-editor ${focus ? "uw-editor-focus" : ""}`}
       data-theme={theme}
@@ -3699,5 +3709,6 @@ export default function WritingEditor() {
         </form>
       </dialog>
     </main>
+    </AppShell>
   );
 }
