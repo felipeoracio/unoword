@@ -7,6 +7,9 @@ import { useWritingWorkspace } from "@/lib/use-writing-workspace";
 import { useProjectWorkspace } from "@/lib/use-project-workspace";
 import "@/styles/writing-editor.css";
 import "@/styles/projects.css";
+import AppShell from "@/components/studio/AppShell";
+import { StudioPageHeader } from "@/components/studio/StudioPrimitives";
+import { useStudioPreferences } from "@/lib/studio-preferences";
 export default function Projects() {
   const ws = useWritingWorkspace(),
     workspace = useProjectWorkspace(
@@ -18,7 +21,7 @@ export default function Projects() {
     navigate = useNavigate(),
     dialog = useRef<HTMLDialogElement>(null),
     [error, setError] = useState("");
-  const language = localStorage.getItem("uno-writing-language") || "en",
+  const { language } = useStudioPreferences(),
     es = language === "es";
   if (ws.loading)
     return (
@@ -70,6 +73,9 @@ export default function Projects() {
     }
   }
   return (
+    <AppShell user={ws.user}>
+    <StudioPageHeader title={es ? "Biblioteca y proyectos" : "Library & projects"}
+      description={es ? "Tu escritura y tus recursos, con espacio para cada idea." : "Your writing and resources, with space for every idea."} />
     <main className="uw-editor uw-project-page" lang={language}>
       <header className="uw-editor-header">
         <Brand />
@@ -80,6 +86,7 @@ export default function Projects() {
       </header>
       {error && <p role="alert">{error}</p>}
       <ProjectManager
+        headingLevel={2}
         workspace={workspace}
         active={workspace.state?.preferences.active_project_id || null}
         onOpen={(id) => void open(id)}
@@ -110,5 +117,6 @@ export default function Projects() {
         </div>
       </dialog>
     </main>
+    </AppShell>
   );
 }

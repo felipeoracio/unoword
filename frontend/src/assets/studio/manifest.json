@@ -1,0 +1,163 @@
+{
+  "origin": "Owner-supplied Assets.zip",
+  "assets": [
+    {
+      "file": "sidebar-landscape.webp",
+      "source": "Misty Mountain Sunrise Forest.png",
+      "width": 600,
+      "height": 1600,
+      "bytes": 46790,
+      "alpha": false
+    },
+    {
+      "file": "landscape-master.webp",
+      "source": "Landscape_master_1.png",
+      "width": 2048,
+      "height": 768,
+      "bytes": 131156,
+      "alpha": false
+    },
+    {
+      "file": "landscape-mobile.webp",
+      "source": "Landscape_master_2.png",
+      "width": 1080,
+      "height": 1440,
+      "bytes": 86544,
+      "alpha": false
+    },
+    {
+      "file": "prompts/writing-path.webp",
+      "source": "writing_prompt_illustration.png",
+      "width": 1200,
+      "height": 800,
+      "bytes": 128920,
+      "alpha": false
+    },
+    {
+      "file": "empty-states/documents.webp",
+      "source": "Empty_state_collection_1.png",
+      "width": 1000,
+      "height": 700,
+      "bytes": 78752,
+      "alpha": true
+    },
+    {
+      "file": "empty-states/progress.webp",
+      "source": "Empty_state_collection_2.png",
+      "width": 1000,
+      "height": 700,
+      "bytes": 120970,
+      "alpha": true
+    },
+    {
+      "file": "empty-states/ideas.webp",
+      "source": "Empty_state_collection_3.png",
+      "width": 1000,
+      "height": 700,
+      "bytes": 97746,
+      "alpha": true
+    },
+    {
+      "file": "milestones/open-book.webp",
+      "source": "Glossy Blue Open Book Badge-1.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 36230,
+      "alpha": true
+    },
+    {
+      "file": "milestones/feather.webp",
+      "source": "Glossy Emerald Quill Badge-2.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 31594,
+      "alpha": true
+    },
+    {
+      "file": "milestones/flame.webp",
+      "source": "Glossy Golden Flame Badge-5.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 36332,
+      "alpha": true
+    },
+    {
+      "file": "milestones/star.webp",
+      "source": "Glossy Golden Hexagon Star Badge-4.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 30092,
+      "alpha": true
+    },
+    {
+      "file": "milestones/flag.webp",
+      "source": "Glossy Mountain Summit Flag Badge-6.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 28244,
+      "alpha": true
+    },
+    {
+      "file": "milestones/mountain.webp",
+      "source": "Glossy Violet Mountain Badge-3.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 29906,
+      "alpha": true
+    },
+    {
+      "file": "covers/forest-path.webp",
+      "source": "cover-forest-path.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 128324,
+      "alpha": false
+    },
+    {
+      "file": "covers/lakeside-reflection.webp",
+      "source": "cover-lakeside-reflection.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 49526,
+      "alpha": false
+    },
+    {
+      "file": "covers/mountain-sunrise.webp",
+      "source": "cover-mountain-sunrise.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 46996,
+      "alpha": false
+    },
+    {
+      "file": "covers/open-notebook.webp",
+      "source": "cover-open-notebook.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 41954,
+      "alpha": false
+    },
+    {
+      "file": "covers/reading-corner.webp",
+      "source": "cover-reading-corner.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 51150,
+      "alpha": false
+    },
+    {
+      "file": "covers/tree-and-horizon.webp",
+      "source": "cover-tree-and-horizon.png",
+      "width": 960,
+      "height": 640,
+      "bytes": 94636,
+      "alpha": false
+    }
+  ],
+  "excluded": [
+    {
+      "source": "Serene Blue and Gold Landscape Collage.png",
+      "reason": "Contact sheet; the six individual covers are included."
+    }
+  ]
+}
