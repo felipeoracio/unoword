@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../src/components/ui";
 const icons = {
   index: "home-outline",
+  projects: "folder-open-outline",
   write: "create-outline",
   progress: "bar-chart-outline",
   ideas: "bulb-outline",
@@ -28,6 +29,7 @@ export default function Layout() {
       })}
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="projects" options={{ title: "Projects" }} />
       <Tabs.Screen name="write" options={{ title: "Write" }} />
       <Tabs.Screen name="progress" options={{ title: "Progress" }} />
       <Tabs.Screen name="ideas" options={{ title: "Ideas" }} />

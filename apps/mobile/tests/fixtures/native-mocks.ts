@@ -7,7 +7,7 @@ export const scheduleNotificationAsync = async () => "fixture-reminder";
 export const SchedulableTriggerInputTypes = { DAILY: "daily" };
 export const useRouter = () => ({
   push: (route: string) =>
-    (window as any).navigate(route === "/ideas" ? "Ideas" : "Write"),
+    (window as any).navigate(route === "/projects" ? "Projects" : route === "/ideas" ? "Ideas" : "Write"),
 });
 export default {
   getItem: async () => null,

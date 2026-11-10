@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import {useProjects} from "../providers/ProjectProvider";
+import React, { useEffect, useRef, useState } from "react";
 import { Switch, View } from "react-native";
 import * as Crypto from "expo-crypto";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -108,6 +109,7 @@ export function Task({ task }: { task?: WritingTask }) {
   );
 }
 export function Suggestions() {
+  const projects=useProjects();
   const { account, api, online } = useApp(),
     repo = useRepository(),
     client = useQueryClient();
@@ -117,16 +119,23 @@ export function Suggestions() {
     [error, setError] = useState(""),
     [result, setResult] = useState<Suggestion | null>(null),
     [saved, setSaved] = useState(false);
+  const contextKey=JSON.stringify([account?.id,projects.active,projects.scope,projects.selected]);
+  const liveContext=useRef(contextKey);liveContext.current=contextKey;
   const retry = useRef(new RequestTicket(Crypto.randomUUID));
+  useEffect(()=>{setError("");},[projects.active,projects.scope,JSON.stringify(projects.selected)]);
   const owner = account?.id;
+  useEffect(()=>{setResult(null);setSaved(false);setError("")},[contextKey]);
   const generate = async () => {
     if (!repo || !owner || busy) return;
+    const requestedContext=liveContext.current;
     setBusy(true);
     setError("");
     try {
       await repo.sync(!!account?.features.writing_editor);
       if (!repo.summary) throw new Error("Refresh daily progress first.");
+      if(!await projects.flush())throw Error("Sync project context before using AI.");
       const payload = {
+        project_id:projects.active,context_scope:projects.scope,selected_resources:projects.selected,
         mode,
         language: repo.preferences?.language || "en",
         current_writing: mode === "expand_idea" ? idea : undefined,
@@ -138,6 +147,7 @@ export function Suggestions() {
         "/ai/suggestion",
         retry.current.prepare(payload),
       );
+      if(liveContext.current!==requestedContext)return;
       setResult(value);
       setSaved(false);
       retry.current.complete();
@@ -258,6 +268,7 @@ export function Suggestions() {
   );
 }
 export function Coach({ document }: { document: Document }) {
+  const projects=useProjects();
   const { account, api, online } = useApp(),
     repo = useRepository(),
     client = useQueryClient();
@@ -268,9 +279,13 @@ export function Coach({ document }: { document: Document }) {
     [items, setItems] = useState<
       { title: string; text: string; writing_task?: WritingTask }[]
     >([]);
+  const contextKey=JSON.stringify([account?.id,projects.active,projects.scope,projects.selected,document.id]);
+  const liveContext=useRef(contextKey);liveContext.current=contextKey;
   const retry = useRef(new RequestTicket(Crypto.randomUUID));
+  useEffect(()=>{setItems([]);setConsent(false);setError("")},[contextKey,document.id]);
   const request = async () => {
     if (!repo || busy || !account) return;
+    const requestedContext=liveContext.current;
     setBusy(true);
     setError("");
     try {
@@ -281,12 +296,15 @@ export function Coach({ document }: { document: Document }) {
           "Save the current document online before requesting guidance.",
         );
       if (!repo.summary) throw new Error("Refresh daily progress.");
+      if(!await projects.flush())throw Error("Sync project context before using AI.");
+      const share=!(["none","profile_only"].includes(projects.scope))&&(projects.scope!=="selected_resources"||projects.selected.some(r=>r.kind==="document"&&r.id===document.id));
       const payload = {
+        project_id:projects.active,context_scope:projects.scope,selected_resources:projects.selected,
         expected_user_id: account.id,
         document_id: document.id,
         action,
         consent,
-        current_text: current.plain_text,
+        current_text: share?current.plain_text:"",
         language: repo.preferences?.language || "en",
         writing_progress: progress(repo.summary),
       };
@@ -294,6 +312,7 @@ export function Coach({ document }: { document: Document }) {
       const response = await api<{
         items: { title: string; text: string; writing_task?: WritingTask }[];
       }>("POST", "/workspace/assistant", retry.current.prepare(payload));
+      if(liveContext.current!==requestedContext)return;
       setItems(response.items);
       retry.current.complete();
       client.invalidateQueries({ queryKey: ["usage", account.id] });

@@ -58,9 +58,10 @@ class RetrievedChunk:
     match: str = "vector"
 
 
-async def _fetch_feedback_bias(user_id: str) -> tuple[dict[str, float], dict[str, float]]:
+async def _fetch_feedback_bias(user_id: str, scope=None) -> tuple[dict[str, float], dict[str, float]]:
     """Return ({source_id: score}, {parent_id: score}) clamped to [-CLAMP, CLAMP]."""
 
+    if scope is not None and not scope.get('suggestion_ids'): return {}, {}
     try:
         rows = await service_rest(
             "GET",
@@ -71,6 +72,7 @@ async def _fetch_feedback_bias(user_id: str) -> tuple[dict[str, float], dict[str
                 "status": "in.(accepted,written,rejected)",
                 "order": "created_at.desc",
                 "limit": str(FEEDBACK_LOOKBACK),
+                **({'id': 'in.(' + ','.join(scope['suggestion_ids'][:200]) + ')'} if scope is not None else {}),
             },
         )
     except SupabaseAPIError as error:
@@ -168,20 +170,21 @@ async def retrieve_user_chunks(
     *,
     match_count: int = 6,
     match_threshold: float | None = None,
+    scope: dict | None = None,
 ) -> list[RetrievedChunk]:
     # Overfetch so feedback-driven reranking has room to drop losers.
     fetch_count = min(20, match_count * 2)
     threshold = MATCH_THRESHOLD if match_threshold is None else match_threshold
-    rows = await _vector_rows(user_id, query, fetch_count, threshold)
+    rows = await _scoped_rows(user_id, query, fetch_count, threshold, scope, vector=True) if scope is not None else await _vector_rows(user_id, query, fetch_count, threshold)
     match_kind = "vector"
     if not rows:
         # Missing vectors, embedding outage, or no semantic hit: keyword fallback.
-        rows = await _keyword_rows(user_id, query, fetch_count)
+        rows = await _scoped_rows(user_id, query, fetch_count, threshold, scope, vector=False) if scope is not None else await _keyword_rows(user_id, query, fetch_count)
         match_kind = "keyword"
     if not rows:
         return []
 
-    source_scores, parent_scores = await _fetch_feedback_bias(user_id)
+    source_scores, parent_scores = await _fetch_feedback_bias(user_id, scope) if scope is not None else await _fetch_feedback_bias(user_id)
 
     scored: list[tuple[float, float, dict]] = []
     for row in rows:
@@ -229,3 +232,25 @@ async def retrieve_user_chunks(
         )
         for adjusted, row in picked
     ]
+
+async def _scoped_rows(user_id, query, count, threshold, scope, *, vector):
+    if not any(scope.get(key) for key in ('source_ids','memory_ids','session_ids')):
+        return []
+    embedding = None
+    if vector:
+        service = get_embeddings_service()
+        if not service.enabled: return []
+        result = await service.embed(query)
+        if not result: return []
+        embedding = result.embedding
+    terms = keyword_terms(query)
+    if not vector and not terms: return []
+    try:
+        return await service_rest('POST', 'rpc/match_project_chunks', json={
+            'p_user_id': user_id, 'p_sources': scope.get('source_ids', []),
+            'p_memories': scope.get('memory_ids', []), 'p_sessions': scope.get('session_ids', []),
+            'p_query_embedding': embedding, 'p_terms': terms, 'p_count': count, 'p_threshold': threshold,
+        }) or []
+    except SupabaseAPIError as error:
+        logger.warning('scoped_retrieval_failed status=%s', error.response_status)
+        return []  # Never fall back to an unscoped RPC.

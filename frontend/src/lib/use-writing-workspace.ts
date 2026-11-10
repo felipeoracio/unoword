@@ -538,6 +538,26 @@ export function useWritingWorkspace() {
   }, [tab, publish, publishActivity, persist, verifyAccess, setFolders]);
   syncRef.current = sync;
 
+  const flushWrites = useCallback(async (localOnly = false) => {
+    const owner = identity.current;
+    if (!owner?.ai_access) return false;
+    try {
+      const deadline = Date.now() + 30000;
+      while (pendingLocal.current || syncing.current) {
+        if (Date.now() > deadline) throw Error("save_pending");
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      if (navigator.onLine && !localOnly) {
+        await syncRef.current();
+        if (docs.current.some(d => d.dirty) || conflictIds.current.size) throw Error("save_pending");
+      }
+      return identity.current?.id === owner.id;
+    } catch {
+      setError("Your writing could not be saved safely. Resolve the save or conflict before switching projects. Your draft is still here.");
+      return false;
+    }
+  }, []);
+
   const changeCompletion = useCallback(
     async (id: string, state: "draft" | "completed") => {
       const owner = identity.current;
@@ -735,12 +755,13 @@ export function useWritingWorkspace() {
       const local = docs.current.find((d) => d.id === id),
         remote = conflicts[id];
       if (!local || !remote || !identity.current) return;
-      if (keepLocal)
-        await create(`${local.title} (recovered copy)`, {
+      const owner=identity.current.id;
+      const recovered = keepLocal ? await create(`${local.title} (recovered copy)`, {
           content: local.content,
           plain_text: local.plain_text,
           folder_id: local.folder_id,
-        });
+        }) : undefined;
+      if ((keepLocal && !recovered) || identity.current?.id!==owner) return;
       const clean = { ...remote, tab_id: tab, dirty: false };
       publish(docs.current.map((d) => (d.id === id ? clean : d)));
       await cachePut(identity.current.id, "document", id, remote);
@@ -753,6 +774,7 @@ export function useWritingWorkspace() {
       });
       setError("");
       schedule();
+      return recovered;
     },
     [conflicts, create, publish, tab, schedule],
   );
@@ -1010,6 +1032,7 @@ export function useWritingWorkspace() {
     create,
     update,
     sync,
+    flushWrites,
     recordActivity,
     recheckIdentity,
     completionBusy,

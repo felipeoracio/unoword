@@ -38,7 +38,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       {
         name: "native-fixtures",
         setup(b) {
-          b.onResolve({ filter: /providers\/AppProvider$/ }, () => ({
+          b.onResolve({ filter: /AppProvider$/ }, () => ({
             path: path.join(__dirname, "fixtures/context.tsx"),
           }));
           b.onResolve({ filter: /components\/RichEditor$/ }, () => ({
@@ -87,7 +87,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       [1180, 820, "ipad-landscape"],
     ]) {
       await page.setViewportSize({ width, height });
-      for (const screen of ["Home", "Write", "Ideas", "Progress", "Profile"]) {
+      for (const screen of ["Home", "Write", "Projects", "Ideas", "Progress", "Profile"]) {
         await page.goto(origin + "/?screen=" + screen);
         await page.waitForTimeout(350);
         assert.ok(
@@ -169,6 +169,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       }
     }
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(origin+'/?screen=Projects');
+    await page.getByRole('button',{name:'New Project',exact:true}).click();
+    await page.getByRole('textbox',{name:'Project name',exact:true}).fill('Native Memoir');
+    await page.getByRole('button',{name:'Save project',exact:true}).click();
+    await page.getByText('Native Memoir',{exact:true}).first().waitFor();
+    await page.getByRole('button',{name:'Open in editor',exact:true}).click();
+    await page.getByRole('button',{name:'Project: Native Memoir',exact:true}).waitFor();
+    await page.getByRole('button',{name:'AI Context: Current Project',exact:true}).click();
+    await page.getByRole('button',{name:'No Library Context',exact:true}).click();
+    await page.getByRole('button',{name:'Done',exact:true}).click();
+    await page.getByRole('button',{name:'AI Context: No Library Context',exact:true}).waitFor();
+    console.log('PASS native Projects: create and save a project, open its workspace, and choose an explicit AI context using real provider/components with synthetic APIs.');
     await page.goto(origin + "/?screen=Write&plan=free");
     await page.getByText("Your space to write").waitFor();
     assert.equal(await page.locator("iframe").count(), 0);

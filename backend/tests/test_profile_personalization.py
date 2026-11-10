@@ -39,6 +39,8 @@ async def test_each_request_uses_latest_profile_at_provider_boundary(monkeypatch
     for key,value in {'_user_rows':rows,'_entitlement':noop,'user_rest':store,'retrieve_user_chunks':passages,'diverse_passages':passages,'get_suggestion_provider':Provider}.items(): monkeypatch.setattr(ai,key,value)
     monkeypatch.setattr(ai.knowledge,'disabled_source_ids',disabled)
     monkeypatch.setattr(ai.knowledge,'heal_missing_embeddings',noop)
+    from tests.project_helpers import install_project_boundary
+    install_project_boundary(monkeypatch, rows, disabled=disabled)
     payload=AISuggestionRequest(mode=mode,current_writing='My current draft about community science.' if mode=='expand_idea' else None)
     await ai.create_suggestion(payload,user)
     assert all(x in contexts[-1] for x in ['Educational gardening','encouraging','apartment gardeners','sustainability'])

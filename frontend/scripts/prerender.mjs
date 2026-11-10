@@ -42,4 +42,4 @@ const sitemap = ['','privacy','support'].map(path => `  <url><loc>${site}${path}
 await writeFile(new URL('../dist/sitemap.xml', import.meta.url), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemap}\n</urlset>\n`);
 await writeFile(new URL('../dist/robots.txt', import.meta.url), preview
   ? 'User-agent: *\nDisallow: /\n'
-  : `User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /editor\nDisallow: /rewards\nDisallow: /terms\nSitemap: ${site}sitemap.xml\n`);
+  : `User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /projects\nDisallow: /editor\nDisallow: /rewards\nDisallow: /terms\nSitemap: ${site}sitemap.xml\n`);

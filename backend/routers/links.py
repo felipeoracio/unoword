@@ -104,6 +104,8 @@ async def list_links(user: AuthenticatedUser = Depends(require_ai_user)) -> list
 
 @router.post("", response_model=AIDocument, status_code=status.HTTP_201_CREATED)
 async def add_link(payload: AILinkCreate, background_tasks: BackgroundTasks, user: AuthenticatedUser = Depends(require_ai_user)) -> AIDocument:
+    if payload.expected_user_id and str(payload.expected_user_id) != user.id:
+        raise HTTPException(409, "account_changed")
     try:
         normalized, host = validate_url(payload.url)
     except LinkIngestError as error:

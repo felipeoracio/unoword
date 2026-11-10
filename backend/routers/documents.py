@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 
@@ -45,7 +45,11 @@ async def upload_document(
     document_title: Annotated[str, Form(min_length=1, max_length=300)],
     document_type: Annotated[DocumentType, Form()] = "other",
     user: AuthenticatedUser = Depends(require_ai_user),
+    expected_user_id: Annotated[UUID | None, Form()] = None,
 ) -> AIDocument:
+    if expected_user_id and str(expected_user_id) != user.id:
+        await file.close()
+        raise HTTPException(409, "account_changed")
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     await file.close()
     if len(data) > MAX_UPLOAD_BYTES:

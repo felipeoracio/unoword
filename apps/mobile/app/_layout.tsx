@@ -1,3 +1,4 @@
+import {ProjectProvider} from "../src/providers/ProjectProvider";
 import React, { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack } from "expo-router";
@@ -31,7 +32,7 @@ export default function Layout() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <Gate />
+        <ProjectProvider><Gate /></ProjectProvider>
       </AppProvider>
     </SafeAreaProvider>
   );

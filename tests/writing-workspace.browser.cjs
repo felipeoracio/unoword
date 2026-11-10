@@ -17,11 +17,13 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
+  const projectFixture=require('./helpers/project-fixture.cjs').projectsFixture(()=>currentOwner,()=>[...documents.values()]);
   await context.route(origin+'/api/**',async route=>{
    if(offline)return route.abort('internetdisconnected');
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
    if(!signedIn){status=401;value={detail:'Authentication required'};}
+   else if(key.startsWith('/workspace/projects')){const result=projectFixture(key,method,body);status=result.status;value=result.value;}
    else if(key==='/subscription/substack'){value={user_id:currentOwner,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null};}
    else if(key==='/rewards'){status=503;value={detail:'rewards_setup_required'};}
    else if(key==='/auth/me')value={id:currentOwner,email:currentOwner===owner?'writer@example.com':'other@example.com',plan:pro?'pro':'free',ai_access:pro};
@@ -94,6 +96,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   });
   if(process.env.WRITING_IMAGES_ONLY==='1')await context.addInitScript(owner=>localStorage.setItem('uno-tour-launch-hidden:'+owner,'1'),owner);
   const page=await context.newPage();page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
+  if(process.env.PROJECTS_ONLY==='1'){await require('./helpers/project-browser-flow.cjs')({page,context,origin,documents,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,errors});await context.close();return;}
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
   signedIn=true;await page.reload();await page.getByRole('button',{name:'Start New Document',exact:true}).click();
@@ -400,10 +403,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.locator('.uw-editor-ai-results article').first().waitFor();
   assert.equal(await page.locator('.uw-editor-ai-results article').count(),1);
   assert.equal(await canvas.textContent(),authoredText,'Guidance never changes the document');
-  await page.getByRole('button',{name:'My Writing Profile',exact:true}).click();
+  await page.locator('[data-tour=profile]').click();
   const profileDialog=page.getByRole('dialog');await profileDialog.getByLabel('What do you want to write?').fill('An edit that should be canceled');
   await profileDialog.getByRole('button',{name:'Cancel',exact:true}).click();
-  await page.getByRole('button',{name:'My Writing Profile',exact:true}).click();
+  await page.locator('[data-tour=profile]').click();
   assert.equal(await profileDialog.getByLabel('What do you want to write?').inputValue(),'Essays about craft and community');
   await profileDialog.getByLabel('What do you want to write?').fill('Patient observation and practical craft');
   await profileDialog.getByRole('button',{name:'Save profile',exact:true}).click();assert.equal(profile.writing_goal,'Patient observation and practical craft');
@@ -484,6 +487,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const secondCanvas=second.getByRole('textbox',{name:'Document content'});await secondCanvas.waitFor();
   await second.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.textContent.includes('Offline draft from the first tab.'));
   assert.notEqual(await second.evaluate(()=>sessionStorage.getItem('uno-writing-tab')),clonedStorage['uno-writing-tab'],'Duplicated tabs get independent draft identities');
+  // Restoring the account's workspace briefly locks editing while the durable
+  // draft and project selection hydrate; wait for the real editable canvas.
+  await second.locator('[aria-label="Document content"][contenteditable="true"]').waitFor();
   await secondCanvas.fill('Offline draft from the second tab.');
   await second.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('offline'));
   offline=false;await context.setOffline(false);

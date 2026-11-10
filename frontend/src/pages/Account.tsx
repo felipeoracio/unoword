@@ -549,7 +549,7 @@ export default function Account() {
                   </form>
                 )}
               <WritingStreak owner={user.id} paid={user.ai_access} />
-              {user.ai_access && <AIUsage usage={aiUsage.data} />}
+              {user.ai_access && <><AIUsage usage={aiUsage.data} /><Link className="uw-button" to="/projects">Projects &amp; Writing Library <ArrowRight size={16}/></Link></>}
               <div className="uw-install-card" id="install">
                 <Link
                   className="uw-button"

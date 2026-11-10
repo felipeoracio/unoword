@@ -1,3 +1,4 @@
+import GuidedProfile from "./GuidedProfile";
 import { RewardSettings } from "./Rewards";
 import React, { useEffect, useState } from "react";
 import { Alert } from "react-native";
@@ -250,6 +251,7 @@ export default function Profile() {
           <UsageCard />
           <Card>
             <Heading>My Writing Profile</Heading>
+            <GuidedProfile key={account.id}/>
             <Label muted>
               Your existing profile is the central personalization system,
               shared across UnoWord.
