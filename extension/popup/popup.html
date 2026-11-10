@@ -41,14 +41,6 @@
           </button>
         </div>
       </header>
-      <section id="project-controls" hidden aria-label="Project and AI context" style="padding:8px 18px;border-bottom:1px solid #e7edf6">
-        <label class="wc__helper" for="project-active">Project</label><select id="project-active" style="width:100%;min-height:36px"></select>
-        <label class="wc__helper" for="project-ai-scope">AI Context</label><select id="project-ai-scope" style="width:100%;min-height:36px"></select>
-        <button type="button" class="wc__btn wc__btn--text" id="project-choose-resources" hidden>Choose resources</button>
-        <p class="wc__helper" id="project-sync-status" role="status"></p>
-        <button type="button" class="wc__btn wc__btn--text" id="project-open-library">Projects &amp; Writing Profile</button>
-      </section>
-
 
       <nav class="wc__main-nav" id="main-nav" aria-label="UnoWord" role="tablist">
         <button id="nav-write" data-page="session" role="tab" aria-controls="session-panel" aria-selected="true" data-i18n="nav.write">Write</button>
@@ -251,6 +243,13 @@
           <button class="wc__quick-idea" data-idea-mode="connect_dots"><span data-i18n="suggestion.mode.connect_dots">Connect the Dots</span><span aria-hidden="true">›</span></button>
           <button class="wc__btn wc__btn--primary" id="dashboard-more-ideas" data-i18n="dashboard.exploreIdeas">✦ Explore ideas</button>
         </div>
+        <section id="project-controls" hidden aria-label="Project and AI context" style="padding:8px 18px;border-bottom:1px solid #e7edf6">
+          <label class="wc__helper" for="project-active">Project</label><select id="project-active" style="width:100%;min-height:36px"></select>
+          <label class="wc__helper" for="project-ai-scope">AI Context</label><select id="project-ai-scope" style="width:100%;min-height:36px"></select>
+          <button type="button" class="wc__btn wc__btn--text" id="project-choose-resources" hidden>Choose resources</button>
+          <p class="wc__helper" id="project-sync-status" role="status"></p>
+          <button type="button" class="wc__btn wc__btn--text" id="project-open-library">Projects &amp; Writing Profile</button>
+        </section>
       </section>
 
       <section class="wc__panel wc__library" id="library-panel" hidden>
