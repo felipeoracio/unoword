@@ -39,9 +39,6 @@ export function ProductCapture({
           fetchPriority={priority ? "high" : "low"}
         />
       </a>
-      <figcaption>
-        <span>Actual app · sample content.</span> {data.description}
-      </figcaption>
     </figure>
   );
 }
@@ -100,10 +97,6 @@ export default function StudioShowcase() {
           {selected === key && <ProductCapture screen={key} />}
         </div>
       ))}
-      <p className="lp-sample-note">
-        Actual UnoWord screens with fictional sample content. Some views require
-        Pro.
-      </p>
     </>
   );
 }
