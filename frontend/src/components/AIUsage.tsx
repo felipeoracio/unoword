@@ -3,9 +3,11 @@ import type { AIUsageSummary } from "@/lib/use-ai-usage";
 export default function AIUsage({
   usage,
   language = "en",
+  compact = false,
 }: {
   usage?: AIUsageSummary | null;
   language?: string;
+  compact?: boolean;
 }) {
   const es = language === "es";
   if (!usage)
@@ -71,12 +73,7 @@ export default function AIUsage({
           usage.guidance_monthly_pending,
         ],
       ];
-  return (
-    <section
-      className="uw-ai-usage"
-      aria-label={es ? "Tu uso de IA" : "Your AI Usage"}
-    >
-      <strong>{es ? "Tu uso de IA" : "Your AI Usage"}</strong>
+  const content = <>
       {rows.map(([label, used, limit, remaining, pending]) => (
         <div key={String(label)} className="uw-ai-usage-row">
           <span>{label}</span>
@@ -131,6 +128,10 @@ export default function AIUsage({
             : "Your timezone change applies next calendar month."}
         </small>
       )}
+    </>;
+  return (
+    <section className={`uw-ai-usage${compact?" uw-ai-usage-compact":""}`} aria-label={es?"Tu uso de IA":"Your AI Usage"}>
+      {compact?<details><summary><strong>{es?"Tu uso de IA":"Your AI Usage"}</strong><span>{usage.legacy_shared?(es?"Solicitudes de IA hoy":"AI requests today"):(es?"Sugerencias hoy":"Suggestions today")}: <b>{usage.used_today} / {usage.daily_limit}</b></span><small>{usage.remaining} {es?"disponibles hoy":"left today"}{usage.legacy_shared?` · ${es?"Asignación compartida protegida":"Protected shared allowance"}`:` · ${usage.suggestions_monthly_remaining??"—"} ${es?"este mes":"this month"} · ${usage.guidance_monthly_remaining??"—"} ${es?"de guía":"guidance"}`}</small>{usage.pending_today>0 && <small>{usage.pending_today} {es?"en curso":"pending"}</small>}{!usage.legacy_shared && usage.guidance_monthly_pending>0 && <small>{usage.guidance_monthly_pending} {es?"solicitudes de guía en curso":"guidance requests pending"}</small>}</summary><div className="uw-ai-usage-expanded">{content}</div></details>:<><strong>{es?"Tu uso de IA":"Your AI Usage"}</strong>{content}</>}
     </section>
   );
 }

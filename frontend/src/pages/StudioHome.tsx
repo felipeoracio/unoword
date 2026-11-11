@@ -7,7 +7,8 @@ import { StudioButton, StudioLink, StudioCard, StudioStatus } from "@/components
 import Brand from "@/components/marketing/Brand";
 import { useStudioHome } from "@/lib/use-studio-home";
 import { useStudioPreferences } from "@/lib/studio-preferences";
-import { prompts, writingDates } from "@/lib/writing";
+import { writingDates } from "@/lib/writing";
+import { useQuickPrompt } from "@/lib/use-quick-prompt";
 import { apiPut, ApiError } from "@/lib/api";
 import { preparePromptDraft } from "@/lib/editor-launch";
 import { recoveryPath } from "@/lib/domain-recovery";
@@ -19,14 +20,12 @@ import forestCover from "@/assets/studio/covers/forest-path.webp";
 import lakeCover from "@/assets/studio/covers/lakeside-reflection.webp";
 import "@/styles/studio-home.css";
 
-type Prompt = { id: string; text: string };
 const covers = [mountainCover, forestCover, lakeCover];
 
 export default function StudioHome() {
   const home = useStudioHome(), { language } = useStudioPreferences(), navigate = useNavigate(), client = useQueryClient();
   const es = language === "es", t = (en: string, spanish: string) => es ? spanish : en;
   const [now, setNow] = useState(Date.now());
-  const [prompt, setPrompt] = useState<Prompt | null>(null), history = useRef<string[]>([]);
   const [notice, setNotice] = useState("");
   const [goalOpen, setGoalOpen] = useState(false), [goalInput, setGoalInput] = useState(""),
     [goalBusy, setGoalBusy] = useState(false), [goalError, setGoalError] = useState("");
@@ -36,31 +35,16 @@ export default function StudioHome() {
   const preferences = home.preferences.isError ? undefined : home.preferences.data;
   const timezone = summary?.timezone || home.timezone;
   const date = summary?.reportingDate || writingDates.dayKey(now, timezone);
-  const promptKey = home.owner ? `uno-home-quick-prompt:${home.owner}:${date}:${language}` : "";
   const themes = preferences?.themes || ["surprise-me"];
-  const themesRef = useRef(themes); themesRef.current = themes;
   const promptReady = home.preferences.isFetched || !home.online;
+  const { prompt, another } = useQuickPrompt(home.owner, date, language, themes, promptReady);
   useEffect(() => { const timer=setInterval(()=>setNow(Date.now()),60000); return ()=>clearInterval(timer); }, []);
-  useEffect(() => {
-    if (!promptKey || !promptReady) { setPrompt(null); return; }
-    let saved: { prompt?: Prompt; history?: string[] } | null = null;
-    try { saved = JSON.parse(localStorage.getItem(promptKey) || "null"); } catch { /* Static prompts still work without storage. */ }
-    history.current = Array.isArray(saved?.history) ? saved.history.filter(id=>typeof id==="string").slice(0,12) : [];
-    const picked = saved?.prompt && typeof saved.prompt.id === "string" && typeof saved.prompt.text === "string" && saved.prompt.text.length <= 300
-      ? saved.prompt : prompts.pickPrompt(themesRef.current, language, history.current);
-    setPrompt(picked);
-    try { localStorage.setItem(promptKey, JSON.stringify({prompt:picked,history:history.current})); } catch { /* Optional preference only. */ }
-    setNotice("");
-  }, [promptKey, language, promptReady]);
+  useEffect(() => { setNotice(""); }, [prompt?.id, language]);
   useEffect(() => { if (goalOpen) goalDialog.current?.showModal(); else goalDialog.current?.close(); }, [goalOpen]);
   useEffect(() => { setGoalOpen(false); setGoalBusy(false); setGoalError(""); setNotice(""); }, [home.owner]);
 
   function anotherPrompt() {
-    if (!prompt) return;
-    history.current = [prompt.id, ...history.current].slice(0,12);
-    const next=prompts.pickPrompt(themesRef.current, language, history.current);
-    setPrompt(next); setNotice("");
-    try { localStorage.setItem(promptKey,JSON.stringify({prompt:next,history:history.current})); } catch { /* Optional preference only. */ }
+    another(); setNotice("");
   }
   async function handlePrompt() {
     if (!prompt || !home.owner) return;
@@ -114,7 +98,7 @@ export default function StudioHome() {
           <h1>{greeting}</h1><p>{t("A little space. A fresh thought. Your words.", "Un poco de espacio. Una nueva idea. Tus palabras.")}</p>
           <div className="uw-home-actions">
             <StudioLink to={recoveryPath(home.paid?"/editor":"/account#install")}><PenLine aria-hidden="true" />{t("Start Writing", "Empezar a escribir")}<ArrowRight aria-hidden="true" /></StudioLink>
-            <StudioLink variant="outline" to="#home-prompt"><Lightbulb aria-hidden="true" />{t("Get Ideas", "Obtener ideas")}</StudioLink>
+            <StudioLink variant="outline" to="/ideas"><Lightbulb aria-hidden="true" />{t("Get Ideas", "Obtener ideas")}</StudioLink>
           </div>
           <p className="uw-home-start-note">{home.paid?t("Return to your unfinished writing, or begin a new draft in the editor.","Continúa tu escritura pendiente o empieza un nuevo borrador en el editor."):t("Use the Chrome extension to track writing in supported apps. The built-in editor requires Pro.","Usa la extensión de Chrome para registrar tu escritura en aplicaciones compatibles. El editor integrado requiere Pro.")}</p>
         </div>

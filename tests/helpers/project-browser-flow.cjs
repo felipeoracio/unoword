@@ -41,7 +41,7 @@ module.exports=async({page,context,origin,documents,requests,fixture,setSignedIn
  await page.getByLabel('Active project',{exact:true}).selectOption(memoir.id);
  await canvas.waitFor();await page.getByRole('button',{name:'Writing assistant',exact:true}).click();
  await page.getByLabel('AI Context',{exact:true}).selectOption('none');
- await page.getByLabel('Share this draft for this AI request.',{exact:true}).check();
+ await page.getByLabel('Allow this AI request with the selected context.',{exact:true}).check();
  await page.getByRole('button',{name:'Generate',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('.uw-editor-ai-results article').length>0).catch(()=>page.waitForTimeout(100));
  const call=requests.filter(r=>r.key==='/workspace/assistant').at(-1);assert.equal(call.body.context_scope,'none');assert.equal(call.body.current_text,'');assert.equal(call.body.project_id,memoir.id);

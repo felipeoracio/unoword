@@ -1,10 +1,9 @@
 # Writing studio redesign roadmap
 
-The owner supplied this phase order. Phase 2 is deployed. Phase 3 is the current
-implementation scope; later phases require their own implementation and review.
-The Ideas prototype in closed PR #22 is retained on
-`feature/unoword-ideas-phase-3` for possible reuse in Phase 4. It is not deployed
-and does not replace the scope below.
+The owner supplied this phase order. Phase 2 is deployed. Phase 3 is implemented
+and in review as PR #23. Phase 4 builds on that editor branch; later phases need
+their own implementation and review. The Ideas prototype from closed PR #22
+has been reused in Phase 4. Phases 3 and 4 are not deployed.
 
 ## Phase 3 — Writing editor · High complexity
 

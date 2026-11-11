@@ -1,42 +1,14 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "./api";
-import { currentWriter, type WritingDocument } from "./writing";
+import type { WritingDocument } from "./writing";
+import { useStudioAccount } from "./use-studio-account";
 import { useAccountWriting, type WritingPreferences } from "./use-account-writing";
 
 export type RecentWriting = Pick<WritingDocument, "id" | "user_id" | "title" | "status" | "completion_status" | "updated_at">;
 
 /** Read-only Home queries. Mounting Home never starts sessions or creates drafts. */
 export function useStudioHome() {
-  const client = useQueryClient();
-  const [online, setOnline] = useState(navigator.onLine);
-  const [sessionVersion, setSessionVersion] = useState(0);
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update); window.addEventListener("offline", update);
-    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
-  }, []);
-  const account = useQuery({ queryKey: ["studio-home-account", sessionVersion], queryFn: currentWriter,
-    enabled: online, staleTime: 0, gcTime: 0, retry: false,
-    refetchInterval: 15000, refetchOnWindowFocus: true, refetchOnReconnect: true });
-  const user = account.isError ? undefined : account.data;
-  const owner = user?.id, paid = !!user?.ai_access;
-  useEffect(() => {
-    if (!user) return;
-    // Reuse the existing verified identity cache so beginSession's removal
-    // also notifies other Home tabs on login/logout; never store credentials.
-    try { localStorage.setItem("uno-writing-identity", JSON.stringify(user)); } catch { /* Online Home still works without browser storage. */ }
-  }, [user]);
-  useEffect(() => {
-    const change = (event: StorageEvent) => {
-      if (event.key === "uno-writing-identity" && event.newValue === null) {
-        setSessionVersion(version => version + 1);
-        client.removeQueries({ queryKey: ["studio-home-recent"] });
-      }
-    };
-    window.addEventListener("storage", change);
-    return () => window.removeEventListener("storage", change);
-  }, [client]);
+  const { user, account, owner, paid, online } = useStudioAccount();
   const preferences = useQuery({ queryKey: ["studio-home-preferences", owner],
     queryFn: async () => {
       const result = await apiGet<WritingPreferences>("/progress/preferences");
