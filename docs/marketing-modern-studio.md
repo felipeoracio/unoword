@@ -89,9 +89,10 @@ Optional prompt for a future **additional** illustration, not needed here:
 ## Review scope
 
 Implementation, screenshots, CTA/SEO/analytics checks and the shared-token
-regression results are recorded below. The redesign is not approved for
-production deployment. Existing private writing and live payment/provider flows
-will not be used as test data.
+regression results are recorded below. Production release is authorized through
+[PR #29](https://github.com/felipeoracio/unoword/pull/29), which tracks the merge
+commit and deployment status. Existing private writing and live payment/provider
+flows are not used as test data.
 
 ## Implemented foundation and components
 
@@ -227,8 +228,9 @@ include `node tests/run-redesign-regression.cjs web landing,login-redirect,googl
 `node tests/marketing-performance.browser.cjs`. Runtime path overrides follow
 the Phase 8 documentation. Set `AXE_SCRIPT` for the optional axe checks.
 
-Production deployment remains explicitly unapproved, including the accompanying
-login-to-Home fix. Review the branch/PR and screenshots before requesting deployment.
+Production deployment of the redesign and accompanying login-to-Home fix is
+approved through PR #29. Physical-device and live provider/payment checks remain
+unverified as described above; deployment does not mark them complete.
 
 Committed review captures: [desktop](review/marketing/desktop.webp) and
 [mobile](review/marketing/mobile.webp). The screenshots use the isolated public
