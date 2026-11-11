@@ -63,6 +63,13 @@ const dist=path.resolve('frontend/dist'),primary='https://unoword.app',id='G-H6H
   assert.equal(await f.page.evaluate(key=>{history.pushState({},'', '/editor?document=private-sentinel');return window['ga-disable-'+key]},id),true,'guard disables collection synchronously before private history changes');
   assert.ok(!JSON.stringify(await events()).includes('private-sentinel'));
   assert.deepEqual(f.errors,[]);await f.context.close();
+  const marketing=await fixture();await marketing.page.goto(primary+'/');
+  await marketing.page.locator('.lp-hero-buttons').getByRole('link',{name:'Explore UnoWord',exact:true}).click();
+  await marketing.page.getByRole('tab',{name:'Progress',exact:true}).click();
+  const actions=await marketing.page.evaluate(()=>Array.from(window.dataLayer||[],a=>Array.from(a)).filter(a=>a[0]==='event'&&a[1]==='marketing_interaction'));
+  assert.deepEqual(actions.map(a=>[a[2].action,a[2].placement]),[['explore_product','hero'],['showcase_tab','showcase']]);
+  for(const event of actions)assert.deepEqual(Object.keys(event[2]).sort(),['action','placement','send_to'],'Only fixed public event fields');
+  assert.deepEqual(marketing.errors,[]);await marketing.context.close();
   for(const pathname of ['/editor?document=private-sentinel','/account?billing=success','/account/security?token_hash=private-sentinel','/rewards','/admin','/missing','/?code=private-sentinel','/?email=private-sentinel','/#access_token=private-sentinel']){
    const current=await fixture();await current.page.goto(primary+pathname);await current.page.waitForTimeout(150);
    assert.equal(current.loads.length,0,'no tag on '+pathname);

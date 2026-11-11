@@ -1,6 +1,7 @@
+import { LANDING_TITLE } from "./public-metadata";
 // Only public, fixed page names belong in analytics; never use document.title.
 const pages: Record<string, string> = {
-  "/": "UnoWord — Your Words. Your Voice. Your Story.",
+  "/": LANDING_TITLE,
   "/privacy": "Privacy & data — UnoWord",
   "/terms": "Terms of service — UnoWord",
   "/support": "Support — UnoWord",
@@ -116,4 +117,12 @@ export function trackPublicPage() {
     send_to: measurementId,
     ...page,
   });
+}
+
+/** Fixed public actions only. Never accept page copy, URLs or account data. */
+export function trackMarketingInteraction(action:"start_free"|"explore_product"|"explore_pro"|"install_extension"|"showcase_tab",placement:"header"|"hero"|"pricing"|"final"|"footer"|"showcase"|"features") {
+  if(!enabled()||pageFor(new URL(window.location.href))!=="/")return;
+  if(!["start_free","explore_product","explore_pro","install_extension","showcase_tab"].includes(action)||!["header","hero","pricing","final","footer","showcase","features"].includes(placement))return;
+  trackPublicPage();
+  (window as AnalyticsWindow).gtag?.("event","marketing_interaction",{send_to:measurementId,action,placement});
 }

@@ -29,7 +29,7 @@ import "@/styles/marketing.css";
 import "@/styles/account.css";
 import AppShell from "@/components/studio/AppShell";
 import { useStudioPreferences } from "@/lib/studio-preferences";
-import { StudioPageHeader } from "@/components/studio/StudioPrimitives";
+import { StudioButton, StudioPageHeader } from "@/components/studio/StudioPrimitives";
 import "@/styles/studio-settings.css";
 
 async function currentUser(): Promise<AuthUser | null> {
@@ -762,7 +762,7 @@ export default function Account() {
                     )}
                   </label>
                 )}
-                <button className="uw-button" type="submit" disabled={busy}>
+                <StudioButton className="uw-button" type="submit" disabled={busy}>
                   {busy
                     ? "Please wait…"
                     : mode === "signup"
@@ -771,7 +771,7 @@ export default function Account() {
                         ? "Send recovery link"
                         : "Sign in"}
                   <ArrowRight size={16} />
-                </button>
+                </StudioButton>
               </form>
               {mode !== "recovery" && (
                 <Link

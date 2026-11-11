@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { trackPublicPage } from "@/lib/analytics";
+import { LANDING_TITLE, LANDING_DESCRIPTION } from "@/lib/public-metadata";
 
 const titles: Record<string, string> = {
-  "/": "UnoWord — Your Words. Your Voice. Your Story.",
+  "/": LANDING_TITLE,
   "/account": "Your account — UnoWord",
   "/app": "Your writing studio — UnoWord",
   "/ideas": "Writing ideas — UnoWord",
@@ -30,7 +31,7 @@ export default function PageMetadata() {
         : "Page not found — UnoWord");
     const publicDescription =
       pathname === "/"
-          ? "Build better writing habits with UnoWord. Track daily goals for free, unlock unlimited streaks, and overcome writer's block with personalized AI guidance in Pro."
+          ? LANDING_DESCRIPTION
           : pathname === "/privacy"
             ? "Privacy and data practices for UnoWord writing, accounts, and cloud features."
             : pathname === "/support"
@@ -51,7 +52,7 @@ export default function PageMetadata() {
         'meta[name="twitter:title"]',
       ]) {
         const meta = document.querySelector<HTMLMetaElement>(selector);
-        if (meta) meta.content = pathname === "/" ? "Your Words. Your Voice. Your Story. | UnoWord" : titles[pathname];
+        if (meta) meta.content = titles[pathname];
       }
     const robots = document.querySelector<HTMLMetaElement>(
       'meta[name="robots"]',

@@ -68,7 +68,7 @@ const user={id:owner,email:'synthetic@example.com',ai_access:true,plan:'pro'};
   await primaryPage.goto(primary+'/');
   for(const width of [1440,768,390]){
    await primaryPage.setViewportSize({width,height:1000});
-   await primaryPage.getByRole('heading',{name:/Your Words/}).waitFor({timeout:10000}).catch(async error=>{console.error('Synthetic home diagnostic',JSON.stringify({url:primaryPage.url(),errors,headings:await primaryPage.getByRole('heading').allTextContents(),body:(await primaryPage.locator('body').innerText()).slice(0,500)}));throw error;});
+   await primaryPage.getByRole('heading',{name:/Your ideas deserve/}).waitFor({timeout:10000}).catch(async error=>{console.error('Synthetic home diagnostic',JSON.stringify({url:primaryPage.url(),errors,headings:await primaryPage.getByRole('heading').allTextContents(),body:(await primaryPage.locator('body').innerText()).slice(0,500)}));throw error;});
    assert.ok(await primaryPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),width+'px overflow');
    assert.equal(await primaryPage.locator('link[rel=canonical]').getAttribute('href'),primary+'/');
    if(process.env.DOMAIN_SCREENSHOTS){fs.mkdirSync(process.env.DOMAIN_SCREENSHOTS,{recursive:true});await primaryPage.screenshot({path:path.join(process.env.DOMAIN_SCREENSHOTS,'domain-'+width+'.png'),fullPage:true});}
