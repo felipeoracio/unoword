@@ -16,7 +16,7 @@ export const productScreens = {
     src: editor,
     title: "Write",
     description:
-      "A quiet writing surface with formatting, focus mode, and persistent save status. Pro feature.",
+      "A quiet writing surface with formatting, focus mode, and persistent save status.",
   },
   ideas: {
     src: ideas,
@@ -28,19 +28,19 @@ export const productScreens = {
     src: progress,
     title: "Progress",
     description:
-      "Keep session, daily, and lifetime time distinct. Pro adds extended trends and history.",
+      "Review writing activity, trends, and history with session, daily, and lifetime time shown separately.",
   },
   library: {
     src: library,
     title: "Library",
     description:
-      "Find writing, projects, references, memory, and your Writing Profile. Pro feature.",
+      "Find writing, projects, references, memory, and your Writing Profile.",
   },
   guidance: {
     src: guidance,
     title: "AI guidance",
     description:
-      "Choose context and consent for a request. Guidance stays separate from your authored words. Pro feature.",
+      "Choose context and consent for a request. Guidance stays separate from your authored words.",
   },
 };
 export type ProductScreen = keyof typeof productScreens;

@@ -120,7 +120,7 @@ database migration, billing handler or entitlement definition was added.
 All six approved illustration originals and the official SVG remain unchanged.
 The six actual product captures have recorded provenance in
 `assets/marketing/screenshots/provenance.json`. Only viewport cropping,
-responsive resizing and WebP encoding were used. Captioned sample data is
+responsive resizing and WebP encoding were used. The sample data is
 fictional; no interface element was generated or composited. Responsive screenshot
 sources use 640/960/1440px versions, approved artwork has smaller variants, and
 below-fold images use lazy loading and lower fetch priority.
@@ -144,10 +144,26 @@ Free does not advertise the built-in editor or private library. Pro prices,
 trials, allowances and feature lists come from the existing product response.
 The fixtures verify a changed currency/amount, unavailable billing, absent store
 listing and failed product API; the page does not invent fallback benefits or
-start any purchase. Features and FAQ distinguish non-AI Quick Prompt, paid
+start any purchase. Pricing and FAQ distinguish non-AI Quick Prompt, paid
 guidance, document permissions and authored writing. Published privacy links
 remain authoritative; the page does not promise unsupported confidentiality or
 universal editor compatibility.
+
+Owner-requested copy cleanup removes all visible screenshot captions and sample
+notes, feature access badges, plan suffixes in feature headings, and plan notes
+outside pricing and FAQ. Screenshot alternative text remains descriptive without
+plan labels. Feature CTA destinations are unchanged; paid-feature links now say
+“Explore Write,” “Explore AI Guidance,” or “Explore Library.” Free/Pro pricing,
+FAQ plan explanations, application screenshots, and subscription permissions are
+unchanged. Production deployment of this cleanup is explicitly authorized.
+
+Cleanup validation: production build and branding checks pass; lint reports only
+the four existing unrelated warnings. The landing browser regression passes at
+1440/1024/768/390/320px, with light/dark accessibility, screenshot tabs, navigation,
+and pricing/signup links. A rendered-page check confirms no captions or sample
+notes remain and no Pro copy appears outside pricing/FAQ; feature link targets
+are preserved. Desktop feature cards and the caption-free capture were visually
+reviewed from the built page.
 
 ## SEO and analytics
 

@@ -67,7 +67,7 @@ const features = [
     name: "Write",
     headline: "A quieter place to write.",
     text: "An inviting writing environment with formatting, focus mode, and a visible save status. Keep your attention on your words.",
-    access: "Pro",
+    paid: true,
     screen: "editor" as const,
   },
   {
@@ -75,23 +75,23 @@ const features = [
     name: "Writing Goals",
     headline: "Small goals. Meaningful progress.",
     text: "Set personal goals and work toward them one word at a time. Typed words build your habit; pasted words stay distinct.",
-    access: "Free + Pro",
+    paid: false,
     screen: "home" as const,
   },
   {
     icon: BarChart3,
     name: "Progress",
     headline: "See how far you’ve come.",
-    text: "Review writing sessions, activity, and personal milestones. Pro adds extended trends and full qualifying streak history.",
-    access: "Free + Pro",
+    text: "Review writing sessions, activity, and personal milestones. See your effort take shape over time.",
+    paid: false,
     screen: "progress" as const,
   },
   {
     icon: Lightbulb,
     name: "Ideas",
     headline: "Discover where to begin.",
-    text: "Explore unlimited, non-AI Quick Prompts. Pro adds personalized suggestions, guiding questions, and fresh perspectives.",
-    access: "Free + Pro",
+    text: "Find a starting point with unlimited, non-AI Quick Prompts. Explore guiding questions and fresh perspectives for your next idea.",
+    paid: false,
     screen: "ideas" as const,
   },
   {
@@ -99,7 +99,7 @@ const features = [
     name: "AI Guidance",
     headline: "Your voice stays yours.",
     text: "Explore angles, questions, and structure with thoughtful guidance. Choose context for a request and keep every authored sentence your own.",
-    access: "Pro",
+    paid: true,
     screen: "guidance" as const,
   },
   {
@@ -107,7 +107,7 @@ const features = [
     name: "Library",
     headline: "A home for your creative world.",
     text: "Organize projects, writing, reference sources, and saved ideas. Your Writing Profile and selected context stay within reach.",
-    access: "Pro",
+    paid: true,
     screen: "library" as const,
   },
 ];
@@ -432,10 +432,6 @@ export default function Home() {
                 </StudioLink>
               </div>
               <p className="lp-slogan">Every idea starts with Uno Word.</p>
-              <p className="lp-plan-note">
-                Free tracking & Quick Prompts. Editor and personalized AI with
-                Pro.
-              </p>
             </div>
             <div className="lp-hero-preview">
               <ProductCapture screen="home" priority />
@@ -512,38 +508,35 @@ export default function Home() {
               description="A thoughtful collection of tools designed to support your creativity, consistency, and authentic writing voice."
             />
             <div className="lp-feature-index">
-              {features.map(({ icon: Icon, name, access }, i) => (
+              {features.map(({ icon: Icon, name }, i) => (
                 <a key={name} href={"#feature-" + i}>
                   <Icon aria-hidden="true" />
                   <strong>{name}</strong>
-                  <span>{access}</span>
                 </a>
               ))}
             </div>
             <div className="lp-feature-stories">
-              {features.map(({ name, headline, text, access, screen }, i) => (
+              {features.map(({ name, headline, text, paid, screen }, i) => (
                 <article
                   className="lp-feature-story"
                   id={"feature-" + i}
                   key={name}
                 >
                   <div className="lp-feature-copy">
-                    <p className="uw-studio-eyebrow">
-                      {name} · {access}
-                    </p>
+                    <p className="uw-studio-eyebrow">{name}</p>
                     <h3>{headline}</h3>
                     <p>{text}</p>
                     <StudioLink
-                      to={access === "Pro" ? PRO_START : FREE_START}
+                      to={paid ? PRO_START : FREE_START}
                       variant="outline"
                       onClick={() =>
                         trackMarketingInteraction(
-                          access === "Pro" ? "explore_pro" : "start_free",
+                          paid ? "explore_pro" : "start_free",
                           "features",
                         )
                       }
                     >
-                      {access === "Pro" ? "Explore Pro" : "Start Writing Free"}
+                      {paid ? "Explore " + name : "Start Writing Free"}
                       <ArrowRight size={16} aria-hidden="true" />
                     </StudioLink>
                   </div>
@@ -605,10 +598,6 @@ export default function Home() {
                 </article>
               ))}
             </div>
-            <p className="lp-sample-note">
-              Projects and the built-in editor require Pro. Free works with
-              Quick Prompt and the Chrome extension.
-            </p>
           </StudioContainer>
         </section>
         <section
@@ -618,7 +607,7 @@ export default function Home() {
         >
           <StudioContainer className="lp-ai-grid">
             <div>
-              <p className="uw-studio-eyebrow">THOUGHTFUL AI GUIDANCE · PRO</p>
+              <p className="uw-studio-eyebrow">THOUGHTFUL AI GUIDANCE</p>
               <h2 id="ai-heading">Your voice stays yours.</h2>
               <p>
                 Your experiences, ideas, and perspective make your writing
