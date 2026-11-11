@@ -204,7 +204,7 @@ function PricingCard({
           {product.ai_allowance.suggestions_daily} suggestions/day ·{" "}
           {product.ai_allowance.suggestions_monthly}/calendar month ·{" "}
           {product.ai_allowance.guidance_monthly} Writing Guidance/month. No
-          rollover. Existing subscribers retain their assigned terms.
+          rollover.
         </p>
       )}
       <StudioLink
@@ -722,11 +722,6 @@ export default function Home() {
                 failed={product.isError}
               />
             </div>
-            <p className="lp-billing-note">
-              Current features and offers come from UnoWord’s product
-              configuration. Sign in to review your account’s terms. Visiting
-              this page never starts a subscription or changes your plan.
-            </p>
           </StudioContainer>
         </section>
         <section
@@ -742,11 +737,6 @@ export default function Home() {
               storage, synchronization, permissions, and the providers used by
               its tools.
             </p>
-            <nav aria-label="Privacy and support">
-              <Link to="/privacy">Privacy Policy</Link>
-              <Link to="/terms">Terms of Service</Link>
-              <Link to="/support">Support</Link>
-            </nav>
           </StudioContainer>
         </section>
         <section
