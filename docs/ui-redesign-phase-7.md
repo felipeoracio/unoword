@@ -1,9 +1,21 @@
 # Phase 7 — Chrome extension
 
 Phase 6 is deployed through PR #26 at
-`9c2754a450226838f384e47cf12731d4d35c6748`. Phase 7 is a review candidate on
-`feature/unoword-extension-phase-7`; it is not deployed or submitted to the
-Chrome Web Store. No backend or database migration is required.
+`9c2754a450226838f384e47cf12731d4d35c6748`. Phase 7 is merged through PR #27
+and deployed at `668011ad26cf3b0d25af3a2445dc2aea9cee373d`. No backend or
+database migration is required. It has not been submitted to the Chrome Web Store.
+
+## Production verification
+
+Vercel reports a successful production deployment. Certificate-validating HTTPS
+probes returned 200 for `/editor`, `/ideas`, `/progress`, `/library`, `/settings`,
+`/api/` and `/api/product`. The production `/downloads/release.json` advertises
+version 0.24.2 and SHA256
+`6671903128fe94a251a2e7f1fbf0f4cc2c1a32bd11d0b480c0e15c1c5e2caa19`.
+The downloaded archive matches the committed archive byte-for-byte; its manifest,
+content script and supplied header artwork match source. Existing unpacked
+installations still require an explicit local update/reload. This verifies web
+distribution, not native installation or a Chrome Web Store update.
 
 ## Popup and counter
 

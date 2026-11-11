@@ -44,6 +44,8 @@ def docx_bytes(text: str) -> bytes:
         ("memoir.pdf", text_pdf_bytes("Private PDF memoir"), "Private PDF memoir"),
         ("draft.docx", docx_bytes("Private DOCX chapter"), "Private DOCX chapter"),
     ],
+    # DOCX ZIP timestamps differ across workers; binary data is not a stable ID.
+    ids=["txt", "markdown", "pdf", "docx"],
 )
 def test_extracts_supported_text_layers(filename, data, phrase):
     result = extract_document(filename, data)

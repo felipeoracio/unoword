@@ -37,7 +37,7 @@ test('built SEO and downloadable extension refer to the canonical app',()=>{
  for(const page of ['privacy','support'])assert.ok(fs.readFileSync('frontend/dist/'+page+'/index.html','utf8').includes('href="https://unoword.app/'+page+'"'));
  assert.ok(fs.readFileSync('frontend/dist/robots.txt','utf8').includes('Sitemap: https://unoword.app/sitemap.xml'));
  const manifest=JSON.parse(fs.readFileSync('extension/manifest.json'));
- assert.equal(manifest.version,'0.23.0');assert.ok(manifest.host_permissions.includes('https://unoword.app/*'));
+ assert.match(manifest.version,/^\d+\.\d+\.\d+$/);assert.ok(manifest.host_permissions.includes('https://unoword.app/*'));
  assert.ok(manifest.host_permissions.includes('https://unoword.vercel.app/*'));
  const release=JSON.parse(fs.readFileSync('frontend/public/downloads/release.json'));
  assert.equal(release.version,manifest.version);

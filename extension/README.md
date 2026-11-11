@@ -1,12 +1,13 @@
 # UnoWord — Chrome Extension
 
-Phase 7 candidate **0.24.2** applies the writing studio's paper/navy visual design
+Phase 7 release **0.24.2** applies the writing studio's paper/navy visual design
 to the popup and floating counter. Session controls precede account totals;
 the counter uses separate keyboard-operable toggle and End buttons. Native popup
 width remains 420px with vertical scrolling at 600px; embedded layouts reflow down
 to 180px. Tracking, storage/messages and manifest permissions are unchanged.
-The candidate download archive is prepared for review, not deployed or submitted
-to the Chrome Web Store. See [Phase 7 implementation and verification](../docs/ui-redesign-phase-7.md).
+The verified download archive is deployed through the website; it has not been
+submitted to the Chrome Web Store. Existing unpacked installations require a
+local update/reload. See [Phase 7 implementation and verification](../docs/ui-redesign-phase-7.md).
 
 The shipped popup, worker and content scripts pass isolated browser fixtures for
 session persistence, web-editor suppression, EN/ES, both themes and targeted axe

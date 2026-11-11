@@ -13,7 +13,7 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(n.type==='
  create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create extension vector with schema extensions;set search_path=public,extensions;`);
  await db.exec(fs.readFileSync('supabase/migrations/20260929010000_ai_writing_coach_foundation.sql','utf8').split('-- Private Supabase Storage bucket.')[0].replace(/create extension if not exists pgcrypto;/g,''));
- for(const f of ['20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql','20261104010000_personal_writing_rewards.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
+ for(const f of ['20260930160000_link_sources.sql','20261001000000_knowledge_pipeline.sql','20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql','20261104010000_personal_writing_rewards.sql','20261109010000_multi_project_workspace.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
  const owner=randomUUID(),other=randomUUID();await db.query('insert into auth.users values($1),($2)',[owner,other]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',10)",[owner]);
  await db.query('select writing_update_preferences($1,0,$2)',[owner,JSON.stringify({daily_goal:1000,timezone:'UTC',language:'en'})]);
@@ -36,12 +36,21 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(n.type==='
      if(key==='/onboarding')return {version:1,status:'completed',current_step:'summary',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
      if(key==='/progress/preferences')return method==='GET'?rpc('writing_account_preferences',[who]):rpc('writing_update_preferences',[who,body.revision,JSON.stringify(body)]);
      if(key==='/progress/summary')return rpc('writing_account_summary',[who,url.searchParams.get('timezone')||'UTC',null,who===owner]);
+     if(key==='/progress/streak')return {user_id:who,...await rpc('writing_streak_presentation',[who,'UTC',who===owner])};
      if(key==='/workspace/config')return {daily_goal:250,max_document_chars:200000,max_upload_bytes:5242880,ai_batch_size:3};
      if(key==='/ai/profile')return {user_id:who,primary_topics:['craft'],ai_preferences:{}};
      if(key==='/ai/usage/summary')return {user_id:who,daily_limit:10,remaining:10,used_today:0,pending_today:0,timezone:'UTC',daily_reset_at:new Date(Date.now()+86400000).toISOString(),monthly_reset_at:new Date(Date.now()+86400000*30).toISOString(),suggestions_monthly_limit:200,suggestions_monthly_used:0,suggestions_monthly_remaining:200,guidance_monthly_limit:30,guidance_monthly_used:0,guidance_monthly_remaining:30};
      if(key==='/workspace/sources')return [];
      if(key==='/workspace/assistant'){aiCalls++;throw Error('Unexpected AI call');}
      await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[who]);
+     if(key==='/workspace/projects')return rpc('workspace_project_state',[]);
+     if(key==='/workspace/projects/resources')return rpc('workspace_resource_catalog',[]);
+     if(key==='/workspace/projects/profile/questions'||key==='/workspace/projects/profile/answers')return [];
+     if(key==='/workspace/projects/active')return rpc('workspace_select_project',[body.project_id,body.revision,body.mutation_id,JSON.stringify(body.last_documents||{})]);
+     if(/^\/workspace\/projects\/resources\/[^/]+\/[^/]+$/.test(key)){
+      assert.equal(body.expected_user_id,who);
+      return rpc('workspace_assign_resource',[key.split('/').at(-2),key.split('/').at(-1),body.project_ids,body.revision,body.mutation_id]);
+     }
      if(key==='/workspace/activity'){
       if(method==='GET')return (await db.query("select * from writing_activity where user_id=$1 and source='editor' order by started_at desc,id limit 1000 offset $2",[who,Number(url.searchParams.get('offset')||0)])).rows;
       assert.equal(body.expected_user_id,who);return rpc('workspace_save_activity',[JSON.stringify(body)]);

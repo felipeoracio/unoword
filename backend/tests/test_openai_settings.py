@@ -22,7 +22,10 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 ADMIN_PW = os.environ.get("ADMIN_INITIAL_PASSWORD", "")
 BOGUS_KEY = "sk-proj-UNOWORD-TEST-BOGUS-000000000000000000000000"
 
-pytestmark = pytest.mark.skipif(not (ADMIN_EMAIL and ADMIN_PW), reason="admin creds not configured")
+pytestmark = pytest.mark.skipif(
+    os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1" or not (ADMIN_EMAIL and ADMIN_PW),
+    reason="Live admin settings tests require explicit opt-in and private credentials",
+)
 
 
 def _admin_token() -> str:
