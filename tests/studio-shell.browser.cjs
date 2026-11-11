@@ -156,7 +156,7 @@ const until = async fn => { for (let i=0;i<100;i++) { if (fn()) return; await sl
     await shell.waitFor();
     assert.equal(await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Write',exact:true}).getAttribute('href'),'/account#install');
     await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Ideas',exact:true}).click();
-    await page.getByRole('heading',{name:'Quick Prompt',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Today’s Writing Prompt',exact:true}).waitFor();
     await page.goto(origin+'/editor');
     await page.getByRole('heading',{name:'Unlock Your Writing Space',exact:true}).waitFor();
     assert.equal(await page.getByTestId('studio-shell').count(),0);

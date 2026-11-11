@@ -1,10 +1,16 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function StudioButton({ className, size, ...props }: ComponentProps<typeof Button>) {
   return <Button {...props} size={size} data-studio-size={size} className={cn("uw-studio-button", className)} />;
+}
+
+/** Navigation keeps native link semantics, even when styled as a primary CTA. */
+export function StudioLink({ className, variant = "default", ...props }: ComponentProps<typeof Link> & { variant?: ComponentProps<typeof Button>["variant"] }) {
+  return <Link {...props} className={cn(buttonVariants({variant}), "uw-studio-button", className)} />;
 }
 
 export function StudioCard({ className, ...props }: ComponentProps<typeof Card>) {

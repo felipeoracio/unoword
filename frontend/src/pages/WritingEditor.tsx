@@ -21,7 +21,8 @@ import AIUsage from "@/components/AIUsage";
 import WritingTour from "@/components/onboarding/WritingTour";
 import WritingTask from "@/components/WritingTask";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { promptDraft, consumePromptDraft } from "@/lib/editor-launch";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import AppShell from "@/components/studio/AppShell";
 import { generateJSON } from "@tiptap/core";
@@ -323,6 +324,8 @@ const toPlain = (content: JSONContent): string =>
 
 export default function WritingEditor() {
   const routeLocation = useLocation();
+  const navigate = useNavigate();
+  const homeLaunch = useRef("");
   const ws = useWritingWorkspace();
   const projects = useProjectWorkspace(
     ws.user?.id,
@@ -335,7 +338,7 @@ export default function WritingEditor() {
     useState<ContextScope>("current_project");
   const [selectedResources, setSelectedResources] = useState<ResourceRef[]>([]);
   const [projectOpen, setProjectOpen] = useState(false),
-    [projectBusy, setProjectBusy] = useState(false);
+    [projectOperationBusy, setProjectBusy] = useState(false);
   const projectDialog = useRef<HTMLDialogElement>(null);
   const evidenceDialog = useRef<HTMLDialogElement>(null);
   const [evidencePreview, setEvidencePreview] = useState<{
@@ -345,6 +348,8 @@ export default function WritingEditor() {
   const projectOwner = useRef<string | undefined>(undefined);
   const projectChanging = useRef(false);
   const projectReady = useRef(false);
+  const [projectInitialized, setProjectInitialized] = useState(false);
+  const projectBusy = projectOperationBusy || !projectInitialized;
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
   const localActivityIds = ws.localActivityIds.current;
@@ -461,7 +466,9 @@ export default function WritingEditor() {
   const [folderError, setFolderError] = useState("");
   const [folderBusy, setFolderBusy] = useState(false);
   const [toolbarVersion, setToolbarVersion] = useState(0);
-  const activeDocument = ws.documents.find((d) => d.id === ws.selected) || null;
+  const requestedDocument = new URLSearchParams(routeLocation.search).get("document");
+  const displayedDocument = requestedDocument && !projectInitialized ? requestedDocument : ws.selected;
+  const activeDocument = ws.documents.find((d) => d.id === displayedDocument) || null;
   const draftRef = useRef(activeDocument);
   draftRef.current = activeDocument;
   const updateRef = useRef(ws.update);
@@ -1104,10 +1111,14 @@ export default function WritingEditor() {
       const candidates = ws.documents.filter((d) =>
         inProject(state, "document", d.id, next),
       );
-      const reopen = documentToReopen(
+      let reopen = documentToReopen(
         candidates,
         initial ? remembered || ws.selected : remembered,
       );
+      // Only an explicit Home link may open a completed document. Ordinary
+      // restoration continues to reopen unfinished writing using existing rules.
+      const requested = new URLSearchParams(routeLocation.search).get("document");
+      if (initial && requested) reopen = candidates.find(d=>d.id===requested && d.status==="active")?.id || null;
       const last_documents: Record<string, string | null> = {};
       if (
         !initial &&
@@ -1118,10 +1129,10 @@ export default function WritingEditor() {
           draftRef.current?.completion_status === "completed"
             ? null
             : draftRef.current?.id || null;
-      last_documents[next || "general"] = reopen;
+      last_documents[next || "general"] = candidates.find(d=>d.id===reopen)?.completion_status === "completed" ? null : reopen;
       // Restoring a saved workspace is not a new selection. Keep offline drafts
       // available during startup without requiring an unrelated cloud save.
-      if(!initial){
+      if(!initial || (requested && reopen)){
         await projects.select(next,last_documents);
         if(ws.online && !await projects.flush())throw Error('sync');
       }
@@ -1136,6 +1147,7 @@ export default function WritingEditor() {
       setServerMatches(null);
       setProjectOpen(false);
       projectReady.current = true;
+      setProjectInitialized(true);
     } catch {
       ws.setError(
         language === "es"
@@ -1149,10 +1161,14 @@ export default function WritingEditor() {
   }
   const switchProjectRef = useRef(switchProject);
   switchProjectRef.current = switchProject;
+  const projectStartup = useRef({ ws, projects, language, search: routeLocation.search });
+  projectStartup.current = { ws, projects, language, search: routeLocation.search };
   useEffect(() => {
+    const { ws, projects, language, search } = projectStartup.current;
     if (projectOwner.current !== userId) {
       projectOwner.current = userId;
       projectReady.current = false;
+      setProjectInitialized(false);
       setEvidencePreview(null);
       evidenceDialog.current?.close();
       setActiveProject(null);
@@ -1169,8 +1185,16 @@ export default function WritingEditor() {
       projectChanging.current
     )
       return;
+    const requested = new URLSearchParams(search).get("document");
+    const target = requested ? ws.documents.find(d=>d.id===requested && d.status==="active") : null;
+    const memberships = target ? projects.ids("document", target.id) : [];
+    const available = memberships.filter(id=>projects.state!.projects.some(p=>p.id===id && p.status!=="archived"));
+    const previous = projects.state.preferences.active_project_id;
+    const next = target ? (available.includes(previous || "") ? previous : available[0] || null) : previous;
+    if (requested && (!target || (memberships.length>0 && !available.length))) ws.setError(
+      language === "es" ? "No se pudo abrir ese documento. Revisa tu biblioteca y los proyectos archivados." : "That document could not be opened. Check your library and archived projects.");
     void switchProjectRef.current(
-      projects.state.preferences.active_project_id,
+      next,
       true,
     );
   }, [userId, ws.loading, projects.ready, projects.state]);
@@ -1224,6 +1248,26 @@ export default function WritingEditor() {
       }
     return document;
   }
+  const homeLaunchAction = useRef({ ws, createInProject, language, navigate });
+  homeLaunchAction.current = { ws, createInProject, language, navigate };
+  useEffect(() => {
+    const { ws, createInProject, language, navigate } = homeLaunchAction.current;
+    const nonce = new URLSearchParams(routeLocation.search).get("prompt");
+    if (!nonce || !userId || !ws.user?.ai_access || ws.loading || !projects.ready || !projectInitialized || projectBusy) return;
+    const request = userId + ":" + nonce;
+    if (homeLaunch.current === request) return;
+    homeLaunch.current = request;
+    const chosen = promptDraft(nonce, userId);
+    if (!chosen) { ws.setError(language === "es" ? "Esta idea ya se abrió o caducó. Vuelve a Inicio para elegir otra." : "This prompt was already opened or has expired. Return Home to choose another."); return; }
+    void (async () => {
+      if (!(await ws.flushWrites())) return;
+      const document = await createInProject(chosen.text);
+      if (!document || ownerRef.current !== userId) return;
+      consumePromptDraft(nonce);
+      setQuickPrompt(chosen.text); setRight(true);
+      navigate(recoveryPath("/editor?document=" + encodeURIComponent(document.id)), { replace:true });
+    })().catch(()=>ws.setError(language === "es" ? "No se pudo abrir el borrador. Tu escritura se conserva." : "The draft could not be opened. Your writing is preserved."));
+  }, [userId, ws.user?.ai_access, ws.loading, projects.ready, projectInitialized, projectBusy, routeLocation.search]);
   async function resolveWritingConflict(id:string,keepLocal:boolean) {
     const memberships=projects.ids('document',id);
     const recovered=await ws.resolveConflict(id,keepLocal);
