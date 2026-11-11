@@ -39,7 +39,7 @@ const origin=process.env.WRITING_TEST_ORIGIN||'http://127.0.0.1:4186';
    const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);await page.goto(origin+'/rewards');return {page,context};
   }
   const a=await device(),b=await device();
-  await a.page.getByRole('heading',{name:'Rewards & Achievements',exact:true,level:1}).waitFor();await b.page.locator('.reward-card').first().waitFor();
+  await a.page.getByRole('heading',{name:'Your milestones',exact:true,level:1}).waitFor();await b.page.locator('.reward-card').first().waitFor();
   assert.equal(await a.page.locator('.reward-card').count(),53);assert.equal(await a.page.locator('.reward-celebration').count(),0,'historical backfill is quiet');
   const first=a.page.locator('.reward-card').filter({has:a.page.getByRole('heading',{name:'First Words',exact:true})});
   await first.getByRole('button',{name:'Favorite',exact:true}).click();await a.page.locator('.reward-showcase strong',{hasText:'First Words'}).waitFor();
@@ -52,7 +52,7 @@ const origin=process.env.WRITING_TEST_ORIGIN||'http://127.0.0.1:4186';
   if(process.env.AXE_MODULE){await a.page.addScriptTag({path:process.env.AXE_MODULE});const result=await a.page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({html:n.html,reason:n.failureSummary}))}));});assert.deepEqual(result,[]);}
   paid=false;await a.page.reload();await a.page.locator('.reward-card').first().waitFor();assert.equal(await a.page.getByRole('heading',{name:'Two Weeks of Dedication',exact:true}).count(),0);assert.equal(await a.page.getByRole('heading',{name:'Document Completion',exact:true}).count(),0);
   paid=true;await a.page.reload();await a.page.getByRole('heading',{name:'Two Weeks of Dedication',exact:true}).waitFor();
-  const pref=await rpc('writing_account_preferences',owner);await rpc('writing_update_preferences',owner,pref.revision,JSON.stringify({language:'es'}));await a.page.reload();await a.page.getByRole('heading',{name:'Recompensas y logros',exact:true,level:1}).waitFor();await a.page.screenshot({path:path.join(out,'rewards-es-320.png'),fullPage:true});assert.ok(await a.page.getByRole('heading',{name:'Primeras palabras',exact:true}).count());
+  const pref=await rpc('writing_account_preferences',owner);await rpc('writing_update_preferences',owner,pref.revision,JSON.stringify({language:'es'}));await a.page.reload();await a.page.getByRole('combobox',{name:'Interface language',exact:true}).selectOption('es');await a.page.getByRole('heading',{name:'Tus logros',exact:true,level:1}).waitFor();await a.page.screenshot({path:path.join(out,'rewards-es-320.png'),fullPage:true});assert.ok(await a.page.getByRole('heading',{name:'Primeras palabras',exact:true}).count());
   const c=await device(other);await c.page.locator('.reward-card').first().waitFor();assert.equal(await c.page.getByRole('button',{name:'Favorite',exact:true}).count(),0,'a different account receives no earned badges');
   const d=await device(other,false);await d.page.getByRole('link',{name:'Sign in to view your private writing rewards.'}).waitFor();assert.equal(await d.page.locator('.reward-card').count(),0);
   const admin=await device();await admin.page.goto(origin+'/admin');await admin.page.getByTestId('nav-achievements').click();

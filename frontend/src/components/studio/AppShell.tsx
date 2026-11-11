@@ -33,7 +33,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
     { id: "home", label: t("Home", "Inicio"), href: "/app", icon: House },
     { id: "write", label: t("Write", "Escribir"), href: paid ? "/editor" : "/account#install", icon: PenLine },
     { id: "ideas", label: t("Ideas", "Ideas"), href: "/ideas", icon: Lightbulb },
-    { id: "progress", label: t("Progress", "Progreso"), href: "/account#writing-progress", icon: ChartNoAxesColumnIncreasing },
+    { id: "progress", label: t("Progress", "Progreso"), href: "/progress", icon: ChartNoAxesColumnIncreasing },
     { id: "library", label: t("Library", "Biblioteca"), href: "/projects", icon: LibraryBig, pro: !paid },
   ];
   const secondary = [
@@ -44,6 +44,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
     : location.pathname === "/projects" ? "library"
     : location.pathname === "/rewards" ? "rewards"
     : location.pathname === "/ideas" ? "ideas"
+    : location.pathname === "/progress" ? "progress"
     : location.hash === "#writing-progress" ? "progress"
     : location.hash === "#account-settings" || location.search.includes("plan=") || location.search.includes("offer=") ? "settings"
     : location.hash === "#install" ? "write"

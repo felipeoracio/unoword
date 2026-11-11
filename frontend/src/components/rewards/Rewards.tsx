@@ -10,15 +10,15 @@ import {
   type Rewards,
 } from "@/lib/rewards";
 import "@/styles/rewards.css";
-export function Badge({ achievement: a }: { achievement: Achievement }) {
+export function Badge({ achievement: a, fallbackImage }: { achievement: Achievement; fallbackImage?: string }) {
   return (
     <span
       className={"reward-badge reward-tier-" + a.tier}
       role="img"
       aria-label={a.name + " · " + a.tier}
     >
-      {a.badge_image ? (
-        <img src={a.badge_image} alt="" />
+      {a.badge_image || fallbackImage ? (
+        <img src={a.badge_image || fallbackImage} alt="" />
       ) : (
         <svg viewBox="0 0 40 40" aria-hidden="true">
           <path d="M20 3 34 9v12c0 8-14 16-14 16S6 29 6 21V9Z" />
