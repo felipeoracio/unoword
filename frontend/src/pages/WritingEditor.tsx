@@ -25,6 +25,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { promptDraft, consumePromptDraft } from "@/lib/editor-launch";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import AppShell from "@/components/studio/AppShell";
+import { StudioStatus } from "@/components/studio/StudioPrimitives";
+import { useEditorPanels } from "@/lib/use-editor-panels";
 import { generateJSON } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
@@ -65,6 +67,7 @@ import {
   Archive,
   Trash2,
   PanelLeft,
+  PenLine,
   Sparkles,
   Maximize2,
   Minimize2,
@@ -80,7 +83,6 @@ import {
   Play,
   Square,
   CheckCircle2,
-  WifiOff,
   Settings2,
 } from "lucide-react";
 import Brand from "@/components/marketing/Brand";
@@ -373,15 +375,14 @@ export default function WritingEditor() {
       localStorage.getItem("uno-writing-theme") ||
       (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
   );
-  const [focus, setFocus] = useState(false),
-    [left, setLeft] = useState(false),
-    [right, setRight] = useState(false);
+  const { focus, setFocus, left, setLeft, right, setRight, compact, overlayOpen,
+    libraryRef, assistantRef, libraryTrigger, assistantTrigger, toggleLibrary, toggleAssistant, closePanel } = useEditorPanels();
   useEffect(() => {
     if (new URLSearchParams(routeLocation.search).get("assistant") === "1") {
       setRight(true);
       setFocus(false);
     }
-  }, [routeLocation.search]);
+  }, [routeLocation.search, setRight, setFocus]);
   const [filter, setFilter] = useState("active"),
     [search, setSearch] = useState("");
   const [serverMatches, setServerMatches] = useState<Set<string> | null>(null);
@@ -550,6 +551,8 @@ export default function WritingEditor() {
     activeDocument?.title,
     activeDocument?.content.attrs?.subtitle,
     right,
+    left,
+    compact,
     focus,
   ]);
 
@@ -1009,18 +1012,6 @@ export default function WritingEditor() {
     else folderDialog.current?.close();
   }, [newFolderOpen]);
   useEffect(() => {
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setFocus(false);
-        setLeft(false);
-        setRight(false);
-      }
-    };
-    window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     setServerMatches(null);
     if (!search.trim() || !ws.online || !userId) return;
@@ -1267,7 +1258,7 @@ export default function WritingEditor() {
       setQuickPrompt(chosen.text); setRight(true);
       navigate(recoveryPath("/editor?document=" + encodeURIComponent(document.id)), { replace:true });
     })().catch(()=>ws.setError(language === "es" ? "No se pudo abrir el borrador. Tu escritura se conserva." : "The draft could not be opened. Your writing is preserved."));
-  }, [userId, ws.user?.ai_access, ws.loading, projects.ready, projectInitialized, projectBusy, routeLocation.search]);
+  }, [userId, ws.user?.ai_access, ws.loading, projects.ready, projectInitialized, projectBusy, routeLocation.search, setRight]);
   async function resolveWritingConflict(id:string,keepLocal:boolean) {
     const memberships=projects.ids('document',id);
     const recovered=await ws.resolveConflict(id,keepLocal);
@@ -1904,24 +1895,23 @@ export default function WritingEditor() {
     <AppShell user={ws.user} editor focusMode={focus} beforeNavigate={ws.flushWrites}
       theme={theme === "dark" ? "dark" : "light"} language={language === "es" ? "es" : "en"}>
     <main
-      className={`uw-editor ${focus ? "uw-editor-focus" : ""}`}
+      className={`uw-editor ${focus ? "uw-editor-focus" : ""}${overlayOpen ? " uw-editor-panel-open" : ""}`}
       data-theme={theme}
       lang={language}
       data-testid="writing-workspace"
     >
       <header className="uw-editor-header">
         <div className="uw-editor-header-brand">
-          <Brand />
-          <span className="uw-editor-divider" />
+          <span className="uw-editor-writing-mark"><PenLine size={19} aria-hidden="true" /></span>
           <span className="uw-editor-workspace-label">
             {t("Your writing space")}
           </span>
         </div>
         <div className="uw-editor-header-actions">
-          <span className="uw-editor-save" role="status" aria-live="polite">
-            {!ws.online ? <WifiOff size={14} /> : <Check size={14} />}
-            {t(ws.status)}
+          <span className="uw-editor-save">
+            <StudioStatus tone={ws.status==="Not saved on this device" || ws.status.includes("sync paused") ? "error" : ws.online && ws.status==="All changes saved" ? "success" : "pending"}>{t(ws.status)}</StudioStatus>
           </span>
+          <div className="uw-editor-header-tools">
           <button
             className="uw-editor-icon"
             title={t("Refresh / retry sync")}
@@ -1953,6 +1943,7 @@ export default function WritingEditor() {
             {ws.user.email?.slice(0, 1).toUpperCase() || "U"}
             <span className="uw-sr-only">{t("Account")}</span>
           </Link>
+          </div>
         </div>
       </header>
       <ProjectControls
@@ -2000,10 +1991,15 @@ export default function WritingEditor() {
         </div>
       )}
       <div className="uw-editor-layout">
+        {overlayOpen && <button className="uw-editor-panel-backdrop" tabIndex={-1} aria-label={language==="es"?"Cerrar panel lateral":"Close side panel"} onClick={closePanel} />}
         {!focus && (
           <aside
+            ref={libraryRef}
+            id="editor-library"
             className={`uw-editor-library ${left ? "is-open" : ""}`}
             aria-label={t("Library")}
+            role={compact && left ? "dialog" : undefined}
+            aria-modal={compact && left ? true : undefined}
           >
             <div className="uw-editor-sidebar-heading">
               <span>{t("Library")}</span>
@@ -2021,7 +2017,7 @@ export default function WritingEditor() {
               onClick={() => {
                 void createInProject(t("Untitled"));
                 setFilter("active");
-                setLeft(false);
+                if(compact)setLeft(false);
               }}
             >
               <Plus size={17} />
@@ -2145,7 +2141,7 @@ export default function WritingEditor() {
                     aria-current={d.id === ws.selected ? "page" : undefined}
                     onClick={() => {
                       ws.setSelected(d.id);
-                      setLeft(false);
+                      if(compact)setLeft(false);
                     }}
                   >
                     <span>
@@ -2241,12 +2237,12 @@ export default function WritingEditor() {
           <div className="uw-editor-document-bar">
             <div>
               <button
+                ref={libraryTrigger}
                 className="uw-editor-icon"
                 aria-label={t("Open library")}
-                onClick={() => {
-                  setFocus(false);
-                  setLeft(!left);
-                }}
+                aria-expanded={!focus && left}
+                aria-controls="editor-library"
+                onClick={toggleLibrary}
               >
                 <PanelLeft size={18} />
               </button>
@@ -2258,13 +2254,14 @@ export default function WritingEditor() {
                   {activeDocument.completion_status === "completed" ? (
                     <button
                       className="uw-editor-complete"
+                      aria-label={t("Mark as Draft")}
                       disabled={ws.completionBusy}
                       onClick={() =>
                         void ws.changeCompletion(activeDocument.id, "draft")
                       }
                     >
                       <CheckCircle2 size={16} />
-                      {t("Mark as Draft")}
+                      <span>{t("Mark as Draft")}</span>
                     </button>
                   ) : (
                     <button
@@ -2334,13 +2331,12 @@ export default function WritingEditor() {
                 {focus ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
               </button>
               <button
+                ref={assistantTrigger}
                 className="uw-editor-assistant-toggle"
                 aria-label={t("Writing assistant")}
-                aria-expanded={right}
-                onClick={() => {
-                  setFocus(false);
-                  setRight(!right);
-                }}
+                aria-expanded={!focus && right}
+                aria-controls="editor-assistant"
+                onClick={toggleAssistant}
               >
                 <Sparkles size={16} />
                 <span>{t("Writing assistant")}</span>
@@ -2358,6 +2354,14 @@ export default function WritingEditor() {
                   className="uw-editor-toolbar"
                   role="toolbar"
                   aria-label="Text formatting"
+                  aria-orientation="horizontal"
+                  onKeyDown={event=>{
+                    if(!(event.target instanceof HTMLButtonElement) || !["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
+                    const controls=[...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+                    const index=controls.indexOf(event.target);
+                    const next=event.key==="Home"?0:event.key==="End"?controls.length-1:(index+(event.key==="ArrowRight"?1:-1)+controls.length)%controls.length;
+                    event.preventDefault();controls[next]?.focus();
+                  }}
                   data-version={toolbarVersion}
                 >
                   <select
@@ -3020,8 +3024,12 @@ export default function WritingEditor() {
         </section>
         {!focus && right && (
           <aside
+            ref={assistantRef}
+            id="editor-assistant"
             className="uw-editor-assistant"
             aria-label={t("Writing assistant")}
+            role={compact ? "dialog" : undefined}
+            aria-modal={compact ? true : undefined}
           >
             <div className="uw-editor-sidebar-heading">
               <span>
