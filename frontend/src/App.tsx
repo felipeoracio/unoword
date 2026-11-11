@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import PageMetadata from "@/components/PageMetadata";
 
 const Account = lazy(() => import("@/pages/Account"));
+const StudioHome = lazy(() => import("@/pages/StudioHome"));
 const WritingEditor = lazy(() => import("@/pages/WritingEditor"));
 const AccountSecurity = lazy(() => import("@/pages/AccountSecurity"));
 const EmailConfirmation = lazy(() => import("@/pages/EmailConfirmation"));
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/lifetime/*" element={<Navigate to="/#pricing" replace />} />
             <Route path="/account" element={<Account />} />
+            <Route path="/app" element={<StudioHome />} />
             <Route path="/editor" element={<WritingEditor />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/rewards" element={<Rewards />} />

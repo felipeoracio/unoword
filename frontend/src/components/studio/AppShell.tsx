@@ -30,9 +30,9 @@ export default function AppShell({ user, children, editor = false, focusMode = f
   const contentId = useId(), titleId = useId();
   const paid = user.ai_access;
   const items = [
-    { id: "home", label: t("Home", "Inicio"), href: "/account", icon: House },
+    { id: "home", label: t("Home", "Inicio"), href: "/app", icon: House },
     { id: "write", label: t("Write", "Escribir"), href: paid ? "/editor" : "/account#install", icon: PenLine },
-    { id: "ideas", label: t("Ideas", "Ideas"), href: paid ? "/editor?assistant=1" : "/account#quick-prompt", icon: Lightbulb },
+    { id: "ideas", label: t("Ideas", "Ideas"), href: paid ? "/editor?assistant=1" : "/app#home-prompt", icon: Lightbulb },
     { id: "progress", label: t("Progress", "Progreso"), href: "/account#writing-progress", icon: ChartNoAxesColumnIncreasing },
     { id: "library", label: t("Library", "Biblioteca"), href: "/projects", icon: LibraryBig, pro: !paid },
   ];
@@ -46,7 +46,8 @@ export default function AppShell({ user, children, editor = false, focusMode = f
     : location.hash === "#writing-progress" ? "progress"
     : location.hash === "#account-settings" || location.search.includes("plan=") || location.search.includes("offer=") ? "settings"
     : location.hash === "#install" ? "write"
-    : location.hash === "#quick-prompt" ? "ideas" : "home";
+    : location.hash === "#quick-prompt" || location.hash === "#home-prompt" ? "ideas"
+    : location.pathname === "/account" ? "settings" : "home";
 
   useEffect(() => {
     if (open) dialog.current?.showModal();
@@ -86,7 +87,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
 
   function navigation(mobile: boolean) {
     return <>
-      <Link to={recoveryPath("/account")} className="uw-studio-brand" aria-label={t("UnoWord home", "Inicio de UnoWord")} onClick={event => void follow(event, recoveryPath("/account"))}>
+      <Link to={recoveryPath("/app")} className="uw-studio-brand" aria-label={t("UnoWord home", "Inicio de UnoWord")} onClick={event => void follow(event, recoveryPath("/app"))}>
         <img src="/brand/unoword.svg" alt="" width="40" height="40" />
         <span>Uno<span>Word</span></span>
       </Link>
@@ -125,7 +126,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
       <div className="uw-studio-mobile-bar">
         <StudioButton ref={trigger} variant="ghost" size="icon" aria-label={t("Open navigation", "Abrir navegación")}
           aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Menu aria-hidden="true" /></StudioButton>
-        <Link to={recoveryPath("/account")} onClick={event => void follow(event, recoveryPath("/account"))} className="uw-studio-mobile-brand"><img src="/brand/unoword.svg" alt="" width="28" height="28" />UnoWord</Link>
+        <Link to={recoveryPath("/app")} onClick={event => void follow(event, recoveryPath("/app"))} className="uw-studio-mobile-brand"><img src="/brand/unoword.svg" alt="" width="28" height="28" />UnoWord</Link>
         <span className="uw-studio-plan">{paid ? "Pro" : t("Free", "Gratis")}</span>
       </div>
       {!editor && <div className="uw-studio-utility-bar">

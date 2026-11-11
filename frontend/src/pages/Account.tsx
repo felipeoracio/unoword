@@ -162,8 +162,8 @@ export default function Account() {
       .then((data) => {
         if (!cancelled) {
           setUser(data);
-          if (data && oauth === "success" && next === "/editor")
-            window.location.replace(recoveryPath("/editor"));
+          if (data && oauth === "success" && ["/editor", "/app"].includes(next || ""))
+            window.location.replace(recoveryPath(next!));
         }
       })
       .catch(() => {
@@ -322,8 +322,8 @@ export default function Account() {
       beginSession();
       const fresh = await currentUser();
       setUser(fresh);
-      if (fresh && params.get("next") === "/editor")
-        window.location.assign(recoveryPath("/editor"));
+      if (fresh && ["/editor", "/app"].includes(params.get("next") || ""))
+        window.location.assign(recoveryPath(params.get("next")!));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
       setMessage(messageFor(error));
@@ -424,6 +424,7 @@ export default function Account() {
               <p className="uw-account-plan" id="account-settings" tabIndex={-1}>
                 Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
+              <Link className="uw-button" to={recoveryPath("/app")}>{studioLanguage === "es" ? "Abrir Inicio" : "Open Home"}<ArrowRight size={16}/></Link>
               {lifetimeIntent && <LifetimeAccount key={user.id} user={user} />}
               <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
               <RewardsWidget key={"reward-widget-" + user.id} owner={user.id} celebrate />
