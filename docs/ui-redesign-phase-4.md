@@ -1,8 +1,9 @@
 # Phase 4 — Ideas and AI guidance
 
-This phase builds on the Phase 3 editor branch, which remains in review as PR
-#23. Production remains on Phase 2. The earlier static Ideas prototype is now
-part of Phase 4, alongside the editor coaching changes described here.
+This phase builds on the Phase 3 editor merged via PR #23. Phase 4 was merged
+via PR #24 and deployed after Phase 3's live verification passed. The earlier
+static Ideas prototype is part of Phase 4, alongside the editor coaching changes
+described here.
 
 ## Ideas and saved guidance
 
@@ -80,4 +81,23 @@ Browser screenshots are ignored fixture artifacts under
 `tests/artifacts/ideas/` and `tests/artifacts/phase4/coaching/`; desktop, mobile
 and dark layouts were visually reviewed. Tests used no production users,
 payments or paid AI. Automated axe and physical Chrome/iPad checks remain
-separate Phase 8 work. Phase 4 is prepared for review and is not deployed.
+separate Phase 8 work.
+
+## Production release
+
+On 2026-11-11 UTC, the owner authorized deployment through Phase 4. PR #24 was
+retargeted to main after Phase 3 merged, then merged at
+`a5b51a15944a56f1b84d38b6e0453c809e2f8cad`. Vercel reported a successful
+production deployment. `https://unoword.app` serves the new entry
+`/assets/index-ZKmkRbDK.js`.
+
+Certificate-validating HTTPS probes returned 200 for the public site, Home,
+editor, Ideas, Account, API root and product endpoint. Anonymous document,
+project and saved-AI-idea requests returned 401. Ideas, coaching and Home browser
+suites passed against deployed assets using synthetic APIs with analytics
+disabled. Those checks cover consent, allowance gates, account isolation,
+separate guidance, save retries, prompt handoffs and responsive EN/ES themes.
+Container Chromium required a certificate override; the independent HTTPS
+probes did not. No production user data, payment or paid AI was used.
+
+Production stops at Phase 4. Phase 5 remains a separate Progress review change.

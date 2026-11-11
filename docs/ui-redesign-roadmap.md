@@ -1,9 +1,11 @@
 # Writing studio redesign roadmap
 
-The owner supplied this phase order. Phase 2 is deployed. Phase 3 is implemented
-and in review as PR #23. Phase 4 builds on that editor branch; later phases need
-their own implementation and review. The Ideas prototype from closed PR #22
-has been reused in Phase 4. Phases 3 and 4 are not deployed.
+The owner supplied this phase order and authorized production through Phase 4.
+Phases 3 and 4 are merged via PRs #23 and #24 and deployed. Their implementation
+notes record release commits and live verification. Phase 5 is implemented in
+PR #25 against main, with validation repeated after integrating the deployed
+Phase 4 baseline; it is not deployed. Later phases need their own implementation
+and review. The Ideas prototype from closed PR #22 was reused in Phase 4.
 
 ## Phase 3 — Writing editor · High complexity
 

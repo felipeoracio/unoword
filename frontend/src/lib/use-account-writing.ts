@@ -12,12 +12,14 @@ export type AccountWritingSummary = {
   lifetimeActiveWritingSeconds: number;
   dailyGoal: number;
   displayedStreak: number;
+  dailySessionCount?: number;
   updatedAt: string;
   sessions: {
     id: string;
     source: string;
     status: string;
     active_seconds: number;
+    started_at?: string;
   }[];
 };
 export type WritingPreferences = {

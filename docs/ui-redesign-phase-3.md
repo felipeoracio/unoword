@@ -60,5 +60,13 @@ fixture images; reviewed desktop/mobile/dark captures are under
 
 All browser checks use synthetic accounts and API responses. No real production
 writing, payments or paid AI were used. Automated axe and physical Chrome/iPad
-checks were not run and remain separate Phase 8 validation work. Phase 3 is
-prepared for review; production remains on Phase 2.
+checks were not run and remain separate Phase 8 validation work.
+
+Phase 3 was merged via PR #23 and deployed at
+`f6683abe9cee6ff6596bf7d5f740d04af05bc5bb`. Vercel reported success; the live
+entry changed to `/assets/index-8HpOqa1T.js`. The layout and full editor suites
+passed against deployed assets with synthetic APIs, including offline reload,
+durable drafts, conflict recovery and entitlement gates. The container's
+Chromium needed a certificate override for service workers; separate HTTPS
+probes validated the production certificate normally. Phase 4 subsequently
+superseded this deployment; see `ui-redesign-phase-4.md`.

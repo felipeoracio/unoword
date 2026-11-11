@@ -128,8 +128,8 @@ const until = async fn => { for (let i=0;i<100;i++) { if (fn()) return; await sl
     assert.equal(await shell.getAttribute('lang'),'es');
     await page.getByRole('combobox',{name:'Idioma de la interfaz',exact:true}).selectOption('en');
     await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Progress',exact:true}).click();
-    await page.locator('#writing-progress').waitFor();
-    await page.waitForFunction(()=>document.activeElement?.id==='writing-progress');
+    await page.getByTestId('studio-progress').waitFor();
+    await page.getByRole('heading',{name:'Your progress',exact:true}).waitFor();
     await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Settings',exact:true}).click();
     await page.waitForFunction(()=>document.activeElement?.id==='account-settings');
     await page.evaluate(()=>window.scrollTo(0,0));

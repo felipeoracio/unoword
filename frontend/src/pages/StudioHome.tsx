@@ -128,7 +128,7 @@ export default function StudioHome() {
             <dl className="uw-home-metrics"><div><dt><Flame size={21} aria-hidden="true" />{t("Writing streak", "Racha de escritura")}</dt><dd>{number(summary?.displayedStreak)} {t("days", "días")}</dd></div><div><dt><PenLine size={20} aria-hidden="true" />{t("Total words", "Palabras totales")}</dt><dd>{number(summary?.lifetimeWordCount)}</dd></div></dl>
             <p className="uw-home-time"><Clock3 size={17} aria-hidden="true" />{t("Today’s Writing Time", "Tiempo de escritura de hoy")}<strong>{summary?formatWritingTime(summary.dailyActiveWritingSeconds):"—"}</strong></p>
             {!home.paid && summary && summary.displayedStreak>=7 && <p className="uw-home-note">{t("Your writing activity keeps being recorded. Pro reveals your full qualifying streak.", "Tu actividad sigue registrándose. Pro muestra tu racha completa válida.")} <Link to="/account?plan=pro">{t("Explore Pro", "Explorar Pro")}</Link></p>}
-            <Link className="uw-home-text-link" to="/account#writing-progress">{t("View progress details", "Ver detalles del progreso")}<ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link className="uw-home-text-link" to="/progress">{t("View progress details", "Ver detalles del progreso")}<ArrowRight size={15} aria-hidden="true" /></Link>
           </StudioCard>
         </div>
         <section className="uw-home-recent" aria-labelledby="recent-heading"><div className="uw-home-section-heading"><h2 id="recent-heading"><FileText size={23} aria-hidden="true" />{t("Recent Writing", "Escritura reciente")}</h2>{home.paid && <Link className="uw-home-text-link" to="/projects">{t("View Library", "Ver biblioteca")}<ArrowRight size={16} aria-hidden="true" /></Link>}</div>
