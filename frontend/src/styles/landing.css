@@ -318,13 +318,6 @@
   max-width: 1050px;
   margin: auto;
 }
-.lp-billing-note {
-  font-size: 12px;
-  line-height: 1.75;
-  text-align: center;
-  max-width: 760px;
-  margin: var(--studio-space-6) auto 0 !important;
-}
 .lp-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -496,14 +489,6 @@
 .lp-trust h2 {
   margin-bottom: var(--studio-space-6);
 }
-.lp-trust nav {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--studio-space-6);
-  margin-top: var(--studio-space-5);
-}
-.lp-trust a,
 .lp-faq a {
   color: var(--studio-link);
   text-decoration: underline;
