@@ -1,8 +1,22 @@
 # Phase 6 — Library and Settings
 
-This phase starts from deployed Phase 5. It prepares Library and Settings for
-review; Phase 6 is not deployed. Existing APIs, persistence queues, entitlements,
+This phase starts from deployed Phase 5. PR #26 is merged and Phase 6 is deployed
+at `9c2754a450226838f384e47cf12731d4d35c6748`. Existing APIs, persistence queues, entitlements,
 resource permissions and tracking remain authoritative.
+
+## Production verification
+
+Vercel reports a successful production deployment. Normal certificate-validating
+HTTPS probes returned 200 for `/library`, `/settings`, `/projects`, `/api/` and
+`/api/product`; anonymous document and project-resource APIs returned 401. The
+live site serves `/assets/index-X8vsp95A.js` from this release.
+
+The Library/Settings browser workflow and targeted axe checks also passed against
+the production frontend with synthetic API responses and analytics disabled.
+The browser required this environment's certificate override; the separate HTTPS
+probes validated certificates normally. This verifies the deployed frontend, not
+live authenticated storage or provider integrations. No real account data, mail,
+payment or paid AI was used.
 
 ## Library
 

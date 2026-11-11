@@ -252,17 +252,22 @@
         toggleExpand();
         e.stopPropagation();
       });
-      // Keyboard accessibility on the card
-      card.setAttribute('tabindex', '0');
-      card.setAttribute('role', 'button');
-      card.setAttribute('aria-label', 'Word count. Press Enter to expand or collapse.');
-      card.addEventListener('keydown', (e) => {
+      // The toggle and End button are sibling controls inside a named group.
+      card.setAttribute('role', 'group');
+      const toggle = root.getElementById('row');
+      toggle.setAttribute('aria-controls', 'expand');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           toggleExpand();
-        } else if (e.key === 'Escape' && expanded) {
+        }
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && expanded) {
           e.preventDefault();
           toggleExpand();
+          toggle.focus();
         }
       });
     }
@@ -281,7 +286,7 @@
       if (!card) return;
       card.classList.toggle('is-expanded', expanded);
       expandEl.hidden = !expanded;
-      card.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      root.getElementById('row').setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 
     function onPointerDown(e) {
@@ -366,6 +371,9 @@
         'session.wordTyped': 'word typed', 'session.wordsTyped': 'words typed',
         'session.pastedSuffix': `+ ${vars ? vars.n : ''} pasted`,
         'session.goalReached': 'Goal reached',
+        'counter.region': 'UnoWord session counter',
+        'counter.toggle': `Session: ${vars?.n || ''} ${vars?.words || ''}. Press Enter or Space to expand or collapse.`,
+        'counter.drag': 'Drag to move',
       };
       return en[key] || key;
     }
@@ -392,10 +400,16 @@
 
     function renderCount() {
       if (!numEl) return;
+      if (window.WCi18n?.setLang) window.WCi18n.setLang(settings.language || window.WCi18n.detectDefault());
       const d = computeDisplay();
       numEl.textContent = d.text;
       if(sessionState.timer?.status==='paused')d.label=(settings.language==='es'?'En pausa':'Paused')+' · '+d.label;
       labelEl.textContent = d.label;
+      card.setAttribute('aria-label', tt('counter.region'));
+      card.lang = settings.language || 'en';
+      card.dataset.paused = String(sessionState.timer?.status === 'paused');
+      root.getElementById('row').setAttribute('aria-label', tt('counter.toggle', { n: d.text, words: d.label }));
+      root.getElementById('grip').title = tt('counter.drag');
       const secEl = root.getElementById('secondary');
       if (d.secondary) { secEl.textContent = d.secondary; secEl.hidden = false; }
       else             { secEl.hidden = true; }
@@ -430,7 +444,7 @@
 
   const HTML = `
     <div id="card" part="card" data-testid="wc-floating-counter">
-      <div id="row">
+      <button id="row" type="button">
         <span id="dot" aria-hidden="true"></span>
         <span id="num" data-testid="wc-floating-number">0</span>
         <span id="label" data-testid="wc-floating-label">words</span>
@@ -442,7 +456,7 @@
             <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
           </svg>
         </span>
-      </div>
+      </button>
       <div id="secondary" hidden data-testid="wc-floating-secondary"></div>
       <div id="expand" hidden>
         <button id="stop-btn" type="button" data-testid="wc-floating-stop">Stop Session</button>
@@ -452,137 +466,43 @@
 
   const STYLES = `
     <style>
-      :host, * { box-sizing: border-box; }
-      [hidden] { display: none !important; }
-
+      :host,* { box-sizing:border-box; }
+      [hidden] { display:none !important; }
       #card {
-        position: fixed;
-        right: 20px; bottom: 20px;
-        pointer-events: auto;
-        display: inline-flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 9px 12px 9px 11px;
-        min-width: 0;
-        background: rgba(255,255,255,0.96);
-        color: #0B0D12;
-        border: 1px solid rgba(11,13,18,0.10);
-        border-radius: 12px;
-        box-shadow:
-          0 1px 2px rgba(11,13,18,0.06),
-          0 8px 24px rgba(11,13,18,0.10);
-        backdrop-filter: saturate(140%) blur(10px);
-        -webkit-backdrop-filter: saturate(140%) blur(10px);
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-                     "Helvetica Neue", Arial, sans-serif;
-        font-size: 13px;
-        line-height: 1.2;
-        user-select: none;
-        cursor: grab;
-        transition: box-shadow 160ms ease, transform 140ms ease;
+        --uwc-surface:#fffdfa; --uwc-text:#132d53; --uwc-muted:#52698c;
+        --uwc-line:#c5d1e2; --uwc-accent:#0758d4; --uwc-success:#24713d; --uwc-paused:#806119;
+        position:fixed; right:20px; bottom:20px; pointer-events:auto;
+        display:inline-flex; flex-direction:column; gap:8px; min-width:0;
+        max-width:calc(100vw - 8px); padding:9px 12px;
+        background:var(--uwc-surface); color:var(--uwc-text);
+        border:1px solid var(--uwc-line); border-radius:14px;
+        box-shadow:0 4px 20px #102b5526;
+        font:13px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+        user-select:none; cursor:grab;
       }
-      #card:hover  { box-shadow: 0 2px 4px rgba(11,13,18,0.08), 0 14px 32px rgba(11,13,18,0.14); }
-      #card:active { cursor: grabbing; }
-      #card:focus-visible { outline: 2px solid #1F5EFF; outline-offset: 2px; }
-
+      #card:active { cursor:grabbing; }
       #row {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        white-space: nowrap;
+        appearance:none; display:flex; align-items:center; gap:8px;
+        min-width:0; min-height:26px; padding:0; margin:0; border:0;
+        background:transparent; color:inherit; font:inherit; text-align:left;
+        white-space:nowrap; cursor:inherit; border-radius:5px;
       }
-
-      #dot {
-        width: 7px; height: 7px; border-radius: 50%;
-        background: #12B76A;
-        box-shadow: 0 0 0 3px rgba(18,183,106,0.18);
-        animation: wc-pulse 2.6s ease-in-out infinite;
-        flex: 0 0 auto;
-        transition: background-color 200ms ease, box-shadow 200ms ease;
+      #dot { width:7px; height:7px; border-radius:50%; flex:none; background:var(--uwc-success); box-shadow:0 0 0 3px color-mix(in srgb,var(--uwc-success) 16%,transparent); }
+      #dot.is-reached { background:var(--uwc-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--uwc-accent) 16%,transparent); }
+      #card[data-paused="true"] #dot { background:var(--uwc-paused); box-shadow:0 0 0 3px color-mix(in srgb,var(--uwc-paused) 16%,transparent); }
+      #num { color:var(--uwc-text); font-size:14px; font-weight:650; font-variant-numeric:tabular-nums; }
+      #label { color:var(--uwc-muted); font-weight:500; white-space:normal; }
+      #grip { margin-left:4px; color:var(--uwc-muted); display:inline-flex; align-items:center; flex:none; }
+      #secondary { color:var(--uwc-muted); font-size:12px; font-variant-numeric:tabular-nums; padding-left:15px; }
+      #expand { padding-top:2px; }
+      #stop-btn { appearance:none; width:100%; min-height:40px; padding:8px 12px; border:1px solid #b42332; border-radius:10px; background:#b42332; color:white; font:600 13px/1.5 ui-sans-serif,system-ui,sans-serif; cursor:pointer; }
+      #stop-btn:hover { background:#941c29; }
+      #row:focus-visible,#stop-btn:focus-visible { outline:3px solid var(--uwc-accent); outline-offset:4px; }
+      @media(prefers-color-scheme:dark) {
+        #card { --uwc-surface:#17253a; --uwc-text:#f1f4fb; --uwc-muted:#b4c1d4; --uwc-line:#61718b; --uwc-accent:#9ac6ff; --uwc-success:#98d7af; --uwc-paused:#efd48e; box-shadow:0 4px 20px #0006; }
       }
-      #dot.is-reached {
-        background: #1F5EFF;
-        box-shadow: 0 0 0 3px rgba(31,94,255,0.18);
-      }
-      @keyframes wc-pulse {
-        0%,100% { opacity: 1; }
-        50%     { opacity: 0.65; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        #dot { animation: none; }
-      }
-
-      #num {
-        font-variant-numeric: tabular-nums;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        color: #0B0D12;
-      }
-      #label {
-        color: #5B6172;
-        font-weight: 500;
-      }
-      #grip {
-        margin-left: 4px;
-        color: rgba(11,13,18,0.28);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #secondary {
-        font-size: 11.5px;
-        color: #8A90A2;
-        font-variant-numeric: tabular-nums;
-        padding-left: 15px; /* align under number, past the dot */
-      }
-
-      #expand { padding-top: 2px; }
-      #stop-btn {
-        appearance: none;
-        border: 0;
-        width: 100%;
-        padding: 8px 12px;
-        border-radius: 9px;
-        background: #F04438;
-        color: #fff;
-        font-family: inherit;
-        font-size: 12.5px;
-        font-weight: 600;
-        letter-spacing: -0.005em;
-        cursor: pointer;
-        transition: background-color 140ms ease, transform 120ms ease;
-      }
-      #stop-btn:hover  { background: #D93B30; }
-      #stop-btn:active { transform: translateY(1px); }
-      #stop-btn:focus-visible { outline: 2px solid #1F5EFF; outline-offset: 2px; }
-
-      /* Expanded state: subtle grow, keep it compact */
-      #card.is-expanded { padding-bottom: 10px; }
-
-      /* Dark mode via OS preference */
-      @media (prefers-color-scheme: dark) {
-        #card {
-          background: rgba(18,21,28,0.92);
-          color: #F5F6F8;
-          border-color: rgba(255,255,255,0.08);
-          box-shadow:
-            0 1px 2px rgba(0,0,0,0.5),
-            0 10px 28px rgba(0,0,0,0.45);
-        }
-        #num   { color: #F5F6F8; }
-        #label { color: #A4AAB8; }
-        #grip  { color: rgba(255,255,255,0.28); }
-        #secondary { color: #8A90A2; }
-        #dot   { background: #22C77B; box-shadow: 0 0 0 3px rgba(34,199,123,0.18); }
-        #stop-btn { background: #F45B4F; }
-        #stop-btn:hover { background: #E14A3E; }
-      }
-
-      /* Narrow viewport: tighten paddings */
-      @media (max-width: 480px) {
-        #card { padding: 8px 10px; font-size: 12.5px; border-radius: 10px; }
-      }
+      @media(max-width:320px) { #card { padding:8px 10px; } #row { flex-wrap:wrap; } #num { overflow-wrap:anywhere; white-space:normal; } }
+      @media(forced-colors:active) { #card { background:Canvas; color:CanvasText; border-color:CanvasText; } #num,#label,#grip { color:CanvasText; } #row:focus-visible,#stop-btn:focus-visible { outline-color:Highlight; } }
     </style>
   `;
 

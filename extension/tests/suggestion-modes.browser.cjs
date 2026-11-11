@@ -88,7 +88,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     await page.route('http://popup.test/**',async route=>{
       const pathname=new URL(route.request().url()).pathname;
       const file=path.join(root,pathname);
-      const contentType=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html';
+      const contentType=file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.webp')?'image/webp':'text/html';
       await route.fulfill({body:fs.readFileSync(file),contentType});
     });
     await page.route('https://unoword.app/api/**',async route=>{

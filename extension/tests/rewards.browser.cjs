@@ -54,6 +54,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
       fetch: async (url,options={}) => {
         const input=options.body?JSON.parse(options.body):null;
         const route = new URL(url).pathname;
+        if(route==='/api/workspace/projects')return new Response(JSON.stringify({user_id:storage.wc_account.userId,projects:[],associations:[],resource_versions:[],preferences:{user_id:storage.wc_account.userId,active_project_id:null,last_documents:{},revision:0},updated_at:new Date().toISOString()}));
         if(route==='/api/rewards')return new Response(JSON.stringify({...rewards,user_id:storage.wc_account.userId}),{headers:{'content-type':'application/json'}});
         if(route==='/api/rewards/preferences'){assert.equal(input.expected_user_id,storage.wc_account.userId);assert.equal(input.revision,rewards.preferences.revision);Object.assign(rewards.preferences,input);rewards.preferences.revision++;rewards.enabled=rewards.preferences.enabled;return new Response(JSON.stringify({updated:true}),{headers:{'content-type':'application/json'}});}
         if(route==='/api/rewards/celebrations/claim'){assert.equal(input.expected_user_id,storage.wc_account.userId);claimed++;return new Response(JSON.stringify({achievement_id:null}),{headers:{'content-type':'application/json'}});}
@@ -95,7 +96,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
       const pathname = new URL(route.request().url()).pathname;
       if (pathname === '/editor') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><textarea aria-label="Draft"></textarea><script src="/shared/wordcount.js"></script><script src="/content.js"></script>' });
       const file = path.join(root, pathname);
-      await route.fulfill({ body: fs.readFileSync(file), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' });
+      await route.fulfill({ body: fs.readFileSync(file), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.webp') ? 'image/webp' : 'text/html' });
     });
     const page = await context.newPage(); pages.add(page);
     page.on('pageerror', error => errors.push(error.message));

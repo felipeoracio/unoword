@@ -51,6 +51,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
       fetch: async (url,options={}) => {
         const input=options.body?JSON.parse(options.body):null;
         const route = new URL(url).pathname;
+        if(route==='/api/workspace/projects')return new Response(JSON.stringify({user_id:storage.wc_account.userId,projects:[],associations:[],resource_versions:[],preferences:{user_id:storage.wc_account.userId,active_project_id:null,last_documents:{},revision:0},updated_at:new Date().toISOString()}));
         if(route==='/api/progress/preferences'){
           if(input){if(input.daily_goal)storage.wc_settings.wordGoal=input.daily_goal;if(input.language)storage.wc_settings.language=input.language;preferenceRevision++;}
           return new Response(JSON.stringify({user_id:storage.wc_account.userId,revision:preferenceRevision,daily_goal:storage.wc_settings.wordGoal,timezone:storage.wc_settings.profile.timezone,language:storage.wc_settings.language||'en',themes:storage.wc_settings.themes}));
@@ -85,14 +86,18 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     });
     await context.route('http://progress.test/**', async route => {
       const pathname = new URL(route.request().url()).pathname;
-      if (pathname === '/editor') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><textarea aria-label="Draft"></textarea><script src="/shared/wordcount.js"></script><script src="/content.js"></script>' });
+      if (pathname === '/editor') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="en"><meta charset="UTF-8"><title>Writing fixture</title><textarea aria-label="Draft"></textarea><script src="/shared/wordcount.js"></script><script src="/shared/i18n.js"></script><script src="/content.js"></script></html>' });
       const file = path.join(root, pathname);
-      await route.fulfill({ body: fs.readFileSync(file), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' });
+      await route.fulfill({ body: fs.readFileSync(file), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.webp') ? 'image/webp' : 'text/html' });
     });
     const page = await context.newPage(); pages.add(page);
-    page.on('pageerror', error => errors.push(error.message));
+    page.on('pageerror', error => {errors.push(error.message);console.error('Browser fixture error:',error.stack);});
     await page.goto('http://progress.test/popup/popup.html');
     await page.waitForFunction(() => document.querySelector('#daily-word-count').textContent === '10');
+    if(process.env.STUDIO_EXTENSION_ONLY==='1'){
+      await require('./helpers/studio-flow.cjs')({context,page,pages,message,local,storage,errors});
+      return;
+    }
     assert.equal(await page.locator('#dashboard-session-time').textContent(), '00:01:11');
     cloudActivity=[{id:'editor-time-fixture',source:'editor',user_id:storage.wc_account.userId,started_at:new Date().toISOString(),typed_words:500,pasted_words:0,duration_seconds:1200,updated_at:new Date().toISOString()}];
     await page.locator('#session-panel [data-refresh-progress]').click();
@@ -124,7 +129,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
     cloudActivity=[];await message({type:'CLEAR_HISTORY'});await page.locator('#session-panel [data-refresh-progress]').click();
     // Real content.js input events must decrease the active session and goal ring.
     const editor = await context.newPage(); pages.add(editor);
-    editor.on('pageerror', error => errors.push(error.message));
+    editor.on('pageerror', error => {errors.push(error.message);console.error('Browser fixture error:',error.stack);});
     await editor.goto('http://progress.test/editor');
     await page.click('#primary-btn');
     await editor.locator('textarea').pressSequentially('one two three four five');
@@ -163,7 +168,7 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
 
     // Another open progress tab responds to the same history reset.
     const dashboard = await context.newPage(); pages.add(dashboard);
-    dashboard.on('pageerror', error => errors.push(error.message));
+    dashboard.on('pageerror', error => {errors.push(error.message);console.error('Browser fixture error:',error.stack);});
     await dashboard.goto('http://progress.test/dashboard/dashboard.html');
     await dashboard.waitForFunction(() => document.querySelector('#hero-primary').textContent === '3');
     await message({ type: 'CLEAR_HISTORY' });
@@ -193,7 +198,9 @@ const root = process.env.EXTENSION_ROOT || path.resolve(__dirname, '..');
         await page.evaluate(lang => { WCi18n.setLang(lang); WCi18n.applyI18n(document); }, lang);
         for (const nav of ['#nav-write', '#nav-progress']) {
           await page.click(nav);
-          await page.locator('[data-refresh-progress]:visible').click();
+          const visiblePanel=page.locator(nav==='#nav-write'?'#session-panel':'#progress-panel');
+          await visiblePanel.waitFor({state:'visible'});
+          await visiblePanel.locator('[data-refresh-progress]').click();
           await page.waitForFunction(() => document.querySelector('#progress-refresh-status').textContent.length > 0);
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width} ${lang} overflow`);
           if (process.env.PROGRESS_SCREENSHOTS && width === 320 && nav === '#nav-write') {

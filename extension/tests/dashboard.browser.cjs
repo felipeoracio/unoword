@@ -34,6 +34,11 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
    const route=new URL(url).pathname.replace('/api',''),method=options.method||'GET',payload=options.body&&String(options.body).startsWith('{')?JSON.parse(options.body):null;
    requests.push({route,method,payload});let body,status=200;
    if(route==='/auth/me')body={id:userId,email:'qa@example.com',plan:freeAccount?'free':'pro',ai_access:!freeAccount};
+   else if(route==='/progress/streak')body={user_id:userId,displayedStreak:5,hasUnlimitedStreakAccess:!freeAccount,timezone:'America/Chicago',asOf:new Date().toISOString()};
+   // This suite deliberately exercises local progress when summaries are unavailable.
+   else if(['/progress/summary','/progress/statistics'].includes(route)){status=503;body={detail:'fixture_progress_unavailable'};}
+   else if(route==='/progress/preferences')body={user_id:userId,revision:1,daily_goal:storage.wc_settings.wordGoal,timezone:storage.wc_settings.profile.timezone,language:storage.wc_settings.language,themes:storage.wc_settings.themes};
+   else if(route==='/rewards'){status=503;body={detail:'fixture_rewards_unavailable'};}
    else if(route==='/ai/profile')body={id:'profile',user_id:userId,ai_preferences:{prompt_themes:['ideas']}};
    else if(route==='/documents')body=docs;
    else if(route==='/documents/upload'){body={id:'queued-document',document_title:'A safely saved source',source_kind:'file',processing_status:'pending',processing_phase:'queued',processing_progress:0,word_count:0,enabled:true};docs.push(body);processingTicks=0;}
@@ -67,12 +72,12 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   const message=msg=>new Promise(resolve=>listener(msg,{},resolve));
   await page.exposeFunction('backgroundMessage',message);
   await page.addInitScript(()=>{window.backgroundListeners=[];window.chrome={runtime:{onMessage:{addListener:l=>window.backgroundListeners.push(l)},getManifest:()=>({version:'test'}),sendMessage:(m,cb)=>window.backgroundMessage(m).then(cb)}};});
-  await page.route('http://popup.test/**',async r=>{const file=path.join(root,new URL(r.request().url()).pathname);await r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html'});});
+  await page.route('http://popup.test/**',async r=>{const file=path.join(root,new URL(r.request().url()).pathname);await r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.webp')?'image/webp':'text/html'});});
   await page.route('https://unoword.app/api/**',async r=>{const response=await fixture(r.request().url(),{method:r.request().method(),body:r.request().postData()});await r.fulfill({status:response.status,body:await response.text(),contentType:'application/json',headers:{'access-control-allow-origin':'http://popup.test','access-control-allow-credentials':'true'}});});
   async function layout(label){assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' horizontal overflow');}
   async function capture(name){await layout(name);await page.evaluate(()=>scrollTo(0,0));if(process.env.DASHBOARD_SCREENSHOTS){fs.mkdirSync(process.env.DASHBOARD_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.DASHBOARD_SCREENSHOTS,name+'.png'),fullPage:true});}}
   await page.goto('http://popup.test/popup/popup.html');
-  await page.waitForFunction(()=>document.querySelector('#daily-word-count').textContent==='748');
+  await page.waitForFunction(()=>document.querySelector('#daily-word-count').textContent==='748').catch(async error=>{console.error('Popup startup:',{errors,ui:await page.evaluate(()=>({words:document.querySelector('#daily-word-count')?.textContent,panel:typeof currentPanel==='string'?currentPanel:null,active:typeof state!=='undefined'?state?.active:null})),requests:requests.slice(-8).map(r=>r.route)});throw error;});
   assert.equal(await page.title(),'UnoWord — Writing Assistant');
   assert.equal(await page.locator('.wc__brand-name').innerText(),'UnoWord');
   assert.equal(await page.getByRole('tablist',{name:'UnoWord',exact:true}).count(),1);
@@ -87,7 +92,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   await capture('ideas');
   await page.click('#nav-progress');await page.waitForFunction(()=>!document.querySelector('#progress-panel').hidden);
   await capture('progress');
-  const stats=await message({type:'GET_STATS',range:'today'});assert.equal(stats.stats.totalWords,310,'Pasted words excluded from completed statistics');
+  const stats=await message({type:'GET_STATS',range:'today'});assert.equal(stats.stats.totalWords,748,'Typed completed and running words are included once; pasted words are excluded');
   await page.click('#nav-library');await page.locator('[data-library-filter="links"]').click();
   await page.waitForFunction(()=>document.querySelectorAll('#link-list article').length===4);
   assert.equal(await page.locator('.wc__source-status[data-status="ready"]').count(),1);
@@ -214,7 +219,7 @@ const suggestion={id:'idea',user_id:userId,mode:'connect_dots',title:'What caref
   assert.equal(await page.locator('.wc__mode-option:visible').count(),1);
   assert.ok(await page.locator('#prompt-text').isVisible());
   await page.click('#nav-library');
-  assert.ok(await page.locator('#library-access').isVisible());
+  await page.locator('#library-access').waitFor({state:'visible'});
   // Real embedded host at the screenshot's width, with a zero-word Free account.
   storage.wc_state={active:false,typedWords:0,pastedWords:0};storage.wc_history=[];
   await page.route('http://popup.test/sizing-host',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0;background:#edf2f9"><iframe title="UnoWord preview" src="/popup/popup.html" width="194" height="600" style="display:block;border:0;background:white"></iframe></body></html>'}));
