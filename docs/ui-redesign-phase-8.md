@@ -1,9 +1,11 @@
 # Phase 8 — Regression and final polish
 
 Phase 7 is deployed at `668011ad26cf3b0d25af3a2445dc2aea9cee373d` through
-PR #27, distributing extension 0.24.2. Phase 8 changes are prepared separately on
-`feature/unoword-final-polish-phase-8`; they are not deployed. Completion of
-automated fixtures does not establish native or live authenticated acceptance.
+PR #27, distributing extension 0.24.2. Phase 8 ships through
+[PR #28](https://github.com/felipeoracio/unoword/pull/28); its merge commit and
+production deployment status are tracked there. Extension 0.24.2 remains the
+current download. Completion of automated fixtures does not establish native or
+live authenticated acceptance; those checks remain listed separately below.
 
 ## Changes
 

@@ -1,11 +1,10 @@
 # Writing studio redesign roadmap
 
-The owner supplied this phase order and authorized production through Phase 7.
-Phases 3–7 are merged via PRs #23–27 and deployed; their implementation notes
-record release commits and live verification. Phase 7 distributes extension
-0.24.2 through the website; no Chrome Web Store submission was made. Phase 8
-automated regression and polish are prepared for review on a separate branch.
-Physical-device and live authenticated acceptance remain outstanding. Native Chrome
+The owner supplied this phase order and authorized production through Phase 8.
+Phases 3–8 ship through PRs #23–28; their implementation notes record release
+details and verification. Phase 7 distributes extension 0.24.2 through the website;
+no Chrome Web Store submission was made. Phase 8 includes automated regression
+and polish. Physical-device and live authenticated acceptance remain outstanding. Native Chrome
 action-popup verification remains blocked by the managed browser policy in this
 environment; physical Chrome and iPad checks remain outstanding. The Ideas
 prototype from closed PR #22 was reused in Phase 4.
