@@ -128,6 +128,11 @@
 
       // session / core
       'session.eyebrowIdle': 'Ready to write?',
+      'studio.sessionHeading': 'Your writing session',
+      'studio.accountSummary': 'Account writing summary',
+      'counter.region': 'UnoWord session counter',
+      'counter.toggle': 'Session: {n} {words}. Press Enter or Space to expand or collapse.',
+      'counter.drag': 'Drag to move',
       'session.eyebrowActive': 'Writing Session',
       'session.eyebrowDone': 'Session complete',
       'session.words': 'words',
@@ -721,6 +726,11 @@
       'nav.back': 'Volver',
 
       'session.eyebrowIdle': '¿Listo para escribir?',
+      'studio.sessionHeading': 'Tu sesión de escritura',
+      'studio.accountSummary': 'Resumen de escritura de la cuenta',
+      'counter.region': 'Contador de sesión de UnoWord',
+      'counter.toggle': 'Sesión: {n} {words}. Pulsa Intro o Espacio para expandir o contraer.',
+      'counter.drag': 'Arrastra para mover',
       'session.eyebrowActive': 'Sesión de escritura',
       'session.eyebrowDone': 'Sesión completada',
       'session.words': 'palabras',

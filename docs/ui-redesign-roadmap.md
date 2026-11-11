@@ -1,11 +1,12 @@
 # Writing studio redesign roadmap
 
-The owner supplied this phase order and authorized production through Phase 5.
-Phases 3–5 are merged via PRs #23–25 and deployed; their implementation notes
-record release commits and live verification. Phase 6 is implemented separately
-against main for review and is not deployed. Later phases need their own
-implementation and review. The Ideas prototype from closed PR #22 was reused
-in Phase 4.
+The owner supplied this phase order and authorized production through Phase 6.
+Phases 3–6 are merged via PRs #23–26 and deployed; their implementation notes
+record release commits and live verification. Phase 7 is implemented on a separate
+branch for review, including extension candidate 0.24.2, and is not deployed.
+Native Chrome action-popup verification remains blocked by the managed browser
+policy in this environment. Phase 8 remains outstanding, including physical Chrome
+and iPad checks. The Ideas prototype from closed PR #22 was reused in Phase 4.
 
 ## Phase 3 — Writing editor · High complexity
 

@@ -169,16 +169,7 @@
       <!-- ================= MAIN SESSION VIEW ================= -->
       <section class="wc__panel wc__session" id="session-panel" data-testid="session-panel">
         <div class="wc__progress-tools"><button type="button" id="open-writing-editor" class="wc__link-btn" data-i18n="editor.open">Open Writing Editor ↗</button><button type="button" class="wc__link-btn" data-refresh-progress data-i18n="dashboard.refresh">Refresh progress</button></div>
-        <div class="wc__daily-hero">
-          <div><p class="wc__hero-label" data-i18n="dashboard.wordsToday">Words today</p><p id="daily-word-count" class="wc__hero-number">0</p><p id="daily-word-target" class="wc__hero-target"></p></div>
-          <div class="wc__goal-visual"><div class="wc__goal-ring" id="daily-goal-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="daily-goal-percent">0%</span></div><p data-i18n="dashboard.dailyGoal">Daily goal</p></div>
-        </div>
-        <div class="wc__daily-metrics">
-          <div><span class="wc__metric-icon" aria-hidden="true">◷</span><div><p data-i18n="dashboard.todayTime">Today’s Writing Time</p><strong id="dashboard-session-time">00:00</strong></div></div>
-          <button type="button" id="dashboard-goal-action"><span class="wc__metric-icon" aria-hidden="true">◎</span><div><p data-i18n="dash.goal">Goal</p><strong id="dashboard-daily-goal">—</strong></div></button>
-          <div><span class="wc__metric-icon wc__metric-fire" aria-hidden="true">♨</span><div><p data-i18n="dashboard.streak">Streak</p><strong id="dashboard-streak">0</strong></div></div>
-        </div>
-        <div id="session-idea" class="wc__session-idea" hidden><p class="wc__eyebrow" data-i18n="suggestion.writingFrom">Writing from your idea</p><strong id="session-idea-title"></strong><p id="session-idea-direction"></p></div>
+        <h1 class="wc__session-heading" data-i18n="studio.sessionHeading">Your writing session</h1>
         <div class="wc__status wc__status--idle" id="status-idle" data-testid="status-idle">
           <span class="wc__eyebrow" data-i18n="session.eyebrowIdle">Ready to write?</span>
         </div>
@@ -205,7 +196,7 @@
           <div class="wc__count-goal" id="count-goal" data-testid="count-goal" hidden></div>
         </div>
 
-        <div class="wc__duration"><span data-i18n="dashboard.totalTime">Total Writing Time</span> <strong id="dashboard-total-time">—</strong></div>
+
         <div class="wc__duration" id="duration-row" data-testid="duration-row" hidden>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
@@ -219,6 +210,7 @@
         <button class="wc__btn wc__btn--primary" id="primary-btn" data-testid="primary-btn">Start Session</button>
         <details id="session-timing-details" hidden><summary data-i18n="session.timingDetails">Session details</summary><p><span data-i18n="session.pausedTime">Paused time</span>: <span id="paused-duration">00:00:00</span></p><p><span data-i18n="session.elapsedTime">Total elapsed time</span>: <span id="elapsed-duration">00:00:00</span></p></details>
         <p class="wc__helper wc__helper--center" id="helper-text" data-testid="helper-text"></p>
+        <div id="session-idea" class="wc__session-idea" hidden><p class="wc__eyebrow" data-i18n="suggestion.writingFrom">Writing from your idea</p><strong id="session-idea-title"></strong><p id="session-idea-direction"></p></div>
         <div class="wc__memory-card" id="memory-card" data-testid="memory-card" hidden>
           <div class="wc__memory-head" data-testid="memory-card-header">
             <span class="wc__memory-icon" aria-hidden="true">◎</span>
@@ -235,6 +227,18 @@
           </div>
         </div>
         <button class="wc__progress-link" id="open-progress" data-testid="open-progress" data-i18n="progress.link">Progress →</button>
+        <section class="wc__account-summary" aria-label="Account writing summary" data-i18n-aria="studio.accountSummary">
+        <div class="wc__daily-hero">
+          <div><p class="wc__hero-label" data-i18n="dashboard.wordsToday">Words today</p><p id="daily-word-count" class="wc__hero-number">0</p><p id="daily-word-target" class="wc__hero-target"></p></div>
+          <div class="wc__goal-visual"><div class="wc__goal-ring" id="daily-goal-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="daily-goal-percent">0%</span></div><p data-i18n="dashboard.dailyGoal">Daily goal</p></div>
+        </div>
+        <div class="wc__daily-metrics">
+          <div><span class="wc__metric-icon" aria-hidden="true">◷</span><div><p data-i18n="dashboard.todayTime">Today’s Writing Time</p><strong id="dashboard-session-time">00:00</strong></div></div>
+          <button type="button" id="dashboard-goal-action"><span class="wc__metric-icon" aria-hidden="true">◎</span><div><p data-i18n="dash.goal">Goal</p><strong id="dashboard-daily-goal">—</strong></div></button>
+          <div><span class="wc__metric-icon wc__metric-fire" aria-hidden="true">♨</span><div><p data-i18n="dashboard.streak">Streak</p><strong id="dashboard-streak">0</strong></div></div>
+        </div>
+        <div class="wc__duration"><span data-i18n="dashboard.totalTime">Total Writing Time</span> <strong id="dashboard-total-time">—</strong></div>
+        </section>
         <div class="wc__quick-ideas">
           <div class="wc__quick-heading"><span aria-hidden="true">✦</span><div><h2 data-i18n="dashboard.needIdea">Need an idea?</h2><p data-i18n="dashboard.findDirection">Find your next writing direction.</p></div></div>
           <button class="wc__quick-idea" data-idea-mode="original"><span data-i18n="suggestion.mode.original">Quick Prompt</span><span aria-hidden="true">›</span></button>
@@ -450,12 +454,12 @@
           <span id="progress-streak-text" data-testid="progress-streak-text"></span>
         </div>
 
-        <nav class="wc__range-tabs" id="progress-tabs" data-testid="progress-tabs" role="tablist">
-          <button class="wc__range-tab" data-range="today" data-testid="prog-tab-today" data-i18n="dash.tabs.today">Today</button>
-          <button class="wc__range-tab" data-range="week"  data-testid="prog-tab-week"  data-i18n="dash.tabs.week">This week</button>
-          <button class="wc__range-tab" data-range="month" data-testid="prog-tab-month" data-i18n="dash.tabs.month">This month</button>
-          <button class="wc__range-tab" data-range="year"  data-testid="prog-tab-year"  data-i18n="dash.tabs.year">This year</button>
-          <button class="wc__range-tab" data-range="all"   data-testid="prog-tab-all"   data-i18n="dash.tabs.all">All time</button>
+        <nav class="wc__range-tabs" id="progress-tabs" data-testid="progress-tabs" role="tablist" data-i18n-aria="progress.title" aria-label="Your writing progress">
+          <button class="wc__range-tab" role="tab" data-range="today" data-testid="prog-tab-today" data-i18n="dash.tabs.today">Today</button>
+          <button class="wc__range-tab" role="tab" data-range="week"  data-testid="prog-tab-week"  data-i18n="dash.tabs.week">This week</button>
+          <button class="wc__range-tab" role="tab" data-range="month" data-testid="prog-tab-month" data-i18n="dash.tabs.month">This month</button>
+          <button class="wc__range-tab" role="tab" data-range="year"  data-testid="prog-tab-year"  data-i18n="dash.tabs.year">This year</button>
+          <button class="wc__range-tab" role="tab" data-range="all"   data-testid="prog-tab-all"   data-i18n="dash.tabs.all">All time</button>
         </nav>
 
         <div class="wc__prog-cards">

@@ -1,4 +1,17 @@
-# UnoWord — Chrome Extension (Phase 2)
+# UnoWord — Chrome Extension
+
+Phase 7 candidate **0.24.2** applies the writing studio's paper/navy visual design
+to the popup and floating counter. Session controls precede account totals;
+the counter uses separate keyboard-operable toggle and End buttons. Native popup
+width remains 420px with vertical scrolling at 600px; embedded layouts reflow down
+to 180px. Tracking, storage/messages and manifest permissions are unchanged.
+The candidate download archive is prepared for review, not deployed or submitted
+to the Chrome Web Store. See [Phase 7 implementation and verification](../docs/ui-redesign-phase-7.md).
+
+The shipped popup, worker and content scripts pass isolated browser fixtures for
+session persistence, web-editor suppression, EN/ES, both themes and targeted axe
+checks. Native extension loading is blocked here by a managed Chromium policy;
+the fixture size checks do not establish native Chrome action-popup acceptance.
 
 > **Editor support & limitations (word counting).** Counting is driven by
 > `input` events + `inputType`, reconciled against the editor's actual text
@@ -252,8 +265,9 @@ supported page:
   supported page.
 - **Cross-tab sync** — All tabs see the same session because they all read
   from the same `chrome.storage.local` and listen to `storage.onChanged`.
-- **Accessible** — `role="button"`, keyboard-focusable, Enter/Space
-  toggles expand, Escape collapses, sufficient contrast in both themes.
+- **Accessible** — A named group contains separate native toggle and End
+  buttons. Enter/Space toggles expansion; Escape collapses and returns focus
+  to the toggle. Both themes have visible focus indicators.
 
 ### Sizing / responsiveness
 

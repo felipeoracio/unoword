@@ -273,7 +273,7 @@ function fmtDuration(ms) {
 // ---------- panels ----------
 
 let currentPanel = 'session';
-let completedWordsToday = 0;
+let dailyWords = 0;
 let libraryFilter = 'profile';
 let cloudMemories = [];
 
@@ -294,7 +294,9 @@ function showPanel(name) {
   els.feedback.hidden   = name !== 'feedback';
   els.mainNav.hidden = ['firstlaunch', 'proOnboard'].includes(name);
   document.querySelectorAll('[data-page]').forEach(button => {
-    button.setAttribute('aria-selected', String(button.dataset.page === name || (name === 'history' && button.dataset.page === 'progress')));
+    const selected = button.dataset.page === name || (name === 'history' && button.dataset.page === 'progress');
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected || (!['session','ideas','progress','library','history'].includes(name) && button.dataset.page === 'session') ? 0 : -1;
   });
   document.body.classList.remove('wc--wide');
 }
@@ -314,9 +316,9 @@ function mountLibraryResources() {
 function renderWriteDashboard() {
   if (!settings) return;
   if(accountWritingSummary?.user_id!==account.userId || !account.authenticated)accountWritingSummary=null;
-  const activeWords = state?.active && dayKey(state.startedAt) === dayKey(Date.now()) ? (state.typedWords || 0) : 0;
   const pending = window.WCCloudProgress.pendingWords(accountWritingSummary,state,[],account.userId,at=>dayKey(at)===dayKey(Date.now()));
-  const words = Number.isFinite(accountWritingSummary?.dailyWordCount) ? Math.max(0,accountWritingSummary.dailyWordCount+pending) : window.WCWritingProgress.withActive(completedWordsToday, state, settings.profile?.timezone);
+  // GET_PROGRESS.today already includes a running local session in fallback.
+  const words = Number.isFinite(accountWritingSummary?.dailyWordCount) ? Math.max(0,accountWritingSummary.dailyWordCount+pending) : dailyWords;
   const goal = Number(settings.wordGoal || 0);
   const percent = goal > 0 ? Math.min(100, Math.max(0, Math.round(words / goal * 100))) : 0;
   $('daily-word-count').textContent = fmtNumber(words);
@@ -362,7 +364,7 @@ async function refreshProgress(manual = false) {
     state = response.payload;
     accountWritingSummary = response.accountSummary?.user_id === account.userId ? response.accountSummary : null;
     if (response.settings) settings = response.settings;
-    completedWordsToday = response.today.totalWords || 0;
+    dailyWords = response.today.totalWords || 0;
     streakValue = response.streak;
     renderSession();
     renderProgressStats(progRange==='today' && Number.isFinite(accountWritingSummary?.dailyWordCount) ? {...response.stats,totalWords:accountWritingSummary.dailyWordCount} : response.stats, progRange);
@@ -391,7 +393,10 @@ async function openIdeas(mode = null) {
 
 function selectLibraryFilter(filter) {
   libraryFilter = filter;
-  document.querySelectorAll('[data-library-filter]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.libraryFilter === filter)));
+  document.querySelectorAll('[data-library-filter]').forEach(button => {
+    const selected=button.dataset.libraryFilter===filter;
+    button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;
+  });
   ['profile', 'documents', 'links', 'memory', 'saved'].forEach(key => { $(`library-${key}`).hidden = key !== filter; });
   els.aiMemoryEditor.hidden = filter !== 'memory' || !account.aiAccess;
   $('library-content').hidden = filter === 'profile' || !account.aiAccess;
@@ -411,7 +416,7 @@ function renderCloudMemory() {
 
 let libraryRequestVersion = 0;
 async function openLibrary(filter = libraryFilter) {
-  if (!account.aiAccess) { openUpgrade(); return; }
+  // Profile editing is an existing Free feature; resource reads stay gated below.
   const version = ++libraryRequestVersion;
   els.library.setAttribute('aria-busy', 'true');
   try {
@@ -592,18 +597,25 @@ const PROG_MON = ['month.jan','month.feb','month.mar','month.apr','month.may','m
 let progRange = 'today';
 
 function markProgTab() {
-  els.progTabs.querySelectorAll('.wc__range-tab').forEach((b) =>
-    b.setAttribute('aria-selected', b.dataset.range === progRange ? 'true' : 'false'));
+  els.progTabs.querySelectorAll('.wc__range-tab').forEach((b) => {
+    const selected=b.dataset.range===progRange;
+    b.setAttribute('aria-selected',String(selected));b.tabIndex=selected?0:-1;
+  });
 }
 
 function renderProgChart(buckets, range) {
   els.progChart.innerHTML = '';
+  els.progChart.setAttribute('role','list');
   const hasAny = buckets.some((b) => b.words > 0);
   els.progChartEmpty.hidden = hasAny || range === 'today';
   els.progChart.setAttribute('data-cols', range === 'week' ? '7' : range === 'year' ? '12' : range === 'today' ? '1' : String(buckets.length));
   const max = Math.max(1, ...buckets.map((b) => b.words));
   buckets.forEach((b) => {
     const wrap = document.createElement('div'); wrap.className = 'wc__prog-bar';
+    wrap.setAttribute('role','listitem');
+    const valueText=document.createElement('span');valueText.className='wc__sr-only';
+    valueText.textContent=`${b.label}: ${fmtNumber(b.words)} ${t('session.words')}`;
+    wrap.appendChild(valueText);
     const bar = document.createElement('div'); bar.className = 'wc__prog-bar-fill';
     const pct = Math.max(0, Math.min(100, (b.words / max) * 100));
     bar.style.height = b.words === 0 ? '3px' : `${Math.max(6, pct)}%`;
@@ -2336,6 +2348,13 @@ async function onFirstLangChoice(lang) {
 
 // ---------- wire ----------
 
+function moveTabFocus(event, buttons) {
+  if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+  event.preventDefault();
+  const next=event.key==='Home'?buttons[0]:event.key==='End'?buttons.at(-1):buttons[(buttons.indexOf(event.currentTarget)+(event.key==='ArrowRight'?1:buttons.length-1))%buttons.length];
+  next.focus();next.click();
+}
+
 function wire() {
   $('open-writing-editor').addEventListener('click', () => sendMessage({ type: 'OPEN_WRITING_EDITOR' }));
   document.querySelectorAll('[data-refresh-progress]').forEach(button => {
@@ -2349,15 +2368,12 @@ function wire() {
       else if (page === 'library') await openLibrary();
       else { showPanel('session'); await refreshWriteDashboard(); renderSession(); }
     });
-    button.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-      event.preventDefault();
-      const tabs = [...document.querySelectorAll('[data-page]')];
-      const next = tabs[(tabs.indexOf(button) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
-      next.focus(); next.click();
-    });
+    button.addEventListener('keydown', event => moveTabFocus(event,[...document.querySelectorAll('[data-page]')]));
   });
-  document.querySelectorAll('[data-library-filter]').forEach(button => button.addEventListener('click', () => openLibrary(button.dataset.libraryFilter)));
+  document.querySelectorAll('[data-library-filter]').forEach(button => {
+    button.addEventListener('click', () => openLibrary(button.dataset.libraryFilter));
+    button.addEventListener('keydown', event => moveTabFocus(event,[...document.querySelectorAll('[data-library-filter]')]));
+  });
   document.querySelectorAll('[data-idea-mode]').forEach(button => button.addEventListener('click', () => openIdeas(button.dataset.ideaMode)));
   $('dashboard-more-ideas').addEventListener('click', () => openIdeas());
   $('ideas-open-saved').addEventListener('click', () => openLibrary('saved'));
@@ -2388,6 +2404,7 @@ function wire() {
   els.progHistory.addEventListener('click', openHistory);
   els.progTabs.querySelectorAll('.wc__range-tab').forEach((b) => {
     b.addEventListener('click', () => loadProgress(b.dataset.range));
+    b.addEventListener('keydown',event=>moveTabFocus(event,[...els.progTabs.querySelectorAll('.wc__range-tab')]));
   });
 
   els.openUpgrade.addEventListener('click', openUpgrade);

@@ -11,7 +11,7 @@ out.mkdir(parents=True, exist_ok=True)
 manifest = json.loads((extension / 'manifest.json').read_text())
 allowed_roots = {'popup', 'dashboard', 'shared', 'icons'}
 allowed_top = {'manifest.json', 'background.js', 'content.js'}
-allowed_suffixes = {'.json', '.js', '.css', '.html', '.svg', '.png'}
+allowed_suffixes = {'.json', '.js', '.css', '.html', '.svg', '.png', '.webp'}
 target = out / 'unoword-extension.zip'
 with ZipFile(target, 'w', ZIP_DEFLATED, compresslevel=9) as archive:
     for file in sorted(extension.rglob('*')):
