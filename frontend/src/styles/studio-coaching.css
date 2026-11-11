@@ -5,6 +5,7 @@
 .uw-studio .uw-editor-ai-intro h2 { font:600 23px/1.35 var(--studio-font-editorial); }
 .uw-studio .uw-editor-ai-intro p { font-size:12px; line-height:1.8; }
 .uw-studio .uw-ai-usage-compact { padding:0; border:1px solid var(--studio-line); border-radius:12px; background:var(--studio-surface); margin:18px 0; font-size:12px; }
+.uw-studio .uw-ai-usage small { opacity:1; }
 .uw-ai-usage-compact > details > summary { display:grid; gap:7px; padding:14px; cursor:pointer; list-style:revert; }
 .uw-ai-usage-compact > details > summary::after { content:"⌄"; justify-self:end; grid-column:2; grid-row:1; color:var(--studio-muted); }
 .uw-ai-usage-compact > details[open] > summary::after { content:"⌃"; }

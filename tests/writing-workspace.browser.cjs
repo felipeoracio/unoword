@@ -100,6 +100,21 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   });
   if(process.env.WRITING_IMAGES_ONLY==='1')await context.addInitScript(owner=>localStorage.setItem('uno-tour-launch-hidden:'+owner,'1'),owner);
   const page=await context.newPage();page.on('pageerror',e=>{errors.push(e.message);console.error('Browser error:',e.message);});
+  if(process.env.WRITING_PERFORMANCE_ONLY==='1'){
+   context.setDefaultTimeout(30000);
+   const cdp=await context.newCDPSession(page);
+   await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
+   await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
+   await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:150,downloadThroughput:200000,uploadThroughput:93750});
+   await page.addInitScript(()=>{
+    window.__studioLab={lcp:0,longTasks:[],layoutShift:0};
+    for(const [type,callback] of [
+     ['largest-contentful-paint',entries=>{window.__studioLab.lcp=entries.at(-1)?.startTime||0;}],
+     ['longtask',entries=>window.__studioLab.longTasks.push(...entries.map(e=>e.duration))],
+     ['layout-shift',entries=>{for(const e of entries)if(!e.hadRecentInput)window.__studioLab.layoutShift+=e.value;}],
+    ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
+   });
+  }
   if(process.env.PROJECTS_ONLY==='1'){await require('./helpers/project-browser-flow.cjs')({page,context,origin,documents,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,errors});await context.close();return;}
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
@@ -109,6 +124,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.WRITING_PERFORMANCE_ONLY==='1'){
+   await require('./helpers/studio-performance-flow.cjs')({page,canvas,documents,requests,errors});return;
+  }
   if(process.env.WRITING_COACH_ONLY==='1'){
    const calls=()=>requests.filter(r=>r.key==='/workspace/assistant');
    const content=await canvas.textContent(),sessions=activity.size;

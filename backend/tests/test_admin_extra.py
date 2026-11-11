@@ -9,6 +9,10 @@ import pytest
 BASE = "http://localhost:8001/api"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "felipe.oracio.gonzalez@gmail.com")
 ADMIN_PW = os.environ.get("ADMIN_INITIAL_PASSWORD", "***ADMIN_PW_REDACTED***")
+live_admin = pytest.mark.skipif(
+    os.getenv("UNOWORD_RUN_LIVE_TESTS") != "1",
+    reason="Live admin tests require explicit opt-in and private credentials",
+)
 
 
 def _admin_token():
@@ -21,6 +25,7 @@ def _admin_token():
 
 
 # ---- Lockout / rate limit ----
+@live_admin
 def test_lockout_after_5_failures_bogus_email():
     bogus = f"lockme-{int(time.time())}@example.com"
     last = None
@@ -31,6 +36,7 @@ def test_lockout_after_5_failures_bogus_email():
 
 
 # ---- Logout ----
+@live_admin
 def test_logout_then_me_unauthorized():
     token = _admin_token()
     headers = {"Authorization": f"Bearer {token}"}
@@ -46,6 +52,7 @@ def test_logout_then_me_unauthorized():
 FORBIDDEN_FIELDS = {"content", "writing_content", "session_content", "ai_writing_sessions"}
 
 
+@live_admin
 def test_feedback_endpoint_no_writing_content():
     token = _admin_token()
     r = httpx.get(f"{BASE}/admin/feedback", headers={"Authorization": f"Bearer {token}"}, timeout=30)
@@ -61,6 +68,7 @@ def test_feedback_endpoint_no_writing_content():
 
 
 # ---- Audit log works ----
+@live_admin
 def test_audit_log_accessible():
     token = _admin_token()
     r = httpx.get(f"{BASE}/admin/audit-log", headers={"Authorization": f"Bearer {token}"}, timeout=30)
@@ -71,6 +79,7 @@ def test_audit_log_accessible():
 
 
 # ---- Users endpoint with search/filter/pagination parameters ----
+@live_admin
 def test_users_endpoint_supports_search_and_filter():
     token = _admin_token()
     r = httpx.get(
@@ -98,7 +107,7 @@ SECRETS_TO_CHECK = [
 def test_secrets_not_in_frontend_bundle():
     if not SECRETS_TO_CHECK:
         pytest.skip("no runtime secrets configured to scan for")
-    dist = pathlib.Path("/app/frontend/dist")
+    dist = pathlib.Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if not dist.exists():
         pytest.skip("frontend/dist not built")
     files = list(dist.rglob("*"))
