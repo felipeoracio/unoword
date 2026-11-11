@@ -29,7 +29,7 @@ node('foundation','extension-cloud-sync','extension/tests/cloud-sync.integration
 node('foundation','domain-contract','tests/domain-migration.test.cjs');
 job('foundation','extension-release',process.env.PYTHON_EXECUTABLE||'python',['tests/check-extension-release.py']);
 for(const file of fs.readdirSync(__dirname).filter(f=>f.endsWith('.sql.test.cjs')).sort())node('foundation',file.replace('.test.cjs',''),'tests/'+file);
-for(const file of ['studio-shell','studio-home','studio-ideas','studio-progress','studio-library-settings','onboarding','email-signup','google-oauth','lifetime','substack','rewards','account-writing-sync','ai-management','analytics','domain-migration','landing'])node('web',file,'tests/'+file+'.browser.cjs',{AXE_MODULE:env.AXE_SCRIPT||'',LANDING_SCREENSHOTS:path.join(output,'landing')});
+for(const file of ['studio-shell','studio-home','studio-ideas','studio-progress','studio-library-settings','onboarding','email-signup','google-oauth','login-redirect','lifetime','substack','rewards','account-writing-sync','ai-management','analytics','domain-migration','landing'])node('web',file,'tests/'+file+'.browser.cjs',{AXE_MODULE:env.AXE_SCRIPT||'',LANDING_SCREENSHOTS:path.join(output,'landing')});
 node('web','account-security','frontend/tests/account-security.browser.cjs');
 node('web','account-billing','frontend/tests/marketing.browser.cjs',{ACCOUNT_SETTINGS_ONLY:'1',AXE_MODULE:env.AXE_SCRIPT||''});
 for(const [name,flag] of [

@@ -29,7 +29,7 @@ import "@/styles/marketing.css";
 import "@/styles/account.css";
 import AppShell from "@/components/studio/AppShell";
 import { useStudioPreferences } from "@/lib/studio-preferences";
-import { StudioPageHeader } from "@/components/studio/StudioPrimitives";
+import { StudioButton, StudioPageHeader } from "@/components/studio/StudioPrimitives";
 import "@/styles/studio-settings.css";
 
 async function currentUser(): Promise<AuthUser | null> {
@@ -126,6 +126,13 @@ export default function Account() {
         : "signin";
   const lifetimeIntent = params.get("offer") === "lifetime";
   const proIntent = !lifetimeIntent && params.get("plan") === "pro";
+  const requestedNext = params.get("next");
+  // Explicit account tasks stay on Settings; ordinary sign-in starts at Home.
+  const keepAccountDestination = lifetimeIntent || proIntent || params.has("billing")
+    || location.pathname === "/settings" || Boolean(location.hash) || mode === "signup";
+  const loginDestination = ["/editor", "/app", "/ideas", "/progress", "/library", "/settings", "/projects"].includes(requestedNext || "")
+    ? requestedNext
+    : keepAccountDestination ? null : "/app";
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -141,11 +148,11 @@ export default function Account() {
   const aiUsage = useAIUsage(user?.id, Boolean(user?.ai_access));
   const initialAuthRedirect = useRef({
     oauth: params.get("oauth"),
-    next: params.get("next"),
+    destination: loginDestination,
   });
   useEffect(() => {
     let cancelled = false;
-    const { oauth, next } = initialAuthRedirect.current;
+    const { oauth, destination } = initialAuthRedirect.current;
     if (oauth === "success") beginSession();
     const oauthErrors: Record<string, string> = {
       expired:
@@ -167,8 +174,8 @@ export default function Account() {
       .then((data) => {
         if (!cancelled) {
           setUser(data);
-          if (data && oauth === "success" && ["/editor", "/app", "/ideas", "/progress", "/library", "/settings", "/projects"].includes(next || ""))
-            window.location.replace(recoveryPath(next!));
+          if (data && oauth === "success" && destination)
+            window.location.replace(recoveryPath(destination));
         }
       })
       .catch(() => {
@@ -327,8 +334,8 @@ export default function Account() {
       beginSession();
       const fresh = await currentUser();
       setUser(fresh);
-      if (fresh && ["/editor", "/app", "/ideas", "/progress", "/library", "/settings", "/projects"].includes(params.get("next") || ""))
-        window.location.assign(recoveryPath(params.get("next")!));
+      if (fresh && loginDestination)
+        window.location.assign(recoveryPath(loginDestination));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
       setMessage(messageFor(error));
@@ -755,7 +762,7 @@ export default function Account() {
                     )}
                   </label>
                 )}
-                <button className="uw-button" type="submit" disabled={busy}>
+                <StudioButton className="uw-button" type="submit" disabled={busy}>
                   {busy
                     ? "Please wait…"
                     : mode === "signup"
@@ -764,7 +771,7 @@ export default function Account() {
                         ? "Send recovery link"
                         : "Sign in"}
                   <ArrowRight size={16} />
-                </button>
+                </StudioButton>
               </form>
               {mode !== "recovery" && (
                 <Link

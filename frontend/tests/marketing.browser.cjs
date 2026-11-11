@@ -33,6 +33,22 @@ const catalog = {
   })),
 };
 (async () => {
+  // Keep the legacy combined command useful without duplicating public UI tests.
+  if (!process.env.ACCOUNT_SETTINGS_ONLY) {
+    const server = await require("../../tests/helpers/production-fixture-server.cjs").start();
+    try {
+      await new Promise((resolve, reject) => {
+        const child = require("node:child_process").spawn(process.execPath,
+          [path.resolve(__dirname, "../../tests/landing.browser.cjs")], {
+            cwd: path.resolve(__dirname, "../.."), stdio: "inherit",
+            env: {...process.env, LANDING_TEST_ORIGIN: server.origin,
+              AXE_PATH: process.env.AXE_PATH || process.env.AXE_SCRIPT || process.env.AXE_MODULE || path.resolve(__dirname, "../../tests/node_modules/axe-core/axe.min.js")},
+          });
+        child.on("error", reject);
+        child.on("close", code => code === 0 ? resolve() : reject(Error("Public landing regression failed")));
+      });
+    } finally { await server.close(); }
+  }
   const browser = await chromium.launch({
     headless: true,
     executablePath: process.env.CHROMIUM_EXECUTABLE,
@@ -240,160 +256,6 @@ const catalog = {
       assert.deepEqual(findings, [], label + " accessibility violations");
     }
     if (!process.env.ACCOUNT_SETTINGS_ONLY) {
-    assert.ok(
-      fs
-        .readFileSync(path.join(dist, "index.html"), "utf8")
-        .includes("Writing isn’t always"),
-      "Landing copy exists in delivered HTML before JavaScript",
-    );
-    await load();
-    await page.locator("#pricing li").first().waitFor();
-    assert.equal(await page.locator("h1").count(), 1);
-    assert.ok((await page.title()).includes("AI Writing Companion"));
-    assert.equal(
-      await page.locator("link[rel=canonical]").getAttribute("href"),
-      "https://unoword.app/",
-    );
-    assert.ok(
-      (
-        await page.locator('meta[property="og:image"]').getAttribute("content")
-      ).endsWith("/brand/social-card.png"),
-    );
-    assert.equal(
-      await page.locator('script[type="application/ld+json"]').count(),
-      1,
-    );
-    assert.equal(
-      await page
-        .locator(".uw-price-card")
-        .first()
-        .getByText("Editable Writing Profile", { exact: true })
-        .count(),
-      1,
-      "Free profile permissions reflected accurately",
-    );
-    assert.equal(
-      await page
-        .locator(".uw-price-card")
-        .first()
-        .getByText("New Topic AI suggestions", { exact: true })
-        .count(),
-      0,
-    );
-    assert.equal(await page.locator(".uw-price-pro li").count(), 9);
-    assert.equal(
-      await page.locator('a[href*="chromewebstore.google.com"]').count(),
-      0,
-      "No invented listing",
-    );
-    assert.ok(
-      !(await page.locator("#pricing").textContent()).includes("unlimited"),
-    );
-    for (const width of [320, 360, 390, 768, 1024, 1440]) {
-      await page.setViewportSize({ width, height: 1000 });
-      await layout("Landing " + width);
-      assert.ok(
-        await page
-          .locator("h1")
-          .evaluate((el) => getComputedStyle(el).lineHeight !== "0px"),
-      );
-    }
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await capture("desktop");
-    await capture("desktop-hero", false);
-    await audit("Desktop");
-    for (const label of [
-      "Quick Prompt",
-      "New Topic",
-      "Expand an Idea",
-      "Connect the Dots",
-    ]) {
-      await page.getByRole("tab", { name: new RegExp(label) }).click();
-      assert.equal(await page.getByRole("tab", { selected: true }).count(), 1);
-      assert.ok(await page.getByRole("tabpanel").isVisible());
-      assert.ok(
-        (await page.getByRole("tabpanel").textContent()).includes(
-          "not a live AI response",
-        ),
-      );
-    }
-    const lastTab = page.getByRole("tab", { name: /Connect the Dots/ });
-    await lastTab.focus();
-    await page.keyboard.press("Home");
-    assert.equal(
-      await page
-        .getByRole("tab", { name: /Quick Prompt/ })
-        .getAttribute("aria-selected"),
-      "true",
-    );
-    await page.keyboard.press("ArrowRight");
-    assert.equal(
-      await page
-        .getByRole("tab", { name: /New Topic/ })
-        .getAttribute("aria-selected"),
-      "true",
-    );
-    await audit("AI showcase");
-    for (const target of [
-      "features",
-      "how-it-works",
-      "ai-companion",
-      "pricing",
-      "faq",
-    ]) {
-      await page.locator(`.uw-desktop-nav a[href="#${target}"]`).click();
-      assert.equal(new URL(page.url()).hash, "#" + target);
-      assert.ok(
-        (await page.locator("#" + target).boundingBox()).y >= 65,
-        "Anchor stays below sticky header",
-      );
-    }
-    const faqs = page.locator(".uw-faq-item button");
-    for (let i = 0; i < (await faqs.count()); i++) {
-      if ((await faqs.nth(i).getAttribute("aria-expanded")) === "true")
-        await faqs.nth(i).click();
-      await faqs.nth(i).click();
-      assert.equal(await faqs.nth(i).getAttribute("aria-expanded"), "true");
-      assert.ok(await page.locator("#faq-answer-" + i).isVisible());
-      await faqs.nth(i).click();
-      assert.ok(await page.locator("#faq-answer-" + i).isHidden());
-    }
-    assert.ok(
-      !requests.some((r) => r.route.startsWith("/ai/")),
-      "Marketing interactions never call AI APIs",
-    );
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.evaluate(() => scrollTo(0, 0));
-    await capture("mobile");
-    await capture("mobile-hero", false);
-    await audit("Mobile");
-    await page.getByRole("button", { name: "Open navigation" }).click();
-    assert.ok(
-      await page
-        .getByRole("navigation", { name: "Mobile navigation" })
-        .isVisible(),
-    );
-    await page
-      .getByRole("navigation", { name: "Mobile navigation" })
-      .getByRole("link", { name: "Features" })
-      .focus();
-    await page.keyboard.press("Escape");
-    assert.ok(
-      await page
-        .getByRole("navigation", { name: "Mobile navigation" })
-        .isHidden(),
-    );
-    await page.getByRole("button", { name: "Open navigation" }).click();
-    await page
-      .getByRole("navigation", { name: "Mobile navigation" })
-      .getByRole("link", { name: "Pricing" })
-      .click();
-    assert.ok(
-      await page
-        .getByRole("navigation", { name: "Mobile navigation" })
-        .isHidden(),
-    );
-    await layout("Mobile expanded nav");
     // Each public footer destination resolves to an implemented route.
     for (const [route, heading] of [
       ["/privacy", "Privacy & data"],
@@ -605,31 +467,6 @@ const catalog = {
       console.log("PASS account settings: signup, install/download, signout, confirmed Pro requests, stale account guard, safe Stripe redirects, verified returns, portal/cancellation, recovery setup, responsive layout and no credentials stored.");
       return;
     }
-    failCatalog = true;
-    await load();
-    await page
-      .getByText("Plan details are temporarily unavailable.", { exact: false })
-      .first()
-      .waitFor();
-    assert.equal(
-      await page.locator("#pricing li").count(),
-      0,
-      "No invented fallback features if product API fails",
-    );
-    failCatalog = false;
-    storeUrl =
-      "https://chromewebstore.google.com/detail/example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    await load();
-    await page.waitForFunction(() =>
-      document
-        .querySelector(".uw-header-actions>.uw-button")
-        .href.includes("chromewebstore"),
-    );
-    assert.equal(
-      await page.locator(".uw-header-actions>.uw-button").getAttribute("href"),
-      storeUrl,
-      "Configured store listing drives primary CTA",
-    );
     await load("/missing");
     await page
       .getByRole("heading", {
@@ -639,7 +476,7 @@ const catalog = {
       .waitFor();
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: 320–1440px; desktop/mobile menus and anchors; all four keyboard-accessible demos; FAQ; truthful dynamic pricing and failure state; signup/install/download/signout; authenticated confirmed Pro request without granting access; recovery setup message; all footer routes; SEO; no paid AI calls; screenshots; accessibility audits.",
+      "PASS public landing (delegated), account/billing confirmation, signup/install/download/signout, recovery, legal/support routes and missing page; no real provider or payment calls.",
     );
   } finally {
     await browser.close();

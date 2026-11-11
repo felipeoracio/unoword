@@ -106,171 +106,260 @@ const catalog = {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(origin);
     await page
-      .getByRole("heading", { name: "Your Words. Your Voice. Your Story." })
+      .getByRole("heading", {
+        level: 1,
+        name: "Your ideas deserve a place to grow.",
+      })
       .waitFor();
-    await page
-      .getByRole("heading", { name: "Pro Monthly", exact: true })
-      .waitFor();
-    assert.equal(
-      await page.title(),
-      "UnoWord — Your Words. Your Voice. Your Story.",
-    );
+    const title = "UnoWord | Build Your Writing Habit & Discover New Ideas";
+    assert.equal(await page.title(), title);
     assert.equal(
       await page.locator('meta[property="og:title"]').getAttribute("content"),
-      "Your Words. Your Voice. Your Story. | UnoWord",
+      title,
     );
-    assert.ok(
-      (
-        await page.locator("meta[name=description]").getAttribute("content")
-      ).includes("Track daily goals for free"),
+    assert.equal(
+      await page.locator('meta[name="description"]').getAttribute("content"),
+      "Meet UnoWord, your personal writing companion. Track your writing progress, build consistency, and discover new ideas with thoughtful AI guidance.",
     );
     assert.equal(await page.locator("h1").count(), 1);
+    assert.equal(
+      await page.locator('link[rel="canonical"]').getAttribute("href"),
+      "https://unoword.app/",
+    );
+    assert.ok(
+      fs
+        .readFileSync("frontend/dist/index.html", "utf8")
+        .includes("Your ideas deserve"),
+    );
+    assert.equal(
+      await page.locator('script[type="application/ld+json"]').count(),
+      1,
+    );
     const cards = page.locator(".lp-price-card");
     assert.equal(await cards.count(), 2);
     const freeCard = cards.filter({
-      has: page.getByRole("heading", { name: "Free", exact: true }),
-    });
-    const proCard = cards.filter({
-      has: page.getByRole("heading", { name: "Pro Monthly", exact: true }),
-    });
-    assert.equal(await page.locator('a[href="/lifetime"]').count(), 0);
-    assert.ok(!/\$100|first 25|limited one-time offer|lifetime/i.test(await page.locator('.lp-site').innerText()));
+        has: page.getByRole("heading", { name: "Free", exact: true }),
+      }),
+      proCard = cards.filter({
+        has: page.getByRole("heading", { name: "Pro", exact: true }),
+      });
+    await proCard.getByText("$20.00", { exact: true }).waitFor();
     assert.ok(
       !(await freeCard.innerText()).includes("Built-in writing editor"),
     );
     assert.ok((await freeCard.innerText()).includes("up to 7 days"));
-    assert.ok((await proCard.innerText()).includes("$20"));
     assert.ok((await proCard.innerText()).includes("10 suggestions/day"));
-    assert.deepEqual(await page.locator('.lp-plan-comparison thead th').allTextContents(), ['Feature', 'Free', 'Pro Monthly']);
-    const touchIcon = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
-    const iconResponse = await page.request.get(origin + touchIcon);
-    const icon = await iconResponse.body();
-    assert.equal(iconResponse.status(), 200);
-    assert.equal(icon.readUInt32BE(16), 180);
-    assert.equal(icon.readUInt32BE(20), 180);
-    const manifest = await (await page.request.get(origin + '/site.webmanifest')).json();
-    assert.equal(manifest.name, 'UnoWord');
-    assert.equal(manifest.start_url, '/');
-    for (const entry of manifest.icons) {
-      const asset = await page.request.get(origin + entry.src);
-      assert.equal(asset.status(), 200);
+    assert.ok((await proCard.innerText()).includes("7-day free trial"));
+    assert.equal(await page.locator('a[href="/lifetime"]').count(), 0);
+    assert.equal(await page.locator(".lp-faq details").count(), 10);
+    const before = calls.length;
+    const tabs = page.getByRole("tablist", {
+      name: "Explore the writing studio",
+    });
+    for (const name of ["Home", "Write", "Ideas", "Progress", "Library"]) {
+      await tabs.getByRole("tab", { name, exact: true }).click();
+      await page
+        .getByRole("tabpanel")
+        .locator("img")
+        .evaluate((img) => img.decode());
+      assert.ok(
+        (
+          await page.getByRole("tabpanel").locator("img").getAttribute("src")
+        ).endsWith(".webp"),
+      );
     }
     assert.equal(
-      await page.locator(".lp-plan-comparison tbody tr").count(),
-      16,
-    );
-    assert.equal(
-      await page
-        .locator(".lp-plan-comparison tbody tr")
-        .filter({ hasText: "Built-in writing editor" })
-        .locator("td")
-        .first()
-        .textContent(),
-      "No",
-    );
-    assert.ok(
-      (await page.locator(".lp-site").innerText()).includes(
-        "AI That Helps You Write. Not AI That Writes for You.",
-      ),
-    );
-    assert.ok(
-      !(await page.locator(".lp-site").innerText()).includes(
-        "AI text improvement",
-      ),
-    );
-    const previousCalls = calls.length;
-    await page.getByRole("tab", { name: "Guidance", exact: true }).click();
-    await page.getByRole("tab", { name: "Questions", exact: true }).click();
-    assert.equal(
       calls.length,
-      previousCalls,
-      "Marketing demos do not generate AI or fetch private writing",
+      before,
+      "Screenshot tabs do not fetch private writing or AI",
     );
-    const axePath=process.env.AXE_PATH || require.resolve('axe-core/axe.min.js',{paths:[__dirname]});
-    await page.addScriptTag({path:axePath});
-    const accessibility=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));
-    assert.deepEqual(accessibility.violations.map(v=>({id:v.id,nodes:v.nodes.length})),[],'Landing accessibility');
+    await tabs.getByRole("tab", { name: "Library", exact: true }).focus();
+    await page.keyboard.press("Home");
+    assert.equal(
+      await tabs
+        .getByRole("tab", { name: "Home", exact: true })
+        .getAttribute("aria-selected"),
+      "true",
+    );
+    await page.keyboard.press("End");
+    assert.equal(
+      await tabs
+        .getByRole("tab", { name: "Library", exact: true })
+        .getAttribute("tabindex"),
+      "0",
+    );
+    const axePath =
+      process.env.AXE_PATH ||
+      process.env.AXE_SCRIPT ||
+      require.resolve("axe-core/axe.min.js", { paths: [__dirname] });
+    await page.addScriptTag({ path: axePath });
+    async function audit(label) {
+      if (!(await page.evaluate(() => !!window.axe)))
+        await page.addScriptTag({ path: axePath });
+      const violations = await page.evaluate(async () =>
+        (
+          await axe.run(document, {
+            runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] },
+          })
+        ).violations.map((v) => ({
+          id: v.id,
+          nodes: v.nodes.map((n) => ({
+            target: n.target,
+            summary: n.failureSummary,
+          })),
+        })),
+      );
+      assert.deepEqual(violations, [], label);
+    }
+    await audit("Light landing");
     const firstFAQ = page.locator(".lp-faq summary").first();
     await firstFAQ.focus();
     await page.keyboard.press("Enter");
-    assert.equal(await firstFAQ.evaluate((e) => e.parentElement.open), true);
+    assert.equal(await firstFAQ.evaluate((el) => el.parentElement.open), true);
     for (const width of [1440, 1024, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
-      await page.waitForTimeout(100);
-      const layout = await page.evaluate(() => ({
-        overflow: document.documentElement.scrollWidth > innerWidth,
-        clipped: [...document.querySelectorAll(".lp-site a,.lp-site button")]
-          .filter(
-            (e) =>
-              (e.offsetWidth && e.getBoundingClientRect().left < -1) ||
-              (e.offsetWidth &&
-                e.getBoundingClientRect().right > innerWidth + 1),
-          )
-          .map((e) => e.textContent),
-      }));
-      assert.equal(layout.overflow, false, "No overflow at " + width);
-      assert.deepEqual(layout.clipped, [], "No clipped controls at " + width);
-      if (output && [1440, 390].includes(width)) {
+      await page.evaluate(async () => {
+        // Full-page evidence includes artwork that normally loads while scrolling.
+        for (const img of document.querySelectorAll('img[loading="lazy"]'))
+          img.loading = "eager";
+        await Promise.all([...document.images].map((img) => img.decode()));
+        scrollTo(0, 0);
+      });
+      assert.ok(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        "No overflow " + width,
+      );
+      const primary = page.locator(".lp-hero-buttons a").first();
+      const box = await primary.boundingBox();
+      assert.ok(
+        box && box.y + box.height < 1000,
+        "Hero CTA remains in first viewport " + width,
+      );
+      if (output) {
         fs.mkdirSync(output, { recursive: true });
-        await page.evaluate(() => {
-          document.activeElement?.blur();
-          window.scrollTo(0, 0);
-        });
         await page.screenshot({
           path: output + "/landing-" + width + ".png",
           fullPage: true,
         });
+        await page.screenshot({ path: output + "/hero-" + width + ".png" });
       }
     }
     await page.setViewportSize({ width: 390, height: 1000 });
     await page
-      .getByRole("button", { name: /Open menu|Open navigation/ })
+      .getByRole("button", { name: "Open navigation", exact: true })
       .click();
     await page
-      .getByRole("navigation", { name: /Mobile/i })
+      .getByRole("navigation", { name: "Mobile navigation" })
       .getByRole("link", { name: "Pricing", exact: true })
       .click();
     assert.equal(new URL(page.url()).hash, "#pricing");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Open navigation", exact: true })
+        .getAttribute("aria-expanded"),
+      "false",
+    );
+    await page.evaluate(() => scrollTo(0, 0));
     await page
-      .getByRole("link", { name: "Start Writing Free", exact: true })
+      .getByRole("button", { name: "Open navigation", exact: true })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Mobile navigation" })
+      .getByRole("link", { name: "Features", exact: true })
+      .focus();
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Open navigation", exact: true })
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await freeCard
+      .getByRole("link", { name: "Get Started Free", exact: true })
       .click();
     await page
       .getByRole("heading", { name: "Your next chapter starts here." })
       .waitFor();
     assert.equal(new URL(page.url()).search, "?mode=signup");
-    await page.goto(origin);
-    await page
-      .getByRole("link", { name: "Get UnoWord Pro", exact: true })
+    assert.equal(
+      await page
+        .locator(".uw-account-page")
+        .evaluate((el) =>
+          getComputedStyle(el).getPropertyValue("--studio-navy").trim(),
+        ),
+      "#102b55",
+    );
+    await page.goto(origin + "/#pricing");
+    await proCard
+      .getByRole("link", { name: "Explore Pro", exact: true })
       .click();
     await page
       .getByRole("heading", { name: "Welcome back to your words." })
       .waitFor();
     assert.equal(new URL(page.url()).search, "?plan=pro");
+    catalog.billing_available = false;
+    catalog.plans[1].price.amount = 2400;
+    catalog.plans[1].price.currency = "eur";
+    catalog.chrome_store_url =
+      "https://chromewebstore.google.com/detail/verified-fixture";
     await page.goto(origin);
+    await proCard.getByText("€24.00", { exact: true }).waitFor();
+    assert.ok(!(await proCard.innerText()).includes("7-day free trial"));
+    assert.ok(
+      (await proCard.innerText()).includes("Checkout is currently unavailable"),
+    );
+    assert.equal(
+      await page.locator(".lp-hero-buttons a").first().getAttribute("href"),
+      "/account?mode=signup",
+      "Signup CTA never becomes an extension install",
+    );
+    assert.equal(
+      await page
+        .getByRole("link", { name: "Chrome Web Store", exact: false })
+        .getAttribute("href"),
+      catalog.chrome_store_url,
+    );
+    await page.evaluate(() =>
+      localStorage.setItem("uno-writing-theme", "dark"),
+    );
+    await page.reload();
+    await page.waitForFunction(
+      () => document.querySelector(".lp-site")?.dataset.studioTheme === "dark",
+    );
+    await audit("Dark landing");
+    if (output)
+      await page.screenshot({
+        path: output + "/landing-dark.png",
+        fullPage: true,
+      });
     unavailable = true;
     await page.reload();
     await page
-      .getByText("Plan details are temporarily unavailable.", { exact: false })
+      .getByRole("status")
+      .filter({ hasText: "Plan details are temporarily unavailable." })
       .first()
       .waitFor();
-    assert.ok(
-      !(await proCard.innerText()).includes("$20"),
-      "Unavailable backend does not invent a price",
+    assert.equal(
+      await page.locator(".lp-price-card li").count(),
+      0,
+      "Unavailable config does not invent plan benefits",
     );
-    assert.ok(
-      calls.every(
-        (c) => c.method === "GET" || ["/api/auth/refresh"].includes(c.endpoint),
+    assert.equal(
+      calls.some(
+        (r) => r.method !== "GET" && !r.endpoint.startsWith("/api/auth/"),
       ),
-      "Browsing never starts checkout or AI",
+      false,
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS landing: Free/Pro plans, lifetime promotion hidden, UnoWord browser/Home Screen icons, verified quotas, 16-row comparison, paid labels, coaching demos, FAQ keyboard, 320–1440px layouts, signup/Pro routes, configuration errors, no AI/payment calls.",
+      "PASS modern marketing: shared tokens, SSR/SEO, real screenshot tabs/keyboard, truthful API-driven Free/Pro prices/benefits/trials, working signup/Pro/store destinations, no private data/AI/payment mutation, 320–1440px, mobile menu/focus, light/dark axe.",
     );
   } finally {
     await browser.close();
   }
-})().catch((e) => {
-  console.error(e);
+})().catch((error) => {
+  console.error(error);
   process.exitCode = 1;
 });

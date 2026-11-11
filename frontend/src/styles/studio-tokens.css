@@ -1,0 +1,89 @@
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2")
+    format("woff2");
+}
+
+/* Shared product, public-site and registration foundation. */
+:where(.uw-studio, .uw-site, .uw-design-system) {
+  --studio-navy: #102b55;
+  --studio-blue: #086bff;
+  --studio-sky: #5da9f6;
+  --studio-cream: #f8f2e8;
+  --studio-bg: #fbf8f3;
+  --studio-surface: #ffffff;
+  --studio-soft: #f6f8fc;
+  --studio-text: #102b55;
+  --studio-muted: #53637c;
+  --studio-line: #dededb;
+  --studio-interactive-strong: #0757ce;
+  --studio-link: var(--studio-interactive-strong);
+  --studio-accent: #086bff;
+  --studio-success: #246340;
+  --studio-warning: #805309;
+  --studio-error: #a83032;
+  --studio-shadow: 0 4px 18px #102b5508;
+  --studio-radius: 16px;
+  --studio-space-1: 4px;
+  --studio-space-2: 8px;
+  --studio-space-3: 12px;
+  --studio-space-4: 16px;
+  --studio-space-6: 24px;
+  --studio-space-8: 32px;
+  --studio-font-ui: "Inter Variable", Inter, system-ui, sans-serif;
+  --studio-font-editorial: Georgia, "Times New Roman", serif;
+  /* Existing Base UI/shadcn primitives resolve semantic tokens in this scope. */
+  --background: var(--studio-surface);
+  --foreground: var(--studio-text);
+  --card: var(--studio-surface);
+  --card-foreground: var(--studio-text);
+  --primary: var(--studio-blue);
+  --primary-foreground: #fff;
+  --secondary: var(--studio-soft);
+  --secondary-foreground: var(--studio-text);
+  --muted: var(--studio-soft);
+  --muted-foreground: var(--studio-muted);
+  --border: var(--studio-line);
+  --ring: var(--studio-accent);
+  --font-sans: var(--studio-font-ui);
+  --font-heading: var(--studio-font-editorial);
+  --reward-text: var(--studio-text);
+  --reward-muted: var(--studio-muted);
+  --reward-card: var(--studio-surface);
+  --reward-line: var(--studio-line);
+  --studio-on-primary: #ffffff;
+  --studio-space-5: 20px;
+  --studio-space-10: 40px;
+  --studio-space-12: 48px;
+  --studio-space-16: 64px;
+  --studio-space-20: 80px;
+  --studio-space-24: 96px;
+  --studio-control-radius: 12px;
+  --studio-motion: 140ms;
+  --studio-content-width: 1200px;
+  --studio-display: clamp(42px, 5.4vw, 76px);
+  --studio-page-heading: clamp(32px, 4vw, 48px);
+  --studio-section-heading: clamp(30px, 3.4vw, 48px);
+  --studio-card-heading: 22px;
+  --studio-body: 16px;
+  --studio-caption: 12px;
+  color-scheme: light;
+}
+:where(.uw-studio, .uw-site, .uw-design-system)[data-studio-theme="dark"] {
+  --studio-bg: #111b2a;
+  --studio-surface: #17253a;
+  --studio-soft: #1d2e47;
+  --studio-text: #f1f4fb;
+  --studio-muted: #b4c1d4;
+  --studio-line: #36465d;
+  --studio-link: #9ac6ff;
+  --studio-accent: #9ac6ff;
+  --studio-success: #98d7af;
+  --studio-warning: #efd48e;
+  --studio-error: #ffb5b5;
+  --studio-shadow: none;
+  color-scheme: dark;
+}

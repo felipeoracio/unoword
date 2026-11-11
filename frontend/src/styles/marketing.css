@@ -1,12 +1,12 @@
 /* Marketing styles are scoped: the extension and account-security UI keep their own tokens. */
 .uw-site {
-  --uw-blue: #0964ff;
-  --uw-navy: #101d46;
-  --uw-muted: #596987;
-  --uw-line: #e4ebf6;
+  --uw-blue: var(--studio-blue);
+  --uw-navy: var(--studio-text);
+  --uw-muted: var(--studio-muted);
+  --uw-line: var(--studio-line);
   color: var(--uw-navy);
   background: #fff;
-  font-family: "Geist Variable", sans-serif;
+  font-family: var(--studio-font-ui);
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }

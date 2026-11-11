@@ -1,0 +1,96 @@
+{
+  "application_ref": "98ecf7fdb1be20ec8cd42790fa49a98473e50006",
+  "capture_note": "Actual released application rendered with isolated fictional account/content APIs. Not customer results.",
+  "captures": {
+    "home": {
+      "source": "tests/artifacts/home/home-1440-light.png",
+      "source_dimensions": [
+        1440,
+        1131
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    },
+    "editor": {
+      "source": "tests/artifacts/phase8/editor-studio-editor/desktop-paper-light.png",
+      "source_dimensions": [
+        1440,
+        1000
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    },
+    "ideas": {
+      "source": "tests/artifacts/ideas/ideas-1440-light.png",
+      "source_dimensions": [
+        1440,
+        1974
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    },
+    "progress": {
+      "source": "tests/artifacts/progress/progress-1440-light.png",
+      "source_dimensions": [
+        1440,
+        2394
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    },
+    "library": {
+      "source": "tests/artifacts/phase6/library-1440-light.png",
+      "source_dimensions": [
+        1440,
+        1100
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    },
+    "guidance": {
+      "source": "tests/artifacts/phase8/editor-coach/coach-results.png",
+      "source_dimensions": [
+        1440,
+        1000
+      ],
+      "dimensions": [
+        1440,
+        1000
+      ],
+      "fixture_content": true,
+      "processing": "Top viewport crop and WebP encoding only; no generated UI."
+    }
+  },
+  "responsive_variants": {
+    "screenshots": [
+      640,
+      960,
+      1440
+    ],
+    "illustrations": [
+      640,
+      960
+    ],
+    "processing": "Lanczos resizing and WebP encoding of the same captures/approved illustrations. No invented or composited interface elements."
+  }
+}

@@ -35,8 +35,16 @@ const origin=process.env.GOOGLE_TEST_ORIGIN||'http://localhost:4175',owner='0000
   signed=false;await p.goto(origin+'/account'+query);await p.getByRole('button',{name:'Continue with Google',exact:true}).waitFor();
   assert.equal(await p.locator('.uw-brand').innerText(),'UnoWord');assert.equal(await p.locator('.uw-brand').getAttribute('aria-label'),'UnoWord home');assert.equal(await p.title(),'Your account — UnoWord');
   await p.evaluate(()=>localStorage.setItem('uno-writing-identity',JSON.stringify({id:'old-account'})));
-  await p.getByRole('button',{name:'Continue with Google',exact:true}).click();await p.getByRole('link',{name:'Complete Google sign-in'}).click();await p.getByText('Signed in as',{exact:false}).waitFor();
-  assert.equal(intent,expected);assert.equal(await p.evaluate(()=>localStorage.getItem('uno-writing-identity')),null,'New identity clears the previous cache boundary');assert.ok(!p.url().includes('oauth=')&&!p.url().includes('code='));assert.ok((await p.locator('.uw-account-plan').innerText()).includes('Free'),'Google sign-in does not grant Pro');
+  await p.getByRole('button',{name:'Continue with Google',exact:true}).click();await p.getByRole('link',{name:'Complete Google sign-in'}).click();
+  if(expected==='account'){
+   await p.getByTestId('studio-home').waitFor();assert.equal(new URL(p.url()).pathname,'/app','Ordinary Google sign-in opens Home');
+   await p.waitForFunction(owner=>JSON.parse(localStorage.getItem('uno-writing-identity')||'null')?.id===owner,owner);
+   assert.equal(JSON.parse(await p.evaluate(()=>localStorage.getItem('uno-writing-identity'))).ai_access,false,'Home uses the verified Free account');
+  }else{
+   await p.getByText('Signed in as',{exact:false}).waitFor();
+   assert.equal(await p.evaluate(()=>localStorage.getItem('uno-writing-identity')),null,'New identity clears the previous cache boundary');assert.ok((await p.locator('.uw-account-plan').innerText()).includes('Free'),'Google sign-in does not grant Pro');
+  }
+  assert.equal(intent,expected);assert.ok(!p.url().includes('oauth=')&&!p.url().includes('code='));
   if(expected==='lifetime')assert.ok(new URL(p.url()).searchParams.get('offer')==='lifetime');
   if(expected==='pro'){assert.equal(new URL(p.url()).searchParams.get('plan'),'pro');assert.equal(await p.getByRole('button',{name:'Confirm plan request'}).isDisabled(),true);}
  }

@@ -54,7 +54,9 @@ function scan(directory) {
     const text = raw
       .replace(/&(?:nbsp|#0*32|#x0*20);/gi, " ")
       .replace(/\\(?:u00(?:20|a0)|x20)/gi, " ")
-      .replace(/<[^>\n]*>/g, "");
+      .replace(/<[^>\n]*>/g, "")
+      // Owner-approved campaign slogan; the product wordmark remains UnoWord.
+      .replace(/Every idea starts with Uno[ \u00a0]Word\./g, "Every idea starts with UnoWord.");
     for (const match of text.matchAll(
       /\buno[\s\u00a0]+word\b|\buno(?:word)\b/gi,
     )) {

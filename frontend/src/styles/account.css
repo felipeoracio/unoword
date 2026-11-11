@@ -437,3 +437,11 @@
   background: #dfe7f1;
   flex: 1;
 }
+
+/* Registration and account controls inherit the shared studio foundation. */
+.uw-site.uw-account-page { background:var(--studio-bg); }
+.uw-site .uw-account-card { background:var(--studio-surface); border-color:var(--studio-line); border-radius:var(--studio-radius); box-shadow:var(--studio-shadow); }
+.uw-site .uw-account-card h1 { font-family:var(--studio-font-editorial); }
+.uw-site .uw-button { min-height:48px; border-radius:var(--studio-control-radius); background:var(--studio-blue); color:var(--studio-on-primary); box-shadow:var(--studio-shadow); font-family:var(--studio-font-ui); }
+.uw-site .uw-button-outline { background:var(--studio-surface); color:var(--studio-link); border-color:var(--studio-line); }
+.uw-site .uw-auth-form input { background:var(--studio-surface); color:var(--studio-text); border-color:var(--studio-line); border-radius:var(--studio-control-radius); }
