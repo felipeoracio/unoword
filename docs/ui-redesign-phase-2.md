@@ -74,4 +74,10 @@ offline persistence, conflict and entitlement checks continue to apply.
 Run browser suites after a frontend production build against preview port 4175,
 using `PLAYWRIGHT_MODULE` and `CHROMIUM_EXECUTABLE` if needed. Automated axe checks
 were not run; viewport checks do not substitute for physical device testing.
-Phase 2 has not been deployed as part of this implementation.
+Phase 2 was deployed on November 11, 2026, through PR #21, production merge
+`5049ac412b495dea7c83f0799e4811bafb1f2399`. Vercel reported success and the live
+JavaScript entry matched the tested build. Public pages and `/app` returned 200;
+the API root and product endpoint returned 200, while anonymous document and
+project requests returned 401. The Home browser suite also passed against the
+deployed assets with entirely synthetic API responses and analytics disabled.
+The extension release remains 0.24.1. No production user data was changed.

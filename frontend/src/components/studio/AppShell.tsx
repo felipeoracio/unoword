@@ -32,7 +32,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
   const items = [
     { id: "home", label: t("Home", "Inicio"), href: "/app", icon: House },
     { id: "write", label: t("Write", "Escribir"), href: paid ? "/editor" : "/account#install", icon: PenLine },
-    { id: "ideas", label: t("Ideas", "Ideas"), href: paid ? "/editor?assistant=1" : "/app#home-prompt", icon: Lightbulb },
+    { id: "ideas", label: t("Ideas", "Ideas"), href: "/ideas", icon: Lightbulb },
     { id: "progress", label: t("Progress", "Progreso"), href: "/account#writing-progress", icon: ChartNoAxesColumnIncreasing },
     { id: "library", label: t("Library", "Biblioteca"), href: "/projects", icon: LibraryBig, pro: !paid },
   ];
@@ -43,6 +43,7 @@ export default function AppShell({ user, children, editor = false, focusMode = f
   const active = location.pathname === "/editor" ? (location.search.includes("assistant=1") ? "ideas" : "write")
     : location.pathname === "/projects" ? "library"
     : location.pathname === "/rewards" ? "rewards"
+    : location.pathname === "/ideas" ? "ideas"
     : location.hash === "#writing-progress" ? "progress"
     : location.hash === "#account-settings" || location.search.includes("plan=") || location.search.includes("offer=") ? "settings"
     : location.hash === "#install" ? "write"
