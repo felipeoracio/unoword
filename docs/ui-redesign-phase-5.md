@@ -6,9 +6,10 @@ a preview of earned milestones. Studio Progress navigation and Home's progress
 link open it. Existing Account anchors remain compatible. Sign-in's explicit
 return allowlist adds only `/progress`; provider configuration is unchanged.
 
-This phase builds on the Phase 4 branch. Phases 3–5 remain review changes;
-production remains on Phase 2. No backend, schema, tracking, entitlement or
-extension change is introduced.
+This phase builds on deployed Phase 4. PR #25 now targets main after the Phase 3
+and Phase 4 release merges were integrated into this branch. Phase 5 is not
+deployed. No backend, schema, tracking, entitlement or extension change is
+introduced.
 
 ## Authoritative metrics
 
@@ -68,6 +69,9 @@ retaining configured badge images. No celebration is claimed automatically.
 
 ## Verification
 
+- After integrating deployed Phase 4, the production build, Progress workflow,
+  targeted axe scans and both embedded PostgreSQL suites passed again. Phase 4
+  live verification is recorded in `ui-redesign-phase-4.md`.
 - Production build and TypeScript pass; lint retains four existing warnings.
 - `tests/studio-progress.browser.cjs` uses synthetic accounts to check private
   routing, separate daily/lifetime/session time, goal and streak presentation,
