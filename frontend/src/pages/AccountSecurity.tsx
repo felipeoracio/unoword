@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Brand from '@/components/marketing/Brand';
+import '@/styles/studio-settings.css';
 
 // Keep one-use verification tokens in memory only, and remove them before any
 // UI or network call. Never persist tokens in browser storage or analytics.
@@ -51,9 +54,9 @@ export default function AccountSecurity() {
     } catch { setMessage(text('Connection failed. Please try again.', 'La conexión falló. Inténtalo de nuevo.')); }
     finally { setPassword(''); setConfirmation(''); setBusy(false); }
   }
-  return <main style={{ maxWidth: 480, margin: '8vh auto', padding: 24, overflowWrap: 'anywhere' }}>
-    <button onClick={() => setSpanish(!spanish)} style={{ float: 'right' }}>{spanish ? 'English' : 'Español'}</button>
-    <h1>UnoWord</h1><h2>{text('Account & Security', 'Cuenta y seguridad')}</h2>
+  return <main className="uw-security-page" lang={spanish ? 'es' : 'en'}>
+    <button onClick={() => setSpanish(!spanish)}>{spanish ? 'English' : 'Español'}</button>
+    <Brand /><h1>{text('Account & Security', 'Cuenta y seguridad')}</h1>
     {!usable && <p>{text(unexpectedFragment ? 'This link uses an unsupported format. Ask the administrator to configure secure email templates, then request a new link.' : 'Open the secure link from your UnoWord verification email.', unexpectedFragment ? 'El enlace usa un formato no compatible. Pide al administrador que configure las plantillas seguras y solicita otro enlace.' : 'Abre el enlace seguro del correo de UnoWord.')}</p>}
     {usable && !done && <form onSubmit={submit} style={{ display: 'grid', gap: 16 }}>
       {recovery && <><label>{text('New password', 'Nueva contraseña')}<input style={{ display: 'block', width: '100%', padding: 12 }} type={show ? 'text' : 'password'} autoComplete="new-password" minLength={8} maxLength={200} required value={password} onChange={e => setPassword(e.target.value)} /></label>
@@ -62,5 +65,6 @@ export default function AccountSecurity() {
       <button disabled={busy} type="submit" style={{ background: '#0866ff', color: 'white', borderRadius: 12, padding: 14 }}>{busy ? text('Please wait…', 'Espera…') : text(recovery ? 'Update password' : 'Verify email', recovery ? 'Actualizar contraseña' : 'Verificar correo')}</button>
     </form>}
     <p role="status">{message}</p>
+    <Link to="/settings#settings-security">{text('Back to settings', 'Volver a ajustes')}</Link>
   </main>;
 }

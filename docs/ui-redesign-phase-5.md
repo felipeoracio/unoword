@@ -6,10 +6,9 @@ a preview of earned milestones. Studio Progress navigation and Home's progress
 link open it. Existing Account anchors remain compatible. Sign-in's explicit
 return allowlist adds only `/progress`; provider configuration is unchanged.
 
-This phase builds on deployed Phase 4. PR #25 now targets main after the Phase 3
-and Phase 4 release merges were integrated into this branch. Phase 5 is not
-deployed. No backend, schema, tracking, entitlement or extension change is
-introduced.
+This phase builds on deployed Phase 4. PR #25 was merged and deployed after its
+validation. No backend, schema, tracking, entitlement or extension
+change is introduced.
 
 ## Authoritative metrics
 
@@ -99,3 +98,15 @@ retaining configured badge images. No celebration is claimed automatically.
 Run browser tests against the built preview on port 4175, setting
 `PLAYWRIGHT_MODULE` and `CHROMIUM_EXECUTABLE` as needed. `AXE_SCRIPT` enables
 Progress axe scans; `PGLITE_ROOT` locates the test-only PostgreSQL packages.
+
+## Production release
+
+The owner authorized deployment of Phase 5 and continuation with Phase 6.
+PR #25 merged at `1db7fc1863e3f812fbeaeb3a0063a4876d14955d`. Vercel reported
+success; the production entry is `/assets/index-BDsX-n8T.js`. Normal HTTPS probes
+returned 200 for `/progress`, the API root and product endpoint, and 401 for
+anonymous document/project requests. The Progress browser workflow and targeted
+axe scans passed against deployed assets with synthetic API responses and
+analytics disabled. Container Chromium required a certificate override;
+independent HTTPS probes validated certificates normally. Production remains on
+Phase 5 while Phase 6 is prepared separately.

@@ -67,14 +67,14 @@ export default function WritingStreak({
               {value.longestStreak} {es ? "días" : "days"}
             </p>
           )}
-          <div aria-label="Earned writing streak milestones">
+          <div role="group" aria-label={es ? "Hitos de racha obtenidos" : "Earned writing streak milestones"}>
             {(value.milestones || []).map((day) => (
               <span key={day}>
                 ✓ {day} {es ? "días" : "days"}{" "}
               </span>
             ))}
           </div>
-          <StreakHistory />
+          <StreakHistory language={language} />
         </>
       )}
       <small>
@@ -86,7 +86,8 @@ export default function WritingStreak({
   );
 }
 
-function StreakHistory() {
+function StreakHistory({language}: {language:string}) {
+  const t = (en: string, es: string) => language === "es" ? es : en;
   const [days, setDays] =
       useState<{ date: string; typed_words: number; sessions: number }[]>(),
     [offset, setOffset] = useState(0),
@@ -104,13 +105,13 @@ function StreakHistory() {
       setError("");
     } catch {
       setDays(undefined);
-      setError("Reconnect or refresh your Pro access to view synced history.");
+      setError(t("Reconnect or refresh your Pro access to view synced history.", "Conéctate o actualiza tu acceso Pro para ver el historial sincronizado."));
     }
   }
   return (
     <section id="writing-history">
       <button type="button" onClick={() => void load(0)}>
-        View full synced streak history
+        {t("View full synced streak history", "Ver el historial completo de la racha sincronizada")}
       </button>
       {error && <p role="alert">{error}</p>}
       {days && (
@@ -118,24 +119,23 @@ function StreakHistory() {
           <ul>
             {days.map((day) => (
               <li key={day.date}>
-                {day.date}: {day.typed_words} typed words · {day.sessions}{" "}
-                sessions
+                {day.date}: {day.typed_words} {t("typed words", "palabras escritas")} · {day.sessions}{" "}
+                {t("sessions", "sesiones")}
               </li>
             ))}
           </ul>
           {days.length === 0 && (
             <p>
-              No synced activity on this account yet. In the extension, use Sync
-              this device’s writing history for available older sessions.
+              {t("No synced activity on this account yet. In the extension, use Sync this device’s writing history for available older sessions.", "Esta cuenta aún no tiene actividad sincronizada. En la extensión, sincroniza el historial de escritura de este dispositivo para recuperar sesiones anteriores disponibles.")}
             </p>
           )}
           {offset > 0 && (
             <button onClick={() => void load(Math.max(0, offset - 100))}>
-              Previous days
+              {t("Previous days", "Días anteriores")}
             </button>
           )}
           {days.length === 100 && (
-            <button onClick={() => void load(offset + 100)}>Older days</button>
+            <button onClick={() => void load(offset + 100)}>{t("Older days", "Días más antiguos")}</button>
           )}
         </>
       )}

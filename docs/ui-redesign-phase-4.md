@@ -100,4 +100,5 @@ separate guidance, save retries, prompt handoffs and responsive EN/ES themes.
 Container Chromium required a certificate override; the independent HTTPS
 probes did not. No production user data, payment or paid AI was used.
 
-Production stops at Phase 4. Phase 5 remains a separate Progress review change.
+Phase 5 subsequently superseded this deployment; its implementation notes record
+the release commit and live verification.

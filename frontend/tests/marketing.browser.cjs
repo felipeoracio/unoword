@@ -100,6 +100,18 @@ const catalog = {
                       : null,
                 })),
               };
+        } else if (route === "/auth/google") {
+          result = { enabled: false };
+        } else if (route === "/onboarding") {
+          result = { version: 1, status: "completed", current_step: "done", completed_actions: {}, skipped_steps: [], draft_id: null, words: 0 };
+        } else if (route === "/subscription/substack") {
+          result = { user_id: user.id, configured: false, available: false, connected: false, active: false, subscriptions: [], pending_request: null };
+        } else if (route === "/rewards" || route === "/ai/usage/summary") {
+          status = 503; result = { detail: "isolated_fixture" };
+        } else if (route === "/progress/streak") {
+          result = { user_id: user.id, displayedStreak: 0, hasUnlimitedStreakAccess: user.ai_access, timezone: "UTC", asOf: new Date().toISOString() };
+        } else if (route === "/progress/summary") {
+          result = { user_id: user.id, reportingDate: new Date().toISOString().slice(0, 10), timezone: "UTC", dailyWordCount: 0, dailyGoal: 250, dailyActiveWritingSeconds: 0, lifetimeActiveWritingSeconds: 0, lifetimeWordCount: 0, displayedStreak: 0, sessions: [], updatedAt: new Date().toISOString() };
         } else if (route === "/auth/me") {
           status = authenticated ? 200 : 401;
           result = authenticated ? user : { detail: "Authentication required" };
@@ -227,6 +239,7 @@ const catalog = {
       });
       assert.deepEqual(findings, [], label + " accessibility violations");
     }
+    if (!process.env.ACCOUNT_SETTINGS_ONLY) {
     assert.ok(
       fs
         .readFileSync(path.join(dist, "index.html"), "utf8")
@@ -391,6 +404,7 @@ const catalog = {
       await page.getByRole("heading", { level: 1, name: heading }).waitFor();
       await layout(route);
     }
+    }
     await load("/account?mode=signup");
     await page
       .getByRole("heading", { name: "Your next chapter starts here." })
@@ -412,7 +426,7 @@ const catalog = {
       "text",
     );
     await page.getByRole("button", { name: "Create free account" }).click();
-    await page.getByText("You’re in.", { exact: false }).waitFor();
+    await page.getByRole("heading", { name: "Your account", exact: true }).waitFor();
     assert.ok(requests.some((r) => r.route === "/auth/signup"));
     assert.equal(
       await page.evaluate(() => localStorage.length + sessionStorage.length),
@@ -586,6 +600,11 @@ const catalog = {
       .getByRole("status")
       .filter({ hasText: "not configured yet" })
       .waitFor();
+    if (process.env.ACCOUNT_SETTINGS_ONLY) {
+      assert.deepEqual(errors, []);
+      console.log("PASS account settings: signup, install/download, signout, confirmed Pro requests, stale account guard, safe Stripe redirects, verified returns, portal/cancellation, recovery setup, responsive layout and no credentials stored.");
+      return;
+    }
     failCatalog = true;
     await load();
     await page

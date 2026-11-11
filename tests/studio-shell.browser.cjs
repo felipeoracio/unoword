@@ -109,9 +109,9 @@ const until = async fn => { for (let i=0;i<100;i++) { if (fn()) return; await sl
     // New shell navigation must flush writing before unmounting the editor.
     await canvas.fill('A fresh thought saved before changing screens.');
     await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Library',exact:true}).click();
-    await page.waitForURL('**/projects');
+    await page.waitForURL('**/library');
     assert.match(JSON.stringify(doc.content),/fresh thought/);
-    await page.getByRole('heading',{name:'Library & projects',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Your library',exact:true}).waitFor();
     for(const width of [320,390,768,1440]){
       await page.setViewportSize({width,height:1000});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Library no overflow '+width);
@@ -124,7 +124,7 @@ const until = async fn => { for (let i=0;i<100;i++) { if (fn()) return; await sl
     assert.equal((await page.locator('.uw-studio-page-header').evaluate(element=>getComputedStyle(element).backgroundImage)).includes('landscape-'),false,'Dark headers retain a quiet surface');
     await page.screenshot({path:path.join(artifact,'library-1440-dark.png'),fullPage:true});
     await page.getByRole('combobox',{name:'Interface language',exact:true}).selectOption('es');
-    await page.getByRole('heading',{name:'Biblioteca y proyectos',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Tu biblioteca',exact:true}).waitFor();
     assert.equal(await shell.getAttribute('lang'),'es');
     await page.getByRole('combobox',{name:'Idioma de la interfaz',exact:true}).selectOption('en');
     await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Progress',exact:true}).click();

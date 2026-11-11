@@ -34,17 +34,18 @@ export default function AppShell({ user, children, editor = false, focusMode = f
     { id: "write", label: t("Write", "Escribir"), href: paid ? "/editor" : "/account#install", icon: PenLine },
     { id: "ideas", label: t("Ideas", "Ideas"), href: "/ideas", icon: Lightbulb },
     { id: "progress", label: t("Progress", "Progreso"), href: "/progress", icon: ChartNoAxesColumnIncreasing },
-    { id: "library", label: t("Library", "Biblioteca"), href: "/projects", icon: LibraryBig, pro: !paid },
+    { id: "library", label: t("Library", "Biblioteca"), href: "/library", icon: LibraryBig, pro: !paid },
   ];
   const secondary = [
     { id: "rewards", label: t("Milestones", "Logros"), href: "/rewards", icon: Award },
-    { id: "settings", label: t("Settings", "Ajustes"), href: "/account#account-settings", icon: Settings2 },
+    { id: "settings", label: t("Settings", "Ajustes"), href: "/settings#account-settings", icon: Settings2 },
   ];
   const active = location.pathname === "/editor" ? (location.search.includes("assistant=1") ? "ideas" : "write")
-    : location.pathname === "/projects" ? "library"
+    : location.pathname === "/projects" || location.pathname === "/library" ? "library"
     : location.pathname === "/rewards" ? "rewards"
     : location.pathname === "/ideas" ? "ideas"
     : location.pathname === "/progress" ? "progress"
+    : location.pathname === "/settings" ? "settings"
     : location.hash === "#writing-progress" ? "progress"
     : location.hash === "#account-settings" || location.search.includes("plan=") || location.search.includes("offer=") ? "settings"
     : location.hash === "#install" ? "write"

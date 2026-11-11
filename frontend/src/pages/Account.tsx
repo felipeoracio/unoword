@@ -8,7 +8,7 @@ import GoogleSignIn from "@/components/GoogleSignIn";
 import LifetimeAccount from "@/components/marketing/LifetimeAccount";
 import AccountTour from "@/components/onboarding/AccountTour";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,6 +29,8 @@ import "@/styles/marketing.css";
 import "@/styles/account.css";
 import AppShell from "@/components/studio/AppShell";
 import { useStudioPreferences } from "@/lib/studio-preferences";
+import { StudioPageHeader } from "@/components/studio/StudioPrimitives";
+import "@/styles/studio-settings.css";
 
 async function currentUser(): Promise<AuthUser | null> {
   try {
@@ -112,6 +114,8 @@ function redirectToBilling(result: { url: string; destination: string }) {
 }
 export default function Account() {
   const { language: studioLanguage } = useStudioPreferences();
+  const location = useLocation(), es = studioLanguage === "es";
+  const t = (en: string, spanish: string) => es ? spanish : en;
   const [params] = useSearchParams();
   const requested = params.get("mode");
   const mode =
@@ -129,6 +133,7 @@ export default function Account() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [recoveryNotice, setRecoveryNotice] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const submitting = useRef(false);
@@ -162,7 +167,7 @@ export default function Account() {
       .then((data) => {
         if (!cancelled) {
           setUser(data);
-          if (data && oauth === "success" && ["/editor", "/app", "/ideas", "/progress"].includes(next || ""))
+          if (data && oauth === "success" && ["/editor", "/app", "/ideas", "/progress", "/library", "/settings", "/projects"].includes(next || ""))
             window.location.replace(recoveryPath(next!));
         }
       })
@@ -322,7 +327,7 @@ export default function Account() {
       beginSession();
       const fresh = await currentUser();
       setUser(fresh);
-      if (fresh && ["/editor", "/app", "/ideas", "/progress"].includes(params.get("next") || ""))
+      if (fresh && ["/editor", "/app", "/ideas", "/progress", "/library", "/settings", "/projects"].includes(params.get("next") || ""))
         window.location.assign(recoveryPath(params.get("next")!));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
@@ -394,14 +399,28 @@ export default function Account() {
       setBusy(false);
     }
   }
+  async function requestRecovery() {
+    if (!user?.email || submitting.current) return;
+    submitting.current = true; setBusy(true); setRecoveryNotice("");
+    try {
+      const fresh = await currentUser();
+      if (!fresh || fresh.id !== user.id) { setRecoveryNotice(t("Your account changed. Refresh before requesting recovery.", "Tu cuenta cambió. Actualiza antes de solicitar la recuperación.")); return; }
+      await apiPost("/auth/recovery", { email: user.email });
+      setRecoveryNotice(t("If an eligible account exists, a recovery link will be sent. Check your inbox and spam folder.", "Si existe una cuenta válida, recibirás un enlace de recuperación. Revisa tu bandeja y la carpeta de spam."));
+    } catch (error) { setRecoveryNotice(messageFor(error)); }
+    finally { submitting.current = false; setBusy(false); }
+  }
   const content = (
-    <div className="uw-site uw-account-page">
+    <div className={`uw-site uw-account-page${user ? " uw-settings" : ""}`}>
       <header className="uw-account-header uw-container">
         <Brand />
         <Link to="/" className="uw-text-link">
           <ArrowLeft size={15} /> Back to UnoWord
         </Link>
       </header>
+      {user && <><StudioPageHeader title={t("Your settings", "Tus ajustes")} eyebrow={t("Make yourself at home.", "Siéntete como en casa.")} description={t("Your account, preferences and connections, in one place.", "Tu cuenta, preferencias y conexiones, en un solo lugar.")} /><nav className="uw-settings-nav" aria-label={t("Settings sections", "Secciones de ajustes")}>{[
+        ["account-settings", t("Account", "Cuenta")], ["settings-subscription", t("Plan & subscription", "Plan y suscripción")], ["settings-preferences", t("Preferences", "Preferencias")], ["settings-security", t("Security", "Seguridad")], ["install", t("Chrome extension", "Extensión de Chrome")],
+      ].map(([id, name]) => <Link key={id} to={recoveryPath(location.pathname + location.search + "#" + id)} aria-current={(location.hash || "#account-settings") === "#" + id ? "location" : undefined}>{name}</Link>)}</nav></>}
       <main className="uw-account-main">
         <section className="uw-account-card" aria-labelledby="account-heading">
           {legacyRecovery() && <p role="status">Previous-domain recovery: sign in to the same account to sync or export drafts saved on this browser.</p>}
@@ -409,27 +428,28 @@ export default function Account() {
             <p role="status">Checking your session…</p>
           ) : user ? (
             <>
+              <section className="uw-settings-section" aria-labelledby="account-heading">
               <span className="uw-icon-tile">
                 <Check />
               </span>
-              <p className="uw-eyebrow">YOUR WORDS. YOUR POSSIBILITIES.</p>
-              <h1 id="account-heading">
-                You’re in.
-                <br />
-                Let’s get you writing.
-              </h1>
+              <p className="uw-eyebrow">{t("YOUR WORDS. YOUR POSSIBILITIES.", "TUS PALABRAS. TUS POSIBILIDADES.")}</p>
+              <h2 id="account-heading">
+                {t("Your account", "Tu cuenta")}
+              </h2>
               <p className="uw-account-email">
-                Signed in as <strong>{user.email}</strong>
+                {t("Signed in as", "Sesión iniciada como")} <strong>{user.email}</strong>
               </p>
               <p className="uw-account-plan" id="account-settings" tabIndex={-1}>
-                Current plan <span>{user.ai_access ? "Pro" : "Free"}</span>
+                {t("Current plan", "Plan actual")} <span>{user.ai_access ? "Pro" : "Free"}</span>
               </p>
               <Link className="uw-button" to={recoveryPath("/app")}>{studioLanguage === "es" ? "Abrir Inicio" : "Open Home"}<ArrowRight size={16}/></Link>
+              <Link className="uw-button uw-button-outline" to={recoveryPath("/library")}>{t("Open Library", "Abrir biblioteca")}<ArrowRight size={16}/></Link>
+              <AccountTour key={user.id} owner={user.id} pro={user.ai_access} language={studioLanguage} />
+              </section>
+              <section className="uw-settings-section" id="settings-subscription" tabIndex={-1} aria-labelledby="settings-subscription-heading">
+              <h2 id="settings-subscription-heading">{t("Plan & subscription", "Plan y suscripción")}</h2>
               {lifetimeIntent && <LifetimeAccount key={user.id} user={user} />}
-              <AccountTour key={user.id} owner={user.id} pro={user.ai_access} />
-              <RewardsWidget key={"reward-widget-" + user.id} owner={user.id} celebrate />
-              <RewardsSettings key={"reward-settings-" + user.id} owner={user.id} />
-              <ConnectSubstack key={"substack-" + user.id} owner={user.id} onAccessChange={async()=>{const fresh=await currentUser();if(fresh?.id===user.id){setUser(fresh);const next=await apiGet<Subscription>("/subscription");if(next.user_id===user.id)setSubscription(next);}}}/>
+              <ConnectSubstack key={"substack-" + user.id} owner={user.id} language={studioLanguage} onAccessChange={async()=>{const fresh=await currentUser();if(fresh?.id===user.id){setUser(fresh);const next=await apiGet<Subscription>("/subscription");if(next.user_id===user.id)setSubscription(next);}}}/>
               {proIntent && !user.ai_access && (
                 <form
                   className="uw-plan-intent"
@@ -437,14 +457,14 @@ export default function Account() {
                 >
                   <div>
                     <Sparkles size={20} />
-                    <h2>Continue with Pro</h2>
+                    <h2>{t("Continue with Pro", "Continuar con Pro")}</h2>
                   </div>
                   <p>
                     {product.data?.billing_available
                       ? subscription?.trial_eligible === false
-                        ? "Pro costs $20 USD per month. Your account has already used its trial. Review your subscription in Stripe before confirming payment."
-                        : "Try Pro free for 7 days, then $20 USD per month unless you cancel. A payment method is required. The trial is available once per account."
-                      : "Billing is currently unavailable, so your plan will stay unchanged. Existing eligible Pro accounts keep their access."}
+                        ? t("Pro costs $20 USD per month. Your account has already used its trial. Review your subscription in Stripe before confirming payment.", "Pro cuesta 20 USD al mes. Tu cuenta ya usó la prueba. Revisa tu suscripción en Stripe antes de confirmar el pago.")
+                        : t("Try Pro free for 7 days, then $20 USD per month unless you cancel. A payment method is required. The trial is available once per account.", "Prueba Pro gratis durante 7 días; después, 20 USD al mes hasta que canceles. Se requiere un método de pago. La prueba está disponible una vez por cuenta.")
+                      : t("Billing is currently unavailable, so your plan will stay unchanged. Existing eligible Pro accounts keep their access.", "La facturación no está disponible. Tu plan no cambia y las cuentas Pro válidas conservan su acceso.")}
                   </p>
                   {product.data?.ai_allowance && (
                     <p>
@@ -468,7 +488,7 @@ export default function Account() {
                       disabled={busy}
                     />
                     <span>
-                      I confirm this Pro request is for{" "}
+                      {t("I confirm this Pro request is for", "Confirmo que esta solicitud de Pro es para")}{" "}
                       <strong>{user.email}</strong>.
                     </span>
                   </label>
@@ -477,7 +497,7 @@ export default function Account() {
                     type="submit"
                     disabled={busy || !confirmed}
                   >
-                    {busy ? "Please wait…" : "Confirm plan request"}
+                    {busy ? t("Please wait…", "Espera…") : t("Confirm plan request", "Confirmar solicitud del plan")}
                     <ArrowRight size={15} />
                   </button>
                 </form>
@@ -487,7 +507,7 @@ export default function Account() {
                   className="uw-button uw-button-outline"
                   to="/account?plan=pro"
                 >
-                  Explore Pro
+                  {t("Explore Pro", "Explorar Pro")}
                 </Link>
               )}
               {user.ai_access &&
@@ -497,7 +517,7 @@ export default function Account() {
                     className="uw-button uw-button-outline"
                     to="/account?offer=lifetime"
                   >
-                    Manage lifetime purchase &amp; refunds
+                    {t("Manage lifetime purchase & refunds", "Gestionar compra de por vida y reembolsos")}
                   </Link>
                 )}
               {subscription?.user_id === user.id &&
@@ -507,28 +527,26 @@ export default function Account() {
                     className="uw-plan-intent"
                     onSubmit={(event) => changePlan(event, "free")}
                   >
-                    <h2>Your subscription</h2>
+                    <h2>{t("Your subscription", "Tu suscripción")}</h2>
                     <p>
-                      Status: {(subscription.billing_status || subscription.status).replaceAll("_", " ")}
+                      {t("Status", "Estado")}: {(subscription.billing_status || subscription.status).replaceAll("_", " ")}
                       {subscription.period_end && (
                         <>
                           {" "}
                           ·{" "}
                           {subscription.cancel_at_period_end
-                            ? "Ends"
+                            ? t("Ends", "Finaliza")
                             : subscription.status === "trialing"
-                              ? "Trial ends"
-                              : "Current period ends"}{" "}
+                              ? t("Trial ends", "La prueba finaliza")
+                              : t("Current period ends", "El periodo actual finaliza")}{" "}
                           {new Date(
                             subscription.period_end,
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString(studioLanguage)}
                         </>
                       )}
                     </p>
                     <p>
-                      Update payment details or cancel in Stripe. A scheduled
-                      cancellation keeps access through the paid period or trial
-                      end.
+                      {t("Update payment details or cancel in Stripe. A scheduled cancellation keeps access through the paid period or trial end.", "Actualiza el pago o cancela en Stripe. Una cancelación programada conserva el acceso hasta el final del periodo pagado o de prueba.")}
                     </p>
                     <label className="uw-confirm-plan">
                       <input
@@ -539,7 +557,7 @@ export default function Account() {
                         required
                       />
                       <span>
-                        Manage the subscription for{" "}
+                        {t("Manage the subscription for", "Gestionar la suscripción de")}{" "}
                         <strong>{user.email}</strong>.
                       </span>
                     </label>
@@ -548,82 +566,93 @@ export default function Account() {
                       type="submit"
                       disabled={busy || !confirmed}
                     >
-                      Manage subscription
+                      {t("Manage subscription", "Gestionar suscripción")}
                     </button>
                   </form>
                 )}
+              </section>
+              <section className="uw-settings-section" id="settings-preferences" tabIndex={-1} aria-labelledby="settings-preferences-heading">
+              <h2 id="settings-preferences-heading">{t("Preferences & milestones", "Preferencias y logros")}</h2>
+              <p>{t("Use the theme and language controls above to personalize this browser. Milestone preferences are saved to your account.", "Usa los controles de tema e idioma de arriba para personalizar este navegador. Las preferencias de logros se guardan en tu cuenta.")}</p>
+              <RewardsWidget key={"reward-widget-" + user.id} owner={user.id} language={studioLanguage} celebrate />
+              <RewardsSettings key={"reward-settings-" + user.id} owner={user.id} language={studioLanguage} />
               <div id="writing-progress" tabIndex={-1}>
-                <WritingStreak owner={user.id} paid={user.ai_access} />
+                <WritingStreak key={user.id} owner={user.id} paid={user.ai_access} language={studioLanguage} />
               </div>
+              <Link className="uw-text-link" to="/progress">{t("View your writing progress", "Ver tu progreso de escritura")}</Link>
+              {user.ai_access && <AIUsage usage={aiUsage.data} language={studioLanguage} />}
+              </section>
+              <section className="uw-settings-section" aria-labelledby="settings-extension-heading">
+              <h2 id="settings-extension-heading">{t("Chrome extension", "Extensión de Chrome")}</h2>
               {!user.ai_access && <section id="quick-prompt" className="uw-studio-prompt-help" tabIndex={-1} aria-labelledby="quick-prompt-heading">
                 <h2 id="quick-prompt-heading">Quick Prompt</h2>
                 <p>{studioLanguage === "es" ? "Encuentra tu próxima idea en la extensión de Chrome de UnoWord. Quick Prompt está incluido en Free y Pro y no consume créditos de IA." : "Find your next idea in the UnoWord Chrome extension. Quick Prompt is included with Free and Pro and does not use AI credits."}</p>
                 <Link to="/account#install">{studioLanguage === "es" ? "Configurar la extensión de Chrome" : "Set up the Chrome extension"}</Link>
               </section>}
-              {user.ai_access && <><AIUsage usage={aiUsage.data} /><Link className="uw-button" to="/projects">Projects &amp; Writing Library <ArrowRight size={16}/></Link></>}
               <div className="uw-install-card" id="install" tabIndex={-1}>
                 <Link
                   className="uw-button"
                   to={recoveryPath(user.ai_access ? "/editor" : "/account?plan=pro")}
                 >
                   {user.ai_access
-                    ? "Open Writing Editor"
-                    : "Unlock Your Writing Space with Pro"}{" "}
+                    ? t("Open Writing Editor", "Abrir editor de escritura")
+                    : t("Unlock Your Writing Space with Pro", "Desbloquear tu espacio de escritura con Pro")}{" "}
                   <ArrowRight size={16} />
                 </Link>
                 <div>
                   <Chrome size={24} />
-                  <h2>Make room for UnoWord in Chrome.</h2>
+                  <h2>{t("Make room for UnoWord in Chrome.", "Haz espacio para UnoWord en Chrome.")}</h2>
                 </div>
                 {product.data?.chrome_store_url ? (
                   <a className="uw-button" href={product.data.chrome_store_url}>
-                    Add to Chrome
+                    {t("Add to Chrome", "Añadir a Chrome")}
                     <ArrowRight size={16} />
                   </a>
                 ) : (
                   <>
                     <p>
-                      A Chrome Web Store listing isn’t available yet. You can
-                      install the developer release now:
+                      {t("A Chrome Web Store listing isn’t available yet. You can install the developer release now:", "Aún no hay una ficha en Chrome Web Store. Puedes instalar la versión para desarrolladores:")}
                     </p>
                     <a
                       className="uw-button"
                       href="/downloads/unoword-extension.zip"
                       download
                     >
-                      <Download size={16} /> Download UnoWord for Chrome
+                      <Download size={16} /> {t("Download UnoWord for Chrome", "Descargar UnoWord para Chrome")}
                     </a>
                     <ol>
-                      <li>Unzip the downloaded file.</li>
+                      <li>{t("Unzip the downloaded file.", "Descomprime el archivo descargado.")}</li>
                       <li>
-                        Open <code>chrome://extensions</code> in Chrome and
-                        enable Developer mode.
+                        {t("Open", "Abre")} <code>chrome://extensions</code> {t("in Chrome and enable Developer mode.", "en Chrome y activa el modo de desarrollador.")}
                       </li>
                       <li>
-                        Choose <strong>Load unpacked</strong> and select the
-                        extracted <strong>unoword</strong> folder.
+                        {t("Choose", "Elige")} <strong>{t("Load unpacked", "Cargar descomprimida")}</strong> {t("and select the extracted", "y selecciona la carpeta extraída")} <strong>unoword</strong>.
                       </li>
                       <li>
-                        Pin UnoWord, open it, choose your language, and start a
-                        session. Sign in under Settings to access your account
-                        features.
+                        {t("Pin UnoWord, open it, choose your language, and start a session. Sign in under Settings to access your account features.", "Fija UnoWord, ábrelo, elige tu idioma e inicia una sesión. Inicia sesión en Ajustes para acceder a las funciones de tu cuenta.")}
                       </li>
                     </ol>
                     <p className="uw-install-note">
-                      Some managed browsers block developer extensions. Updates
-                      to this developer release are installed manually.
+                      {t("Some managed browsers block developer extensions. Updates to this developer release are installed manually.", "Algunos navegadores administrados bloquean las extensiones para desarrolladores. Las actualizaciones de esta versión se instalan manualmente.")}
                     </p>
                   </>
                 )}
               </div>
+              </section>
+              <section className="uw-settings-section" id="settings-security" tabIndex={-1} aria-labelledby="settings-security-heading">
+              <h2 id="settings-security-heading">{t("Account security", "Seguridad de la cuenta")}</h2>
+              <p>{t("Password recovery uses a secure link sent to your account email. Email verification links continue to open the dedicated verification page.", "La recuperación usa un enlace seguro enviado al correo de tu cuenta. Los enlaces de verificación siguen abriendo la página dedicada.")}</p>
+              <button className="uw-button uw-button-outline" type="button" disabled={busy || !user.email} onClick={() => void requestRecovery()}>{t("Send password reset email", "Enviar correo para restablecer la contraseña")}</button>
+              {recoveryNotice && <p role="status">{recoveryNotice}</p>}
               <button
                 className="uw-text-link uw-account-signout"
                 type="button"
                 disabled={busy}
                 onClick={signOut}
               >
-                Sign out
+                {t("Sign out", "Cerrar sesión")}
               </button>
+              </section>
             </>
           ) : (
             <>
@@ -775,9 +804,9 @@ export default function Account() {
           )}
         </section>
         <p className="uw-account-footer">
-          <Link to="/privacy">Privacy &amp; data</Link>
-          <Link to="/terms">Terms of service</Link>
-          <Link to="/support">Support</Link>
+          <Link to="/privacy">{t("Privacy & data", "Privacidad y datos")}</Link>
+          <Link to="/terms">{t("Terms of service", "Términos del servicio")}</Link>
+          <Link to="/support">{t("Support", "Ayuda")}</Link>
         </p>
       </main>
     </div>
