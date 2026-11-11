@@ -10,7 +10,7 @@ const stamp=()=>new Date().toISOString(),wait=ms=>new Promise(resolve=>setTimeou
   const context=await browser.newContext({viewport:{width:1440,height:1100}});context.setDefaultTimeout(15000);
   await context.addInitScript(()=>{localStorage.setItem('uno-writing-theme','light');localStorage.setItem('uno-writing-language','en');});
   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});
-  let owner=A,paid=false,signed=false,prefsFailed=false;
+  let owner=A,paid=false,signed=false,prefsFailed=false,badIdeaOwner=false;
   const requests=[],errors=[],documents=new Map();
   const initial={id:'00000000-0000-4000-8000-000000000101',user_id:A,title:'My existing draft',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'My own writing stays here.'}]}]},plain_text:'My own writing stays here.',status:'active',completion_status:'draft',folder_id:null,favorite:false,ai_allowed:false,revision:1,mutation_id:crypto.randomUUID(),created_at:stamp(),updated_at:stamp()};documents.set(initial.id,initial);
   const projects=require('./helpers/project-fixture.cjs').projectsFixture(()=>owner,()=>[...documents.values()]);
@@ -20,6 +20,11 @@ const stamp=()=>new Date().toISOString(),wait=ms=>new Promise(resolve=>setTimeou
    else if(!signed){status=401;value={detail:'Authentication required'};}
    else if(key==='/auth/me')value={id:owner,email:'writer@example.com',plan:paid?'pro':'free',ai_access:paid};
    else if(key==='/auth/refresh')value={authenticated:true};
+   else if(key==='/ai/ideas'){
+    assert.equal(paid,true,'Free accounts must not query saved AI ideas');
+    const identity=badIdeaOwner?B:owner;
+    value=[{id:'00000000-0000-4000-8000-000000000301',user_id:identity,title:identity===A?'A private saved direction':'B private saved direction',suggestion:'Consider what a familiar place can teach you.',reason:'A reflective direction',context_summary:'Only authorized context',questions:['What detail would you explore?'],inspired_by:[],mode:'expand_idea',status:'accepted',created_at:stamp(),related_topics:[],source_ids:[]}];
+   }
    else if(key==='/progress/preferences'){if(prefsFailed){status=503;value={detail:'unavailable'};}else value={user_id:owner,revision:1,daily_goal:500,timezone:'America/Chicago',language:'en',themes:['nature']};}
    else if(key==='/progress/summary')value={user_id:owner,reportingDate:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago'}).format(new Date()),timezone:'America/Chicago',dailyWordCount:42,dailyActiveWritingSeconds:120,lifetimeActiveWritingSeconds:1200,lifetimeWordCount:1000,dailyGoal:500,displayedStreak:paid?10:7,sessions:[],updatedAt:stamp()};
    else if(key==='/progress/streak')value={user_id:owner,displayedStreak:paid?10:7,hasUnlimitedStreakAccess:paid,streakLimitReached:!paid,journeyContinues:!paid,timezone:'America/Chicago',asOf:stamp()};
@@ -45,6 +50,7 @@ const stamp=()=>new Date().toISOString(),wait=ms=>new Promise(resolve=>setTimeou
   assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'),'noindex, nofollow');
   assert.equal(requests.some(r=>r.key.startsWith('/workspace')||r.key.startsWith('/ai/')),false,'Opening Ideas fetches no workspace or AI data');
   assert.equal(requests.some(r=>r.method!=='GET'&&r.key!=='/auth/refresh'),false,'Opening Ideas writes no preferences or activity');
+  await page.getByRole('button',{name:'View saved ideas',exact:true}).click();await page.getByRole('heading',{name:'Keep your next direction close.',exact:true}).waitFor();assert.equal(requests.some(r=>r.key==='/ai/ideas'),false);await page.getByRole('button',{name:'Hide saved ideas',exact:true}).click();
   const daily=await page.locator('.uw-home-prompt-text').textContent();await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Home',exact:true}).click();await page.waitForFunction(text=>document.querySelector('.uw-home-prompt-text')?.textContent===text,daily);
   await page.getByRole('link',{name:'Get Ideas',exact:true}).click();await page.getByTestId('studio-ideas').waitFor();assert.equal(await page.locator('.uw-home-prompt-text').textContent(),daily,'Home and Ideas share the daily prompt');
   await page.getByRole('combobox',{name:'Theme',exact:true}).selectOption('fiction');await page.waitForFunction(()=>[...document.querySelectorAll('[data-prompt-id]')].every(el=>el.dataset.promptId.startsWith('en:fiction:')));
@@ -74,6 +80,13 @@ const stamp=()=>new Date().toISOString(),wait=ms=>new Promise(resolve=>setTimeou
   await cards.nth(0).getByRole('button',{name:'Save prompt:',exact:false}).click();await page.getByText('Saves will last for this visit only.',{exact:false}).waitFor();await cards.nth(1).getByRole('button',{name:'Save prompt:',exact:false}).click();await page.getByRole('button',{name:'Saved prompts (2)',exact:true}).click();assert.equal(await cards.count(),2);await page.evaluate(()=>window.restoreIdeaStorage());
   prefsFailed=true;await page.reload();await page.getByText('Your theme preferences are unavailable.',{exact:false}).waitFor();await page.locator('.uw-home-prompt-text').filter({hasText:/\S/}).waitFor();prefsFailed=false;
   owner=A;paid=true;await page.reload();await page.getByRole('link',{name:'Open writing coach',exact:true}).waitFor();await page.getByRole('combobox',{name:'Theme',exact:true}).selectOption('fiction');await cards.first().waitFor();
+  const ideaCount=documents.size;await page.getByRole('button',{name:'View saved ideas',exact:true}).click();await page.getByRole('heading',{name:'A private saved direction',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Copy idea',exact:true}).click();assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes('What detail would you explore?'));assert.equal(documents.size,ideaCount,'Viewing/copying saved guidance never creates authored writing');
+  await page.getByRole('searchbox',{name:'Search saved AI ideas',exact:true}).fill('unfindable');await page.getByRole('heading',{name:'Try another search.',exact:true}).waitFor();await page.getByRole('searchbox',{name:'Search saved AI ideas',exact:true}).fill('');
+  await context.setOffline(true);await page.getByText('Offline · last loaded saved ideas',{exact:true}).waitFor();await context.setOffline(false);
+  badIdeaOwner=true;await page.getByRole('button',{name:'Hide saved ideas',exact:true}).click();await page.getByRole('button',{name:'View saved ideas',exact:true}).click();await page.getByText('Saved ideas could not be loaded.',{exact:false}).waitFor();assert.equal(await page.getByRole('heading',{name:'B private saved direction',exact:true}).count(),0,'Mismatched-owner results are never displayed');badIdeaOwner=false;await page.getByRole('button',{name:'Try again',exact:true}).click();await page.getByRole('heading',{name:'A private saved direction',exact:true}).waitFor();
+  await page.setViewportSize({width:390,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(artifact,'saved-guidance-390.png'),fullPage:true});await page.setViewportSize({width:1440,height:1100});
+  await page.getByRole('button',{name:'Hide saved ideas',exact:true}).click();
   const before=documents.size,useTitle=await cards.first().locator('h3').textContent();await cards.first().getByRole('button',{name:'Start a draft',exact:true}).click();await page.waitForURL(url=>url.pathname==='/editor'&&url.searchParams.has('document'));
   await page.waitForFunction(title=>document.querySelector('[aria-label="Rename document"]')?.value===title,useTitle);await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('All changes saved'));
   assert.equal(documents.size,before+1);assert.equal((await page.getByRole('textbox',{name:'Document content',exact:true}).textContent()).trim(),'');assert.equal(initial.plain_text,'My own writing stays here.');

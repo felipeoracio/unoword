@@ -27,6 +27,9 @@ import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import AppShell from "@/components/studio/AppShell";
 import { StudioStatus } from "@/components/studio/StudioPrimitives";
 import { useEditorPanels } from "@/lib/use-editor-panels";
+import CoachingContext from "@/components/studio/CoachingContext";
+import SaveGuidanceButton from "@/components/studio/SaveGuidanceButton";
+import { coachingModes, usesGuidanceAllowance, sharesCurrentDraft } from "@/lib/coaching-modes";
 import { generateJSON } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
@@ -106,6 +109,7 @@ import {
 import { cacheDelete } from "@/lib/writing-cache";
 import { toMarkdown } from "@/lib/writing-markdown";
 import "@/styles/writing-editor.css";
+import "@/styles/studio-coaching.css";
 
 const spanish: Record<string, string> = {
   "Your writing space": "Tu espacio de escritura",
@@ -1399,10 +1403,7 @@ export default function WritingEditor() {
         draftRef.current?.id !== id
       )
         return;
-      const shareDraft =
-        !["none", "profile_only"].includes(contextScope) &&
-        (contextScope !== "selected_resources" ||
-          selectedResources.some((r) => r.kind === "document" && r.id === id));
+      const shareDraft = sharesCurrentDraft(contextScope,selectedResources,id);
       const progressTime = Date.now();
       const result = await apiPost<{ items: AssistantItem[] }>(
         "/workspace/assistant",
@@ -3048,6 +3049,7 @@ export default function WritingEditor() {
               <p className="uw-editor-eyebrow">
                 {t("Quick Prompt")} <span>FREE + PRO</span>
               </p>
+              <small className="uw-coach-static-note">{language==="es"?"Sin IA · sin créditos":"No AI · no credits"}</small>
               <p>
                 {quickPrompt ||
                   t(
@@ -3074,9 +3076,9 @@ export default function WritingEditor() {
             </div>
             {ws.user.ai_access ? (
               <>
-                <AIUsage usage={usage} language={language} />
+                <AIUsage usage={usage} language={language} compact />
                 <label className="uw-editor-tool-label">
-                  {t("Writing assistant")}
+                  {language==="es"?"Elige un modo":"Choose a mode"}
                   <select
                     aria-label="AI writing tool"
                     value={action}
@@ -3087,43 +3089,23 @@ export default function WritingEditor() {
                       setAiItems([]);
                     }}
                   >
-                    {[
-                      ["next", "What should I write next?"],
-                      ["guidance", "Help Me Continue"],
-                      ["block", "Overcome writer’s block"],
-                      ["brainstorm", "Brainstorm ideas"],
-                      [
-                        "organization",
-                        language === "es"
-                          ? "Organizar mi escritura"
-                          : "Organize my writing",
-                      ],
-                      [
-                        "research",
-                        language === "es"
-                          ? "Preguntas de investigación"
-                          : "Research guidance",
-                      ],
-                      [
-                        "feedback",
-                        language === "es"
-                          ? "Comentarios constructivos"
-                          : "Constructive feedback",
-                      ],
-                    ].map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {t(label)}
-                      </option>
-                    ))}
+                    {coachingModes.map(mode=><option key={mode.id} value={mode.id}>{mode.label[language==="es"?1:0]}</option>)}
                   </select>
                 </label>
+                <p className="uw-coach-mode-description">{coachingModes.find(mode=>mode.id===action)?.description[language==="es"?1:0]}</p>
+                <p className="uw-coach-allowance">{usage?.legacy_shared?(language==="es"?"Usa 1 solicitud de tu asignación diaria compartida protegida.":"Uses 1 request from your protected shared daily allowance."):usesGuidanceAllowance(action)?(language==="es"?"Usa 1 solicitud de Guía de escritura.":"Uses 1 Writing Guidance request."):(language==="es"?"Usa 1 solicitud de sugerencias para estas alternativas.":"Uses 1 suggestion request for these alternatives.")}</p>
+                <CoachingContext scope={contextScope} selected={selectedResources} documentId={activeDocument?.id}
+                  project={projects.state?.projects.find(project=>project.id===activeProject)?.name || (language==="es"?"Escritura general":"General Writing")}
+                  language={language} onReview={()=>{setRight(false);requestAnimationFrame(()=>document.querySelector<HTMLSelectElement>('.uw-project-controls select[aria-label="AI Context"], .uw-project-controls select[aria-label="Contexto de IA"]')?.focus());}}/>
                 <label className="uw-editor-consent">
                   <input
                     type="checkbox"
                     checked={consent}
                     onChange={(event) => setConsent(event.target.checked)}
                   />
-                  {t("Share this draft for this AI request.")}
+                  {activeDocument && sharesCurrentDraft(contextScope,selectedResources,activeDocument.id)
+                    ? t("Share this draft for this AI request.")
+                    : language==="es"?"Permitir esta solicitud de IA con el contexto seleccionado.":"Allow this AI request with the selected context."}
                 </label>
                 <button
                   className="uw-editor-primary"
@@ -3136,7 +3118,7 @@ export default function WritingEditor() {
                     aiBusy ||
                     (usage?.legacy_shared
                       ? usage.remaining === 0
-                      : action === "guidance"
+                      : usesGuidanceAllowance(action)
                         ? usage?.guidance_monthly_remaining === 0
                         : usage?.remaining === 0 ||
                           usage?.suggestions_monthly_remaining === 0) ||
@@ -3170,7 +3152,8 @@ export default function WritingEditor() {
                       </p>
                     )}
                   {aiItems.map((item, index) => (
-                    <article key={index}>
+                    <article className="uw-coach-result" key={item.id || index}>
+                      <span className="uw-coach-result-label">{language==="es"?"Orientación de IA · separada de tu escritura":"AI guidance · separate from your writing"}</span>
                       <h3>{item.title}</h3>
                       <p>{item.text}</p>
                       {item.inspired_by?.length ? (
@@ -3200,6 +3183,7 @@ export default function WritingEditor() {
                         id={item.id || `${index}`}
                         language={language}
                       />
+                      {item.id && <SaveGuidanceButton key={ws.user!.id+":"+item.id} id={item.id} owner={ws.user!.id} online={ws.online} language={language}/>}
                     </article>
                   ))}
                 </div>

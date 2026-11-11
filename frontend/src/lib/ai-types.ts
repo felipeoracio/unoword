@@ -143,6 +143,7 @@ export type SuggestionStatus = "shown" | "accepted" | "rejected" | "ignored" | "
 export type SuggestionMode = "new_topic" | "expand_idea" | "connect_dots";
 export interface SuggestionInspiration { source_id: string; title: string; kind: string; }
 export interface AISuggestion {
+  writing_task?: import("./writing").WritingTask | null;
   id: string;
   user_id: string;
   title: string;

@@ -5,6 +5,7 @@ import { ArrowRight, Bookmark, Check, Copy, Lightbulb, PenLine, RefreshCw, Searc
 import AppShell from "@/components/studio/AppShell";
 import { StudioButton, StudioCard, StudioLink } from "@/components/studio/StudioPrimitives";
 import Brand from "@/components/marketing/Brand";
+import SavedGuidance from "@/components/studio/SavedGuidance";
 import { apiGet } from "@/lib/api";
 import { useStudioAccount } from "@/lib/use-studio-account";
 import { useStudioPreferences } from "@/lib/studio-preferences";
@@ -19,6 +20,7 @@ import promptArt from "@/assets/studio/prompts/writing-path.webp";
 import emptyArt from "@/assets/studio/empty-states/ideas.webp";
 import "@/styles/studio-home.css";
 import "@/styles/studio-ideas.css";
+import "@/styles/studio-coaching.css";
 
 export default function Ideas() {
   const account = useStudioAccount(), { language } = useStudioPreferences(), navigate = useNavigate();
@@ -105,6 +107,7 @@ export default function Ideas() {
         {results.length ? <><div className="uw-ideas-grid">{results.slice(0,limit).map(item=><StudioCard className="uw-ideas-prompt-card" key={item.id} data-prompt-id={item.id}><div className="uw-home-card-heading"><span className="uw-studio-eyebrow">{promptThemeLabel(item.theme,language)}{view==="saved" && !item.id.startsWith(language+":")?" · "+(item.id.startsWith("es:")?"ES":"EN"):""}</span>{saveButton(item)}</div><h3>{item.text}</h3><StudioButton variant="ghost" className="uw-ideas-use" onClick={()=>void startPrompt(item)}>{account.paid?<PenLine size={16} aria-hidden="true" />:<Copy size={16} aria-hidden="true" />}{account.paid?t("Start a draft","Empezar un borrador"):notice?.owner===account.owner && notice?.copied===item.id?t("Copied","Copiada"):t("Copy prompt","Copiar idea")}<ArrowRight size={16} aria-hidden="true" /></StudioButton></StudioCard>)}</div>{results.length>limit && <StudioButton className="uw-ideas-more" variant="outline" onClick={()=>setLimit(value=>value+9)}>{t("Show more prompts","Ver más ideas")}</StudioButton>}</>
           : <StudioCard className="uw-home-empty"><img src={emptyArt} alt="" width={1000} height={700} /><div><h3>{view==="saved" && !search?t("Keep an idea for another day.","Guarda una idea para otro día."):t("Try a different word or theme.","Prueba otra palabra u otro tema.")}</h3><p>{view==="saved" && !search?t("Save a prompt with the bookmark button. It will be waiting here on this browser.","Guarda una idea con el botón de marcador. Te esperará aquí en este navegador."):t("There are more places to begin. Clear your search or explore all themes.","Hay más puntos de partida. Borra la búsqueda o explora todos los temas.")}</p><StudioButton variant="ghost" onClick={()=>{setSearch("");setFilter("surprise-me");setView("explore");}}>{t("Explore all prompts","Explorar todas las ideas")}<ArrowRight size={16} aria-hidden="true" /></StudioButton></div></StudioCard>}
       </section>
+      <SavedGuidance key={account.owner} owner={account.user.id} paid={account.paid} online={account.online} language={language}/>
     </div>
   </main></AppShell>;
 }
