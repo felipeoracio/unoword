@@ -11,6 +11,8 @@ const titles: Record<string, string> = {
   "/account/security": "Account & Security — UnoWord",
   "/editor": "Your writing space — UnoWord",
   "/projects": "Your projects — UnoWord",
+  "/library": "Your library — UnoWord",
+  "/settings": "Settings — UnoWord",
   "/rewards": "Writing rewards — UnoWord",
   "/privacy": "Privacy & data — UnoWord",
   "/terms": "Terms of service — UnoWord",
@@ -66,6 +68,8 @@ export default function PageMetadata() {
         pathname === "/progress" ||
         pathname === "/editor" ||
         pathname === "/projects" ||
+        pathname === "/library" ||
+        pathname === "/settings" ||
         pathname === "/rewards" ||
         pathname.startsWith("/admin") ||
         pathname === "/terms" ||

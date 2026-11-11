@@ -762,6 +762,7 @@ export default function ProjectManager({
                 </p>
               </>
             )}
+            {headingLevel === 2 && tab !== "Documents" && <p><Link to="/library?view=references">{t("Review reference permissions and processing status", "Revisar permisos y procesamiento de referencias")}</Link></p>}
             <div className="uw-project-actions">
               <input
                 aria-label={t("Search resources", "Buscar recursos")}
@@ -868,7 +869,7 @@ export default function ProjectManager({
                     <span>
                       <strong>{row.title}</strong>
                       <small>
-                        {label(row.resource_kind)} · {row.state} ·{" "}
+                        {row.resource_kind === "document" ? t("Authored writing", "Escritura propia") : row.resource_kind === "source" ? t("AI reference", "Referencia de IA") : row.resource_kind === "memory" ? t("AI memory", "Memoria de IA") : t("Saved writing context", "Contexto de escritura guardado")} · {row.state} ·{" "}
                         {workspace.ids(row.resource_kind, row.id).length > 1
                           ? t("Shared", "Compartido")
                           : ""}{" "}
