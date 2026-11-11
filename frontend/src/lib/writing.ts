@@ -44,6 +44,8 @@ export const writingHistory = (
 export const prompts = (
   globalThis as unknown as {
     WCPrompts: {
+      ALL_THEMES: string[];
+      buildPool(themes: string[], language: string): { id: string; text: string; theme: string }[];
       pickPrompt(
         themes: string[],
         language: string,

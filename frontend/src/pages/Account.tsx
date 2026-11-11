@@ -162,7 +162,7 @@ export default function Account() {
       .then((data) => {
         if (!cancelled) {
           setUser(data);
-          if (data && oauth === "success" && ["/editor", "/app"].includes(next || ""))
+          if (data && oauth === "success" && ["/editor", "/app", "/ideas"].includes(next || ""))
             window.location.replace(recoveryPath(next!));
         }
       })
@@ -322,7 +322,7 @@ export default function Account() {
       beginSession();
       const fresh = await currentUser();
       setUser(fresh);
-      if (fresh && ["/editor", "/app"].includes(params.get("next") || ""))
+      if (fresh && ["/editor", "/app", "/ideas"].includes(params.get("next") || ""))
         window.location.assign(recoveryPath(params.get("next")!));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
