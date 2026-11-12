@@ -167,4 +167,3 @@ superseded diagnostic samples from before the screenshot-rotation correction.
 The recordings show production UI with fixture content. Live account creation,
 payments, providers and actual hosted editor interactions have not been tested.
 Production remains unchanged; Phase 7 remains unstarted pending owner approval.
-
