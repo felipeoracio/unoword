@@ -1,0 +1,843 @@
+{
+  "baselineCommit": "c469939739cb2c4a5ddec0e8b777c96731861e3d",
+  "implementationBranch": "feature/motion-project-switching",
+  "capturedAgainstWorkingTree": true,
+  "method": "Sequential local Chromium production trials. Two long project documents; six switches per CPU rate. Single matched samples, not INP, GPU FPS, field Core Web Vitals or proof of leak absence. Project choice marker is native change before vs shared picker pointerdown after.",
+  "project": {
+    "before-1x": {
+      "scope": "Actual production editor, two long non-sensitive documents, isolated APIs. Choice-event to ready includes persistence/rendering, excludes opening the picker. Input event to second rAF is not INP, rAF interval is not GPU FPS. Single matched trials, not physical devices or proof of leak absence.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 9824584,
+      "heapAfterBytes": 11317444,
+      "rows": [
+        {
+          "width": 1440,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 115.80000000074506,
+          "inputToSecondFrameP95Ms": 18,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "frameSamples": 62,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 116.69999999925494,
+          "inputToSecondFrameP95Ms": 16.100000001490116,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 63,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0.04585142098885995
+        },
+        {
+          "width": 768,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 104.39999999850988,
+          "inputToSecondFrameP95Ms": 29.599999997764826,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 55,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 95.40000000223517,
+          "inputToSecondFrameP95Ms": 13.699999999254942,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "frameSamples": 63,
+          "longTasksMs": [
+            50
+          ],
+          "layoutShiftExcludingRecentInput": 0.06977775170898437
+        },
+        {
+          "width": 390,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 83.20000000298023,
+          "inputToSecondFrameP95Ms": 30.899999998509884,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "frameSamples": 55,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 96.80000000074506,
+          "inputToSecondFrameP95Ms": 30.800000000745058,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 57,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0.8246719217948719
+        }
+      ]
+    },
+    "after-1x": {
+      "scope": "Actual production editor, two long non-sensitive documents, isolated APIs. Choice-event to ready includes persistence/rendering, excludes opening the picker. Input event to second rAF is not INP, rAF interval is not GPU FPS. Single matched trials, not physical devices or proof of leak absence.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 11367536,
+      "heapAfterBytes": 13052620,
+      "rows": [
+        {
+          "width": 1440,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 219.89999999850988,
+          "inputToSecondFrameP95Ms": 17.399999998509884,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 87,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 240.59999999776483,
+          "inputToSecondFrameP95Ms": 16.5,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 90,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 202.79999999701977,
+          "inputToSecondFrameP95Ms": 30.800000000745058,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "frameSamples": 66,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 259.3999999985099,
+          "inputToSecondFrameP95Ms": 31.800000000745058,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 74,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 226.90000000223517,
+          "inputToSecondFrameP95Ms": 30.900000002235174,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 79,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 190.60000000149012,
+          "inputToSecondFrameP95Ms": 30.799999997019768,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "frameSamples": 79,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    },
+    "before-4x": {
+      "scope": "Actual production editor, two long non-sensitive documents, isolated APIs. Choice-event to ready includes persistence/rendering, excludes opening the picker. Input event to second rAF is not INP, rAF interval is not GPU FPS. Single matched trials, not physical devices or proof of leak absence.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 9831396,
+      "heapAfterBytes": 11167216,
+      "rows": [
+        {
+          "width": 1440,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 474.1000000014901,
+          "inputToSecondFrameP95Ms": 102.89999999850988,
+          "frameIntervalP95Ms": 100,
+          "frameSamples": 83,
+          "longTasksMs": [
+            51,
+            83,
+            76,
+            84,
+            79,
+            71,
+            66,
+            60,
+            62,
+            67,
+            82,
+            87,
+            89,
+            140,
+            83,
+            71,
+            85,
+            88,
+            97,
+            77,
+            72,
+            117,
+            86,
+            68,
+            76,
+            74
+          ],
+          "layoutShiftExcludingRecentInput": 0.00014382643711419754
+        },
+        {
+          "width": 1440,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 496.9000000022352,
+          "inputToSecondFrameP95Ms": 98.30000000074506,
+          "frameIntervalP95Ms": 116.70000000000073,
+          "frameSamples": 90,
+          "longTasksMs": [
+            56,
+            56,
+            110,
+            98,
+            97,
+            96,
+            93,
+            76,
+            107,
+            105,
+            130,
+            117,
+            85,
+            70,
+            91,
+            103,
+            133,
+            144,
+            149,
+            86,
+            96,
+            97,
+            83,
+            74,
+            65,
+            88,
+            87
+          ],
+          "layoutShiftExcludingRecentInput": 0.04585142098885995
+        },
+        {
+          "width": 768,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 418.69999999925494,
+          "inputToSecondFrameP95Ms": 101.89999999850988,
+          "frameIntervalP95Ms": 99.90000000000146,
+          "frameSamples": 76,
+          "longTasksMs": [
+            81,
+            71,
+            90,
+            65,
+            65,
+            65,
+            71,
+            74,
+            78,
+            95,
+            68,
+            87,
+            67,
+            80,
+            94,
+            75,
+            78,
+            64,
+            76,
+            66,
+            81,
+            63,
+            67,
+            101,
+            91
+          ],
+          "layoutShiftExcludingRecentInput": 0.00010623046875
+        },
+        {
+          "width": 768,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 380.3999999985099,
+          "inputToSecondFrameP95Ms": 119.19999999925494,
+          "frameIntervalP95Ms": 133.29999999999927,
+          "frameSamples": 81,
+          "longTasksMs": [
+            85,
+            169,
+            87,
+            82,
+            79,
+            98,
+            105,
+            79,
+            109,
+            83,
+            90,
+            92,
+            82,
+            86,
+            131,
+            136,
+            85,
+            66,
+            131,
+            139,
+            115,
+            92,
+            89,
+            87,
+            83
+          ],
+          "layoutShiftExcludingRecentInput": 0.06977775170898437
+        },
+        {
+          "width": 390,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 422.6000000014901,
+          "inputToSecondFrameP95Ms": 130.29999999701977,
+          "frameIntervalP95Ms": 116.59999999999854,
+          "frameSamples": 83,
+          "longTasksMs": [
+            71,
+            83,
+            90,
+            78,
+            92,
+            96,
+            72,
+            87,
+            83,
+            72,
+            77,
+            64,
+            65,
+            69,
+            69,
+            89,
+            118,
+            113,
+            119,
+            125,
+            144,
+            96,
+            87,
+            100,
+            106
+          ],
+          "layoutShiftExcludingRecentInput": 0.00015955064102564104
+        },
+        {
+          "width": 390,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 564.1999999992549,
+          "inputToSecondFrameP95Ms": 98.20000000298023,
+          "frameIntervalP95Ms": 99.89999999999782,
+          "frameSamples": 86,
+          "longTasksMs": [
+            71,
+            97,
+            82,
+            77,
+            72,
+            70,
+            74,
+            68,
+            69,
+            76,
+            87,
+            83,
+            92,
+            67,
+            81,
+            89,
+            92,
+            75,
+            75,
+            79,
+            85,
+            86,
+            80,
+            92,
+            99,
+            98
+          ],
+          "layoutShiftExcludingRecentInput": 0.22910207564102564
+        }
+      ]
+    },
+    "after-4x": {
+      "scope": "Actual production editor, two long non-sensitive documents, isolated APIs. Choice-event to ready includes persistence/rendering, excludes opening the picker. Input event to second rAF is not INP, rAF interval is not GPU FPS. Single matched trials, not physical devices or proof of leak absence.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 11375912,
+      "heapAfterBytes": 12964028,
+      "rows": [
+        {
+          "width": 1440,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 905.6000000014901,
+          "inputToSecondFrameP95Ms": 107.30000000074506,
+          "frameIntervalP95Ms": 100,
+          "frameSamples": 107,
+          "longTasksMs": [
+            67,
+            55,
+            169,
+            50,
+            52,
+            155,
+            96,
+            75,
+            68,
+            82,
+            85,
+            69,
+            88,
+            93,
+            83,
+            67,
+            76,
+            134,
+            64,
+            63,
+            64,
+            82,
+            82,
+            86,
+            95,
+            74,
+            74,
+            101,
+            80,
+            97,
+            98
+          ],
+          "layoutShiftExcludingRecentInput": 0.04478122847945602
+        },
+        {
+          "width": 1440,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 1186.8999999985099,
+          "inputToSecondFrameP95Ms": 113.30000000074506,
+          "frameIntervalP95Ms": 100,
+          "frameSamples": 104,
+          "longTasksMs": [
+            53,
+            54,
+            72,
+            163,
+            50,
+            183,
+            74,
+            76,
+            64,
+            74,
+            80,
+            166,
+            66,
+            77,
+            75,
+            79,
+            77,
+            78,
+            75,
+            113,
+            100,
+            89,
+            79,
+            91,
+            101,
+            92,
+            95,
+            93,
+            92,
+            84,
+            75
+          ],
+          "layoutShiftExcludingRecentInput": 0.04015946294337143
+        },
+        {
+          "width": 768,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 884.3000000007451,
+          "inputToSecondFrameP95Ms": 113,
+          "frameIntervalP95Ms": 100,
+          "frameSamples": 103,
+          "longTasksMs": [
+            130,
+            58,
+            138,
+            87,
+            71,
+            76,
+            79,
+            82,
+            81,
+            74,
+            64,
+            67,
+            78,
+            78,
+            88,
+            102,
+            100,
+            88,
+            90,
+            77,
+            80,
+            82,
+            103,
+            123,
+            97,
+            69,
+            74,
+            86
+          ],
+          "layoutShiftExcludingRecentInput": 0.06842418815104166
+        },
+        {
+          "width": 768,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 897.5999999977648,
+          "inputToSecondFrameP95Ms": 107.19999999925494,
+          "frameIntervalP95Ms": 100.09999999999854,
+          "frameSamples": 105,
+          "longTasksMs": [
+            124,
+            76,
+            53,
+            147,
+            89,
+            61,
+            58,
+            74,
+            77,
+            112,
+            94,
+            75,
+            88,
+            70,
+            80,
+            80,
+            84,
+            82,
+            84,
+            81,
+            74,
+            83,
+            67,
+            63,
+            91,
+            89,
+            74,
+            99,
+            129
+          ],
+          "layoutShiftExcludingRecentInput": 0.06119491243489584
+        },
+        {
+          "width": 390,
+          "project": "Motion Memoir",
+          "choiceToReadyMs": 939.3999999985099,
+          "inputToSecondFrameP95Ms": 113.90000000223517,
+          "frameIntervalP95Ms": 116.60000000000218,
+          "frameSamples": 105,
+          "longTasksMs": [
+            51,
+            151,
+            54,
+            50,
+            75,
+            156,
+            109,
+            87,
+            99,
+            106,
+            99,
+            101,
+            77,
+            79,
+            89,
+            83,
+            94,
+            94,
+            85,
+            87,
+            82,
+            84,
+            98,
+            110,
+            114,
+            114,
+            109,
+            86,
+            85,
+            89,
+            83
+          ],
+          "layoutShiftExcludingRecentInput": 0.10653944807692309
+        },
+        {
+          "width": 390,
+          "project": "Motion Novel",
+          "choiceToReadyMs": 914.8999999985099,
+          "inputToSecondFrameP95Ms": 97,
+          "frameIntervalP95Ms": 99.89999999999418,
+          "frameSamples": 109,
+          "longTasksMs": [
+            147,
+            53,
+            122,
+            82,
+            77,
+            69,
+            68,
+            69,
+            70,
+            82,
+            78,
+            69,
+            67,
+            81,
+            80,
+            71,
+            66,
+            100,
+            85,
+            77,
+            89,
+            81,
+            99,
+            84,
+            78,
+            67,
+            70,
+            67,
+            58
+          ],
+          "layoutShiftExcludingRecentInput": 0.8223723711538462
+        }
+      ]
+    }
+  },
+  "focusDurationCorrection": {
+    "before": {
+      "scope": "Actual production Tiptap editor, non-sensitive imported test document, isolated API persistence. Local Chromium; 12ms per injected keystroke while entering/exiting Focus Mode. Input event to second rAF is not INP; frame interval is not GPU FPS. Short forced-GC heap observations do not prove absence of leaks. Not physical devices.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 9603136,
+      "heapAfterBytes": 11211236,
+      "rows": [
+        {
+          "width": 1440,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.5,
+          "inputToSecondFrameP95Ms": 30.899999998509884,
+          "frameSamples": 53,
+          "frameIntervalP95Ms": 16.799999999999727,
+          "longTasksMs": [
+            50
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.800000000745058,
+          "inputToSecondFrameP95Ms": 27.400000002235174,
+          "frameSamples": 52,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.900000002235174,
+          "inputToSecondFrameP95Ms": 32.100000001490116,
+          "frameSamples": 56,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.300000000745058,
+          "inputToSecondFrameP95Ms": 26.800000000745058,
+          "frameSamples": 44,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 17.5,
+          "inputToSecondFrameP95Ms": 27.699999999254942,
+          "frameSamples": 48,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 16.099999997764826,
+          "inputToSecondFrameP95Ms": 27.199999999254942,
+          "frameSamples": 46,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    },
+    "after": {
+      "scope": "Actual production Tiptap editor, non-sensitive imported test document, isolated API persistence. Local Chromium; 12ms per injected keystroke while entering/exiting Focus Mode. Input event to second rAF is not INP; frame interval is not GPU FPS. Short forced-GC heap observations do not prove absence of leaks. Not physical devices.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10002664,
+      "heapAfterBytes": 11688948,
+      "rows": [
+        {
+          "width": 1440,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.900000002235174,
+          "inputToSecondFrameP95Ms": 28.399999998509884,
+          "frameSamples": 54,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.699999999254942,
+          "inputToSecondFrameP95Ms": 28.199999999254942,
+          "frameSamples": 51,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 15.100000001490116,
+          "inputToSecondFrameP95Ms": 28.900000002235174,
+          "frameSamples": 46,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 768,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 20.200000002980232,
+          "inputToSecondFrameP95Ms": 25.700000002980232,
+          "frameSamples": 42,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "direction": "enter",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.5,
+          "inputToSecondFrameP95Ms": 28.600000001490116,
+          "frameSamples": 48,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "direction": "exit",
+          "inputSamples": 25,
+          "inputToSecondFrameP50Ms": 14.599999997764826,
+          "inputToSecondFrameP95Ms": 28.5,
+          "frameSamples": 46,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    }
+  },
+  "bundles": {
+    "before": {
+      "index-*.js": [
+        {
+          "file": "index-CKjtieXy.js",
+          "bytes": 279772,
+          "gzipBytes": 87931
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-BntFRKfn.css",
+          "bytes": 132459,
+          "gzipBytes": 26892
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-OMP6V__L.js",
+          "bytes": 301072,
+          "gzipBytes": 97616
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-DHhP-2t5.css",
+          "bytes": 32789,
+          "gzipBytes": 6442
+        }
+      ],
+      "allJsGzipBytes": 520478
+    },
+    "after": {
+      "index-*.js": [
+        {
+          "file": "index-D8Q_V-S8.js",
+          "bytes": 282088,
+          "gzipBytes": 88793
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-DeOHxlYd.js",
+          "bytes": 413376,
+          "gzipBytes": 135748
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-b6YAd8dx.css",
+          "bytes": 34524,
+          "gzipBytes": 6748
+        }
+      ],
+      "allJsGzipBytes": 559503
+    }
+  }
+}

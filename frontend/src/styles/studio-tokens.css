@@ -46,6 +46,11 @@
   --secondary-foreground: var(--studio-text);
   --muted: var(--studio-soft);
   --muted-foreground: var(--studio-muted);
+  --accent: var(--studio-soft);
+  --accent-foreground: var(--studio-text);
+  --popover: var(--studio-surface);
+  --popover-foreground: var(--studio-text);
+  --input: var(--studio-line);
   --border: var(--studio-line);
   --ring: var(--studio-accent);
   --font-sans: var(--studio-font-ui);

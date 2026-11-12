@@ -44,6 +44,8 @@ export function useWritingWorkspace() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const localActivityIds = useRef(new Set<string>());
   const [selected, setSelected] = useState<string | null>(null);
+  const selectedDocumentId = useRef(selected);
+  selectedDocumentId.current = selected;
   const [status, setStatus] = useState("Opening your writing space…");
   const [error, setError] = useState("");
   const [conflicts, setConflicts] = useState<Record<string, WritingDocument>>(
@@ -63,6 +65,7 @@ export function useWritingWorkspace() {
   const docs = useRef<Draft[]>([]),
     activityRows = useRef<Activity[]>([]),
     identity = useRef<AuthUser | null>(null);
+  const documentReads = useRef(new Map<string, Promise<void>>());
   const conflictIds = useRef(new Set<string>()),
     syncing = useRef(false),
     pendingLocal = useRef(0);
@@ -784,6 +787,40 @@ export function useWritingWorkspace() {
       localStorage.setItem(`uno-writing-selected:${userId}`, selected);
   }, [userId, selected, loading, user?.ai_access]);
 
+  // Shared by ordinary selection and project preflight. Loading a body never
+  // selects/moves it and never replaces a dirty draft with a cloud response.
+  const prepareDocument = useCallback((id: string): Promise<void> => {
+    const writer = identity.current;
+    const draft = docs.current.find(document => document.id === id);
+    if (!writer?.ai_access || !draft || draft.user_id !== writer.id)
+      return Promise.reject(Error("Document is unavailable for this account."));
+    if (draft.content_loaded !== false) return Promise.resolve();
+    if (!navigator.onLine)
+      return Promise.reject(Error("Open this document online once to make it available offline."));
+    const key = `${writer.id}:${id}`;
+    const previous = documentReads.current.get(key);
+    if (previous) return previous;
+    const request = (async () => {
+      const saved = await apiGet<WritingDocument>(`/workspace/documents/${id}`);
+      if (identity.current?.id !== writer.id || !identity.current?.ai_access)
+        throw Error("Your account changed.");
+      if (saved.id !== id || saved.user_id !== writer.id)
+        throw Error("The document response did not match this account.");
+      const latest = docs.current.find(document => document.id === id);
+      if (!latest || latest.user_id !== writer.id)
+        throw Error("Document is no longer available.");
+      if (latest.revision > saved.revision) {
+        if (latest.content_loaded === false) throw Error("Document changed. Retry opening it.");
+        return;
+      }
+      publish(docs.current.map(document => document.id === id && !document.dirty
+        ? { ...saved, dirty: false, tab_id: tab, content_loaded: true } : document));
+      await cachePut(writer.id, "document", id, saved);
+    })().finally(() => { if (documentReads.current.get(key) === request) documentReads.current.delete(key); });
+    documentReads.current.set(key, request);
+    return request;
+  }, [publish, tab]);
+
   const selectedLoaded = documents.find(
     (document) => document.id === selected,
   )?.content_loaded;
@@ -797,23 +834,16 @@ export function useWritingWorkspace() {
       return;
     }
     setStatus("Opening document…");
-    apiGet<WritingDocument>(`/workspace/documents/${draft.id}`)
-      .then(async (saved) => {
+    prepareDocument(draft.id)
+      .then(() => {
         if (
-          cancelled ||
+          !active.current || selectedDocumentId.current !== draft.id ||
           identity.current?.id !== writer.id ||
           !identity.current?.ai_access
         )
           return;
-        publish(
-          docs.current.map((document) =>
-            document.id === saved.id && !document.dirty
-              ? { ...saved, dirty: false, tab_id: tab, content_loaded: true }
-              : document,
-          ),
-        );
-        await cachePut(writer.id, "document", saved.id, saved);
-        setStatus("All changes saved");
+        setStatus(docs.current.some(d => d.dirty) || activityRows.current.some(a => a.dirty) || pendingLocal.current
+          ? "Saved on this device · syncing…" : "All changes saved");
       })
       .catch((failure) => {
         if (!cancelled) setError(editorError(failure));
@@ -821,7 +851,7 @@ export function useWritingWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [selected, user?.id, selectedLoaded, publish, tab]);
+  }, [selected, user?.id, selectedLoaded, prepareDocument]);
 
   useEffect(() => {
     active.current = true;
@@ -1033,6 +1063,7 @@ export function useWritingWorkspace() {
     update,
     sync,
     flushWrites,
+    prepareDocument,
     recordActivity,
     recheckIdentity,
     completionBusy,

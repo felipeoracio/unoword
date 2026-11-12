@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderKanban, SlidersHorizontal, X } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { cachePut, cachedRecords } from "@/lib/writing-cache";
@@ -9,6 +9,7 @@ import type {
   ResourceRef,
 } from "@/lib/use-project-workspace";
 import { inProject } from "../../../../shared/projects";
+import ProjectPicker from "./ProjectPicker";
 const scopes: Record<ContextScope, [string, string]> = {
   current_project: ["Current Project", "Proyecto actual"],
   selected_resources: ["Selected Resources", "Recursos seleccionados"],
@@ -30,6 +31,8 @@ export default function ProjectControls({
   onSelected,
   onManage,
   busy,
+  pending,
+  theme = "light",
   language = "en",
 }: {
   workspace: Workspace;
@@ -41,6 +44,8 @@ export default function ProjectControls({
   onSelected: (refs: ResourceRef[]) => void;
   onManage: () => void;
   busy: boolean;
+  pending?: { phase: "saving" | "loading" | "syncing"; name: string } | null;
+  theme?: string;
   language?: string;
 }) {
   const es = language === "es",
@@ -102,6 +107,10 @@ export default function ProjectControls({
     };
   }, [owner, active, workspace.online]);
   const project = workspace.state?.projects.find((p) => p.id === active);
+  const projectStatistics = statistics?.project_id === active ? statistics : null;
+  const switchRef = useRef(onSwitch);
+  switchRef.current = onSwitch;
+  const handleSwitch = useCallback((id: string | null) => switchRef.current(id), []);
   const rows = workspace.catalog.filter((row) =>
     row.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
@@ -113,27 +122,12 @@ export default function ProjectControls({
       className="uw-project-controls"
       aria-label={es ? "Proyecto y contexto de IA" : "Project and AI context"}
     >
-      <label>
+      <div className="uw-project-picker-label">
         <FolderKanban size={16} />
         <span>{es ? "Proyecto" : "Project"}</span>
-        <select
-          aria-label={es ? "Proyecto activo" : "Active project"}
-          disabled={busy || !workspace.ready}
-          value={active || ""}
-          onChange={(e) => onSwitch(e.target.value || null)}
-        >
-          <option value="">
-            {es ? "Escritura general" : "General Writing"}
-          </option>
-          {workspace.state?.projects
-            .filter((p) => p.status !== "archived")
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-        </select>
-      </label>
+        <ProjectPicker projects={workspace.state?.projects} active={active} busy={busy}
+          ready={workspace.ready} theme={theme} es={es} onSwitch={handleSwitch} />
+      </div>
       <button type="button" disabled={busy} onClick={onManage}>
         {es ? "Gestionar proyectos" : "Manage projects"}
       </button>
@@ -143,6 +137,7 @@ export default function ProjectControls({
         <select
           aria-label={es ? "Contexto de IA" : "AI Context"}
           value={scope}
+          disabled={busy}
           onChange={(e) => {
             const value = e.target.value as ContextScope;
             onScope(value);
@@ -157,13 +152,14 @@ export default function ProjectControls({
         </select>
       </label>
       {scope === "selected_resources" && (
-        <button type="button" onClick={() => void pick()}>
+        <button type="button" disabled={busy} onClick={() => void pick()}>
           {selected.length} {es ? "recursos · Elegir" : "resources · Choose"}
         </button>
       )}
       {scope !== "current_project" && (
         <button
           type="button"
+          disabled={busy}
           onClick={() => {
             onScope("current_project");
             onSelected([]);
@@ -173,7 +169,11 @@ export default function ProjectControls({
         </button>
       )}
       <span className="uw-project-sync" role="status">
-        {busy
+        {pending
+          ? es
+            ? `${pending.phase === "saving" ? "Guardando antes de abrir" : pending.phase === "loading" ? "Abriendo" : "Sincronizando"} ${pending.name}…`
+            : `${pending.phase === "saving" ? "Saving before opening" : pending.phase === "loading" ? "Opening" : "Syncing"} ${pending.name}…`
+          : busy
           ? es
             ? "Guardando antes de cambiar…"
             : "Saving before switching…"
@@ -200,17 +200,17 @@ export default function ProjectControls({
       {project && (
         <small className="uw-project-current-progress" role="status">
           {es ? "Meta del proyecto hoy" : "Project today"}:{" "}
-          {statistics?.daily_words?.toLocaleString() ?? "—"}
+          {projectStatistics?.daily_words?.toLocaleString() ?? "—"}
           {project.goals.daily_words
             ? ` / ${project.goals.daily_words.toLocaleString()}`
             : ""}{" "}
           · {es ? "Esta semana" : "This week"}:{" "}
-          {statistics?.weekly_words?.toLocaleString() ?? "—"}
+          {projectStatistics?.weekly_words?.toLocaleString() ?? "—"}
           {project.goals.weekly_words
             ? ` / ${project.goals.weekly_words.toLocaleString()}`
             : ""}{" "}
           · {es ? "Total del proyecto" : "Project total"}:{" "}
-          {statistics?.total_words?.toLocaleString() ?? "—"}
+          {projectStatistics?.total_words?.toLocaleString() ?? "—"}
           {project.goals.total_words
             ? ` / ${project.goals.total_words.toLocaleString()}`
             : ""}

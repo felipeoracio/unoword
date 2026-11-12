@@ -1,5 +1,11 @@
 # Phase 2 — Signature Focus Mode
 
+Phase 2 was subsequently approved. Phase 3's interaction tests found that the
+production CSS minifier expresses the Focus token in seconds; the shared time
+reader is corrected and the full 420ms behavior is reverified in
+[the Phase 3 report](motion-project-switching.md). The earlier measurements below
+describe the Phase 2 bundle as it was tested, before that correction.
+
 Phase 1 was approved by the owner. This is the separately reviewable Phase 2;
 Phase 3/project switching and production deployment are not part of this change.
 

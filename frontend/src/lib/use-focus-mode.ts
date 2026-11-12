@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motionMilliseconds } from "./motion";
 
 type Snapshot = { left: number; top: number; scrollTop: number };
 
@@ -72,7 +73,7 @@ export function useFocusMode() {
       const tokens = getComputedStyle(root);
       motion.current = paper.animate(
         [{ transform: `translateX(${deltaX}px)` }, { transform: "translateX(0)" }],
-        { duration: parseFloat(tokens.getPropertyValue("--uno-motion-focus")) || 420,
+        { duration: motionMilliseconds(tokens.getPropertyValue("--uno-motion-focus"), 420),
           easing: tokens.getPropertyValue("--uno-motion-state-ease").trim(), fill: "none" },
       );
     }

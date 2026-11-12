@@ -102,6 +102,7 @@ module.exports=async({page,canvas,context,documents,activity,requests,errors,set
  const activeBefore=[...activity.values()].find(a=>a.timer?.status==='active');
  await canvas.press('ControlOrMeta+End');
  await toggle();
+ assert.equal(await page.locator('.uw-editor-paper').evaluate(el=>el.getAnimations().find(a=>a.playState==='running')?.effect.getTiming().duration),420,'Production CSS time units preserve the full Focus transition');
  await canvas.evaluate(el=>{window.__typedDuringFocus=0;el.__focusInput=()=>{if(document.getAnimations().some(a=>a.playState==='running'))window.__typedDuringFocus++;};el.addEventListener('input',el.__focusInput);});
  const textBefore=await canvas.textContent(),addition=' one two three four five ';
  // No locator focus call: the Focus button must leave typing in the editor.
