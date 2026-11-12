@@ -1,0 +1,781 @@
+{
+  "baselineCommit": "839aa51",
+  "implementationBranch": "feature/motion-supporting",
+  "capturedAgainstWorkingTree": true,
+  "scope": "Sequential local Chromium production trials with isolated synthetic APIs. Single trial per width/CPU. Not field/device metrics, INP, GPU FPS or proof of leak absence.",
+  "supporting": {
+    "before-1x": {
+      "scope": "Sequential local production Chromium with isolated synthetic APIs, cold cache, 150ms latency / 1.6Mbps download. 26 actual profile input events and eight real question/chart choices. Input timing is capture-phase beforeinput to second rAF, not INP; frame intervals are not GPU FPS. No live providers/devices or leak-absence proof.",
+      "cpuRate": 1,
+      "rows": [
+        {
+          "width": 1440,
+          "profileLoad": {
+            "lcp": 2716,
+            "longTasks": [
+              124,
+              85
+            ],
+            "shifts": 0.12334363288922208,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2716
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2716
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 32.29999999701977,
+            "questionReadyP95Ms": 1,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.799999999999272,
+            "frameSamples": 71,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 2588,
+            "longTasks": [],
+            "shifts": 0.06293842488469767,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2588
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2588
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              2.2999999970197678,
+              1.4000000059604645,
+              1.4000000059604645,
+              1.2000000029802322,
+              1.0999999940395355,
+              1.7999999970197678,
+              1.7999999970197678,
+              2
+            ],
+            "p95Ms": 2.2999999970197678,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3977732,
+          "heapAfterBytes": 4880432
+        },
+        {
+          "width": 390,
+          "profileLoad": {
+            "lcp": 5424,
+            "longTasks": [
+              92
+            ],
+            "shifts": 0.1771757226107226,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2500
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2500
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 32.5,
+            "questionReadyP95Ms": 1.0999999940395355,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 69,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 5532,
+            "longTasks": [],
+            "shifts": 0.028206908574380164,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2428
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2428
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              2,
+              1.2999999970197678,
+              1.2999999970197678,
+              1.2000000029802322,
+              1.5,
+              1.5,
+              1.3999999910593033,
+              2.2000000029802322
+            ],
+            "p95Ms": 2.2000000029802322,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3992508,
+          "heapAfterBytes": 4882552
+        }
+      ]
+    },
+    "after-1x": {
+      "scope": "Sequential local production Chromium with isolated synthetic APIs, cold cache, 150ms latency / 1.6Mbps download. 26 actual profile input events and eight real question/chart choices. Input timing is capture-phase beforeinput to second rAF, not INP; frame intervals are not GPU FPS. No live providers/devices or leak-absence proof.",
+      "cpuRate": 1,
+      "rows": [
+        {
+          "width": 1440,
+          "profileLoad": {
+            "lcp": 2732,
+            "longTasks": [
+              110,
+              53,
+              57
+            ],
+            "shifts": 0.12338283042008627,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2732
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2732
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 33.099999994039536,
+            "questionReadyP95Ms": 1.7999999970197678,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.699999999999818,
+            "frameSamples": 73,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 2616,
+            "longTasks": [],
+            "shifts": 0.05579236909157767,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2616
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2616
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              2.5999999940395355,
+              2.5,
+              2.2999999970197678,
+              1.4000000059604645,
+              1.800000011920929,
+              1.4000000059604645,
+              1.699999988079071,
+              1.7000000029802322
+            ],
+            "p95Ms": 2.5999999940395355,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3983848,
+          "heapAfterBytes": 4901880
+        },
+        {
+          "width": 390,
+          "profileLoad": {
+            "lcp": 5488,
+            "longTasks": [
+              102
+            ],
+            "shifts": 0.173718006993007,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2540
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2540
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 32.19999998807907,
+            "questionReadyP95Ms": 1.5999999940395355,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 64,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 5544,
+            "longTasks": [],
+            "shifts": 0.028206908574380164,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2460
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2460
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              2.5,
+              1.8999999910593033,
+              2.7999999970197678,
+              1.6000000089406967,
+              3.4000000059604645,
+              1.5999999940395355,
+              1.7999999970197678,
+              2.7999999970197678
+            ],
+            "p95Ms": 3.4000000059604645,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 4009112,
+          "heapAfterBytes": 4918004
+        }
+      ]
+    },
+    "before-4x": {
+      "scope": "Sequential local production Chromium with isolated synthetic APIs, cold cache, 150ms latency / 1.6Mbps download. 26 actual profile input events and eight real question/chart choices. Input timing is capture-phase beforeinput to second rAF, not INP; frame intervals are not GPU FPS. No live providers/devices or leak-absence proof.",
+      "cpuRate": 4,
+      "rows": [
+        {
+          "width": 1440,
+          "profileLoad": {
+            "lcp": 2876,
+            "longTasks": [
+              288,
+              53,
+              93,
+              213,
+              93,
+              146
+            ],
+            "shifts": 0.12334363288922208,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2876
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2876
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 32,
+            "questionReadyP95Ms": 4.299999997019768,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 99,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 2688,
+            "longTasks": [
+              126,
+              72,
+              80,
+              110,
+              78,
+              82,
+              187,
+              50,
+              66,
+              90,
+              71
+            ],
+            "shifts": 0.05579236909157767,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2688
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2688
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              11.299999997019768,
+              7.899999991059303,
+              8.700000002980232,
+              8.399999991059303,
+              9.700000002980232,
+              9.299999997019768,
+              11.5,
+              10.299999997019768
+            ],
+            "p95Ms": 11.5,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3971392,
+          "heapAfterBytes": 4875128
+        },
+        {
+          "width": 390,
+          "profileLoad": {
+            "lcp": 5756,
+            "longTasks": [
+              293,
+              73,
+              112,
+              76,
+              134
+            ],
+            "shifts": 0.1771757226107226,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2704
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2704
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 31,
+            "questionReadyP95Ms": 5,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 106,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 6032,
+            "longTasks": [
+              139,
+              91,
+              171,
+              92,
+              78,
+              186,
+              62,
+              76,
+              82
+            ],
+            "shifts": 0.028206908574380164,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2556
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2556
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              10.900000005960464,
+              7.5999999940395355,
+              8.900000005960464,
+              12,
+              14,
+              12.299999997019768,
+              12.099999994039536,
+              10.799999997019768
+            ],
+            "p95Ms": 14,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3982904,
+          "heapAfterBytes": 4874712
+        }
+      ]
+    },
+    "after-4x": {
+      "scope": "Sequential local production Chromium with isolated synthetic APIs, cold cache, 150ms latency / 1.6Mbps download. 26 actual profile input events and eight real question/chart choices. Input timing is capture-phase beforeinput to second rAF, not INP; frame intervals are not GPU FPS. No live providers/devices or leak-absence proof.",
+      "cpuRate": 4,
+      "rows": [
+        {
+          "width": 1440,
+          "profileLoad": {
+            "lcp": 2932,
+            "longTasks": [
+              323,
+              50,
+              123,
+              188,
+              106,
+              143
+            ],
+            "shifts": 0.12338283042008627,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2932
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2932
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 29.19999998807907,
+            "questionReadyP95Ms": 8.699999988079071,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 107,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 2732,
+            "longTasks": [
+              130,
+              88,
+              164,
+              99,
+              75,
+              217,
+              76,
+              91
+            ],
+            "shifts": 0.05579236909157767,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2732
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2732
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              11.600000008940697,
+              10.700000002980232,
+              7.4000000059604645,
+              8.799999997019768,
+              9.900000005960464,
+              10.299999997019768,
+              14.5,
+              11.5
+            ],
+            "p95Ms": 14.5,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3993528,
+          "heapAfterBytes": 4897624
+        },
+        {
+          "width": 390,
+          "profileLoad": {
+            "lcp": 5852,
+            "longTasks": [
+              309,
+              65,
+              106,
+              91,
+              124
+            ],
+            "shifts": 0.17727045454545454,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2772
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2772
+              }
+            ]
+          },
+          "profile": {
+            "inputSamples": 26,
+            "beforeInputToSecondFrameP95Ms": 29,
+            "questionReadyP95Ms": 7.5999999940395355,
+            "questionSamples": 8,
+            "frameIntervalP95Ms": 16.799999999999272,
+            "frameSamples": 103,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "progressLoad": {
+            "lcp": 5992,
+            "longTasks": [
+              162,
+              91,
+              154,
+              74,
+              69,
+              161,
+              110,
+              71
+            ],
+            "shifts": 0.028206908574380164,
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2612
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2612
+              }
+            ]
+          },
+          "chart": {
+            "choices": [
+              12.5,
+              9.700000002980232,
+              8.599999994039536,
+              17.299999997019768,
+              14.200000002980232,
+              13,
+              13,
+              10.700000002980232
+            ],
+            "p95Ms": 17.299999997019768,
+            "dailyTime": "00:20:00",
+            "lifetimeTime": "02:00:00"
+          },
+          "heapBeforeBytes": 3995264,
+          "heapAfterBytes": 4905424
+        }
+      ]
+    }
+  },
+  "editor": {
+    "before": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10059352,
+      "heapAfterBytes": 11129644,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.099999994039536,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 34,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 35.900000005960464,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 49,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "after": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10087464,
+      "heapAfterBytes": 11150948,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.30000001192093,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.30000001192093,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 35.5,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 30.799999997019768,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    }
+  },
+  "bundles": {
+    "before": {
+      "index-*.js": [
+        {
+          "file": "index-BVFtBtr-.js",
+          "bytes": 285087,
+          "gzipBytes": 89799
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-ChwwSCTd.css",
+          "bytes": 134599,
+          "gzipBytes": 27319
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-_JOOZY6D.js",
+          "bytes": 414646,
+          "gzipBytes": 136056
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ],
+      "use-surface-cue-*.js": []
+    },
+    "after": {
+      "index-*.js": [
+        {
+          "file": "index-Cqc0rn5J.js",
+          "bytes": 285139,
+          "gzipBytes": 89808
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-DeuHW_oX.css",
+          "bytes": 136319,
+          "gzipBytes": 27619
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-CLrIuSMK.js",
+          "bytes": 414749,
+          "gzipBytes": 136098
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ],
+      "use-surface-cue-*.js": [
+        {
+          "file": "use-surface-cue--z1uLBmz.js",
+          "bytes": 526,
+          "gzipBytes": 326
+        }
+      ]
+    }
+  }
+}

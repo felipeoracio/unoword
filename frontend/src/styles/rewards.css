@@ -185,37 +185,47 @@
   max-width: calc(100vw - 40px);
   display: flex;
   gap: 14px;
-  background: #fff;
-  border: 1px solid #a4c5ff;
+  background: var(--studio-surface, #fff);
+  border: 1px solid var(--studio-accent, #a4c5ff);
   border-radius: 18px;
   padding: 18px;
   box-shadow: 0 15px 45px #0b1b4d20;
-  color: #0b1b4d;
-  animation: reward-arrive 0.25s ease-out;
+  color: var(--studio-text, #0b1b4d);
+  animation: reward-arrive var(--uno-motion-panel) var(--uno-motion-enter-ease);
 }
+.reward-celebration > div { min-width: 0; overflow-wrap: anywhere; }
+.reward-celebration .reward-badge {
+  animation: reward-badge-arrive var(--uno-motion-achievement) var(--uno-motion-enter-ease);
+}
+.reward-celebration a { color: var(--studio-link, #075bd8); }
 .reward-celebration button {
   background: transparent;
   border: 0;
   font-size: 24px;
   align-self: flex-start;
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
 }
 .reward-celebration p {
   margin: 4px 0;
 }
 @keyframes reward-arrive {
   from {
-    transform: translateY(8px);
-    opacity: 0;
+    translate: 0 var(--uno-motion-popup-offset);
+    opacity: 0.98;
   }
   to {
-    transform: translateY(0);
+    translate: 0 0;
     opacity: 1;
   }
 }
+@keyframes reward-badge-arrive {
+  from { opacity: 0.94; translate: 0 var(--uno-motion-hover-offset); }
+  to { opacity: 1; translate: 0 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .reward-celebration {
+  .reward-celebration, .reward-celebration .reward-badge {
     animation: none;
   }
 }
@@ -259,4 +269,7 @@
 .we--dark .rewards-settings a,
 .we--dark .reward-next a {
   color: #9ec4ff;
+}
+.uw-studio :is(.rewards-page, .rewards-settings, .reward-next) a {
+  color: var(--studio-link);
 }

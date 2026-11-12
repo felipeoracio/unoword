@@ -2,10 +2,10 @@
 
 ## Approval boundary
 
-The owner approved **Phases 1–5** and requested Phase 6. Their reviews remain in
-PRs #32–36 without a production merge. This work implements
-**Phase 6 — Marketing website**, for preview and owner approval.
-Phases 7–8 remain unstarted. Focus Mode and project switching require functional
+The owner approved **Phases 1–6** and requested Phase 7. Their reviews remain in
+PRs #32–37 without a production merge. This work implements
+**Phase 7 — Supporting experiences**, for preview and owner approval.
+Phase 8 remains unstarted. Focus Mode and project switching require functional
 editor evidence and separate approval before advancing, as requested by the
 owner. Phase approval is not treated as production deployment authorization.
 

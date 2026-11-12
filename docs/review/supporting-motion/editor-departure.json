@@ -1,0 +1,11 @@
+{
+  "scope": "Actual production Tiptap editor and AppShell departure gate with isolated persistence APIs. No live Supabase/provider account.",
+  "result": "passed",
+  "checks": [
+    "Failed save keeps current editor/body",
+    "Slow save remains pending beyond motion duration",
+    "Exact structured draft persists before route departure",
+    "Session identities remain stable with exactly five legitimate new words",
+    "No AI, source permission or billing mutation"
+  ]
+}

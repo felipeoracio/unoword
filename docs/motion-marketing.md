@@ -1,5 +1,8 @@
 # Phase 6 — Marketing website motion
 
+Phase 6 was subsequently approved. [Phase 7](motion-supporting.md) adds supporting
+interaction polish while retaining these marketing and editor safeguards.
+
 The owner approved Phase 5 and requested Phase 6. This draft stacks on PR #36;
 the approved motion phases are not production merges. Phase 7 supporting
 experiences and production deployment require separate approval.

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet } from "@/lib/api";
 import { cachePut, cachedRecords } from "@/lib/writing-cache";
+import { useSurfaceCue } from "@/lib/use-surface-cue";
 import type { useProjectWorkspace } from "@/lib/use-project-workspace";
 type Question = {
   id: string;
@@ -113,6 +114,7 @@ export default function GuidedWritingProfile({
     );
   }, [owner, questions, answers, es]);
   const question = questions[step];
+  const cue = useSurfaceCue<HTMLDivElement>(question?.id || "complete", questions.length > 0);
   const answer = question
     ? answers[question.id] || {
         question_id: question.id,
@@ -190,12 +192,12 @@ export default function GuidedWritingProfile({
           : "Choose options or write your own answer. Your existing free-text profile is preserved."}
       </p>
       {error && <p role="alert">{error}</p>}
-      {status && <p role="status">{status}</p>}
+      {status && <p role="status" className="uw-support-notice">{status}</p>}
       {!questions.length && !error && (
         <p role="status">{es ? "Cargando preguntas…" : "Loading questions…"}</p>
       )}
       {question && answer ? (
-        <>
+        <div className="uw-guided-question" {...cue}>
           <p>
             {es ? "Pregunta" : "Question"} {step + 1} / {questions.length} ·{" "}
             {completed} {es ? "respondidas" : "answered"}
@@ -300,10 +302,10 @@ export default function GuidedWritingProfile({
                   : "Save & continue"}
             </button>
           </div>
-        </>
+        </div>
       ) : (
         questions.length > 0 && (
-          <>
+          <div className="uw-profile-complete" {...cue}>
             <h3>
               {es ? "Tu perfil está listo" : "Your Writing Profile is ready"}
             </h3>
@@ -315,7 +317,7 @@ export default function GuidedWritingProfile({
             <button type="button" onClick={() => setStep(0)}>
               {es ? "Editar mis respuestas" : "Edit my answers"}
             </button>
-          </>
+          </div>
         )
       )}
     </section>

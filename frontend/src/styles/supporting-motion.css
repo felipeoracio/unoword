@@ -1,0 +1,40 @@
+/* State feedback only: no per-keystroke counts, progress fills or chart heights. */
+section.uw-guided-profile button { min-height: 44px; }
+.uw-guided-profile progress {
+  appearance: none;
+  border: 0;
+  border-radius: var(--studio-control-radius);
+  overflow: hidden;
+  background: var(--studio-line);
+}
+.uw-guided-profile progress::-webkit-progress-bar { background: var(--studio-line); }
+.uw-guided-profile progress::-webkit-progress-value { background: var(--studio-accent); }
+.uw-guided-profile progress::-moz-progress-bar { background: var(--studio-accent); }
+.uw-guided-profile .uw-project-choices label,
+:is(.reward-card button, .reward-toggle, .uw-substack button, .uw-account-plan button,
+  .uw-progress-calendar-day, .uw-progress-bar, .uw-progress-chart-heading select) {
+  transition-property: color, border-color, background-color, box-shadow;
+  transition-duration: var(--uno-motion-feedback);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.uw-guided-profile .uw-project-choices label:has(input:checked) {
+  border-color: var(--studio-accent);
+  background: var(--studio-soft);
+}
+.uw-guided-profile .uw-project-choices label:focus-within {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+.uw-support-notice, .uw-home-note,
+.uw-progress-selection, .uw-progress-data[open] > div,
+.uw-progress-counting[open] > p {
+  animation: uno-support-notice var(--uno-motion-panel) var(--uno-motion-enter-ease);
+}
+@keyframes uno-support-notice { from { opacity: 0.98; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .uw-guided-profile .uw-project-choices label,
+  :is(.reward-card button, .reward-toggle, .uw-substack button, .uw-account-plan button,
+    .uw-progress-calendar-day, .uw-progress-bar, .uw-progress-chart-heading select) { transition: none !important; }
+  .uw-support-notice, .uw-home-note, .uw-progress-selection,
+  .uw-progress-data[open] > div, .uw-progress-counting[open] > p { animation: none !important; }
+}

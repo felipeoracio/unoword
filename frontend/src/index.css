@@ -6,6 +6,7 @@
 @import "@fontsource-variable/jetbrains-mono";
 @import "./styles/studio-tokens.css";
 @import "./styles/studio-motion.css";
+@import "./styles/supporting-motion.css";
 @import "./styles/studio-primitives.css";
 
 @custom-variant dark (&:is(.dark *));

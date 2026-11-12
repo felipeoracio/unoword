@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { useSurfaceCue } from "@/lib/use-surface-cue";
 import "@/styles/substack.css";
 export type SubstackStatus = {
   user_id: string;
@@ -82,6 +83,7 @@ export default function ConnectSubstack({
     },
   });
   const data = status.isError ? undefined : status.data;
+  const cue = useSurfaceCue<HTMLElement>(`${owner}:${data?.connected}:${data?.active}:${data?.pending_request?.status || "none"}`, !!data);
   const run = async (action: string, body: Record<string, unknown> = {}) => {
     setBusy(true);
     setError("");
@@ -143,6 +145,7 @@ export default function ConnectSubstack({
   const pending = data?.pending_request;
   return (
     <section
+      {...cue}
       className="uw-substack"
       id="subscription"
       aria-label={t(
@@ -324,7 +327,7 @@ export default function ConnectSubstack({
           )}
         </>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p role="status" className="uw-support-notice">{notice}</p>}
       {error && <p role="alert">{error}</p>}
     </section>
   );
