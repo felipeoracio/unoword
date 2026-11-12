@@ -13,7 +13,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
  const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.EDITOR_POLISH_ONLY==='1',
-   recordVideo:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
+   recordVideo:process.env.NAV_GUARD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/guard-video'),size:{width:1440,height:1000}}:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0,guidanceRemaining=30,monthlyRemaining=200,legacy=false,failIdeaSave=false;
   const savedCoachIdeas=new Map();
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
@@ -152,6 +152,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.NAVIGATION_GUARD_ONLY==='1'){
+   await require('./helpers/navigation-guard-flow.cjs')({page,canvas,documents,activity,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
+  }
   if(process.env.FOCUS_MODE_ONLY==='1'){
    await require('./helpers/focus-mode-flow.cjs')({page,canvas,context,documents,activity,requests,errors,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
    if(process.env.FOCUS_PAUSE==='1')await page.pause();
@@ -420,7 +423,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
 
   const originalId=saved.id;
   assert.equal([...activity.values()].reduce((s,a)=>s+a.typed_words,0),8);
-  await canvas.fill('');await page.waitForFunction(()=>document.querySelector('.uw-editor-stats').textContent.includes('0 Session words'));
+  await canvas.fill('');await page.waitForFunction(()=>document.querySelector('.uw-editor-stats').textContent.includes('0 Session words')).catch(async error=>{console.error('Deletion state:',await canvas.evaluate(el=>({text:el.textContent,editable:el.getAttribute('contenteditable'),stats:document.querySelector('.uw-editor-stats')?.textContent,session:document.querySelector('.uw-editor-session-controls')?.textContent})),[...activity.values()].map(row=>({id:row.id,words:row.typed_words,timer:row.timer})));throw error;});
   await canvas.pressSequentially('A quiet practice makes room for new ideas.');
   await canvas.press('ControlOrMeta+a');await page.getByRole('button',{name:'Bold (Ctrl/⌘ B)',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas strong'));
@@ -624,7 +627,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0);
   assert.equal(await page.locator('.uw-editor-document').count(),0);
-  assert.equal(requests.slice(downgradeCalls).some(r=>r.key.startsWith('/workspace/')),false,'Free must not fetch private workspace data');
+  const downgradePrivate=requests.slice(downgradeCalls).filter(r=>r.key.startsWith('/workspace/'));
+  if(downgradePrivate.length)console.error('Downgrade requests:',downgradePrivate.map(r=>({method:r.method,key:r.key})));
+  assert.equal(downgradePrivate.length,0,'Free must not fetch private workspace data');
   assert.equal(await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const request=open.result.transaction('records').objectStore('records').getAll();request.onsuccess=()=>{resolve(request.result.some(r=>r.kind==='document'||r.kind==='draft'));open.result.close();};};})),true,'Existing writing survives downgrade');
   // Cached Free identities cannot bypass the gate by reloading offline.
   await context.setOffline(true);await page.reload();

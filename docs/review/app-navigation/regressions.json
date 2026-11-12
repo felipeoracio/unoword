@@ -1,0 +1,296 @@
+{
+  "scope": "Final local production-browser runs with isolated APIs; no live account/provider or physical-device verification. Reports identify baseline HEAD plus dirty working tree, not a Phase 5 release SHA.",
+  "finalBrowserJobs": 18,
+  "reports": [
+    {
+      "commit": "34742e3080a24beb6dc47ec09586e5b58a1a2802",
+      "dirty": true,
+      "startedAt": "2026-11-12T17:04:39.328Z",
+      "updatedAt": "2026-11-12T17:05:15.775Z",
+      "browser": "/usr/bin/chromium",
+      "axe": true,
+      "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+      "results": [
+        {
+          "name": "workspace",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 36.42,
+          "log": "tests/artifacts/phase8/workspace.log"
+        }
+      ]
+    },
+    {
+      "commit": "34742e3080a24beb6dc47ec09586e5b58a1a2802",
+      "dirty": true,
+      "startedAt": "2026-11-12T17:07:40.645Z",
+      "updatedAt": "2026-11-12T17:08:49.183Z",
+      "browser": "/usr/bin/chromium",
+      "axe": true,
+      "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+      "results": [
+        {
+          "name": "coach",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 12.43,
+          "log": "tests/artifacts/phase8/coach.log"
+        },
+        {
+          "name": "projects",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 18.89,
+          "log": "tests/artifacts/phase8/projects.log"
+        },
+        {
+          "name": "studio-editor",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 16.4,
+          "log": "tests/artifacts/phase8/studio-editor.log"
+        },
+        {
+          "name": "images",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 19.12,
+          "log": "tests/artifacts/phase8/images.log"
+        },
+        {
+          "name": "subtitle-copy",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 17.28,
+          "log": "tests/artifacts/phase8/subtitle-copy.log"
+        },
+        {
+          "name": "session-completion",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 30.47,
+          "log": "tests/artifacts/phase8/session-completion.log"
+        }
+      ]
+    },
+    {
+      "commit": "34742e3080a24beb6dc47ec09586e5b58a1a2802",
+      "dirty": true,
+      "startedAt": "2026-11-12T17:08:49.225Z",
+      "updatedAt": "2026-11-12T17:10:20.309Z",
+      "browser": "/usr/bin/chromium",
+      "axe": true,
+      "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+      "results": [
+        {
+          "name": "studio-shell",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 11.31,
+          "log": "tests/artifacts/phase8/studio-shell.log"
+        },
+        {
+          "name": "studio-home",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 11.33,
+          "log": "tests/artifacts/phase8/studio-home.log"
+        },
+        {
+          "name": "studio-progress",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 9.49,
+          "log": "tests/artifacts/phase8/studio-progress.log"
+        },
+        {
+          "name": "studio-ideas",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 10.38,
+          "log": "tests/artifacts/phase8/studio-ideas.log"
+        },
+        {
+          "name": "studio-library-settings",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 13.23,
+          "log": "tests/artifacts/phase8/studio-library-settings.log"
+        },
+        {
+          "name": "google-oauth",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 15.23,
+          "log": "tests/artifacts/phase8/google-oauth.log"
+        },
+        {
+          "name": "login-redirect",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 16.39,
+          "log": "tests/artifacts/phase8/login-redirect.log"
+        },
+        {
+          "name": "landing",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 12.8,
+          "log": "tests/artifacts/phase8/landing.log"
+        },
+        {
+          "name": "account-security",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 3.97,
+          "log": "tests/artifacts/phase8/account-security.log"
+        },
+        {
+          "name": "rewards",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 33.4,
+          "log": "tests/artifacts/phase8/rewards.log"
+        },
+        {
+          "name": "account-billing",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 23.76,
+          "log": "tests/artifacts/phase8/account-billing.log"
+        }
+      ]
+    }
+  ],
+  "backend": {
+    "tests": 32,
+    "status": "passed",
+    "seconds": 7.03,
+    "files": [
+      "test_project_context.py",
+      "test_workspace_ai.py",
+      "test_coach_policy.py"
+    ]
+  },
+  "projectSQL": {
+    "status": "passed",
+    "engine": "PGlite",
+    "scope": "Migration/RLS/context/CAS isolation suite"
+  },
+  "build": "passed",
+  "lint": {
+    "status": "passed",
+    "existingWarnings": 4
+  },
+  "baselineWorkspaceControl": {
+    "status": "passed",
+    "commit": "34742e3080a24beb6dc47ec09586e5b58a1a2802",
+    "scope": "Full existing workspace browser flow against preserved approved Phase 4 bundle"
+  },
+  "earlierFailures": [
+    {
+      "failure": "Full workspace timed out after deleting seed text waiting for zero Session words during concurrent suites.",
+      "resolution": "Final isolated full workspace and baseline control passed; original cause remains unverified."
+    },
+    {
+      "failure": "A subsequent full workspace attempt failed the aggregate no-private-workspace-request assertion on Free downgrade after two-tab recovery.",
+      "resolution": "Added diagnostic output without weakening assertion; final isolated run and baseline control passed. Original offending request/cause remains unverified; live entitlement isolation is not claimed."
+    },
+    {
+      "failure": "Rewards lacked PGLITE_ROOT.",
+      "resolution": "Configured existing PGlite runtime; final suite passed."
+    },
+    {
+      "failure": "Billing signup browser-storage contract failed due to mount-time sidebar preference write.",
+      "resolution": "Preference now writes only on explicit collapse/expand; unmodified storage assertion passes."
+    },
+    {
+      "failure": "Sidebar inverse toggle contrast and Settings hash cue failed initial targeted checks.",
+      "resolution": "Scoped inverse surface styles and actual hash-target attribute; final axe/functional checks pass."
+    }
+  ],
+  "recordings": [
+    {
+      "file": "navigation-demo.webm",
+      "seconds": 17.8,
+      "scope": "Recorded actual production UI with isolated synthetic account/persistence APIs."
+    },
+    {
+      "file": "editor-guard.webm",
+      "seconds": 5.48,
+      "scope": "Recorded actual production UI with isolated synthetic account/persistence APIs."
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+/* Phase 5: immediate navigation; feedback never gates route/data operations. */
+.uw-studio-nav-link {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: var(--uno-motion-feedback);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.uw-studio .uw-studio-nav-toggle {
+  flex: none;
+  min-height: 44px;
+  margin-top: var(--studio-space-4);
+  color: inherit;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  font-size: 12px;
+}
+.uw-studio .uw-studio-nav-toggle:hover { color: inherit; background: color-mix(in srgb, currentColor 10%, transparent); }
+.uw-studio .uw-studio-nav-toggle:focus-visible { outline-color: currentColor; }
+.uw-studio-compact:not(.uw-studio-editor) { grid-template-columns: 76px minmax(0,1fr); }
+.uw-studio-compact .uw-studio-sidebar { padding: 24px 10px; }
+.uw-studio-compact .uw-studio-sidebar .uw-studio-brand { margin: 0 auto 32px; }
+.uw-studio-compact .uw-studio-sidebar .uw-studio-brand > span,
+.uw-studio-compact .uw-studio-sidebar .uw-studio-nav-label,
+.uw-studio-compact .uw-studio-sidebar .uw-studio-pro,
+.uw-studio-compact .uw-studio-sidebar .uw-studio-sidebar-footer p,
+.uw-studio-compact .uw-studio-sidebar .uw-studio-sidebar-footer a > span,
+.uw-studio-compact .uw-studio-nav-toggle > span { display: none; }
+.uw-studio-compact .uw-studio-sidebar .uw-studio-nav-link { justify-content: center; padding: 10px 8px; gap: 0; }
+.uw-studio-compact .uw-studio-sidebar .uw-studio-sidebar-footer { padding: 32px 0 0; text-align: center; }
+.uw-studio-compact .uw-studio-sidebar .uw-studio-sidebar-footer a { justify-content: center; min-height: 44px; min-width: 44px; }
+.uw-studio-drawer[open] .uw-studio-drawer-content {
+  animation: uno-navigation-drawer var(--uno-motion-sidebar) var(--uno-motion-enter-ease);
+}
+.uw-studio-drawer[open]::backdrop {
+  animation: uno-navigation-backdrop var(--uno-motion-dropdown) var(--uno-motion-enter-ease);
+}
+.uw-studio :is(.uw-section-nav a, .uw-settings-nav a, .uw-project-tabs button,
+  .uw-home-document, .uw-home-prompt, .uw-home-progress, .uw-library-resource,
+  .uw-project-cards > article, .uw-library-actions button) {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: var(--uno-motion-hover);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.uw-studio :is(.uw-home-document, .uw-library-resource, .uw-project-cards > article):is(:hover, :focus-within) {
+  border-color: var(--studio-accent);
+  box-shadow: var(--studio-shadow);
+}
+.uw-studio .uw-library-preview, .uw-studio .uw-project-form,
+.uw-editor-dialog.uw-project-dialog[open] {
+  animation: uno-navigation-panel var(--uno-motion-panel) var(--uno-motion-enter-ease);
+}
+.uw-settings [data-studio-navigation-target] {
+  animation: uno-navigation-target var(--uno-motion-panel) var(--uno-motion-state-ease);
+}
+@keyframes uno-navigation-drawer { from { opacity: 0.96; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes uno-navigation-backdrop { from { opacity: 0.85; } to { opacity: 1; } }
+@keyframes uno-navigation-panel { from { opacity: 0.98; } to { opacity: 1; } }
+@keyframes uno-navigation-target { from { border-color: var(--studio-accent); } to { border-color: var(--studio-line); } }
+@media (max-width: 899px) { .uw-studio-compact:not(.uw-studio-editor) { grid-template-columns: minmax(0,1fr); } }
+@media (prefers-reduced-motion: reduce) {
+  .uw-studio-nav-link, .uw-studio :is(.uw-section-nav a, .uw-settings-nav a, .uw-project-tabs button,
+    .uw-home-document, .uw-home-prompt, .uw-home-progress, .uw-library-resource,
+    .uw-project-cards > article, .uw-library-actions button) { transition: none !important; }
+  .uw-studio-drawer[open] .uw-studio-drawer-content, .uw-studio-drawer[open]::backdrop,
+  .uw-studio .uw-library-preview, .uw-studio .uw-project-form,
+  .uw-editor-dialog.uw-project-dialog[open],
+  .uw-settings [data-studio-navigation-target] { animation: none !important; }
+}

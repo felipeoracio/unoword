@@ -1,0 +1,618 @@
+{
+  "baselineCommit": "34742e3080a24beb6dc47ec09586e5b58a1a2802",
+  "implementationBranch": "feature/motion-app-navigation",
+  "capturedAgainstWorkingTree": true,
+  "scope": "Sequential local Chromium production trials with isolated APIs, no competing browser tests. Heading readiness is not full data readiness or page load. Not GPU FPS, INP, field Web Vitals, live providers, devices or leak-absence proof.",
+  "navigation": {
+    "before-1x": {
+      "scope": "Sequential actual production route/header readiness with isolated APIs, after initial app load. Click excludes opening the mobile drawer. rAF interval is not GPU FPS; layout shift excludes recent input; short heap snapshots do not prove leak absence. No live account/provider or physical-device verification.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 4214848,
+      "heapAfterBytes": 5954776,
+      "rows": [
+        {
+          "width": 1440,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 58.900000005960464,
+          "frameIntervalP95Ms": 16.700000000000045,
+          "frameSamples": 11,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 76.09999999403954,
+          "frameIntervalP95Ms": 24.13200000298025,
+          "frameSamples": 12,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 38,
+          "frameIntervalP95Ms": 16.799999999999955,
+          "frameSamples": 38,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 24,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "frameSamples": 5,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 35.5,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "frameSamples": 6,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 42.1000000089407,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "frameSamples": 16,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    },
+    "after-1x": {
+      "scope": "Sequential actual production route/header readiness with isolated APIs, after initial app load. Click excludes opening the mobile drawer. rAF interval is not GPU FPS; layout shift excludes recent input; short heap snapshots do not prove leak absence. No live account/provider or physical-device verification.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 4332056,
+      "heapAfterBytes": 5987864,
+      "rows": [
+        {
+          "width": 1440,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 55.900000005960464,
+          "frameIntervalP95Ms": 16.700000000000045,
+          "frameSamples": 27,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 79.59999999403954,
+          "frameIntervalP95Ms": 33.299999999999955,
+          "frameSamples": 54,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 38.5,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "frameSamples": 22,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 29.200000002980232,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "frameSamples": 23,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 37.5,
+          "frameIntervalP95Ms": 16.700000000000273,
+          "frameSamples": 23,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 44.20000000298023,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "frameSamples": 22,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    },
+    "before-4x": {
+      "scope": "Sequential actual production route/header readiness with isolated APIs, after initial app load. Click excludes opening the mobile drawer. rAF interval is not GPU FPS; layout shift excludes recent input; short heap snapshots do not prove leak absence. No live account/provider or physical-device verification.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 4303628,
+      "heapAfterBytes": 5958280,
+      "rows": [
+        {
+          "width": 1440,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 241.29999999701977,
+          "frameIntervalP95Ms": 33.299999999999955,
+          "frameSamples": 24,
+          "longTasksMs": [
+            52
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 248.40000000596046,
+          "frameIntervalP95Ms": 100,
+          "frameSamples": 20,
+          "longTasksMs": [
+            60,
+            68,
+            79
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 138.79999999701977,
+          "frameIntervalP95Ms": 50,
+          "frameSamples": 34,
+          "longTasksMs": [
+            65
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 135.20000000298023,
+          "frameIntervalP95Ms": 33.30000000000018,
+          "frameSamples": 15,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 159.20000000298023,
+          "frameIntervalP95Ms": 50.09999999999991,
+          "frameSamples": 15,
+          "longTasksMs": [
+            51
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 160.29999999701977,
+          "frameIntervalP95Ms": 50,
+          "frameSamples": 20,
+          "longTasksMs": [
+            51,
+            51
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    },
+    "after-4x": {
+      "scope": "Sequential actual production route/header readiness with isolated APIs, after initial app load. Click excludes opening the mobile drawer. rAF interval is not GPU FPS; layout shift excludes recent input; short heap snapshots do not prove leak absence. No live account/provider or physical-device verification.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 4324220,
+      "heapAfterBytes": 5993556,
+      "rows": [
+        {
+          "width": 1440,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 272.5,
+          "frameIntervalP95Ms": 50.100000000000136,
+          "frameSamples": 28,
+          "longTasksMs": [
+            60,
+            58,
+            54
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 192.3999999910593,
+          "frameIntervalP95Ms": 50,
+          "frameSamples": 30,
+          "longTasksMs": [
+            73,
+            56
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 1440,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 122.79999999701977,
+          "frameIntervalP95Ms": 50,
+          "frameSamples": 22,
+          "longTasksMs": [
+            52
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Library",
+          "clickToHeadingReadyMs": 117.09999999403954,
+          "frameIntervalP95Ms": 33.30000000000018,
+          "frameSamples": 26,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Settings",
+          "clickToHeadingReadyMs": 211.59999999403954,
+          "frameIntervalP95Ms": 50.099999999999454,
+          "frameSamples": 28,
+          "longTasksMs": [
+            52
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        },
+        {
+          "width": 390,
+          "destination": "Home",
+          "clickToHeadingReadyMs": 208,
+          "frameIntervalP95Ms": 50,
+          "frameSamples": 24,
+          "longTasksMs": [
+            54,
+            77
+          ],
+          "layoutShiftExcludingRecentInput": 0
+        }
+      ]
+    }
+  },
+  "editorControl": {
+    "before": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10048924,
+      "heapAfterBytes": 11118656,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 35.400000005960464,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.20000000298023,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 36.8999999910593,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.200000002980232,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "after": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10073744,
+      "heapAfterBytes": 11135912,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.599999994039536,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 33.79999999701977,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.700000002980232,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    }
+  },
+  "bundles": {
+    "before": {
+      "index-*.js": [
+        {
+          "file": "index-BogCeRIk.js",
+          "bytes": 282088,
+          "gzipBytes": 88789
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "AppShell-*.js": [
+        {
+          "file": "AppShell-Do_hPlWB.js",
+          "bytes": 10320,
+          "gzipBytes": 4025
+        }
+      ],
+      "AppShell-*.css": [
+        {
+          "file": "AppShell-D6yUUQp-.css",
+          "bytes": 10190,
+          "gzipBytes": 2655
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-9N4ZkJWP.js",
+          "bytes": 415166,
+          "gzipBytes": 136227
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ]
+    },
+    "after": {
+      "index-*.js": [
+        {
+          "file": "index-DXyPkZUF.js",
+          "bytes": 282088,
+          "gzipBytes": 88803
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "AppShell-*.js": [
+        {
+          "file": "AppShell-lwwvGXhm.js",
+          "bytes": 12686,
+          "gzipBytes": 4747
+        }
+      ],
+      "AppShell-*.css": [
+        {
+          "file": "AppShell-z2AKwCuZ.css",
+          "bytes": 13780,
+          "gzipBytes": 3235
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-Dudgz8sE.js",
+          "bytes": 414643,
+          "gzipBytes": 136068
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ]
+    }
+  },
+  "earlierEditorControlDiagnostic": {
+    "before": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10062100,
+      "heapAfterBytes": 11123628,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 34.30000001192093,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.900000005960464,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 30.400000005960464,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 35.70000000298023,
+          "frameIntervalP95Ms": 16.799999999999272,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "after": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10102988,
+      "heapAfterBytes": 11138684,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 45.099999994039536,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.29999999701977,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 32.70000000298023,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.8999999910593,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "note": "Earlier matched pair before final preference-write adjustment retained for transparency; desktop idle p95 was 34.3\u219245.1ms. Variability prevents a zero-overhead claim."
+  }
+}

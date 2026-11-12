@@ -6,9 +6,9 @@ const A='00000000-0000-4000-8000-000000000001',B='00000000-0000-4000-8000-000000
 const P='00000000-0000-4000-8000-000000000010',Q='00000000-0000-4000-8000-000000000011';
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0'),stamp=()=>new Date().toISOString();
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:process.env.NAV_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try{
-  const context=await browser.newContext({viewport:{width:1440,height:1100},reducedMotion:'reduce'});context.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport:{width:1440,height:1100},hasTouch:process.env.NAVIGATION_MOTION_ONLY==='1',reducedMotion:process.env.NAVIGATION_MOTION_ONLY==='1'?'no-preference':'reduce',recordVideo:process.env.NAV_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/video'),size:{width:1440,height:1100}}:undefined});context.setDefaultTimeout(15000);
   await context.addInitScript(()=>{if(!localStorage.getItem('uno-writing-theme'))localStorage.setItem('uno-writing-theme','light');if(!localStorage.getItem('uno-writing-language'))localStorage.setItem('uno-writing-language','en');});
   let owner=A,paid=true,signed=false,failedCatalog=false,failedPermission=false,failedPreview=false,failedSources=false;
   const requests=[],errors=[],documents=Array.from({length:26},(_,i)=>({id:id(100+i),user_id:A,title:i===0?'A private chapter':i===1?'An archived chapter':'Writing '+i,status:i===1?'archived':'active',ai_allowed:false,updated_at:stamp()}));
@@ -31,6 +31,8 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0'),stamp=()=>new 
    else if(key==='/auth/refresh')value={authenticated:true};
    else if(key==='/auth/recovery'){assert.deepEqual(body,{email:owner===A?'writer@example.com':'other@example.com'});value={status:'ok'};}
    else if(key==='/auth/logout'){signed=false;value={status:'ok'};}
+   else if(process.env.NAVIGATION_MOTION_ONLY==='1'&&key==='/workspace/documents')value=documents.filter(document=>document.user_id===owner);
+   else if(process.env.NAVIGATION_MOTION_ONLY==='1'&&key==='/progress/preferences')value={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['nature']};
    else if(key==='/workspace/projects/resources'){
     assert.equal(paid,true);assert.equal(url.searchParams.get('expected_user_id'),owner);
     if(failedCatalog){status=503;value={detail:'unavailable'};}else value=[...projectFixture(key,method,body).value,...(owner===A?sources.map(s=>({resource_kind:'source',id:s.id,title:s.document_title,allowed:s.enabled&&s.processing_status==='ready',state:s.processing_status,updated_at:stamp()})):[]),{resource_kind:'memory',id:id(401),title:owner===A?'A preference for reflective questions':'B private memory',allowed:true,state:'ready',updated_at:stamp()},{resource_kind:'writing_session',id:id(402),title:'Saved writing · 2026-11-10',allowed:false,state:'ready',updated_at:stamp()}];
@@ -54,6 +56,12 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0'),stamp=()=>new 
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
   });
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+  if(process.env.NAVIGATION_MOTION_ONLY==='1'){
+   signed=true;
+   await require('./helpers/navigation-motion-flow.cjs')({page,context,origin,requests,errors,projectFixture,documents,sources,setOwner:value=>owner=value,setPaid:value=>paid=value,A,B,P,Q});
+   if(process.env.NAV_PAUSE==='1')await page.pause();
+   return;
+  }
   await page.goto(origin+'/library');await page.getByRole('link',{name:'Sign in',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Sign in',exact:true}).getAttribute('href'),'/account?next=%2Flibrary');
   signed=true;await page.reload();await page.getByTestId('studio-library').waitFor();await page.getByRole('heading',{name:'A private chapter',exact:true}).waitFor();
   assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'),'noindex, nofollow');

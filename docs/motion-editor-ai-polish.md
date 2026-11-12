@@ -1,5 +1,8 @@
 # Phase 4 — Editor and AI polish
 
+Phase 4 was subsequently approved. [Phase 5](motion-app-navigation.md) builds on
+this branch and checks the editor's existing save-before-navigation contract.
+
 The owner approved Phase 3 and requested this separately reviewable phase.
 It builds on PR #34; production deployment and Phase 5 are not part of this
 change. The motion system, studio tokens, routes, editor, session engine and AI
