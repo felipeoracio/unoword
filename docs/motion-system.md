@@ -170,12 +170,33 @@ VoiceOver/NVDA compatibility remains unverified.
 
 Production build/type/branding checks pass; lint has the four existing unrelated
 warnings. Normal production builds are checked to contain neither the review
-page module nor its CSS. Final regression and preview results are recorded in
-the PR and the review measurements artifact.
+page module nor its CSS. All 10 selected web regressions and 3 editor/workspace,
+project and AI-context regressions pass on the normal production bundle. The
+final foundation suite passes on the local preview production bundle. See
+`docs/review/motion/measurements.json` for the sanitized measurements and job
+results.
+
+The final unrecorded foundation lab observed 287 frame intervals: p50 16.7ms,
+p95 16.8ms. Synthetic action-to-React-commit p50/p95 was 1.4/2.1ms, with zero
+observed layout shifts and no recorded long tasks during the measured cycles.
+After three warm-up cycles, forced-GC heap snapshots increased from 5,807,564 to
+6,702,752 bytes across twelve measured cycles (+895,188 bytes). This short
+observation does not establish a leak or prove stable long-session memory use;
+long-duration/device profiling remains outstanding. The new foundation itself
+adds CSS and existing-component classes, with no new runtime listener/timer.
 
 ### Review before approval
 
-The PR's Vercel preview provides `/motion-preview`. Local review:
+Draft PR: https://github.com/felipeoracio/unoword/pull/32
+
+Preview: https://unoword-git-feature-motion-foundation-unoword.vercel.app/motion-preview
+
+Vercel reports a successful preview deployment. Its team login protection is
+enabled: unauthenticated automated checks reach **Login – Vercel**, so remote
+application interactions are unverified. Sign in to Vercel with project access
+to review it; protection was not bypassed or disabled. The local preview-build
+suite passes. A certificate-validating probe confirms production still serves
+the previous approved release. Local review:
 
 ```sh
 npm --prefix frontend run dev
