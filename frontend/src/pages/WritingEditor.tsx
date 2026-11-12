@@ -28,9 +28,10 @@ import AppShell from "@/components/studio/AppShell";
 import { StudioStatus } from "@/components/studio/StudioPrimitives";
 import { useEditorPanels } from "@/lib/use-editor-panels";
 import { useFocusMode } from "@/lib/use-focus-mode";
-import { motionMilliseconds } from "@/lib/motion";
+import { motionMilliseconds, revealOpacity } from "@/lib/motion";
 import "@/styles/focus-mode.css";
 import "@/styles/project-motion.css";
+import "@/styles/editor-polish.css";
 import CoachingContext from "@/components/studio/CoachingContext";
 import SaveGuidanceButton from "@/components/studio/SaveGuidanceButton";
 import { coachingModes, usesGuidanceAllowance, sharesCurrentDraft } from "@/lib/coaching-modes";
@@ -278,6 +279,7 @@ const spanish: Record<string, string> = {
   Account: "Cuenta",
   Language: "Idioma",
   "All changes saved": "Todos los cambios guardados",
+  "Preparing guidance…": "Preparando orientación…",
   "Saving to your account…": "Guardando en tu cuenta…",
   "Saving on this device…": "Guardando en este dispositivo…",
   "Saved on this device · syncing…":
@@ -352,6 +354,15 @@ export default function WritingEditor() {
   const [projectTransition, setProjectTransition] = useState<{phase:"saving"|"loading"|"syncing";name:string}|null>(null);
   const projectSequence = useRef(0), projectReveal = useRef(false);
   const projectMotion = useRef<Animation|null>(null);
+  const openingMotion = useRef<Animation|null>(null);
+  const openingPaper = useRef<HTMLElement|null>(null);
+  const openingPending = useRef(false);
+  const revealPaper = useCallback((paper: HTMLElement | null) => {
+    openingMotion.current?.cancel();
+    openingMotion.current = null;
+    openingPaper.current = paper;
+    openingPending.current = !!paper && !projectReveal.current;
+  }, []);
   const projectDialog = useRef<HTMLDialogElement>(null);
   const evidenceDialog = useRef<HTMLDialogElement>(null);
   const [evidencePreview, setEvidencePreview] = useState<{
@@ -734,6 +745,8 @@ export default function WritingEditor() {
           // rerasterized into an opacity layer while the writer is typing.
           projectMotion.current?.cancel();
           projectMotion.current = null;
+          openingMotion.current?.cancel();
+          openingMotion.current = null;
           inputKind.current = (event as InputEvent).inputType || "insertText";
           return false;
         },
@@ -836,6 +849,17 @@ export default function WritingEditor() {
       false,
     );
   }, [editor, activeDocument, ws.completionBusy, projectBusy]);
+
+  // Follow ordinary hydration/editability; never reveal a still-opening body.
+  // A retained paper does not replay on typing, saving or session clock ticks.
+  const openingDocumentId = activeDocument?.id;
+  const openingDocumentLoaded = activeDocument?.content_loaded !== false;
+  useEffect(() => {
+    if (!openingPending.current || !openingPaper.current || !openingDocumentId ||
+      !openingDocumentLoaded || projectBusy || loadedDocument.current !== openingDocumentId) return;
+    openingPending.current = false;
+    openingMotion.current = revealOpacity(openingPaper.current);
+  }, [editor, openingDocumentId, openingDocumentLoaded, projectBusy]);
 
   useEffect(() => {
     localStorage.setItem("uno-writing-language", language);
@@ -2605,7 +2629,7 @@ export default function WritingEditor() {
                 </section>
               )}
               <div className="uw-editor-paper-scroll" inert={projectBusy}>
-                <article className="uw-editor-paper">
+                <article className="uw-editor-paper" ref={revealPaper}>
                   {activeDocument && (
                     <label className="uw-project-move">
                       <span className="uw-sr-only">
@@ -2941,6 +2965,7 @@ export default function WritingEditor() {
             <section
               className="uw-editor-session-controls"
               aria-label={t("Session details")}
+              data-session-state={session.current?.timer?.status || "ready"}
             >
               <span role="status">
                 {t(
@@ -3012,6 +3037,13 @@ export default function WritingEditor() {
                   {Math.floor(sessionTime.elapsed_ms / 1000) % 60}s
                 </p>
               </details>
+              {session.current?.timer?.status === "ended" && (
+                <p className="uw-editor-session-summary">
+                  {language === "es" ? "Resumen de la sesión" : "Session summary"}: {sessionWords}{" "}
+                  {language === "es" ? "palabras escritas" : "typed words"} · {t("Active time")}: {Math.floor(sessionTime.active_ms / 60000)}m{" "}
+                  {Math.floor(sessionTime.active_ms / 1000) % 60}s
+                </p>
+              )}
             </section>
           )}
           {(!ws.online || streakQuery.isError) && (
@@ -3170,6 +3202,7 @@ export default function WritingEditor() {
                   {language==="es"?"Elige un modo":"Choose a mode"}
                   <select
                     aria-label="AI writing tool"
+                    aria-describedby="editor-coach-mode-description editor-coach-mode-allowance"
                     value={action}
                     onChange={(event) => {
                       aiRequest.current++;
@@ -3181,8 +3214,8 @@ export default function WritingEditor() {
                     {coachingModes.map(mode=><option key={mode.id} value={mode.id}>{mode.label[language==="es"?1:0]}</option>)}
                   </select>
                 </label>
-                <p className="uw-coach-mode-description">{coachingModes.find(mode=>mode.id===action)?.description[language==="es"?1:0]}</p>
-                <p className="uw-coach-allowance">{usage?.legacy_shared?(language==="es"?"Usa 1 solicitud de tu asignación diaria compartida protegida.":"Uses 1 request from your protected shared daily allowance."):usesGuidanceAllowance(action)?(language==="es"?"Usa 1 solicitud de Guía de escritura.":"Uses 1 Writing Guidance request."):(language==="es"?"Usa 1 solicitud de sugerencias para estas alternativas.":"Uses 1 suggestion request for these alternatives.")}</p>
+                <p key={action} id="editor-coach-mode-description" className="uw-coach-mode-description">{coachingModes.find(mode=>mode.id===action)?.description[language==="es"?1:0]}</p>
+                <p id="editor-coach-mode-allowance" className="uw-coach-allowance">{usage?.legacy_shared?(language==="es"?"Usa 1 solicitud de tu asignación diaria compartida protegida.":"Uses 1 request from your protected shared daily allowance."):usesGuidanceAllowance(action)?(language==="es"?"Usa 1 solicitud de Guía de escritura.":"Uses 1 Writing Guidance request."):(language==="es"?"Usa 1 solicitud de sugerencias para estas alternativas.":"Uses 1 suggestion request for these alternatives.")}</p>
                 <CoachingContext scope={contextScope} selected={selectedResources} documentId={activeDocument?.id}
                   project={projects.state?.projects.find(project=>project.id===activeProject)?.name || (language==="es"?"Escritura general":"General Writing")}
                   language={language} onReview={()=>{setRight(false);requestAnimationFrame(()=>document.querySelector<HTMLSelectElement>('.uw-project-controls select[aria-label="AI Context"], .uw-project-controls select[aria-label="Contexto de IA"]')?.focus());}}/>
@@ -3216,8 +3249,13 @@ export default function WritingEditor() {
                   onClick={() => void generate()}
                 >
                   <Sparkles size={15} />
-                  {t(aiBusy ? "Thinking…" : "Generate")}
+                  {t(aiBusy ? "Preparing guidance…" : "Generate")}
                 </button>
+                {aiBusy && (
+                  <p className="uw-editor-ai-pending" role="status">
+                    <span aria-hidden="true" />{t("Preparing guidance…")}
+                  </p>
+                )}
                 {ws.documents.some((document) => document.dirty) && (
                   <p className="uw-editor-muted">
                     {language === "es"
@@ -3231,7 +3269,7 @@ export default function WritingEditor() {
                     {aiError}
                   </p>
                 )}
-                <div className="uw-editor-ai-results" aria-live="polite">
+                <div className="uw-editor-ai-results" aria-live="polite" aria-busy={aiBusy}>
                   {aiItems.length > 1 &&
                     aiItems.some((item) => item.writing_task) && (
                       <p className="uw-editor-muted">

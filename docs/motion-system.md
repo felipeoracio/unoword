@@ -2,10 +2,10 @@
 
 ## Approval boundary
 
-The owner approved **Phases 1 and 2** and requested Phase 3. Foundation and Focus
-review remain in PRs #32 and #33 without a production merge. This work implements
-**Phase 3 — Project switching**, for preview and owner approval.
-Phases 4–8 remain unstarted. Focus Mode and project switching require functional
+The owner approved **Phases 1–3** and requested Phase 4. Their reviews remain in
+PRs #32, #33 and #34 without a production merge. This work implements
+**Phase 4 — Editor and AI polish**, for preview and owner approval.
+Phases 5–8 remain unstarted. Focus Mode and project switching require functional
 editor evidence and separate approval before advancing, as requested by the
 owner. Phase approval is not treated as production deployment authorization.
 
@@ -84,7 +84,8 @@ billing or network mutations. It explicitly does not demonstrate Phase 2 or 3.
 3. Project switching: multiple actual test projects/documents; immediate typing
    and switching, slow/offline/failed saves, rapid switching, reload, completion,
    session attribution and context isolation. Persistence/session evidence and
-   recording or reproducible demo; owner approval required.
+   recording or reproducible demo. Owner approved Phase 3; Phase 4 reruns its
+   actual-editor regression alongside Focus Mode.
 4. Editor/AI polish; 5. Navigation/projects/library/settings;
    6. Marketing; 7. Supporting experiences; 8. Cross-platform/optimization.
    Each requires an independent tested preview and owner approval.

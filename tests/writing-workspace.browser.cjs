@@ -10,21 +10,26 @@ const empty={type:'doc',content:[{type:'paragraph'}]};
 const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','listItem','bulletList','orderedList'].includes(n.type)?'\n':'');
 const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,sorted(v)])):value;
 (async()=>{
- const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
-  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1',
-   recordVideo:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.EDITOR_POLISH_ONLY==='1',
+   recordVideo:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0,guidanceRemaining=30,monthlyRemaining=200,legacy=false,failIdeaSave=false;
   const savedCoachIdeas=new Map();
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
   const projectNetwork={saveGate:null,readGate:null,selectionGate:null,failRead:false,failSelection:false};
+  const polishNetwork={aiGate:null,failAI:false,evidence:false};
   const projectFixture=require('./helpers/project-fixture.cjs').projectsFixture(()=>currentOwner,()=>[...documents.values()]);
   await context.route(origin+'/api/**',async route=>{
    if(offline)return route.abort('internetdisconnected');
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
+   if(key==='/workspace/assistant'){
+    if(polishNetwork.aiGate)await polishNetwork.aiGate;
+    if(polishNetwork.failAI)return route.fulfill({status:503,json:{detail:'synthetic_guidance_unavailable'}});
+   }
    if(/^\/workspace\/documents\/[^/]+$/.test(key)){
     if(method==='PUT'&&projectNetwork.saveGate)await projectNetwork.saveGate;
     if(method==='GET'&&projectNetwork.readGate)await projectNetwork.readGate;
@@ -105,6 +110,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      const p=body.writing_progress,remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
      const sizes=[10,25,25,25].map(percent=>Math.floor(target*percent/100));sizes.push(target-sizes.reduce((a,b)=>a+b,0));
      item.id='task-'+requests.filter(r=>r.key==='/workspace/assistant').length+'-'+index;
+     if(polishNetwork.evidence&&body.current_text)item.inspired_by=[{kind:'editor_document',source_id:body.document_id,title:'Sample reference'}];
      item.writing_task={...p,remaining_words:remaining,target_words:target,goal_reached:remaining===0,outline:target>=750?['Opening','Observation','Questions','Perspective','Conclusion'].map((title,i)=>({title,words:sizes[i]})):[]};
     }
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
@@ -126,6 +132,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      ['layout-shift',entries=>{for(const e of entries)if(!e.hadRecentInput)window.__studioLab.layoutShift+=e.value;}],
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
+  }
+  if(process.env.EDITOR_POLISH_ONLY==='1'){
+   await require('./helpers/editor-polish-flow.cjs')({page,context,origin,documents,activity,requests,errors,network:polishNetwork,projectNetwork,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   if(process.env.POLISH_PAUSE==='1')await page.pause();
+   return;
   }
   if(process.env.PROJECT_SWITCH_ONLY==='1'){
    await require('./helpers/project-switch-flow.cjs')({page,context,origin,documents,activity,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,network:projectNetwork,errors});

@@ -1,5 +1,8 @@
 # Phase 3 — Signature project switching
 
+Phase 3 was subsequently approved. [Phase 4](motion-editor-ai-polish.md) builds
+on this branch and reruns the project and Focus Mode interaction checks.
+
 The owner approved Phase 2 and requested this separately reviewable Phase 3.
 This branch builds on PR #33. It does not merge or deploy the motion work to
 production, and Phase 4 remains gated on the owner's review.

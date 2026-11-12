@@ -1,0 +1,180 @@
+{
+  "scope": "Actual production frontend with isolated APIs. No live Supabase/provider/account/billing or physical-device verification.",
+  "browserRegressions": [
+    {
+      "commit": "c4c0e84e29ca19fdacb292b38bc03e9fe8c3fb11",
+      "dirty": true,
+      "startedAt": "2026-11-12T14:15:13.719Z",
+      "updatedAt": "2026-11-12T14:16:34.227Z",
+      "browser": "/usr/bin/chromium",
+      "axe": true,
+      "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+      "results": [
+        {
+          "name": "projects",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 15.51,
+          "log": "tests/artifacts/phase8/projects.log"
+        },
+        {
+          "name": "coach",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 7.25,
+          "log": "tests/artifacts/phase8/coach.log"
+        },
+        {
+          "name": "studio-editor",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 13.11,
+          "log": "tests/artifacts/phase8/studio-editor.log"
+        },
+        {
+          "name": "workspace",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 42.41,
+          "log": "tests/artifacts/phase8/workspace.log"
+        },
+        {
+          "name": "images",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 17.02,
+          "log": "tests/artifacts/phase8/images.log"
+        },
+        {
+          "name": "subtitle-copy",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 16.54,
+          "log": "tests/artifacts/phase8/subtitle-copy.log"
+        },
+        {
+          "name": "session-completion",
+          "group": "editor",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 27.54,
+          "log": "tests/artifacts/phase8/session-completion.log"
+        }
+      ]
+    },
+    {
+      "commit": "c4c0e84e29ca19fdacb292b38bc03e9fe8c3fb11",
+      "dirty": true,
+      "startedAt": "2026-11-12T14:16:34.263Z",
+      "updatedAt": "2026-11-12T14:17:13.036Z",
+      "browser": "/usr/bin/chromium",
+      "axe": true,
+      "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+      "results": [
+        {
+          "name": "studio-home",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 10.59,
+          "log": "tests/artifacts/phase8/studio-home.log"
+        },
+        {
+          "name": "studio-shell",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 11.06,
+          "log": "tests/artifacts/phase8/studio-shell.log"
+        },
+        {
+          "name": "studio-library-settings",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 11.83,
+          "log": "tests/artifacts/phase8/studio-library-settings.log"
+        },
+        {
+          "name": "google-oauth",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 13.39,
+          "log": "tests/artifacts/phase8/google-oauth.log"
+        },
+        {
+          "name": "landing",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 12.21,
+          "log": "tests/artifacts/phase8/landing.log"
+        },
+        {
+          "name": "login-redirect",
+          "group": "web",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 16.31,
+          "log": "tests/artifacts/phase8/login-redirect.log"
+        }
+      ]
+    }
+  ],
+  "backend": {
+    "tests": [
+      "test_project_context.py",
+      "test_workspace_ai.py",
+      "test_coach_policy.py"
+    ],
+    "passed": 32
+  },
+  "sql": "PASS projects SQL: repeatable additive migration; Pro/RLS and cross-account isolation; project/assignment/preference CAS; shared resources without copies; five scoped modes before text; scoped search; immutable account counts; guided-answer preservation; archive/delete fallbacks and preserved writing.",
+  "lint": "Passed with four pre-existing unrelated warnings."
+}
