@@ -19,6 +19,8 @@ const AdminDashboard = lazy(() => import("@/admin/AdminDashboard"));
 const Projects = lazy(() => import("./pages/Projects"));
 
 const Rewards = lazy(() => import("./pages/Rewards"));
+const MotionPreview = import.meta.env.DEV || import.meta.env.UNOWORD_MOTION_PREVIEW
+  ? lazy(() => import("./pages/MotionPreview")) : null;
 
 export default function App() {
   const location = useLocation();
@@ -44,6 +46,7 @@ export default function App() {
           />
         ) : (
           <Routes>
+            {MotionPreview && <Route path="/motion-preview" element={<MotionPreview />} />}
             <Route path="/" element={<Home />} />
             <Route path="/lifetime/*" element={<Navigate to="/#pricing" replace />} />
             <Route path="/account" element={<Account />} />

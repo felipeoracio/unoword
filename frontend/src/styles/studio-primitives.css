@@ -9,7 +9,6 @@
   text-decoration: none;
   white-space: normal;
   text-align: center;
-  transition: background var(--studio-motion) ease;
 }
 .uw-studio-button[data-studio-size="icon"] {
   min-width: 44px;

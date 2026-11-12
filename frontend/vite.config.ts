@@ -21,6 +21,12 @@ export default defineConfig(async () => {
   const siteUrl = parsedSite.origin + "/";
   if (parsedSite.protocol !== "https:" && parsedSite.hostname !== "localhost") throw new Error("PUBLIC_APP_URL must use HTTPS");
   return {
+    // The component review route is excluded from normal production bundles.
+    define: {
+      "import.meta.env.UNOWORD_MOTION_PREVIEW": JSON.stringify(
+        process.env.VERCEL_ENV === "preview" || process.env.UNOWORD_MOTION_PREVIEW === "1",
+      ),
+    },
     plugins: [
       { name: "unoword-public-meta", transformIndexHtml(html: string) {
         return html.replaceAll("__UNOWORD_SITE_URL__", siteUrl).replaceAll("__UNOWORD_ROBOTS__", process.env.VERCEL_ENV === "preview" ? "noindex, nofollow" : "index, follow");

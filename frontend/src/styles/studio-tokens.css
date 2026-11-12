@@ -62,7 +62,7 @@
   --studio-space-20: 80px;
   --studio-space-24: 96px;
   --studio-control-radius: 12px;
-  --studio-motion: 140ms;
+  --studio-motion: var(--uno-motion-feedback);
   --studio-content-width: 1200px;
   --studio-display: clamp(42px, 5.4vw, 76px);
   --studio-page-heading: clamp(32px, 4vw, 48px);
