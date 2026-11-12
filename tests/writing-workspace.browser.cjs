@@ -10,9 +10,10 @@ const empty={type:'doc',content:[{type:'paragraph'}]};
 const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','listItem','bulletList','orderedList'].includes(n.type)?'\n':'');
 const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,sorted(v)])):value;
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
-  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1',
+   recordVideo:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0,guidanceRemaining=30,monthlyRemaining=200,legacy=false,failIdeaSave=false;
   const savedCoachIdeas=new Map();
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
@@ -124,6 +125,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.FOCUS_MODE_ONLY==='1'){
+   await require('./helpers/focus-mode-flow.cjs')({page,canvas,context,documents,activity,requests,errors,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   if(process.env.FOCUS_PAUSE==='1')await page.pause();
+   return;
+  }
   if(process.env.WRITING_PERFORMANCE_ONLY==='1'){
    await require('./helpers/studio-performance-flow.cjs')({page,canvas,documents,requests,errors});return;
   }
@@ -177,7 +183,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      await page.getByRole('button',{name:'Open library',exact:true}).click();const panel=page.getByRole('dialog',{name:'Library',exact:true});await panel.waitFor();await page.getByRole('button',{name:'Close library',exact:true}).focus();await page.keyboard.press('Shift+Tab');assert.equal(await panel.evaluate(el=>el.contains(document.activeElement)),true,'Library contains keyboard focus');await page.keyboard.press('Escape');await panel.waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:'Open library',exact:true}).evaluate(el=>el===document.activeElement),true,'Library restores its trigger');
      await page.getByRole('button',{name:'Writing assistant',exact:true}).click();const assistant=page.getByRole('dialog',{name:'Writing assistant',exact:true});await assistant.waitFor();await capture('assistant-'+width);await page.getByRole('button',{name:'Close side panel',exact:true}).click({position:{x:5,y:5}});await assistant.waitFor({state:'hidden'});
      const toolbar=page.getByRole('toolbar',{name:'Text formatting',exact:true});await toolbar.getByRole('button',{name:'Bold (Ctrl/⌘ B)',exact:true}).focus();await page.keyboard.press('ArrowRight');assert.equal(await page.getByRole('button',{name:'Italic (Ctrl/⌘ I)',exact:true}).evaluate(el=>el===document.activeElement),true);await page.keyboard.press('End');assert.equal(await page.getByRole('button',{name:'Redo (Ctrl/⌘ Shift Z)',exact:true}).evaluate(el=>el===document.activeElement),true,'Overflowing toolbar remains keyboard reachable');
-     await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-project-controls').isVisible(),false);assert.equal(await page.getByRole('toolbar').count(),0);assert.equal(await status.isVisible(),true);await capture('focus-'+width);await unchanged();await page.keyboard.press('Escape');
+     await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();await page.locator('.uw-project-controls').waitFor({state:'hidden'});assert.equal(await page.getByRole('toolbar').count(),0);assert.equal(await status.isVisible(),true);await capture('focus-'+width);await unchanged();await page.keyboard.press('Escape');
      if(width===390)await capture('mobile-paper-light');
     }
    }
@@ -291,6 +297,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    const sessionId=paused.id,activeMs=paused.timer.active_ms,typed=paused.typed_words;await snap('session-paused-desktop');await checkA11y();
    await page.reload();await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
    assert.equal([...activity.values()].find(a=>a.id===sessionId).timer.active_ms,activeMs,'Refresh does not restart paused time');
+   // The project restoration gate deliberately keeps the loaded editor read-only
+   // until its workspace is ready, even when the paused-session label is visible.
+   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.getAttribute('contenteditable')==='true');
    await canvas.fill('Words added while paused stay in the document but not session progress.');
    await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
    assert.equal(activity.get(sessionId).typed_words,typed);
@@ -510,10 +519,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await page.locator('.uw-writing-canvas h1').count(),1);assert.equal(await page.locator('.uw-writing-canvas strong').count(),1);
   assert.equal(await page.evaluate(()=>window.compromised),undefined);assert.equal(await page.locator('.uw-writing-canvas a[href^="javascript"]').count(),0);
   // Focus, light/dark, mobile/tablet, localization and basic accessibility.
-  await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-editor-library').count(),0);
+  await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-editor-library').getAttribute('inert'),'');await page.locator('.uw-editor-library').waitFor({state:'hidden'});
   await page.keyboard.press('Escape');assert.equal(await page.locator('.uw-editor-library').count(),1);
   async function accessibility(label){
    if(!process.env.AXE_SCRIPT)return;
+   await page.locator('.uw-editor').evaluate(async el=>{await Promise.all(el.getAnimations({subtree:true}).map(a=>a.finished.catch(()=>{})));});
    await page.addScriptTag({path:process.env.AXE_SCRIPT});
    const violations=await page.evaluate(async()=> (await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,description:v.description,nodes:v.nodes.map(n=>n.target)})));
    assert.deepEqual(violations,[],label+' accessibility');

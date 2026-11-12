@@ -124,9 +124,9 @@ export default function AppShell({ user, children, editor = false, focusMode = f
       ...(studioArtwork.mobileHeader && theme !== "dark" ? { "--studio-header-art-mobile": `url("${studioArtwork.mobileHeader}")` } : {}),
     } as CSSProperties}>
     <a className="uw-studio-skip" href={`#${contentId}`}>{t("Skip to content", "Saltar al contenido")}</a>
-    <aside className="uw-studio-sidebar" aria-label={t("Main navigation", "Navegación principal")}>{navigation(false)}</aside>
+    <aside className="uw-studio-sidebar" inert={focusMode} aria-hidden={focusMode || undefined} aria-label={t("Main navigation", "Navegación principal")}>{navigation(false)}</aside>
     <div className="uw-studio-body">
-      <div className="uw-studio-mobile-bar">
+      <div className="uw-studio-mobile-bar" inert={focusMode} aria-hidden={focusMode || undefined}>
         <StudioButton ref={trigger} variant="ghost" size="icon" aria-label={t("Open navigation", "Abrir navegación")}
           aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Menu aria-hidden="true" /></StudioButton>
         <Link to={recoveryPath("/app")} onClick={event => void follow(event, recoveryPath("/app"))} className="uw-studio-mobile-brand"><img src="/brand/unoword.svg" alt="" width="28" height="28" />UnoWord</Link>

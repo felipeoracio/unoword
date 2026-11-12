@@ -27,6 +27,8 @@ import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
 import AppShell from "@/components/studio/AppShell";
 import { StudioStatus } from "@/components/studio/StudioPrimitives";
 import { useEditorPanels } from "@/lib/use-editor-panels";
+import { useFocusMode } from "@/lib/use-focus-mode";
+import "@/styles/focus-mode.css";
 import CoachingContext from "@/components/studio/CoachingContext";
 import SaveGuidanceButton from "@/components/studio/SaveGuidanceButton";
 import { coachingModes, usesGuidanceAllowance, sharesCurrentDraft } from "@/lib/coaching-modes";
@@ -379,8 +381,9 @@ export default function WritingEditor() {
       localStorage.getItem("uno-writing-theme") ||
       (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
   );
-  const { focus, setFocus, left, setLeft, right, setRight, compact, overlayOpen,
-    libraryRef, assistantRef, libraryTrigger, assistantTrigger, toggleLibrary, toggleAssistant, closePanel } = useEditorPanels();
+  const { focus, setFocus, rootRef: focusRoot } = useFocusMode();
+  const { left, setLeft, right, setRight, compact, overlayOpen,
+    libraryRef, assistantRef, libraryTrigger, assistantTrigger, toggleLibrary, toggleAssistant, closePanel } = useEditorPanels({ focus, setFocus });
   useEffect(() => {
     if (new URLSearchParams(routeLocation.search).get("assistant") === "1") {
       setRight(true);
@@ -1896,13 +1899,25 @@ export default function WritingEditor() {
     <AppShell user={ws.user} editor focusMode={focus} beforeNavigate={ws.flushWrites}
       theme={theme === "dark" ? "dark" : "light"} language={language === "es" ? "es" : "en"}>
     <main
+      ref={focusRoot}
+      onKeyDownCapture={(event) => {
+        // ProseMirror consumes Escape. Handle the Focus exit before it reaches
+        // the editor, while leaving dialogs and IME candidate dismissal alone.
+        if (focus && event.key === "Escape" && !event.nativeEvent.isComposing &&
+          event.target instanceof HTMLElement && event.target.closest(".uw-writing-canvas") &&
+          !document.querySelector("dialog[open]")) {
+          event.preventDefault();
+          event.stopPropagation();
+          setFocus(false);
+        }
+      }}
       className={`uw-editor ${focus ? "uw-editor-focus" : ""}${overlayOpen ? " uw-editor-panel-open" : ""}`}
       data-theme={theme}
       lang={language}
       data-testid="writing-workspace"
     >
       <header className="uw-editor-header">
-        <div className="uw-editor-header-brand">
+        <div className="uw-editor-header-brand" inert={focus} aria-hidden={focus || undefined}>
           <span className="uw-editor-writing-mark"><PenLine size={19} aria-hidden="true" /></span>
           <span className="uw-editor-workspace-label">
             {t("Your writing space")}
@@ -1915,6 +1930,7 @@ export default function WritingEditor() {
           <div className="uw-editor-header-tools">
           <button
             className="uw-editor-icon"
+            data-focus-essential
             title={t("Refresh / retry sync")}
             aria-label={t("Refresh / retry sync")}
             onClick={() => ws.sync()}
@@ -1922,14 +1938,14 @@ export default function WritingEditor() {
             <RefreshCw size={17} />
           </button>
           <button
-            className="uw-editor-icon"
+            className="uw-editor-icon uw-editor-focus-optional" inert={focus} aria-hidden={focus || undefined}
             aria-label={t(theme === "dark" ? "Light theme" : "Dark theme")}
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <select
-            className="uw-editor-language"
+            className="uw-editor-language uw-editor-focus-optional" inert={focus} aria-hidden={focus || undefined}
             aria-label={t("Language")}
             value={language}
             onChange={(event) => {
@@ -1940,13 +1956,14 @@ export default function WritingEditor() {
             <option value="en">EN</option>
             <option value="es">ES</option>
           </select>
-          <Link className="uw-editor-account" to={recoveryPath("/account")}>
+          <Link className="uw-editor-account uw-editor-focus-optional" inert={focus} aria-hidden={focus || undefined} to={recoveryPath("/account")}>
             {ws.user.email?.slice(0, 1).toUpperCase() || "U"}
             <span className="uw-sr-only">{t("Account")}</span>
           </Link>
           </div>
         </div>
       </header>
+      <div className="uw-editor-focus-project" inert={focus} aria-hidden={focus || undefined}>
       <ProjectControls
         workspace={projects}
         active={activeProject}
@@ -1959,6 +1976,7 @@ export default function WritingEditor() {
         onSelected={setSelectedResources}
         onManage={() => setProjectOpen(true)}
       />
+      </div>
       {projectReady.current &&
         projects.state &&
         projects.state.preferences.active_project_id !== activeProject &&
@@ -1993,8 +2011,9 @@ export default function WritingEditor() {
       )}
       <div className="uw-editor-layout">
         {overlayOpen && <button className="uw-editor-panel-backdrop" tabIndex={-1} aria-label={language==="es"?"Cerrar panel lateral":"Close side panel"} onClick={closePanel} />}
-        {!focus && (
+        {(
           <aside
+            inert={focus} aria-hidden={focus || undefined}
             ref={libraryRef}
             id="editor-library"
             className={`uw-editor-library ${left ? "is-open" : ""}`}
@@ -2327,7 +2346,13 @@ export default function WritingEditor() {
               <button
                 className="uw-editor-icon"
                 aria-label={t(focus ? "Exit focus mode" : "Enter focus mode")}
-                onClick={() => setFocus(!focus)}
+                aria-pressed={focus}
+                title={t(focus ? "Exit focus mode" : "Enter focus mode") + (focus ? " (Esc)" : "")}
+                onPointerDown={(event) => { if (event.button === 0) event.preventDefault(); }}
+                onClick={(event) => {
+                  if (event.detail === 0) editor?.view.focus();
+                  setFocus(!focus);
+                }}
               >
                 {focus ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
               </button>
@@ -2350,8 +2375,9 @@ export default function WritingEditor() {
             </div>
           ) : activeDocument ? (
             <>
-              {!focus && (
+              {(
                 <div
+                  inert={focus} aria-hidden={focus || undefined}
                   className="uw-editor-toolbar"
                   role="toolbar"
                   aria-label="Text formatting"
@@ -2654,8 +2680,8 @@ export default function WritingEditor() {
                         ` · ${new Date(activeDocument.completed_at).toLocaleDateString(language)}`}
                     </p>
                   )}
-                  {!focus && (
-                    <div className="uw-editor-document-meta">
+                  {(
+                    <div className="uw-editor-document-meta" aria-hidden={focus || undefined}>
                       <span>
                         {t("Modified")}{" "}
                         {new Date(activeDocument.updated_at).toLocaleDateString(
@@ -2688,8 +2714,8 @@ export default function WritingEditor() {
                     )}
                   </div>
                   <EditorContent editor={editor} />
-                  {!focus && (
-                    <div className="uw-editor-document-options">
+                  {(
+                    <div className="uw-editor-document-options" inert={focus} aria-hidden={focus || undefined}>
                       <label>
                         {t("Document folder")}
                         <select
@@ -3023,8 +3049,9 @@ export default function WritingEditor() {
             )}
           </footer>
         </section>
-        {!focus && right && (
+        {right && (
           <aside
+            inert={focus} aria-hidden={focus || undefined}
             ref={assistantRef}
             id="editor-assistant"
             className="uw-editor-assistant"

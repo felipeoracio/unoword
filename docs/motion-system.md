@@ -2,10 +2,12 @@
 
 ## Approval boundary
 
-This work implements **Phase 1 only**, for preview and owner approval. It does
-not authorize the new motion project for production deployment. Phases 2–8
-remain unstarted. Focus Mode and project switching require functional editor
-evidence and separate approval before advancing, as requested by the owner.
+The owner approved **Phase 1** and requested Phase 2. Foundation review remains
+in PR #32; Phase 2 is built on that approved branch without a production merge.
+This work now implements **Phase 2 — Focus Mode**, for preview and owner approval.
+Phases 3–8 remain unstarted. Focus Mode and project switching require functional
+editor evidence and separate approval before advancing, as requested by the
+owner. Phase approval is not treated as production deployment authorization.
 
 ## Audit before implementation
 
@@ -73,8 +75,7 @@ billing or network mutations. It explicitly does not demonstrate Phase 2 or 3.
 
 ## Remaining phase gates
 
-1. Foundation: approve working controls, lifecycle/accessibility tests and lab
-   measurements before beginning Focus Mode.
+1. Foundation: owner approved the tested controls/preview and requested Phase 2.
 2. Focus Mode: actual editor interactions with short/long non-sensitive drafts,
    selection, typing during transition, active/paused sessions, save/reload,
    scroll/remount checks, responsive/reduced motion; recording or reproducible
@@ -216,5 +217,6 @@ Try the menu with arrows and Escape, select a writing time, type in the sample
 dialog, switch the sample theme, and enable OS/browser Reduce Motion while a
 popup is open. Sample state never changes an account or document. Review the
 regular landing page and application through the same preview for shared button
-feedback. Approve Phase 1 explicitly before Phase 2 begins; no production merge
-or signature-transition implementation is included in this delivery.
+feedback. Phase 1 has since been approved. The current Focus Mode implementation
+and actual-editor evidence are in `motion-focus-mode.md`. Phase 2 still requires
+its own approval before Phase 3; no production merge is included.

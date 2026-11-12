@@ -1,0 +1,50 @@
+{
+  "scope": "Local production bundle with synthetic APIs. Final implementation after geometry batching.",
+  "results": [
+    {
+      "name": "projects",
+      "status": "passed",
+      "seconds": 16.25
+    },
+    {
+      "name": "coach",
+      "status": "passed",
+      "seconds": 9.05
+    },
+    {
+      "name": "studio-editor",
+      "status": "passed",
+      "seconds": 13.39
+    },
+    {
+      "name": "workspace",
+      "status": "passed",
+      "seconds": 44.74
+    },
+    {
+      "name": "subtitle-copy",
+      "status": "passed",
+      "seconds": 15.25
+    },
+    {
+      "name": "session-completion",
+      "status": "passed",
+      "seconds": 31.16
+    },
+    {
+      "name": "studio-shell",
+      "status": "passed",
+      "seconds": 15.35
+    },
+    {
+      "name": "login-redirect",
+      "status": "passed",
+      "seconds": 22.36
+    },
+    {
+      "name": "landing",
+      "status": "passed",
+      "seconds": 15.42
+    }
+  ]
+}
