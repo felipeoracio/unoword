@@ -1,0 +1,56 @@
+{
+  "scope": "Historical first-run failures, corrected/strictly retried as described in motion-cross-platform.md. Not final passing results. Other exploratory native/Select issues are documented in the report.",
+  "runs": [
+    {
+      "report": "unoword-final-foundation-initial.json",
+      "startedAt": "2026-11-12T20:36:52.330Z",
+      "failed": [
+        {
+          "name": "backend",
+          "group": "foundation",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 10.97,
+          "log": "tests/artifacts/phase8/backend.log"
+        }
+      ]
+    },
+    {
+      "report": "unoword-final-web-initial.json",
+      "startedAt": "2026-11-12T20:40:44.313Z",
+      "failed": [
+        {
+          "name": "lifetime",
+          "group": "web",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 31.62,
+          "log": "tests/artifacts/phase8/lifetime.log"
+        }
+      ]
+    },
+    {
+      "report": "unoword-final-extension-initial.json",
+      "startedAt": "2026-11-12T20:27:56.533Z",
+      "failed": [
+        {
+          "name": "extension-suggestion-modes",
+          "group": "extension",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "error": null,
+          "seconds": 5.33,
+          "log": "tests/artifacts/phase8/extension-suggestion-modes.log"
+        }
+      ]
+    }
+  ]
+}

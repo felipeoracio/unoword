@@ -1,0 +1,39 @@
+{
+  "scope": "Actual loaded MV3 Chrome for Testing on Linux, native action popup, real service worker/storage/content script; disposable guest profile, remote DNS blocked. Editor-origin check uses a synthetic page, not the authenticated app. Not signed-in sync, Google Chrome end-user installation, Web Store publication or a physical device.",
+  "browser": "Chrome/151.0.7922.34",
+  "extensionVersion": "0.24.3",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms"
+  ],
+  "dimensions": {
+    "width": 430,
+    "height": 510,
+    "scroll": 430,
+    "popup": true,
+    "constrained": "true"
+  },
+  "results": [
+    {
+      "name": "Actual Chrome action popup has native constrained dimensions and no horizontal overflow",
+      "result": "passed"
+    },
+    {
+      "name": "Closing native popup keeps the real background session; real content-script typing counts four words once",
+      "result": "passed"
+    },
+    {
+      "name": "Pause/resume/end use existing worker state and preserve one session/history record",
+      "result": "passed"
+    },
+    {
+      "name": "Real content script suppresses counting/counter at the editor origin; isolated app-owned text is not double counted",
+      "result": "passed"
+    },
+    {
+      "name": "Actual popup dark/reduced-motion/Spanish state remains usable with no running animations",
+      "result": "passed"
+    }
+  ]
+}

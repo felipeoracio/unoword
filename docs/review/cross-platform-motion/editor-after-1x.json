@@ -1,0 +1,60 @@
+{
+  "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+  "cpuRate": 1,
+  "heapBeforeBytes": 10076596,
+  "heapAfterBytes": 11160576,
+  "rows": [
+    {
+      "width": 1440,
+      "condition": "idle",
+      "paperWidth": 820,
+      "documentCharacters": 52800,
+      "sessionState": "active",
+      "assistantVisible": false,
+      "beforeInputToSecondFrameP95Ms": 32.19999998807907,
+      "frameIntervalP95Ms": 16.700000000000728,
+      "longTasksMs": [],
+      "layoutShiftExcludingRecentInput": 0,
+      "inputSamples": 25
+    },
+    {
+      "width": 390,
+      "condition": "idle",
+      "paperWidth": 370,
+      "documentCharacters": 52825,
+      "sessionState": "active",
+      "assistantVisible": false,
+      "beforeInputToSecondFrameP95Ms": 31.099999994039536,
+      "frameIntervalP95Ms": 16.699999999999818,
+      "longTasksMs": [],
+      "layoutShiftExcludingRecentInput": 0,
+      "inputSamples": 25
+    },
+    {
+      "width": 1440,
+      "condition": "AI pending",
+      "paperWidth": 735.625,
+      "documentCharacters": 52850,
+      "sessionState": "active",
+      "assistantVisible": true,
+      "beforeInputToSecondFrameP95Ms": 34.1000000089407,
+      "frameIntervalP95Ms": 16.700000000000728,
+      "longTasksMs": [],
+      "layoutShiftExcludingRecentInput": 0,
+      "inputSamples": 25
+    },
+    {
+      "width": 390,
+      "condition": "AI pending",
+      "paperWidth": 370,
+      "documentCharacters": 52875,
+      "sessionState": "active",
+      "assistantVisible": false,
+      "beforeInputToSecondFrameP95Ms": 35.1000000089407,
+      "frameIntervalP95Ms": 16.700000000000728,
+      "longTasksMs": [],
+      "layoutShiftExcludingRecentInput": 0,
+      "inputSamples": 25
+    }
+  ]
+}

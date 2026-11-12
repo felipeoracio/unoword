@@ -1,0 +1,1 @@
+PASS retired lifetime: SPA deep-link redirects; closed offer with no purchase UI/requests despite stale availability and success URL; verified Pro retained; eligible refund confirmation preserved; purchase terms; 320–1440px. No real charges or refunds.

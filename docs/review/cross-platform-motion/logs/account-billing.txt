@@ -1,0 +1,1 @@
+PASS account settings: signup, install/download, signout, confirmed Pro requests, stale account guard, safe Stripe redirects, verified returns, portal/cancellation, recovery setup, responsive layout and no credentials stored.

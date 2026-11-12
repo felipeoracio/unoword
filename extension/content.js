@@ -18,6 +18,9 @@
  */
 
 (() => {
+  /* GENERATED-MOTION:START */
+  const counterMotion = ":host {\n  --uno-motion-feedback: 120ms;\n  --uno-motion-hover: 180ms;\n  --uno-motion-dropdown: 180ms;\n  --uno-motion-panel: 220ms;\n  --uno-motion-dialog: 260ms;\n  --uno-motion-page: 280ms;\n  --uno-motion-sidebar: 260ms;\n  --uno-motion-project: 360ms;\n  --uno-motion-focus: 420ms;\n  --uno-motion-achievement: 650ms;\n  --uno-motion-exit: 140ms;\n  --uno-motion-reveal: 420ms;\n  --uno-motion-stagger: 40ms;\n  --uno-motion-reveal-offset: 16px;\n  --uno-motion-hero-offset: 8px;\n  --uno-motion-hover-offset: 2px;\n  --uno-motion-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);\n  --uno-motion-exit-ease: cubic-bezier(0.4, 0, 1, 1);\n  --uno-motion-state-ease: cubic-bezier(0.4, 0, 0.2, 1);\n  --uno-motion-popup-offset: 4px;\n  --uno-motion-dialog-offset: 6px;\n}\n#row, #stop-btn { transition: color var(--uno-motion-feedback) var(--uno-motion-state-ease), background-color var(--uno-motion-feedback) var(--uno-motion-state-ease); }\n@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }";
+  /* GENERATED-MOTION:END */
   if (window.__wcContentScriptLoaded) return;
   window.__wcContentScriptLoaded = true;
 
@@ -225,7 +228,7 @@
       host.style.height = '0';
       host.style.pointerEvents = 'none';
       root = host.attachShadow({ mode: 'open' });
-      root.innerHTML = STYLES + HTML;
+      root.innerHTML = `<style>${counterMotion}</style>` + STYLES + HTML;
       card = root.getElementById('card');
       numEl = root.getElementById('num');
       labelEl = root.getElementById('label');

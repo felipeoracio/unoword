@@ -296,6 +296,7 @@ const sourceId = '00000000-0000-4000-8000-000000000002';
     const beforeOffline=requests.length;
     await page.evaluate(async()=>{account.online=false;await renderPrompt();showPanel('ideas');});
     assert.ok(await page.locator('#prompt-text').isVisible(),'Original works offline on Pro');
+    if(requests.length!==beforeOffline)console.error('Offline window calls:',requests.slice(beforeOffline).map(r=>({route:r.route,method:r.method})));
     assert.equal(requests.length,beforeOffline,'Offline Original needs no network request');
 
     assert.ok(requests.filter(r=>r.route==='/ai/suggestion').every(r=>['new_topic','expand_idea','connect_dots'].includes(r.payload.mode)),'Original is never forwarded to the AI endpoint');

@@ -1,5 +1,9 @@
 # Phase 7 — Supporting experiences
 
+Subsequent status: the owner approved Phase 7 and requested
+[Phase 8 — Cross-platform motion and final optimization](motion-cross-platform.md).
+The Phase 7 record below describes its original review boundary.
+
 The owner approved Phase 6 and requested this separately reviewable phase.
 It stacks on PR #37; the approved motion phases remain unmerged drafts.
 Production deployment and Phase 8 cross-platform optimization require separate

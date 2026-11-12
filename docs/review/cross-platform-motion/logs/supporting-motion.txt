@@ -1,0 +1,5 @@
+PASS Actual profile choices/text stay mounted while typing; held save, Back, offline queue/reconnect and reload preserve both answers
+PASS Real chart/range choices cue confirmed data; refresh keeps metrics immediate and does not replay or claim rewards
+PASS Only claimed earned rewards celebrate; dismissal, polling, disabled rewards and native preferences preserve quiet history
+PASS Connection states stay truthful through invalid code/held verification; typing and polling do not replay; Stripe confirmation remains explicit
+PASS Five widths, dark/Spanish settings, axe, touch-sized dismissal and reduced-motion profile/chart/celebration remain functional

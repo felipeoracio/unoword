@@ -1,0 +1,38 @@
+{
+  "scope": "Actual production studio UI with isolated synthetic accounts, project/catalog/account APIs. No live providers, billing or physical-device verification.",
+  "results": [
+    {
+      "name": "Home enters through shared 280ms tokens without replaying for prompt/data changes",
+      "result": "passed"
+    },
+    {
+      "name": "Desktop collapse/expand keeps accessible links and focus; visual preference survives routes/reload",
+      "result": "passed"
+    },
+    {
+      "name": "Library views keep their panel; search results stay steady; preview/processing/permissions remain explicit",
+      "result": "passed"
+    },
+    {
+      "name": "Project inspection/search does not switch ownership; creation forms survive collapse; archive/restore uses existing operations",
+      "result": "passed"
+    },
+    {
+      "name": "Settings keeps native hash focus and all panel state; billing/recovery stays explicit",
+      "result": "passed"
+    },
+    {
+      "name": "Rapid route changes work during entry and cancel the obsolete animation without delayed navigation",
+      "result": "passed"
+    },
+    {
+      "name": "Five widths, desktop keyboard collapse, native mobile focus trap/return, touch, EN/ES, dark mode and axe checks",
+      "result": "passed"
+    },
+    {
+      "name": "Reduced motion stays functional; account/Free gates remove private catalog data without content, AI or billing mutations",
+      "result": "passed"
+    }
+  ],
+  "projectsCreated": 1
+}

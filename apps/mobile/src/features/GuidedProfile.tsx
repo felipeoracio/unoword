@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { MotionSurface } from "../components/motion";
 import { Button, Card, Heading, Input, Label, Row } from "../components/ui";
 import { useApp, useRepository } from "../providers/AppProvider";
 import { useProjects } from "../providers/ProjectProvider";
@@ -145,6 +146,7 @@ export default function GuidedProfile() {
           : "Choose options or write your own answer. Your existing free-text profile is preserved."}
       </Label>
       {!!status && <Label>{status}</Label>}
+      <MotionSurface identity={question?.id || "complete"}>
       {question && answer ? (
         <>
           <Label>
@@ -186,6 +188,7 @@ export default function GuidedProfile() {
           </Label>
           <Input
             multiline
+            accessibilityLabel={es ? "Otra / Escribe tu respuesta" : "Other / Write my own answer"}
             maxLength={2000}
             value={answer.custom_answer}
             onChangeText={(custom_answer) =>
@@ -202,6 +205,7 @@ export default function GuidedProfile() {
           </Label>
           <Input
             multiline
+            accessibilityLabel={es ? "Notas (opcional)" : "Additional notes (optional)"}
             maxLength={2000}
             value={answer.notes}
             onChangeText={(notes) => void change({ notes })}
@@ -243,6 +247,7 @@ export default function GuidedProfile() {
       ) : (
         <Label>{es ? "Cargando preguntas…" : "Loading questions…"}</Label>
       )}
+      </MotionSurface>
     </Card>
   );
 }

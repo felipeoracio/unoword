@@ -1,0 +1,1 @@
+PASS sign-in destinations: verified Free/Pro password login opens Home; unsafe next falls back to Home; Settings/install/billing/plan links remain intentional; existing Settings visit, failed login and unverified sessions stay put; no plan mutation.

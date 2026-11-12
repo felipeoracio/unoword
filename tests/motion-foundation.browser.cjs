@@ -8,7 +8,7 @@ const percentile = (values, fraction) => [...values].sort((a,b)=>a-b)[Math.floor
 
 (async () => {
   fs.mkdirSync(output, { recursive: true });
-  const server = process.env.MOTION_TEST_ORIGIN ? null : await require('./helpers/production-fixture-server.cjs').start();
+  const server = process.env.MOTION_TEST_ORIGIN ? null : await require('./helpers/production-fixture-server.cjs').start({dist:process.env.MOTION_TEST_DIST});
   const origin = process.env.MOTION_TEST_ORIGIN || server.origin;
   const browser = await chromium.launch({ headless:true, executablePath:process.env.CHROMIUM_EXECUTABLE, args:['--no-sandbox'] });
   const errors=[], apiCalls=[];

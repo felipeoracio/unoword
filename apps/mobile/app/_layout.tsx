@@ -7,7 +7,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider, useApp } from "../src/providers/AppProvider";
 import { Login } from "../src/features/Login";
 import { Loading, useTheme, selectTheme } from "../src/components/ui";
+import { useReducedMotion } from "../src/components/motion";
+import { motion } from "../src/components/motion-tokens";
 function Gate() {
+  const reduced = useReducedMotion();
   useEffect(() => {
     void AsyncStorage.getItem("uno.mobile.theme").then((value) => {
       if (value === "dark" || value === "light") selectTheme(value);
@@ -21,7 +24,7 @@ function Gate() {
       {loading ? (
         <Loading />
       ) : session ? (
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{ headerShown: false, animation: reduced ? "none" : "fade", animationDuration: motion.duration.page }} />
       ) : (
         <Login />
       )}

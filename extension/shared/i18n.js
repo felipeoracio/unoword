@@ -1237,6 +1237,8 @@
    *   - the title of elements with data-i18n-title="key"
    */
   function applyI18n(root = document) {
+    // Keep assistive technology's language aligned with the visible interface.
+    if (root.documentElement) root.documentElement.lang = CURRENT;
     root.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       el.textContent = t(key);

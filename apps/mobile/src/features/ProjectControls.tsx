@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Modal, View } from "react-native";
+import { View } from "react-native";
+import { StudioModal as Modal } from "../components/motion";
 import { useRouter } from "expo-router";
 import { Button, Label, Row, Screen, Input } from "../components/ui";
 import { useProjects, inProject } from "../providers/ProjectProvider";

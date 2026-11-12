@@ -1,0 +1,1 @@
+PASS Google OAuth browser fixtures: signup/signin, monthly/lifetime/editor intent, successful callback and cache reset, no automatic purchases/Pro grant, canceled provider, unavailable/recovery/email fallback, URL cleanup, 320–1440px, WCAG, no browser errors.

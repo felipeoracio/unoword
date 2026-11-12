@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "node scripts/check-branding.mjs && tsc -b && vite build && vite build --ssr src/entry-marketing.tsx --outDir node_modules/.tmp/marketing-ssr && node scripts/prerender.mjs",
+    "build": "node ../scripts/sync-motion-tokens.mjs --check && node scripts/check-branding.mjs && tsc -b && vite build && vite build --ssr src/entry-marketing.tsx --outDir node_modules/.tmp/marketing-ssr && node scripts/prerender.mjs",
     "check:branding": "node scripts/check-branding.mjs",
     "lint": "oxlint",
     "preview": "vite preview",

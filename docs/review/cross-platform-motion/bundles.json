@@ -1,0 +1,51 @@
+{
+  "scope": "Production build byte counts; gzip level 6, not network or field performance.",
+  "rows": [
+    {
+      "label": "before",
+      "asset": "index-Cqc0rn5J.js",
+      "bytes": 285139,
+      "gzip6Bytes": 89808
+    },
+    {
+      "label": "before",
+      "asset": "AppShell-BCshFaMu.js",
+      "bytes": 12128,
+      "gzip6Bytes": 4497
+    },
+    {
+      "label": "before",
+      "asset": "WritingEditor-CLrIuSMK.js",
+      "bytes": 414749,
+      "gzip6Bytes": 136098
+    },
+    {
+      "label": "before",
+      "asset": "unoword-extension.zip",
+      "bytes": 237225
+    },
+    {
+      "label": "after",
+      "asset": "index-DEG3R5rY.js",
+      "bytes": 285139,
+      "gzip6Bytes": 89810
+    },
+    {
+      "label": "after",
+      "asset": "AppShell-Dzxb2_Tn.js",
+      "bytes": 12128,
+      "gzip6Bytes": 4498
+    },
+    {
+      "label": "after",
+      "asset": "WritingEditor-CiAnJUX8.js",
+      "bytes": 414749,
+      "gzip6Bytes": 136099
+    },
+    {
+      "label": "after",
+      "asset": "unoword-extension.zip",
+      "bytes": 238780
+    }
+  ]
+}

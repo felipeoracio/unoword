@@ -2,12 +2,13 @@
 
 ## Approval boundary
 
-The owner approved **Phases 1–6** and requested Phase 7. Their reviews remain in
-PRs #32–37 without a production merge. This work implements
-**Phase 7 — Supporting experiences**, for preview and owner approval.
-Phase 8 remains unstarted. Focus Mode and project switching require functional
-editor evidence and separate approval before advancing, as requested by the
-owner. Phase approval is not treated as production deployment authorization.
+The owner approved **Phases 1–7** and requested Phase 8. Their reviews remain in
+PRs #32–38 without a production merge. This work implements
+**Phase 8 — Cross-platform motion and final optimization**, for review.
+See [the cross-platform report](motion-cross-platform.md) for current results,
+loaded extension evidence and remaining device checks. Focus Mode and project
+switching retain their actual-editor evidence and separate approvals. Phase
+approval is not treated as production deployment authorization.
 
 ## Audit before implementation
 
@@ -92,9 +93,10 @@ billing or network mutations. It explicitly does not demonstrate Phase 2 or 3.
 
 ## Validation and review
 
-Local browser tests use the production frontend and isolated synthetic API
-responses. They are not live Supabase, Stripe, AI-provider, Chrome extension or
-physical iPad/iPhone verification. No real user data is used.
+Local web browser tests use the production frontend and isolated synthetic API
+responses. They are not live Supabase, Stripe, AI-provider or physical iPad/iPhone
+verification. Phase 8 separately tests a loaded extension in Chrome for Testing;
+its scope is recorded in the linked cross-platform report. No real user data is used.
 
 ### Implemented foundation
 

@@ -1,0 +1,1 @@
+PASS writing studio: exact formatting selection, stable editor DOM, no duplicated sessions/words, resizable title/subtitle paper, persistent mobile/focus/offline save status, desktop library toggle, responsive modal panels and keyboard/focus return, scrollable toolbar keyboard access, focus mode, EN/ES/dark and 320–1440px, offline sync.

@@ -1,0 +1,1 @@
+PASS: real popup/worker rewards, backend-owned progress, on/off persistence, retained settings, web-dashboard link, 320/420px, stale-owner requests rejected.

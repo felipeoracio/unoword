@@ -1,0 +1,21 @@
+/* Shared timing, native visibility/focus, immediate metrics and session state. */
+.wc :is(button, a, input, select, summary), .wd-shell :is(button, a, select) {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: var(--uno-motion-feedback);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.wc__status--active .wc__dot { animation: none; }
+.wc__panel:not([hidden]):not(.wc__upgrade-cta) {
+  animation: uno-popup-feedback var(--uno-motion-panel) var(--uno-motion-enter-ease);
+}
+.wc__pop { animation: uno-popup-feedback var(--uno-motion-panel) var(--uno-motion-enter-ease); }
+.wc__dialog, .wc__content-dialog[open], #project-resource-dialog[open] {
+  animation: uno-popup-dialog var(--uno-motion-dialog) var(--uno-motion-enter-ease);
+}
+.wc__prog-bar-fill, .wd-bar-fill { transition: none; }
+.wc__dialog-backdrop { backdrop-filter: none; }
+@keyframes uno-popup-dialog { from { opacity: 0.98; translate: 0 var(--uno-motion-popup-offset); } to { opacity: 1; translate: 0 0; } }
+@keyframes uno-popup-feedback { from { opacity: 0.98; } to { opacity: 1; } }
+@media(prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+}

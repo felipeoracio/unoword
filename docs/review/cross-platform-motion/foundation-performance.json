@@ -1,0 +1,13 @@
+{
+  "scope": "Local Chromium preview production bundle, unthrottled desktop, no video in measured context. Three warm-up cycles, then twelve measured cycles. rAF intervals are scheduler observations, not GPU FPS. Synthetic clicks to React text update are not INP. Heap snapshots after forced GC do not prove absence of leaks.",
+  "frameSamples": 316,
+  "frameIntervalP50Ms": 16.699999999999818,
+  "frameIntervalP95Ms": 16.700000000000728,
+  "actionToCommitP50Ms": 1.800000011920929,
+  "actionToCommitP95Ms": 2,
+  "layoutShift": 0,
+  "longTasksMs": [],
+  "heapBeforeBytes": 5836644,
+  "heapAfterBytes": 6739052,
+  "heapDeltaBytes": 902408
+}

@@ -11,6 +11,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   const root = path.resolve(__dirname, ".."),
     output = path.join(root, ".expo/native-ui-test.js");
   await build({
+    absWorkingDir: root,
     entryPoints: [path.join(__dirname, "fixtures/preview.tsx")],
     outfile: output,
     bundle: true,
@@ -29,6 +30,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     format: "iife",
     jsx: "automatic",
     define: {
+      global: "globalThis",
       __DEV__: "false",
       "process.env.NODE_ENV": '"production"',
       "process.env": "{}",
@@ -76,7 +78,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   try {
     const page = await browser.newPage(),
       errors = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (e) => { errors.push(e.message); console.error('Native fixture page error:', e.message); });
     const out =
       process.env.MOBILE_SCREENSHOTS || path.join(root, ".expo", "screenshots");
     fs.mkdirSync(out, { recursive: true });
@@ -179,7 +181,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await page.getByRole('button',{name:'AI Context: Current Project',exact:true}).click();
     await page.getByRole('button',{name:'No Library Context',exact:true}).click();
     await page.getByRole('button',{name:'Done',exact:true}).click();
-    await page.getByRole('button',{name:'AI Context: No Library Context',exact:true}).waitFor();
+    await page.getByRole('button',{name:'AI Context: No Library Context',exact:true}).waitFor().catch(async error=>{console.error('Modal state:',await page.locator('body').innerText());throw error;});
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.getByRole('button',{name:'AI Context: No Library Context',exact:true}).click();
+    await page.getByRole('button',{name:'Current Project',exact:true}).waitFor();
+    assert.equal(await page.evaluate(()=>document.getAnimations().length),0,'Reduced-motion native modal has no CSS entrance');
+    await page.screenshot({path:path.join(out,'native-reduced-context.png')});
+    await page.getByRole('button',{name:'Done',exact:true}).click();
+    await page.goto(origin+'/?screen=Profile');
+    const nativeAnswer=page.getByRole('textbox',{name:'Other / Write my own answer',exact:true});await nativeAnswer.waitFor();
+    await nativeAnswer.evaluate(el=>window.__nativeAnswer=el);await nativeAnswer.pressSequentially('A patient voice');
+    assert.equal(await nativeAnswer.evaluate(el=>el===window.__nativeAnswer),true,'Question input stays mounted');
+    await nativeAnswer.scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(out,'native-profile-answer.png')});
+    await page.getByRole('button',{name:'Skip',exact:true}).click();await page.getByRole('button',{name:'Edit answers',exact:true}).click();
+    assert.equal(await nativeAnswer.inputValue(),'A patient voice');
+    await page.emulateMedia({reducedMotion:'no-preference'});
     console.log('PASS native Projects: create and save a project, open its workspace, and choose an explicit AI context using real provider/components with synthetic APIs.');
     await page.goto(origin + "/?screen=Write&plan=free");
     await page.getByText("Your space to write").waitFor();

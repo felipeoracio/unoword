@@ -1,0 +1,1 @@
+PASS verified signup browser fixtures: pending/no session, explicit confirmation, code URL cleanup, cache reset, account/monthly/lifetime/editor intent, no automatic payment or Pro grant, expired/wrong-browser guidance, 320–1440px EN/ES, WCAG.

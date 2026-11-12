@@ -1,0 +1,1 @@
+PASS projects browser: independent project/context selectors; safe switch; shared membership without copying; scoped AI payload; reset override; offline switching and reconnect; save-failure preservation; guided custom answers; private Projects route; 320/390/768/1440px screenshots.

@@ -1,0 +1,1 @@
+Domain browser checks passed: compiled redirects, app query/fragment, independent sessions, old-origin storage recovery, legacy confirmation, SEO and responsive layout.
