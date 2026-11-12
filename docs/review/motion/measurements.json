@@ -1,0 +1,172 @@
+{
+  "scope": "Phase 1 only; no signature transitions or production deployment. Synthetic API browser regressions, local Chromium. Single before/after performance samples are observations, not statistical guarantees.",
+  "editor_before": {
+    "scope": "Local Chromium production bundle; synthetic API responses. 4x CPU slowdown; 150ms network latency, 1.6Mbps download; cache disabled. Input event to second animation frame, not INP or physical iPad data.",
+    "navigation": {
+      "domContentLoadedMs": 375.69999999925494,
+      "loadMs": 1858.199999999255,
+      "transferredBytes": 342050,
+      "lcp": 1888,
+      "longTasks": [
+        50,
+        229,
+        63,
+        236,
+        72,
+        99
+      ],
+      "layoutShift": 0.02149475762261285
+    },
+    "documentCharacters": 52850,
+    "inputToFrame": [
+      {
+        "width": 1440,
+        "characters": 25,
+        "p50Ms": 113.5,
+        "p95Ms": 151.7000000011176
+      },
+      {
+        "width": 390,
+        "characters": 25,
+        "p50Ms": 133.2999999988824,
+        "p95Ms": 153.59999999962747
+      }
+    ]
+  },
+  "editor_after": {
+    "scope": "Local Chromium production bundle; synthetic API responses. 4x CPU slowdown; 150ms network latency, 1.6Mbps download; cache disabled. Input event to second animation frame, not INP or physical iPad data.",
+    "navigation": {
+      "domContentLoadedMs": 428.09999999962747,
+      "loadMs": 1827.0999999996275,
+      "transferredBytes": 210894,
+      "lcp": 1864,
+      "longTasks": [
+        78,
+        191,
+        197,
+        66,
+        91
+      ],
+      "layoutShift": 0.02117728547272859
+    },
+    "documentCharacters": 52850,
+    "inputToFrame": [
+      {
+        "width": 1440,
+        "characters": 25,
+        "p50Ms": 23,
+        "p95Ms": 155.09999999962747
+      },
+      {
+        "width": 390,
+        "characters": 25,
+        "p50Ms": 98.20000000111759,
+        "p95Ms": 125.90000000037253
+      }
+    ]
+  },
+  "marketing": {
+    "before": {
+      "lcpMs": 2780,
+      "shiftSum": 0,
+      "transferredBytes": 679757
+    },
+    "after": {
+      "lcpMs": 2676,
+      "shiftSum": 0,
+      "transferredBytes": 679183
+    }
+  },
+  "regressions": {
+    "web": [
+      {
+        "name": "studio-shell",
+        "status": "passed",
+        "seconds": 13.02
+      },
+      {
+        "name": "studio-home",
+        "status": "passed",
+        "seconds": 14.81
+      },
+      {
+        "name": "studio-library-settings",
+        "status": "passed",
+        "seconds": 15.86
+      },
+      {
+        "name": "onboarding",
+        "status": "passed",
+        "seconds": 22.13
+      },
+      {
+        "name": "email-signup",
+        "status": "passed",
+        "seconds": 13.08
+      },
+      {
+        "name": "google-oauth",
+        "status": "passed",
+        "seconds": 13.17
+      },
+      {
+        "name": "login-redirect",
+        "status": "passed",
+        "seconds": 16.11
+      },
+      {
+        "name": "analytics",
+        "status": "passed",
+        "seconds": 14.01
+      },
+      {
+        "name": "landing",
+        "status": "passed",
+        "seconds": 12.91
+      },
+      {
+        "name": "account-billing",
+        "status": "passed",
+        "seconds": 22.36
+      }
+    ],
+    "editor": [
+      {
+        "name": "projects",
+        "status": "passed",
+        "seconds": 15.33
+      },
+      {
+        "name": "coach",
+        "status": "passed",
+        "seconds": 10.27
+      },
+      {
+        "name": "workspace",
+        "status": "passed",
+        "seconds": 45.41
+      }
+    ]
+  },
+  "accessibility": "Axe WCAG A/AA checks pass, excluding only empty library-owned data-base-ui-focus-guard sentinels. Manual assistive technology unverified.",
+  "foundation": {
+    "scope": "Local Chromium preview production bundle, unthrottled desktop, no video in measured context. Three warm-up cycles, then twelve measured cycles. rAF intervals are scheduler observations, not GPU FPS. Synthetic clicks to React text update are not INP. Heap snapshots after forced GC do not prove absence of leaks.",
+    "frameSamples": 287,
+    "frameIntervalP50Ms": 16.699999999999818,
+    "frameIntervalP95Ms": 16.799999999999272,
+    "actionToCommitP50Ms": 1.400000000372529,
+    "actionToCommitP95Ms": 2.099999999627471,
+    "layoutShift": 0,
+    "longTasksMs": [],
+    "heapBeforeBytes": 5807564,
+    "heapAfterBytes": 6702752,
+    "heapDeltaBytes": 895188
+  },
+  "preview": {
+    "url": "https://unoword-git-feature-motion-foundation-unoword.vercel.app/motion-preview",
+    "deployment_status": "success",
+    "remote_interaction_status": "unverified; team-login protection redirects unauthenticated browser to Vercel login",
+    "local_preview_interaction_status": "passed",
+    "production": "unchanged; prior release assets verified over certificate-validating HTTPS"
+  }
+}

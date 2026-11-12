@@ -1,0 +1,95 @@
+{
+  "scope": "Actual production Tiptap editor; non-sensitive short/long documents, real browser typing/selection/scroll and IndexedDB, isolated API persistence/session endpoints. Not a live Supabase/provider or physical-device test.",
+  "scenarios": [
+    {
+      "name": "Short document selection, cursor, stable text/view and enter/exit",
+      "result": "passed"
+    },
+    {
+      "name": "Typing during transition: all characters saved, five legitimate words, same active session",
+      "result": "passed"
+    },
+    {
+      "name": "Long document at middle: selection/scroll stable throughout every frame",
+      "result": "passed"
+    },
+    {
+      "name": "Paused session: enter/exit preserves content and selection",
+      "result": "passed"
+    },
+    {
+      "name": "Paused typing saved without adding session words/time or restarting the session",
+      "result": "passed"
+    },
+    {
+      "name": "Active session: Focus never pauses, ends or duplicates activity",
+      "result": "passed"
+    },
+    {
+      "name": "Active time stays within wall-clock tolerance; no duplicate or misattributed sessions",
+      "result": "passed"
+    },
+    {
+      "name": "Sidebars fade and become inert; original open state restored without AI requests",
+      "result": "passed"
+    },
+    {
+      "name": "Responsive selection/position 1440px",
+      "result": "passed"
+    },
+    {
+      "name": "Responsive selection/position 1024px",
+      "result": "passed"
+    },
+    {
+      "name": "Responsive selection/position 768px",
+      "result": "passed"
+    },
+    {
+      "name": "Responsive selection/position 390px",
+      "result": "passed"
+    },
+    {
+      "name": "Responsive selection/position 320px",
+      "result": "passed"
+    },
+    {
+      "name": "Keyboard Enter/Escape, persistent save/session controls and WCAG checks at five widths",
+      "result": "passed"
+    },
+    {
+      "name": "Dark theme selection and position",
+      "result": "passed"
+    },
+    {
+      "name": "Touch activation, IME Escape, dark mode and Spanish focus controls",
+      "result": "passed"
+    },
+    {
+      "name": "Reduced motion: selection, content, session and scroll preserved",
+      "result": "passed"
+    },
+    {
+      "name": "Reduced motion at activation and preference change during transition",
+      "result": "passed"
+    },
+    {
+      "name": "Intentional scrolling and rapid reversals remain under writer control",
+      "result": "passed"
+    },
+    {
+      "name": "Failed save never shown as saved; retry persists the intact draft",
+      "result": "passed"
+    },
+    {
+      "name": "Offline local save, reconnect, full reload/persistence, unchanged sessions and no AI calls",
+      "result": "passed"
+    }
+  ],
+  "documentCharacters": 43188,
+  "sessionIds": [
+    "e275aba3-dd00-4ae1-a698-e171336cb2a9",
+    "fda8e0a6-1876-4be7-bfb1-6e122b77e8fd"
+  ],
+  "trackedWords": 13
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Pause, Sparkles, X } from "lucide-react";
 import { useTourProgress } from "@/lib/onboarding";
+import { useSurfaceCue } from "@/lib/use-surface-cue";
 import "@/styles/onboarding.css";
 
 const steps = [
@@ -130,6 +131,7 @@ export default function WritingTour({
     typedBaseline = useRef(0),
     stepRef = useRef("");
   const step = progress?.current_step || "welcome";
+  const cue = useSurfaceCue<HTMLElement>(step, open);
   const context = useRef({
     progress,
     words,
@@ -365,6 +367,7 @@ export default function WritingTour({
       )}
       {open && (
         <aside
+          {...cue}
           className="uw-tour-card"
           aria-label="UnoWord guided writing tour"
           data-testid="writing-tour"

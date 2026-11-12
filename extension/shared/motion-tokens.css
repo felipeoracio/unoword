@@ -1,0 +1,24 @@
+/* Generated from frontend/src/styles/studio-motion.css. Run scripts/sync-motion-tokens.mjs --write. */
+:root {
+  --uno-motion-feedback: 120ms;
+  --uno-motion-hover: 180ms;
+  --uno-motion-dropdown: 180ms;
+  --uno-motion-panel: 220ms;
+  --uno-motion-dialog: 260ms;
+  --uno-motion-page: 280ms;
+  --uno-motion-sidebar: 260ms;
+  --uno-motion-project: 360ms;
+  --uno-motion-focus: 420ms;
+  --uno-motion-achievement: 650ms;
+  --uno-motion-exit: 140ms;
+  --uno-motion-reveal: 420ms;
+  --uno-motion-stagger: 40ms;
+  --uno-motion-reveal-offset: 16px;
+  --uno-motion-hero-offset: 8px;
+  --uno-motion-hover-offset: 2px;
+  --uno-motion-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --uno-motion-exit-ease: cubic-bezier(0.4, 0, 1, 1);
+  --uno-motion-state-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --uno-motion-popup-offset: 4px;
+  --uno-motion-dialog-offset: 6px;
+}

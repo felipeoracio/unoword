@@ -3,6 +3,7 @@ import { StudioCard } from "./StudioPrimitives";
 import { formatWritingTime } from "@/lib/use-account-writing";
 import type { ProgressStatistics } from "@/lib/use-studio-progress";
 import { progressDateLabel } from "@/lib/progress-dates";
+import { useSurfaceCue } from "@/lib/use-surface-cue";
 import emptyArt from "@/assets/studio/empty-states/progress.webp";
 
 export default function ProgressTrend({data,date,language}:{data:ProgressStatistics;date:string;language:string}) {
@@ -15,10 +16,11 @@ export default function ProgressTrend({data,date,language}:{data:ProgressStatist
   const number=(value:number)=>value.toLocaleString(language);
   const label=(key:string)=>progressDateLabel(key,language,monthly);
   const empty=buckets.every(bucket=>bucket.words===0 && bucket.activeWritingSeconds===0);
+  const chartCue=useSurfaceCue<HTMLDivElement>(metric, !empty, false);
   return <>
     <div className="uw-progress-chart-heading"><label>{t("Chart measure","Medida del gráfico")}<select value={metric} onChange={event=>setMetric(event.target.value as "words"|"time")}><option value="words">{t("Typed words","Palabras escritas")}</option><option value="time">{t("Active writing time","Tiempo de escritura activa")}</option></select></label><p>{t("Select a bar to explore its totals.","Selecciona una barra para explorar sus totales.")}</p></div>
     {empty?<StudioCard className="uw-progress-empty"><img src={emptyArt} alt="" width={1000} height={700}/><div><h3>{t("A little space for your next writing day.","Un pequeño espacio para tu próximo día de escritura.")}</h3><p>{t("Your recorded activity will appear here. Begin at your own pace.","Tu actividad registrada aparecerá aquí. Empieza a tu ritmo.")}</p></div></StudioCard>
-      :<div className="uw-progress-chart" role="group" aria-label={metric==="words"?t("Typed words over time","Palabras escritas a lo largo del tiempo"):t("Active writing time over time","Tiempo de escritura activa a lo largo del tiempo")}>
+      :<div {...chartCue} className="uw-progress-chart" role="group" aria-label={metric==="words"?t("Typed words over time","Palabras escritas a lo largo del tiempo"):t("Active writing time over time","Tiempo de escritura activa a lo largo del tiempo")}>
         <div className="uw-progress-axis" aria-hidden="true"><span>{metric==="words"?number(maximum):formatWritingTime(maximum)}</span><span>0</span></div>
         <div className="uw-progress-bars">{buckets.map(bucket=>{
           const amount=metric==="words"?bucket.words:bucket.activeWritingSeconds;

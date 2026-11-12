@@ -1,3 +1,4 @@
+const {chooseProject,projectValue}=require('./project-picker.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs');
 module.exports=async({page,context,origin,documents,requests,fixture,setSignedIn,setFailSave,setOffline,errors})=>{
  setSignedIn(true);await context.addInitScript(()=>localStorage.setItem('uno-tour-launch-hidden:00000000-0000-4000-8000-000000000001','1'));
@@ -17,7 +18,7 @@ module.exports=async({page,context,origin,documents,requests,fixture,setSignedIn
  await manager.getByLabel('Audience',{exact:true}).fill('My family');
  await manager.getByRole('button',{name:'Save project',exact:true}).click();
  await manager.getByRole('button',{name:'Open project',exact:true}).click();
- await page.waitForFunction(()=>document.querySelector('[aria-label="Active project"]').selectedOptions[0].text==='My Memoir');
+ await page.waitForFunction(()=>((el)=>el.tagName==='SELECT'?el.selectedOptions[0].text==='My Memoir':el.textContent.includes('My Memoir'))(document.querySelector('[aria-label="Active project"]')));
  assert.equal(await canvas.count(),0,'Switch does not move/reopen unrelated General document');
  await page.getByRole('button',{name:'Start New Document',exact:true}).click();await page.getByLabel('Rename document',{exact:true}).fill('Memoir chapter');await canvas.fill('A memory of a garden and the people who cared for it.');
  await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('All changes saved'));
@@ -27,7 +28,7 @@ module.exports=async({page,context,origin,documents,requests,fixture,setSignedIn
  // Wait for the newly created project to finish switching before another action.
  await page.locator('dialog[open] .uw-project-manager').waitFor({state:'hidden'});
  const state=fixture('/workspace/projects','GET',null).state,novel=state.projects.find(p=>p.name==='My Novel'),memoir=state.projects.find(p=>p.name==='My Memoir');
- await page.waitForFunction(id=>document.querySelector('[aria-label="Active project"]').value===id&&!document.querySelector('[aria-label="Active project"]').disabled,novel.id);
+ await page.waitForFunction(id=>(document.querySelector('[aria-label="Active project"]').getAttribute('data-project-value')??document.querySelector('[aria-label="Active project"]').value)===id&&!document.querySelector('[aria-label="Active project"]').disabled,novel.id);
  await page.getByRole('button',{name:'Manage projects',exact:true}).click();manager=page.locator('dialog[open] .uw-project-manager');
  await manager.getByRole('button',{name:'Resources',exact:true}).click();await manager.getByLabel('Assign existing resources',{exact:true}).check();
  const row=manager.locator('.uw-project-resource-row').filter({hasText:'Memoir chapter'});await row.getByLabel('In project',{exact:true}).click();
@@ -38,31 +39,31 @@ module.exports=async({page,context,origin,documents,requests,fixture,setSignedIn
  assert.equal(documents.size,2,'Sharing a document never creates a second body');
  assert.deepEqual(new Set(state.associations.filter(a=>a.resource_id===chapter.id).map(a=>a.project_id)),new Set([novel.id,memoir.id]));
  // No Library is a server-recognized request scope; client also omits draft text.
- await page.getByLabel('Active project',{exact:true}).selectOption(memoir.id);
+ await chooseProject(page,memoir.id);
  await canvas.waitFor();await page.getByRole('button',{name:'Writing assistant',exact:true}).click();
  await page.getByLabel('AI Context',{exact:true}).selectOption('none');
  await page.getByLabel('Allow this AI request with the selected context.',{exact:true}).check();
  await page.getByRole('button',{name:'Generate',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('.uw-editor-ai-results article').length>0).catch(()=>page.waitForTimeout(100));
  const call=requests.filter(r=>r.key==='/workspace/assistant').at(-1);assert.equal(call.body.context_scope,'none');assert.equal(call.body.current_text,'');assert.equal(call.body.project_id,memoir.id);
- await page.getByLabel('Active project',{exact:true}).selectOption(novel.id);
+ await chooseProject(page,novel.id);
  await page.waitForFunction(()=>document.querySelector('[aria-label="AI Context"]').value==='current_project');
  // Offline switches and writes remain local until the server confirms them.
  setOffline(true);await context.setOffline(true);
- await page.getByLabel('Active project',{exact:true}).selectOption('');
+ await chooseProject(page,'');
  await page.waitForFunction(()=>document.querySelector('[aria-label="Rename document"]')?.value==='General journal');assert.equal(await page.getByLabel('Rename document',{exact:true}).inputValue(),'General journal');
  await canvas.fill('A journal update safely stored while offline.');
  await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('offline'));
- await page.getByLabel('Active project',{exact:true}).selectOption(memoir.id);
+ await chooseProject(page,memoir.id);
  await page.waitForFunction(()=>document.querySelector('[aria-label="Rename document"]')?.value==='Memoir chapter');assert.equal(await page.getByLabel('Rename document',{exact:true}).inputValue(),'Memoir chapter');
  setOffline(false);await context.setOffline(false);await page.getByRole('button',{name:'Refresh / retry sync',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('All changes saved'));
  await page.waitForFunction(()=>document.querySelector('.uw-project-sync')?.textContent.includes('Projects synced'));
  assert.equal(documents.get(general.id).plain_text.trim(),'A journal update safely stored while offline.');
  // A server save failure must leave the writer in the same project/document.
- setFailSave(true);await canvas.fill('Pending memoir words that must not be lost.');await page.getByLabel('Active project',{exact:true}).selectOption(novel.id);
+ setFailSave(true);await canvas.fill('Pending memoir words that must not be lost.');await chooseProject(page,novel.id,{wait:false});
  await page.getByRole('alert').filter({hasText:'Project was not switched'}).waitFor();
- assert.equal(await page.getByLabel('Active project',{exact:true}).inputValue(),memoir.id);assert.ok((await canvas.textContent()).includes('must not be lost'));
+ assert.equal(await projectValue(page),memoir.id);assert.ok((await canvas.textContent()).includes('must not be lost'));
  setFailSave(false);await page.getByRole('button',{name:'Refresh / retry sync',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('All changes saved'));
  // Guided questions keep legacy free-text profile alongside optional custom answers.
  await page.locator('.uw-editor-library').getByRole('button',{name:'My Writing Profile',exact:true}).click();

@@ -12,7 +12,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
-  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,
+   recordVideo:process.env.SUPPORT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/supporting-motion/tour-video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
+  if(process.env.SUPPORT_MOTION==='1')await context.addInitScript(require('./supporting-motion.browser.cjs').instrument);
   let signedIn=true,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner;
   let tour={version:1,status:'not_started',current_step:'welcome',completed_actions:{},skipped_steps:[],draft_id:null,words:0};
   let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};
@@ -76,9 +78,14 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.goto(origin+'/editor');
   let panel=page.getByRole('complementary',{name:'UnoWord guided writing tour'});
   await panel.getByRole('heading',{name:'Every Great Story Starts Somewhere'}).waitFor();
+  if(process.env.SUPPORT_MOTION==='1')await panel.evaluate(el=>window.__tourSurface=el);
   await panel.getByRole('button',{name:'Write My First Sentence'}).click();
   const canvas=page.getByRole('textbox',{name:'Document content'});await canvas.waitFor();
   await panel.getByRole('heading',{name:'It Starts with One Sentence'}).waitFor();
+  if(process.env.SUPPORT_MOTION==='1'){
+   assert.equal(await panel.evaluate(el=>el===window.__tourSurface),true,'Tour step keeps its existing surface');
+   await page.waitForFunction(()=>window.__cues.some(row=>row.element===window.__tourSurface&&row.options.duration===220));
+  }
   // A paste is not the first-sentence achievement.
   await canvas.click();await canvas.evaluate(el=>{el.dispatchEvent(new InputEvent('beforeinput',{inputType:'insertFromPaste',bubbles:true}));document.execCommand('insertText',false,'A pasted sentence is not typed.');});
   assert.equal(await panel.getByRole('heading',{name:'You Did It. You Started.'}).count(),0);
@@ -90,8 +97,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
 
   await page.reload();await panel.getByRole('heading',{name:'You Did It. You Started.'}).waitFor();assert.ok((await canvas.textContent()).includes('Today I begin'));
   await panel.getByRole('button',{name:'Keep Going',exact:true}).click();
+  await panel.getByRole('heading',{name:'Look What You’ve Started',exact:true}).waitFor();
+  const counterCues=process.env.SUPPORT_MOTION==='1'?await panel.evaluate(el=>window.__cues.filter(row=>row.element===el).length):0;
   await canvas.click();await canvas.press('ControlOrMeta+End');await canvas.pressSequentially(' with curiosity');
   await panel.getByText(/building momentum/).waitFor();
+  if(process.env.SUPPORT_MOTION==='1')assert.equal(await panel.evaluate(el=>window.__cues.filter(row=>row.element===el).length),counterCues,'Typed word updates never replay tour motion');
   await panel.getByRole('button',{name:'Next',exact:true}).click();
   await panel.getByText('Your writing session is already active—no duplicate session is needed.').waitFor();
   await panel.getByRole('button',{name:'Next',exact:true}).click();

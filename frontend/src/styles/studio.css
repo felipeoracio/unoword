@@ -93,7 +93,7 @@
 .uw-studio-editor .uw-studio-content { flex:1; min-height:0; }
 .uw-studio-editor .uw-editor { height:100%; min-height:0; }
 .uw-studio-focused { grid-template-columns:minmax(0,1fr); }
-.uw-studio-focused > .uw-studio-sidebar, .uw-studio-focused .uw-studio-mobile-bar { display:none; }
+
 
 @media (max-width: 899px) {
   .uw-studio { grid-template-columns:minmax(0,1fr); }

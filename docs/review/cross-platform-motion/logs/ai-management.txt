@@ -1,0 +1,1 @@
+PASS admin: configured defaults; preview without mutation; save draft; explicit future publication; protected-account notice/audit; cost metrics; no billing calls; mobile layout.

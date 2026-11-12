@@ -1,0 +1,1 @@
+PASS Ideas: verified private route, shared daily prompt, existing themes, search/pagination/empty artwork, account-bound browser saves and refresh/tab sync, offline exploration, Free copying, Pro empty-draft handoff without lost writing, EN/ES themes and 320–1440px, no automatic workspace writes, paid AI or checkout.

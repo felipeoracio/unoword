@@ -1,0 +1,45 @@
+{
+  "scope": "Read-only certificate-validating anonymous HTTPS probes; no authenticated workflow or production change.",
+  "routes": [
+    {
+      "route": "/",
+      "status": 200,
+      "entry": [
+        "/assets/index-Zrb8x3nn.js"
+      ],
+      "css": [
+        "/assets/index-DOn_VOy2.css"
+      ]
+    },
+    {
+      "route": "/editor",
+      "status": 200,
+      "entry": [
+        "/assets/index-Zrb8x3nn.js"
+      ],
+      "css": [
+        "/assets/index-DOn_VOy2.css"
+      ]
+    },
+    {
+      "route": "/progress",
+      "status": 200,
+      "entry": [
+        "/assets/index-Zrb8x3nn.js"
+      ],
+      "css": [
+        "/assets/index-DOn_VOy2.css"
+      ]
+    },
+    {
+      "route": "/library",
+      "status": 200,
+      "entry": [
+        "/assets/index-Zrb8x3nn.js"
+      ],
+      "css": [
+        "/assets/index-DOn_VOy2.css"
+      ]
+    }
+  ]
+}

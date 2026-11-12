@@ -104,7 +104,8 @@ const until = async fn => { for (let i=0;i<100;i++) { if (fn()) return; await sl
     await page.locator('.uw-editor-assistant').waitFor();
     assert.equal(aiCalls,0,'Opening assistance never generates AI');
     await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();
-    assert.equal(await page.locator('.uw-studio-sidebar').isVisible(),false);
+    assert.equal(await page.locator('.uw-studio-sidebar').getAttribute('inert'),'','Navigation becomes inactive immediately');
+    await page.locator('.uw-studio-sidebar').waitFor({state:'hidden'});
     await page.getByRole('button',{name:'Exit focus mode',exact:true}).click();
     // New shell navigation must flush writing before unmounting the editor.
     await canvas.fill('A fresh thought saved before changing screens.');

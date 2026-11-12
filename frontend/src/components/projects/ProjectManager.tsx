@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { revealOpacity } from "@/lib/motion";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -84,6 +85,8 @@ export default function ProjectManager({
   headingLevel?: 1 | 2;
 }) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
+  const detailPanel = useRef<HTMLElement>(null);
+  const detailFeedback = useRef(false);
   const es = language === "es",
     t = (en: string, spanish: string) => (es ? spanish : en);
   const [query, setQuery] = useState(""),
@@ -111,6 +114,14 @@ export default function ProjectManager({
     );
   const latest = useRef({ workspace, es });
   latest.current = { workspace, es };
+  useEffect(() => {
+    if (!detailFeedback.current) return;
+    detailFeedback.current = false;
+    const dialog = detailPanel.current?.closest("dialog");
+    if (dialog && !dialog.open) return;
+    const animation = detailPanel.current ? revealOpacity(detailPanel.current, 0.98) : null;
+    return () => animation?.cancel();
+  }, [detail, tab]);
   const state = workspace.state,
     project = state?.projects.find((p) => p.id === detail),
     rows = workspace.catalog.filter(
@@ -600,6 +611,7 @@ export default function ProjectManager({
               type="button"
               className="uw-project-card-title"
               onClick={() => {
+                detailFeedback.current = true;
                 setDetail(p.id);
                 setTab("Overview");
                 setEditing(null);
@@ -657,7 +669,7 @@ export default function ProjectManager({
           )}
         </p>
       )}
-      <section className="uw-project-detail">
+      <section ref={detailPanel} className="uw-project-detail">
         <div className="uw-project-heading">
           <h2>{project?.name || t("General Writing", "Escritura general")}</h2>
           <button
@@ -679,6 +691,7 @@ export default function ProjectManager({
                 key={name}
                 aria-current={tab === name ? "page" : undefined}
                 onClick={() => {
+                  detailFeedback.current = true;
                   setTab(name);
                   setPreview(null);
                 }}

@@ -1,5 +1,11 @@
 # UnoWord — Chrome Extension
 
+Motion release **0.24.3** uses the shared web motion tokens, removes perpetual
+pulse/bounce and chart-height animation, and keeps native visibility/focus and
+reduced motion. Tracking, messages, storage and permissions are unchanged.
+See [cross-platform motion verification](../docs/motion-cross-platform.md) for
+fixture versus loaded-runtime evidence and device limitations.
+
 Phase 7 release **0.24.2** applies the writing studio's paper/navy visual design
 to the popup and floating counter. Session controls precede account totals;
 the counter uses separate keyboard-operable toggle and End buttons. Native popup
@@ -11,8 +17,8 @@ local update/reload. See [Phase 7 implementation and verification](../docs/ui-re
 
 The shipped popup, worker and content scripts pass isolated browser fixtures for
 session persistence, web-editor suppression, EN/ES, both themes and targeted axe
-checks. Native extension loading is blocked here by a managed Chromium policy;
-the fixture size checks do not establish native Chrome action-popup acceptance.
+checks. Those earlier checks used managed Chromium, which blocked native loading;
+see the cross-platform report above for current Chrome for Testing evidence.
 
 > **Editor support & limitations (word counting).** Counting is driven by
 > `input` events + `inputType`, reconciled against the editor's actual text

@@ -1,0 +1,151 @@
+{
+  "/library?view=profile": [
+    {
+      "value": 0.03850909090909091,
+      "time": 4886.29999999702,
+      "sources": [
+        {
+          "node": "BODY.",
+          "prev": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 104,
+            "top": 0,
+            "right": 390,
+            "bottom": 104,
+            "left": 0
+          },
+          "next": {
+            "x": 0,
+            "y": 132,
+            "width": 390,
+            "height": 248.5625,
+            "top": 132,
+            "right": 390,
+            "bottom": 380.5625,
+            "left": 0
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.12,
+      "time": 4940.699999988079,
+      "sources": [
+        {
+          "node": "BODY.",
+          "prev": {
+            "x": 0,
+            "y": 132,
+            "width": 390,
+            "height": 248.5625,
+            "top": 132,
+            "right": 390,
+            "bottom": 380.5625,
+            "left": 0
+          },
+          "next": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 1100,
+            "top": 0,
+            "right": 390,
+            "bottom": 1100,
+            "left": 0
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.007104895104895104,
+      "time": 4978.699999988079,
+      "sources": [
+        {
+          "node": "A.group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap uw-motion-control outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 uw-studio-button",
+          "prev": {
+            "x": 16,
+            "y": 711.390625,
+            "width": 254.40625,
+            "height": 44,
+            "top": 711.390625,
+            "right": 270.40625,
+            "bottom": 755.390625,
+            "left": 16
+          },
+          "next": {
+            "x": 16,
+            "y": 861.390625,
+            "width": 254.40625,
+            "height": 44,
+            "top": 861.390625,
+            "right": 270.40625,
+            "bottom": 905.390625,
+            "left": 16
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.01165646853146853,
+      "time": 4996.5,
+      "sources": [
+        {
+          "node": "A.group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap uw-motion-control outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 uw-studio-button",
+          "prev": {
+            "x": 16,
+            "y": 861.390625,
+            "width": 254.40625,
+            "height": 44,
+            "top": 861.390625,
+            "right": 270.40625,
+            "bottom": 905.390625,
+            "left": 16
+          },
+          "next": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        }
+      ]
+    }
+  ],
+  "/progress": [
+    {
+      "value": 0.028206908574380164,
+      "time": 4758,
+      "sources": [
+        {
+          "node": "SECTION.uw-progress-summary",
+          "prev": {
+            "x": 0,
+            "y": 439.953125,
+            "width": 390,
+            "height": 660.046875,
+            "top": 439.953125,
+            "right": 390,
+            "bottom": 1100,
+            "left": 0
+          },
+          "next": {
+            "x": 0,
+            "y": 421.390625,
+            "width": 390,
+            "height": 678.609375,
+            "top": 421.390625,
+            "right": 390,
+            "bottom": 1100,
+            "left": 0
+          }
+        }
+      ]
+    }
+  ]
+}

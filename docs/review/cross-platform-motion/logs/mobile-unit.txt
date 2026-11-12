@@ -1,0 +1,51 @@
+
+> @unoword/mobile@0.1.0 test
+> tsx --test tests/*.test.ts
+
+✔ native client reuses exact tokenizer, prompt bank, and paste protection (3.818505ms)
+✔ twenty active + five paused + fifteen active preserves 35 session minutes (3.67111ms)
+✔ idle and background gaps are excluded; a restored session starts paused (0.466791ms)
+✔ midnight and DST reporting use the existing timezone engine (26.98574ms)
+✔ image/subtitle/marks survive save and reopen; only body text counts (6.562073ms)
+✔ offline document and folder survive restart and reconnect once (2.048151ms)
+✔ edits made during an in-flight save keep the new draft and advance its base revision (2.231363ms)
+✔ lost save acknowledgement retries its mutation ID without an extra revision (1.3824ms)
+✔ two devices never silently overwrite a newer cloud revision; recovery keeps both (2.867972ms)
+✔ completed documents stay in the library but are not automatically reopened (1.584516ms)
+✔ Free sync never writes paid documents or activities, while activity history remains intact (0.89505ms)
+✔ session checkpoints synchronize before End and retries do not duplicate activity (2.635136ms)
+✔ a conflicting account preference adopts the latest value, never a stale overwrite (0.999274ms)
+✔ encrypted private caches reject tampering and cross-account/key access (4.424065ms)
+✔ bearer transport retries refreshed auth and rejects account changes mid-request (40.482192ms)
+✔ bounded JSON protects the existing document limits (2.177302ms)
+✔ AI retries preserve request UUID and exact original progress timestamp (2.637351ms)
+✔ rapid edits coalesce locally and a background flush persists the newest draft (0.486818ms)
+✔ goal and timezone updates use the existing flat API contract (0.396691ms)
+✔ an old owner-bound callback cannot send private data into a later login (0.274452ms)
+✔ secure session chunks persist Unicode metadata and logout removes the active generation (7.151052ms)
+✔ interrupted Keychain writes keep the prior complete generation readable (2.172233ms)
+✔ native preference change wins a late initial read and cleanup stops updates (6.553778ms)
+✔ failed or unmounted initial preference reads never introduce motion (0.577227ms)
+✔ project selection never changes document memberships or creates writing activity (2.121619ms)
+✔ shared resource assignments are idempotent and never duplicate a file (0.320097ms)
+✔ deleting a project keeps other memberships and leaves unassigned writing in General (0.416497ms)
+✔ profile answer queue does not modify legacy profile or activity (2.160451ms)
+✔ recovery merges independent tab outboxes without copying other accounts or discarding conflicts (8.540524ms)
+✔ invalid project goals and dates cannot poison the offline outbox (1.362963ms)
+✔ next milestone favors achievable progress without telling a writer to take a break (1.15255ms)
+✔ the shared web/native progress label gives readable active hours and Spanish units (15.100575ms)
+✔ API migration keeps explicit previews and converts only known production aliases (1.28659ms)
+✔ offline startup can read the old public connection cache without deleting it (0.372635ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 610.062237
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

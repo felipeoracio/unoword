@@ -1,7 +1,7 @@
 /** Serve built public files and SPA routes for isolated browser fixtures. */
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
-exports.start=async()=>{
- const dist=path.resolve(__dirname,'../../frontend/dist');
+exports.start=async(options={})=>{
+ const dist=options.dist?path.resolve(options.dist):path.resolve(__dirname,'../../frontend/dist');
  if(!fs.existsSync(path.join(dist,'index.html')))throw Error('Build the frontend before running browser fixtures');
  const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.woff':'font/woff','.woff2':'font/woff2','.zip':'application/zip'};
  const server=http.createServer((req,res)=>{

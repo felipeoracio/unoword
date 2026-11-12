@@ -1,0 +1,1 @@
+PASS studio shell: public/auth gates; 320–1440px layouts; native drawer keyboard/focus; existing navigation; focus mode; EN/ES; light/dark; save-before-navigation; failed-save protection; offline editing/reconnect; Free tracking/Quick Prompt and Pro editor restrictions; no AI/billing calls.

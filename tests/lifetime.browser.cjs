@@ -34,7 +34,7 @@ const origin=process.env.LIFETIME_TEST_ORIGIN||'http://localhost:4175',owner='00
   // Local preview has no Vercel edge: this exercises the SPA fallback too.
   for(const pathname of ['/lifetime','/lifetime/','/lifetime/index.html?source=old']){
    await page.goto(origin+pathname);await page.waitForURL(origin+'/#pricing');
-   await page.getByRole('heading',{name:'Start free. Grow at your own pace.'}).waitFor();
+   await page.getByRole('heading',{name:'Start free. Grow at your pace.'}).waitFor();
    assert.ok(!(await page.locator('main').innerText()).includes('$100'));
   }
   await page.goto(origin+'/account?offer=lifetime&billing=success');

@@ -10,19 +10,36 @@ const empty={type:'doc',content:[{type:'paragraph'}]};
 const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','listItem','bulletList','orderedList'].includes(n.type)?'\n':'');
 const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,sorted(v)])):value;
 (async()=>{
- const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
-  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});context.setDefaultTimeout(15000);
+  const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.EDITOR_POLISH_ONLY==='1',
+   recordVideo:process.env.NAV_GUARD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/guard-video'),size:{width:1440,height:1000}}:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0,guidanceRemaining=30,monthlyRemaining=200,legacy=false,failIdeaSave=false;
   const savedCoachIdeas=new Map();
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
+  const projectNetwork={saveGate:null,readGate:null,selectionGate:null,failRead:false,failSelection:false};
+  const polishNetwork={aiGate:null,failAI:false,evidence:false};
   const projectFixture=require('./helpers/project-fixture.cjs').projectsFixture(()=>currentOwner,()=>[...documents.values()]);
   await context.route(origin+'/api/**',async route=>{
    if(offline)return route.abort('internetdisconnected');
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
+   if(key==='/workspace/assistant'){
+    if(polishNetwork.aiGate)await polishNetwork.aiGate;
+    if(polishNetwork.failAI)return route.fulfill({status:503,json:{detail:'synthetic_guidance_unavailable'}});
+   }
+   if(/^\/workspace\/documents\/[^/]+$/.test(key)){
+    if(method==='PUT'&&projectNetwork.saveGate)await projectNetwork.saveGate;
+    if(method==='GET'&&projectNetwork.readGate)await projectNetwork.readGate;
+    if(method==='GET'&&projectNetwork.failRead)return route.fulfill({status:503,json:{detail:'synthetic_document_unavailable'}});
+   }
+   if(key==='/workspace/projects/active'&&method==='PUT'){
+    if(projectNetwork.selectionGate)await projectNetwork.selectionGate;
+    if(projectNetwork.failSelection)return route.fulfill({status:503,json:{detail:'synthetic_project_unavailable'}});
+   }
+
    if(!signedIn){status=401;value={detail:'Authentication required'};}
    else if(key.startsWith('/workspace/projects')){const result=projectFixture(key,method,body);status=result.status;value=result.value;}
    else if(key==='/subscription/substack'){value={user_id:currentOwner,configured:false,available:false,connected:false,active:false,subscriptions:[],pending_request:null};}
@@ -93,6 +110,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      const p=body.writing_progress,remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
      const sizes=[10,25,25,25].map(percent=>Math.floor(target*percent/100));sizes.push(target-sizes.reduce((a,b)=>a+b,0));
      item.id='task-'+requests.filter(r=>r.key==='/workspace/assistant').length+'-'+index;
+     if(polishNetwork.evidence&&body.current_text)item.inspired_by=[{kind:'editor_document',source_id:body.document_id,title:'Sample reference'}];
      item.writing_task={...p,remaining_words:remaining,target_words:target,goal_reached:remaining===0,outline:target>=750?['Opening','Observation','Questions','Perspective','Conclusion'].map((title,i)=>({title,words:sizes[i]})):[]};
     }
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
@@ -115,6 +133,16 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
   }
+  if(process.env.EDITOR_POLISH_ONLY==='1'){
+   await require('./helpers/editor-polish-flow.cjs')({page,context,origin,documents,activity,requests,errors,network:polishNetwork,projectNetwork,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   if(process.env.POLISH_PAUSE==='1')await page.pause();
+   return;
+  }
+  if(process.env.PROJECT_SWITCH_ONLY==='1'){
+   await require('./helpers/project-switch-flow.cjs')({page,context,origin,documents,activity,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,network:projectNetwork,errors});
+   if(process.env.PROJECT_PAUSE==='1')await page.pause();
+   return;
+  }
   if(process.env.PROJECTS_ONLY==='1'){await require('./helpers/project-browser-flow.cjs')({page,context,origin,documents,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,errors});await context.close();return;}
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
@@ -124,6 +152,14 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.NAVIGATION_GUARD_ONLY==='1'){
+   await require('./helpers/navigation-guard-flow.cjs')({page,canvas,documents,activity,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
+  }
+  if(process.env.FOCUS_MODE_ONLY==='1'){
+   await require('./helpers/focus-mode-flow.cjs')({page,canvas,context,documents,activity,requests,errors,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   if(process.env.FOCUS_PAUSE==='1')await page.pause();
+   return;
+  }
   if(process.env.WRITING_PERFORMANCE_ONLY==='1'){
    await require('./helpers/studio-performance-flow.cjs')({page,canvas,documents,requests,errors});return;
   }
@@ -177,7 +213,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      await page.getByRole('button',{name:'Open library',exact:true}).click();const panel=page.getByRole('dialog',{name:'Library',exact:true});await panel.waitFor();await page.getByRole('button',{name:'Close library',exact:true}).focus();await page.keyboard.press('Shift+Tab');assert.equal(await panel.evaluate(el=>el.contains(document.activeElement)),true,'Library contains keyboard focus');await page.keyboard.press('Escape');await panel.waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:'Open library',exact:true}).evaluate(el=>el===document.activeElement),true,'Library restores its trigger');
      await page.getByRole('button',{name:'Writing assistant',exact:true}).click();const assistant=page.getByRole('dialog',{name:'Writing assistant',exact:true});await assistant.waitFor();await capture('assistant-'+width);await page.getByRole('button',{name:'Close side panel',exact:true}).click({position:{x:5,y:5}});await assistant.waitFor({state:'hidden'});
      const toolbar=page.getByRole('toolbar',{name:'Text formatting',exact:true});await toolbar.getByRole('button',{name:'Bold (Ctrl/⌘ B)',exact:true}).focus();await page.keyboard.press('ArrowRight');assert.equal(await page.getByRole('button',{name:'Italic (Ctrl/⌘ I)',exact:true}).evaluate(el=>el===document.activeElement),true);await page.keyboard.press('End');assert.equal(await page.getByRole('button',{name:'Redo (Ctrl/⌘ Shift Z)',exact:true}).evaluate(el=>el===document.activeElement),true,'Overflowing toolbar remains keyboard reachable');
-     await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-project-controls').isVisible(),false);assert.equal(await page.getByRole('toolbar').count(),0);assert.equal(await status.isVisible(),true);await capture('focus-'+width);await unchanged();await page.keyboard.press('Escape');
+     await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();await page.locator('.uw-project-controls').waitFor({state:'hidden'});assert.equal(await page.getByRole('toolbar').count(),0);assert.equal(await status.isVisible(),true);await capture('focus-'+width);await unchanged();await page.keyboard.press('Escape');
      if(width===390)await capture('mobile-paper-light');
     }
    }
@@ -291,6 +327,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    const sessionId=paused.id,activeMs=paused.timer.active_ms,typed=paused.typed_words;await snap('session-paused-desktop');await checkA11y();
    await page.reload();await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
    assert.equal([...activity.values()].find(a=>a.id===sessionId).timer.active_ms,activeMs,'Refresh does not restart paused time');
+   // The project restoration gate deliberately keeps the loaded editor read-only
+   // until its workspace is ready, even when the paused-session label is visible.
+   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.getAttribute('contenteditable')==='true');
    await canvas.fill('Words added while paused stay in the document but not session progress.');
    await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
    assert.equal(activity.get(sessionId).typed_words,typed);
@@ -384,7 +423,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
 
   const originalId=saved.id;
   assert.equal([...activity.values()].reduce((s,a)=>s+a.typed_words,0),8);
-  await canvas.fill('');await page.waitForFunction(()=>document.querySelector('.uw-editor-stats').textContent.includes('0 Session words'));
+  await canvas.fill('');await page.waitForFunction(()=>document.querySelector('.uw-editor-stats').textContent.includes('0 Session words')).catch(async error=>{console.error('Deletion state:',await canvas.evaluate(el=>({text:el.textContent,editable:el.getAttribute('contenteditable'),stats:document.querySelector('.uw-editor-stats')?.textContent,session:document.querySelector('.uw-editor-session-controls')?.textContent})),[...activity.values()].map(row=>({id:row.id,words:row.typed_words,timer:row.timer})));throw error;});
   await canvas.pressSequentially('A quiet practice makes room for new ideas.');
   await canvas.press('ControlOrMeta+a');await page.getByRole('button',{name:'Bold (Ctrl/⌘ B)',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas strong'));
@@ -510,10 +549,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.equal(await page.locator('.uw-writing-canvas h1').count(),1);assert.equal(await page.locator('.uw-writing-canvas strong').count(),1);
   assert.equal(await page.evaluate(()=>window.compromised),undefined);assert.equal(await page.locator('.uw-writing-canvas a[href^="javascript"]').count(),0);
   // Focus, light/dark, mobile/tablet, localization and basic accessibility.
-  await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-editor-library').count(),0);
+  await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();assert.equal(await page.locator('.uw-editor-library').getAttribute('inert'),'');await page.locator('.uw-editor-library').waitFor({state:'hidden'});
   await page.keyboard.press('Escape');assert.equal(await page.locator('.uw-editor-library').count(),1);
   async function accessibility(label){
    if(!process.env.AXE_SCRIPT)return;
+   await page.locator('.uw-editor').evaluate(async el=>{await Promise.all(el.getAnimations({subtree:true}).map(a=>a.finished.catch(()=>{})));});
    await page.addScriptTag({path:process.env.AXE_SCRIPT});
    const violations=await page.evaluate(async()=> (await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,description:v.description,nodes:v.nodes.map(n=>n.target)})));
    assert.deepEqual(violations,[],label+' accessibility');
@@ -587,7 +627,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.getByRole('heading',{name:'Unlock Your Writing Space'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0);
   assert.equal(await page.locator('.uw-editor-document').count(),0);
-  assert.equal(requests.slice(downgradeCalls).some(r=>r.key.startsWith('/workspace/')),false,'Free must not fetch private workspace data');
+  const downgradePrivate=requests.slice(downgradeCalls).filter(r=>r.key.startsWith('/workspace/'));
+  if(downgradePrivate.length)console.error('Downgrade requests:',downgradePrivate.map(r=>({method:r.method,key:r.key})));
+  assert.equal(downgradePrivate.length,0,'Free must not fetch private workspace data');
   assert.equal(await page.evaluate(()=>new Promise(resolve=>{const open=indexedDB.open('uno-word-writing',1);open.onsuccess=()=>{const request=open.result.transaction('records').objectStore('records').getAll();request.onsuccess=()=>{resolve(request.result.some(r=>r.kind==='document'||r.kind==='draft'));open.result.close();};};})),true,'Existing writing survives downgrade');
   // Cached Free identities cannot bypass the gate by reloading offline.
   await context.setOffline(true);await page.reload();

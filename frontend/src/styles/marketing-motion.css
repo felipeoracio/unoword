@@ -1,0 +1,43 @@
+/* Marketing compositions use the application's shared motion and surface tokens. */
+.lp-site :is(.lp-desktop-nav a, .lp-mobile-nav a, .lp-sign-in, .lp-footer nav a,
+  .lp-feature-index a, .lp-showcase-tabs button, .lp-price-card,
+  .lp-faq summary, .lp-text-link) {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: var(--uno-motion-hover);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.lp-site :is(.lp-desktop-nav, .lp-mobile-nav) a[aria-current="location"] {
+  color: var(--studio-link);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.lp-feature-index a {
+  transition-property: color, background-color, border-color, box-shadow, translate;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lp-feature-index a:hover {
+    translate: 0 calc(-1 * var(--uno-motion-hover-offset));
+    border-color: var(--studio-link);
+    box-shadow: var(--studio-shadow);
+  }
+  .lp-price-card:hover { border-color: var(--studio-link); }
+}
+.lp-feature-index a:focus-visible { border-color: var(--studio-link); }
+.lp-site .lp-mobile-nav:not([hidden]) {
+  animation: uno-marketing-menu var(--uno-motion-dropdown) var(--uno-motion-enter-ease);
+}
+.lp-site .lp-faq details[open] > div {
+  animation: uno-marketing-answer var(--uno-motion-panel) var(--uno-motion-enter-ease);
+}
+.lp-site .lp-faq summary svg {
+  transition: transform var(--uno-motion-feedback) var(--uno-motion-state-ease);
+}
+@keyframes uno-marketing-menu { from { opacity: 0.96; transform: translateY(calc(-1 * var(--uno-motion-popup-offset))); } to { opacity: 1; transform: translateY(0); } }
+@keyframes uno-marketing-answer { from { opacity: 0.96; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .lp-site :is(.lp-desktop-nav a, .lp-mobile-nav a, .lp-sign-in, .lp-footer nav a,
+    .lp-feature-index a, .lp-showcase-tabs button, .lp-price-card,
+    .lp-faq summary, .lp-faq summary svg, .lp-text-link) { transition: none !important; }
+  .lp-feature-index a:hover { translate: none; }
+  .lp-site .lp-mobile-nav:not([hidden]), .lp-site .lp-faq details[open] > div { animation: none !important; }
+}

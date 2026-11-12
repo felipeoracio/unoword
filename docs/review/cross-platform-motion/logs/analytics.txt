@@ -1,0 +1,1 @@
+PASS GA4: correct property; one public SPA pageview per navigation; anchors/back; single async tag; private/auth/admin routes and URL parameters excluded; synchronous history guard; Preview/local/legacy suppression; DNT/GPC respected. Google collection intercepted.

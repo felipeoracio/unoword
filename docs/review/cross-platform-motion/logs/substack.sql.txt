@@ -1,0 +1,10 @@
+PASS real SQL/RLS: independent native/Lifetime protection, approval gating, email proof, owner uniqueness, shared editor/quota/worker access, expiry/disconnect, durable idempotent events, stale leases, config changes and migration replay.
+✔ Substack grants preserve native billing, require approval and verified email, and obey RLS (2395.403261ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2403.069857

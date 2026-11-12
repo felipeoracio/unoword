@@ -1,0 +1,1 @@
+PASS onboarding: real typing without punctuation; paste exclusion; no focus theft; refresh/resume; counter/session/goal/prompt/profile actions; real achievements; skipped steps; replay; 320–1440px; WCAG; Free restriction; dismiss launcher/card, keyboard access, refresh persistence, account restore, account isolation; no AI calls.

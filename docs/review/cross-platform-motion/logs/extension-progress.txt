@@ -1,0 +1,1 @@
+PASS: clear/reopen; real editor deletion; ordered edits; active-session preservation; stop without duplication; popup and dashboard sync; imports; manual refresh; Free/Pro; EN/ES at 320/420px.

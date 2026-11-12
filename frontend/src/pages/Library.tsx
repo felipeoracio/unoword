@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, BookOpen, FileText, FolderKanban, Lightbulb, LibraryBig, NotebookPen } from "lucide-react";
 import Brand from "@/components/marketing/Brand";
@@ -11,6 +11,7 @@ import { useStudioAccount } from "@/lib/use-studio-account";
 import { useProjectWorkspace } from "@/lib/use-project-workspace";
 import { useStudioPreferences } from "@/lib/studio-preferences";
 import { recoveryPath } from "@/lib/domain-recovery";
+import { revealOpacity } from "@/lib/motion";
 import "@/styles/projects.css";
 import "@/styles/studio-library.css";
 
@@ -30,6 +31,17 @@ export default function Library({ initialView = "writing" }: { initialView?: str
   const requested = params.get("view") || initialView;
   const view = sections.some(section => section[0] === requested) ? requested : "writing";
   const es = language === "es", t = (en: string, spanish: string) => es ? spanish : en;
+  const panel = useRef<HTMLDivElement>(null);
+  const panelMotion = useRef<Animation|null>(null);
+  const previousView = useRef(view);
+  useEffect(() => {
+    const changed = previousView.current !== view;
+    previousView.current = view;
+    if (!changed || !panel.current || view === "profile") return;
+    const animation = revealOpacity(panel.current, 0.98);
+    panelMotion.current = animation;
+    return () => animation?.cancel();
+  }, [view, account.owner, account.paid]);
   async function openProject(id: string | null) {
     try {
       setError(""); await workspace.select(id);
@@ -44,7 +56,8 @@ export default function Library({ initialView = "writing" }: { initialView?: str
     <StudioPageHeader title={t("Your library", "Tu biblioteca")} eyebrow={t("Room for every chapter.", "Espacio para cada capítulo.")} description={t("Find your writing, organize projects, and choose what informs your writing coach.", "Encuentra tus textos, organiza proyectos y elige qué informa a tu asistente.")} actions={<StudioLink to={recoveryPath(account.paid ? "/editor" : "/account#install")}>{t("Start Writing", "Empezar a escribir")}<ArrowRight size={16} aria-hidden="true" /></StudioLink>} />
     <div className="uw-library-content">
       <nav className="uw-section-nav" aria-label={t("Library sections", "Secciones de biblioteca")}>{sections.map(([id, en, spanish, Icon]) => <Link key={id} to={recoveryPath("/library?view=" + id)} aria-current={view === id ? "page" : undefined}><Icon size={18} aria-hidden="true" />{es ? spanish : en}</Link>)}</nav>
-      <div className="uw-library-panel" key={account.owner + ":" + account.paid}>
+      <div ref={panel} className="uw-library-panel" key={account.owner + ":" + account.paid}
+        onBeforeInputCapture={() => panelMotion.current?.cancel()}>
         {!account.online && <p role="status">{t("Offline · last loaded library metadata. Source permissions need a connection.", "Sin conexión · últimos metadatos cargados. Los permisos de fuentes necesitan conexión.")}</p>}
         {error && <p role="alert">{error}</p>}
         {view === "ideas" ? <StudioCard className="uw-library-intro"><h2>{t("Ideas for another day", "Ideas para otro día")}</h2><p>{t("Quick Prompts and browser bookmarks live in Ideas. Saved AI guidance stays separate from authored writing, and loads only when you request it.", "Las ideas rápidas y los marcadores del navegador están en Ideas. La guía de IA guardada sigue separada de tus textos y se carga solo cuando la solicitas.")}</p><StudioLink variant="outline" to="/ideas">{t("Open Ideas", "Abrir Ideas")}<ArrowRight size={16} aria-hidden="true" /></StudioLink></StudioCard>

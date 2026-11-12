@@ -1,0 +1,518 @@
+{
+  "baselineCommit": "c4c0e84e29ca19fdacb292b38bc03e9fe8c3fb11",
+  "implementationBranch": "feature/motion-editor-ai-polish",
+  "capturedAgainstWorkingTree": true,
+  "method": "Sequential local Chromium production trials; settled layout and CPU rate reapplied per sample. Capture-phase beforeinput to second rAF includes editor handling, unlike a later input-bubble probe, but is not INP. 52k-character non-sensitive draft; desktop pending keeps assistant visible; mobile pending closes modal before typing. Not GPU FPS, field Web Vitals, real devices or long-session memory evidence.",
+  "trials": {
+    "before-1x": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10065384,
+      "heapAfterBytes": 11082680,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.19999999552965,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.899999998509884,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "existing baseline",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 33,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.70000000298023,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "after-1x": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10058024,
+      "heapAfterBytes": 11122624,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.600000001490116,
+          "frameIntervalP95Ms": 16.699999999999818,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.19999999552965,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 33.20000000298023,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.30000000447035,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "before-4x": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 10025640,
+      "heapAfterBytes": 11071904,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 191.39999999850988,
+          "frameIntervalP95Ms": 100,
+          "longTasksMs": [
+            105,
+            98,
+            88,
+            96,
+            95,
+            118,
+            96,
+            81,
+            89,
+            83,
+            89,
+            87,
+            84,
+            84,
+            89,
+            79,
+            97,
+            73,
+            74,
+            95,
+            75,
+            73,
+            95,
+            96,
+            107
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 198.29999999701977,
+          "frameIntervalP95Ms": 100,
+          "longTasksMs": [
+            80,
+            77,
+            81,
+            75,
+            80,
+            78,
+            91,
+            94,
+            116,
+            104,
+            65,
+            71,
+            89,
+            107,
+            85,
+            93,
+            104,
+            96,
+            97,
+            81,
+            99,
+            81,
+            72,
+            88,
+            100
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "existing baseline",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 331.8999999985099,
+          "frameIntervalP95Ms": 166.70000000000073,
+          "longTasksMs": [
+            86,
+            78,
+            92,
+            167,
+            198,
+            157,
+            114,
+            108,
+            113,
+            93,
+            98,
+            134,
+            165,
+            155,
+            147,
+            202,
+            126,
+            95,
+            128,
+            139,
+            112,
+            133,
+            123,
+            88,
+            107
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "existing baseline",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 186.89999999850988,
+          "frameIntervalP95Ms": 100,
+          "longTasksMs": [
+            87,
+            79,
+            76,
+            75,
+            97,
+            75,
+            86,
+            87,
+            78,
+            77,
+            70,
+            85,
+            85,
+            94,
+            76,
+            95,
+            94,
+            84,
+            103,
+            109,
+            112,
+            94,
+            98,
+            100,
+            95
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "after-4x": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 4,
+      "heapBeforeBytes": 10089100,
+      "heapAfterBytes": 11203900,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 203,
+          "frameIntervalP95Ms": 116.69999999999982,
+          "longTasksMs": [
+            99,
+            96,
+            85,
+            79,
+            97,
+            98,
+            78,
+            97,
+            85,
+            116,
+            107,
+            71,
+            92,
+            83,
+            79,
+            104,
+            74,
+            68,
+            85,
+            100,
+            112,
+            83,
+            79,
+            91,
+            86
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 227.29999999701977,
+          "frameIntervalP95Ms": 116.70000000000073,
+          "longTasksMs": [
+            82,
+            97,
+            113,
+            83,
+            84,
+            83,
+            87,
+            89,
+            103,
+            100,
+            90,
+            108,
+            86,
+            82,
+            91,
+            104,
+            97,
+            85,
+            92,
+            103,
+            119,
+            141,
+            112,
+            114,
+            134
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 324.8999999985099,
+          "frameIntervalP95Ms": 166.60000000000218,
+          "longTasksMs": [
+            91,
+            108,
+            118,
+            114,
+            125,
+            91,
+            104,
+            107,
+            122,
+            135,
+            133,
+            119,
+            113,
+            124,
+            139,
+            149,
+            188,
+            176,
+            195,
+            105,
+            94,
+            109,
+            123,
+            119,
+            119
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 200,
+          "frameIntervalP95Ms": 100,
+          "longTasksMs": [
+            84,
+            77,
+            88,
+            72,
+            77,
+            75,
+            84,
+            70,
+            75,
+            76,
+            93,
+            86,
+            86,
+            70,
+            96,
+            97,
+            104,
+            97,
+            87,
+            107,
+            99,
+            71,
+            74,
+            70,
+            73
+          ],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    }
+  },
+  "bundles": {
+    "before": {
+      "index-*.js": [
+        {
+          "file": "index-D8Q_V-S8.js",
+          "bytes": 282088,
+          "gzipBytes": 88793
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-DeOHxlYd.js",
+          "bytes": 413376,
+          "gzipBytes": 135748
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-b6YAd8dx.css",
+          "bytes": 34524,
+          "gzipBytes": 6748
+        }
+      ]
+    },
+    "after": {
+      "index-*.js": [
+        {
+          "file": "index-BogCeRIk.js",
+          "bytes": 282088,
+          "gzipBytes": 88789
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-9N4ZkJWP.js",
+          "bytes": 415166,
+          "gzipBytes": 136227
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ]
+    }
+  }
+}

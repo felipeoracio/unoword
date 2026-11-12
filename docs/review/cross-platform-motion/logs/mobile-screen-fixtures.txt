@@ -1,0 +1,2 @@
+PASS native Projects: create and save a project, open its workspace, and choose an explicit AI context using real provider/components with synthetic APIs.
+PASS: native screen fixtures at 320/390/820/1180px, native editor bridge typing, paid gating, dark mode; no horizontal overflow or JS exceptions.

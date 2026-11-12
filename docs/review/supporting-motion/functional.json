@@ -1,0 +1,25 @@
+{
+  "scope": "Actual production React UI, native inputs, IndexedDB and isolated synthetic profile/progress/reward/verification APIs. Not live Supabase/providers, earning evaluation, email, billing or devices.",
+  "results": [
+    {
+      "name": "Actual profile choices/text stay mounted while typing; held save, Back, offline queue/reconnect and reload preserve both answers",
+      "result": "passed"
+    },
+    {
+      "name": "Real chart/range choices cue confirmed data; refresh keeps metrics immediate and does not replay or claim rewards",
+      "result": "passed"
+    },
+    {
+      "name": "Only claimed earned rewards celebrate; dismissal, polling, disabled rewards and native preferences preserve quiet history",
+      "result": "passed"
+    },
+    {
+      "name": "Connection states stay truthful through invalid code/held verification; typing and polling do not replay; Stripe confirmation remains explicit",
+      "result": "passed"
+    },
+    {
+      "name": "Five widths, dark/Spanish settings, axe, touch-sized dismissal and reduced-motion profile/chart/celebration remain functional",
+      "result": "passed"
+    }
+  ]
+}

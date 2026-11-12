@@ -1,0 +1,1 @@
+PASS document images: upload, alt text, resize/compression, private embedded save/reopen, removal/undo, SVG/oversize rejection, offline insert/reload/reconnect, rich clipboard and Markdown export, image-only no new activity, completed read-only gate, EN/ES, dark/accessibility and 320–1440px layouts.

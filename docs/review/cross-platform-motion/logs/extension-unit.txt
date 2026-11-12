@@ -1,0 +1,145 @@
+  ✓ createDraft returns a local-only empty profile
+  ✓ sanitizeDraft trims user text and preserves completion
+  ✓ sanitizeDraft preserves known sync states and rejects unknown ones
+  ✓ sanitizeDraft refreshes updatedAt after an explicit local edit
+  ✓ sanitizeDraft safely handles invalid input
+  ✓ splitList supports commas and new lines
+  ✓ hasPersonalization recognizes any supplied field
+  ✓ toApiProfile maps the draft to backend field names
+  ✓ toApiProfile maps the richer onboarding fields
+  ✓ hasPersonalization recognizes the richer fields
+  ✓ fromApiProfile round-trips the richer fields into the draft
+  ✓ complete profile edits preserve explicit clears instead of resurrecting cloud answers
+  ✓ fromApiProfile marks the local draft privately synced
+  ✓ cleanText enforces configured limits
+
+14 passed, 0 failed
+✔ extension/tests/ai-profile.test.js (66.108054ms)
+  ✓ requests include browser-managed credentials without auth headers
+  ✓ API errors preserve the response status
+  ✓ multipart uploads keep browser-generated content headers
+  ✓ wrong-current-password responses are never automatically retried
+  ✓ extension runtime marker covers JSON, uploads, and automatic session refresh without becoming authentication
+  ✓ concurrent expired-token requests share one secure refresh
+
+6 passed, 0 failed
+✔ extension/tests/api-client.test.js (94.128974ms)
+✔ Activity sync contains metadata only and ignores imported editor rows (2.091853ms)
+✔ A cached paid streak never leaks through a Free offline response (0.358359ms)
+✔ Today includes evening Chicago sessions after UTC midnight (21.135104ms)
+✔ Spring DST day lasts 23 hours (0.660162ms)
+✔ Fall DST day lasts 25 hours (0.903937ms)
+✔ Week has seven distinct calendar buckets across DST (0.933662ms)
+✔ Leap February uses the correct month boundaries (1.048086ms)
+✔ Streak counts calendar days after a short DST day (0.695788ms)
+✔ All-time range retains real history without fake boundaries (1.331955ms)
+✔ Ready requires text and a proven complete index (0.210342ms)
+✔ Status distinguishes a URL alone (0.218337ms)
+✔ Status distinguishes missing passages (0.297175ms)
+✔ Status distinguishes an incomplete index (0.118181ms)
+✔ Status distinguishes unknown old metadata (0.163936ms)
+✔ Status distinguishes disabled content (0.097201ms)
+✔ Status distinguishes failed extraction (0.079559ms)
+✔ Status distinguishes processing (0.065583ms)
+✔ Open never accepts executable or malformed URLs (0.349582ms)
+✔ Editor bridge retains origin isolation at https://unoword.app (15.85389ms)
+✔ Editor bridge retains origin isolation at https://unoword.vercel.app (1.084032ms)
+✔ Editor bridge retains origin isolation at https://www.unoword.app (1.944088ms)
+  ✓ countWords: empty string is 0
+  ✓ countWords: single word
+  ✓ countWords: multiple spaces collapse to one word boundary
+  ✓ countWords: line breaks are word boundaries
+  ✓ countWords: punctuation stays attached
+  ✓ countWords: numbers count as words
+  ✓ countWords: sample from spec (12 words)
+  ✓ countWords: one-letter words I and a always count
+  ✓ countWords: standalone punctuation is 0
+  ✓ countWords: punctuation attached to a word still counts as one
+  ✓ countWords: quotes and parentheses do not add tokens
+  ✓ countWords: contractions are one word
+  ✓ countWords: hyphenated words are one token
+  ✓ countWords: multiple punctuation between words
+  ✓ countWords: empty / whitespace-only is 0
+  ✓ classifyDelta: typing adds typed words
+  ✓ classifyDelta: paste adds pasted words (never typed)
+  ✓ classifyDelta: deletion / cut removes words
+  ✓ classifyDelta: undo/redo reconcile to the resulting text
+  ✓ classifyDelta: no net word change → null (no delta sent)
+  ✓ applyDelta: typed accumulates into typedWords only
+  ✓ applyDelta: pasted accumulates into pastedWords only
+  ✓ applyDelta: deletion pops from typed first
+  ✓ applyDelta: deletion overflows into pasted after typed empties
+  ✓ applyDelta: deletion capped at total
+  ✓ sim: typing builds up typed count
+  ✓ cut+undo Test 1: I am writing today
+  ✓ cut+undo Test 2: I am writing a story
+  ✓ cut+undo Test 3: Hello world
+  ✓ cut+undo Test 4: multiple deletes and undos stay synchronized
+  ✓ paste protection: pasted words never inflate typed count
+  ✓ paste protection: cut into pasted region reduces pasted first only after typed drains
+  ✓ appendHistory: adds newest first
+  ✓ appendHistory: drops zero-word, sub-second sessions
+  ✓ appendHistory: keeps zero-word sessions that lasted >= 1s
+  ✓ appendHistory: caps at max length
+  ✓ validateGoal: rejects empty, negatives, decimals, zero
+  ✓ validateGoal: accepts multiples of 25
+  ✓ validateGoal: rejects non-multiples of 25 and suggests neighbours
+  ✓ validateGoal: 10 suggests 25 (not zero)
+  ✓ pickPrompt: returns a prompt for a valid theme
+  ✓ pickPrompt: surprise-me includes all themes
+  ✓ pickPrompt: respects history
+  ✓ pickPrompt: Spanish theme returns Spanish text
+  ✓ rich: inline formatting does not change the word count
+  ✓ rich: multi-paragraph contenteditable counts across block newlines
+  ✓ rich: typing across formatted spans accrues typed words only
+  ✓ rich: cut a bold word then undo stays synchronized (contenteditable)
+  ✓ rich: paste into contenteditable never counts as typed
+  ✓ rich: inserting a new paragraph (Enter) is not a word
+
+50 passed, 0 failed
+✔ extension/tests/engine.test.js (159.424543ms)
+  ✓ sessionWords: only typed words count
+  ✓ streak: single day today = 1
+  ✓ streak: 3 consecutive days = 3
+  ✓ streak: 7 consecutive days = 7
+  ✓ streak: multiple sessions same day count once
+  ✓ streak: missed day breaks it (only counts recent run)
+  ✓ streak: 0-word sessions do not count
+  ✓ streak: still current if last write was yesterday
+  ✓ streak: broken if last write was 2+ days ago
+  ✓ visibleHistory: free sees only last 24h
+  ✓ visibleHistory: pro sees everything
+  ✓ visibleHistory: does not mutate/delete records
+  ✓ CSV: export then parse round-trips valid records
+  ✓ CSV: pasted words are never exported
+  ✓ CSV: invalid file rejected
+  ✓ CSV: counts invalid rows without importing them
+  ✓ merge: adds only non-duplicate records (A,B,C + B,C,D,E = A..E)
+  ✓ merge: composite dedupe when ids missing
+
+18 passed, 0 failed
+✔ extension/tests/history.test.js (182.519293ms)
+  ✓ encrypts and decrypts a writing payload with a non-extractable key
+  ✓ rejects decryption with a different device key
+  ✓ publishes the selected queue and writing limits
+
+3 passed, 0 failed
+✔ extension/tests/memory-queue.test.js (181.434299ms)
+✔ 25 minutes writing, 10 paused, 20 writing records 45/10/55 minutes (7.708833ms)
+✔ repeated pause/resume is idempotent; ending paused freezes active time (0.51979ms)
+✔ clock survives suspended intervals, background tabs and serialization (0.393324ms)
+✔ legacy sessions keep their previous duration and metadata sync excludes pauses (1.51685ms)
+✔ CSV round-trip preserves active and paused time; old CSV remains readable (12.452775ms)
+✔ Exact checkpoints preserve pauses, day-spanning ranges and duplicate timer reads (0.646907ms)
+✔ Same dashboard total excludes paste, yesterday and duplicate editor records (38.181389ms)
+✔ Snapshot shares writer-local day and latest goal; never fabricates remaining words (1.058996ms)
+✔ Active sessions from yesterday and stopped cards are not counted twice (0.456862ms)
+✔ Cleared history and deleted words immediately affect the next snapshot (0.613584ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 580.513237

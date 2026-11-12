@@ -1,0 +1,13 @@
+{
+  "scope": "Actual production UI with isolated non-sensitive APIs; tour includes actual Tiptap typing. Not live providers or devices.",
+  "videos": [
+    {
+      "file": "supporting-demo.webm",
+      "seconds": 23.84
+    },
+    {
+      "file": "writing-tour.webm",
+      "seconds": 13.64
+    }
+  ]
+}

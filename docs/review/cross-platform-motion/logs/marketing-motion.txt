@@ -1,0 +1,7 @@
+PASS Hero sequence uses shared timing; headline stays opaque and focused CTA settles immediately
+PASS Scroll compositions reveal once; repeated scrolling and feature anchors neither replay nor request private data
+PASS Screenshot tabs retain keyboard selection; native FAQ opens/closes immediately during motion
+PASS Five widths retain first-viewport CTA, no overflow, axe checks, touch menu, Escape/focus and actual anchor indication
+PASS Dark surfaces remain accessible; reduced motion cancels running effects, disconnects observer and avoids new entrances
+PASS Signup/Pro destinations work during entrances; leaving cleans up animation/observer without AI, content or billing writes
+PASS Without IntersectionObserver or JavaScript, prerendered copy/CTA and native FAQ stay visible and functional

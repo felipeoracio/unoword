@@ -1,0 +1,1 @@
+PASS Home: auth/private metadata, shared totals/time/streak, selected-theme Quick Prompts, no automatic writes/AI, goal save/conflict, completed/current-project deep links, one-use empty prompt draft, no lost writing, 320–1440px EN/ES/themes, errors, account switching and downgrade isolation, Free prompt copying and extension CTA.

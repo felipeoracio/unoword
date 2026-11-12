@@ -31,6 +31,7 @@ import {
 } from "@/components/studio/StudioPrimitives";
 import { FREE_START, PRO_START, useProduct, type Product } from "@/lib/product";
 import { trackMarketingInteraction } from "@/lib/analytics";
+import { useMarketingMotion } from "@/lib/use-marketing-motion";
 import forest from "@/assets/studio/covers/forest-path.webp";
 import mountain from "@/assets/studio/covers/mountain-sunrise.webp";
 import notebook from "@/assets/studio/covers/open-notebook.webp";
@@ -45,6 +46,7 @@ import lakeSmall from "@/assets/marketing/illustrations/lakeside-reflection-640.
 import treeSmall from "@/assets/marketing/illustrations/tree-and-horizon-640.webp";
 import "@/styles/marketing.css";
 import "@/styles/landing.css";
+import "@/styles/marketing-motion.css";
 
 const imageVariants: Record<string, string> = {
   [forest]: forestSmall,
@@ -233,10 +235,18 @@ function PricingCard({
   );
 }
 export default function Home() {
+  const motionRoot = useMarketingMotion();
+  const [activeAnchor, setActiveAnchor] = useState("");
   const product = useProduct(),
     [menuOpen, setMenuOpen] = useState(false),
     [theme, setTheme] = useState("light");
   const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const update = () => setActiveAnchor(window.location.hash);
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
   useEffect(() => {
     try {
       if (localStorage.getItem("uno-writing-theme") === "dark")
@@ -326,7 +336,7 @@ export default function Home() {
     },
   ];
   return (
-    <div className="uw-site lp-site" data-studio-theme={theme}>
+    <div ref={motionRoot} className="uw-site lp-site" data-studio-theme={theme}>
       <a className="uw-studio-skip lp-skip" href="#main">
         Skip to content
       </a>
@@ -335,7 +345,7 @@ export default function Home() {
           <Brand />
           <nav className="lp-desktop-nav" aria-label="Main navigation">
             {navigation.map(([label, id]) => (
-              <a key={id} href={"#" + id}>
+              <a key={id} href={"#" + id} aria-current={activeAnchor === "#" + id ? "location" : undefined}>
                 {label}
               </a>
             ))}
@@ -381,7 +391,7 @@ export default function Home() {
           }}
         >
           {navigation.map(([label, id]) => (
-            <a key={id} href={"#" + id} onClick={closeMenu}>
+            <a key={id} href={"#" + id} onClick={closeMenu} aria-current={activeAnchor === "#" + id ? "location" : undefined}>
               {label}
             </a>
           ))}
@@ -399,19 +409,19 @@ export default function Home() {
           <StudioContainer className="lp-hero-grid">
             <div className="lp-hero-copy">
               <p className="uw-studio-eyebrow">A MORE PERSONAL WAY TO WRITE</p>
-              <h1 id="hero-heading">
+              <h1 id="hero-heading" data-motion-hero="0">
                 Your ideas deserve
                 <br className="lp-desktop-break" /> a place to grow.
               </h1>
-              <p className="lp-hero-support">
+              <p className="lp-hero-support" data-motion-hero="1">
                 Write more. Find your flow. Discover what’s next.
               </p>
-              <p className="lp-hero-description">
+              <p className="lp-hero-description" data-motion-hero="1">
                 Meet UnoWord, your personal writing companion. Build a writing
                 habit, track your progress, and discover meaningful ideas with
                 thoughtful AI guidance that keeps your voice at the center.
               </p>
-              <div className="lp-hero-buttons">
+              <div className="lp-hero-buttons" data-motion-hero="2">
                 <StudioLink
                   to={FREE_START}
                   onClick={() =>
@@ -433,7 +443,7 @@ export default function Home() {
               </div>
               <p className="lp-slogan">Every idea starts with Uno Word.</p>
             </div>
-            <div className="lp-hero-preview">
+            <div className="lp-hero-preview" data-motion-hero="3">
               <ProductCapture screen="home" priority />
             </div>
           </StudioContainer>

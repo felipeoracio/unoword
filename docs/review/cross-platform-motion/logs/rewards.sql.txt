@@ -1,0 +1,10 @@
+PASS: interval union/pause exclusion, calm deduplicated claims, showcase permissions, stable edited awards, honest completed-month growth, personal-best deduplication, timezone overlap, DST, bounded backfill, migration replay; 53 achievements, actual 15-day history/Free cap, idempotent unlocks, disabled/re-enabled retention, locked daily goals, distinct durable completions, cross-account denial.
+✔ personal rewards: schema, authoritative metrics, entitlement filtering and durable evidence (3082.864708ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3091.708229

@@ -1,0 +1,1 @@
+PASS: canonical profile load/edit/clear/reload/Cancel/error retention; late account-swap protection; Free permissions; secure plan sign-in/confirmation/unavailable; password validation/visibility/clearing; pending email; no credential persistence; EN/ES 180–420px.

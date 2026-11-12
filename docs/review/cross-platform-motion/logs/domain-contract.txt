@@ -1,0 +1,15 @@
+✔ unoword.vercel.app uses one exact 301 for browser paths, queries and encoded parameters (2.985902ms)
+✔ unoword.vercel.app preserves signed POST APIs, old clients, cached assets and recovery (0.399696ms)
+✔ www.unoword.app uses one exact 301 for browser paths, queries and encoded parameters (0.665722ms)
+✔ www.unoword.app preserves signed POST APIs, old clients, cached assets and recovery (3.657975ms)
+✔ primary and unrelated preview hosts do not match legacy redirects (0.265165ms)
+✔ retired lifetime URLs redirect to pricing, with one hop from legacy hosts (0.606962ms)
+✔ built SEO and downloadable extension refer to the canonical app (1.631084ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.95928

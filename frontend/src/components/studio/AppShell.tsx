@@ -1,12 +1,14 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties, type MouseEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { House, PenLine, Lightbulb, ChartNoAxesColumnIncreasing, LibraryBig, Settings2, Award, Menu, X, Moon, Sun, ArrowUpRight } from "lucide-react";
+import { House, PenLine, Lightbulb, ChartNoAxesColumnIncreasing, LibraryBig, Settings2, Award, Menu, X, Moon, Sun, ArrowUpRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { AuthUser } from "@/lib/auth-types";
 import { recoveryPath } from "@/lib/domain-recovery";
 import { useStudioPreferences, type StudioLanguage, type StudioTheme } from "@/lib/studio-preferences";
 import { StudioButton } from "./StudioPrimitives";
 import { studioArtwork } from "@/lib/studio-artwork";
+import { revealOpacity } from "@/lib/motion";
 import "@/styles/studio.css";
+import "@/styles/navigation-motion.css";
 
 type Props = {
   user: Pick<AuthUser, "id" | "ai_access">;
@@ -24,10 +26,16 @@ export default function AppShell({ user, children, editor = false, focusMode = f
   const theme = suppliedTheme || preferences.theme, language = suppliedLanguage || preferences.language;
   const es = language === "es", t = (en: string, spanish: string) => es ? spanish : en;
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("uno-studio-navigation-compact") === "1"; }
+    catch { return false; }
+  });
   const [leaving, setLeaving] = useState(false);
   const departure = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
-  const contentId = useId(), titleId = useId();
+  const content = useRef<HTMLDivElement>(null), sidebar = useRef<HTMLElement>(null);
+  const pageMotion = useRef<Animation|null>(null);
+  const contentId = useId(), titleId = useId(), navigationId = useId();
   const paid = user.ai_access;
   const items = [
     { id: "home", label: t("Home", "Inicio"), href: "/app", icon: House },
@@ -56,6 +64,18 @@ export default function AppShell({ user, children, editor = false, focusMode = f
     if (open) dialog.current?.showModal();
     else if (dialog.current?.open) dialog.current.close();
   }, [open]);
+  useEffect(() => {
+    if (editor) return;
+    const animation = sidebar.current && matchMedia("(min-width: 900px)").matches
+      ? revealOpacity(sidebar.current, 0.98, "--uno-motion-sidebar") : null;
+    return () => animation?.cancel();
+  }, [collapsed, editor]);
+  useEffect(() => {
+    if (editor || !content.current) return;
+    const animation = revealOpacity(content.current, 0.98, "--uno-motion-page");
+    pageMotion.current = animation;
+    return () => animation?.cancel();
+  }, [editor, location.pathname]);
   useEffect(() => { setOpen(false); }, [location.pathname, location.search, location.hash]);
   useEffect(() => {
     const media = matchMedia("(min-width: 900px)");
@@ -65,12 +85,21 @@ export default function AppShell({ user, children, editor = false, focusMode = f
   }, []);
   useEffect(() => {
     if (!location.hash) return;
+    let highlighted: HTMLElement | null = null;
     const frame = requestAnimationFrame(() => {
       const target = document.getElementById(location.hash.slice(1));
-      if (target) { target.scrollIntoView({ block: "start" }); target.focus({ preventScroll: true }); }
+      if (target) {
+        target.scrollIntoView({ block: "start" }); target.focus({ preventScroll: true });
+        // Router pushState does not reliably update CSS :target. Follow the
+        // existing hash/focus target without remounting or hiding its contents.
+        if (!editor && target.closest(".uw-settings") && target.matches(".uw-settings-section,.uw-install-card,.uw-account-plan")) {
+          highlighted = target;
+          target.setAttribute("data-studio-navigation-target", "");
+        }
+      }
     });
-    return () => cancelAnimationFrame(frame);
-  }, [location.pathname, location.hash]);
+    return () => { cancelAnimationFrame(frame); highlighted?.removeAttribute("data-studio-navigation-target"); };
+  }, [location.pathname, location.hash, editor]);
 
   async function follow(event: MouseEvent<HTMLAnchorElement>, destination: string) {
     setOpen(false);
@@ -94,13 +123,13 @@ export default function AppShell({ user, children, editor = false, focusMode = f
         <img src="/brand/unoword.svg" alt="" width="40" height="40" />
         <span>Uno<span>Word</span></span>
       </Link>
-      <nav aria-label={t("Writing studio", "Estudio de escritura")}>
+      <nav id={mobile ? undefined : navigationId} aria-label={t("Writing studio", "Estudio de escritura")}>
         {[items, secondary].map((group, index) => <div className="uw-studio-nav-group" key={index}>
           {group.map(({ id, label, href, icon: Icon, ...item }) => <Link
             key={id} to={recoveryPath(href)} className="uw-studio-nav-link"
             aria-current={active === id ? "page" : undefined}
             aria-label={label + ("pro" in item && item.pro ? " · Pro" : "")}
-            title={editor && !mobile ? label : undefined}
+            title={(editor || collapsed) && !mobile ? label : undefined}
             onClick={event => void follow(event, recoveryPath(href))}
           >
             <Icon size={21} strokeWidth={1.7} aria-hidden="true" />
@@ -111,12 +140,12 @@ export default function AppShell({ user, children, editor = false, focusMode = f
       </nav>
       <div className="uw-studio-sidebar-footer">
         <p>{t("Every idea starts with UnoWord.", "Cada idea empieza con UnoWord.")}</p>
-        <Link to="/" onClick={event => void follow(event, "/")}>{t("Visit website", "Visitar sitio web")} <ArrowUpRight size={14} aria-hidden="true" /></Link>
+        <Link to="/" aria-label={t("Visit website", "Visitar sitio web")} title={collapsed && !mobile ? t("Visit website", "Visitar sitio web") : undefined} onClick={event => void follow(event, "/")}><span>{t("Visit website", "Visitar sitio web")}</span> <ArrowUpRight size={14} aria-hidden="true" /></Link>
       </div>
     </>;
   }
 
-  return <div className={`uw-studio${editor ? " uw-studio-editor" : ""}${focusMode ? " uw-studio-focused" : ""}`}
+  return <div className={`uw-studio${editor ? " uw-studio-editor" : collapsed ? " uw-studio-compact" : ""}${focusMode ? " uw-studio-focused" : ""}`}
     data-studio-theme={theme} lang={language} data-testid="studio-shell"
     style={{
       ...(studioArtwork.sidebar ? { "--studio-sidebar-art": `url("${studioArtwork.sidebar}")` } : {}),
@@ -124,9 +153,21 @@ export default function AppShell({ user, children, editor = false, focusMode = f
       ...(studioArtwork.mobileHeader && theme !== "dark" ? { "--studio-header-art-mobile": `url("${studioArtwork.mobileHeader}")` } : {}),
     } as CSSProperties}>
     <a className="uw-studio-skip" href={`#${contentId}`}>{t("Skip to content", "Saltar al contenido")}</a>
-    <aside className="uw-studio-sidebar" aria-label={t("Main navigation", "Navegación principal")}>{navigation(false)}</aside>
+    <aside ref={sidebar} className="uw-studio-sidebar" inert={focusMode} aria-hidden={focusMode || undefined} aria-label={t("Main navigation", "Navegación principal")}>
+      {navigation(false)}
+      {!editor && <StudioButton variant="ghost" className="uw-studio-nav-toggle"
+        aria-label={collapsed ? t("Expand navigation", "Expandir navegación") : t("Collapse navigation", "Contraer navegación")}
+        aria-expanded={!collapsed} aria-controls={navigationId} onClick={() => {
+          const next = !collapsed;
+          try { localStorage.setItem("uno-studio-navigation-compact", next ? "1" : "0"); } catch { /* Optional visual preference. */ }
+          setCollapsed(next);
+        }}>
+        {collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+        <span>{t("Collapse navigation", "Contraer navegación")}</span>
+      </StudioButton>}
+    </aside>
     <div className="uw-studio-body">
-      <div className="uw-studio-mobile-bar">
+      <div className="uw-studio-mobile-bar" inert={focusMode} aria-hidden={focusMode || undefined}>
         <StudioButton ref={trigger} variant="ghost" size="icon" aria-label={t("Open navigation", "Abrir navegación")}
           aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Menu aria-hidden="true" /></StudioButton>
         <Link to={recoveryPath("/app")} onClick={event => void follow(event, recoveryPath("/app"))} className="uw-studio-mobile-brand"><img src="/brand/unoword.svg" alt="" width="28" height="28" />UnoWord</Link>
@@ -146,7 +187,8 @@ export default function AppShell({ user, children, editor = false, focusMode = f
         </div>
       </div>}
       {leaving && <p className="uw-studio-departure" role="status">{t("Saving your writing before leaving…", "Guardando tu escritura antes de salir…")}</p>}
-      <div id={contentId} className="uw-studio-content" tabIndex={-1}>{children}</div>
+      <div ref={content} id={contentId} className="uw-studio-content" tabIndex={-1}
+        onBeforeInputCapture={editor ? undefined : () => pageMotion.current?.cancel()}>{children}</div>
     </div>
     <dialog ref={dialog} className="uw-studio-drawer" aria-labelledby={titleId}
       onKeyDown={event => {

@@ -97,7 +97,7 @@ const until=async f=>{for(let i=0;i<150;i++){if(f())return;await wait(100);}thro
   // Direct recent-document links select the correct project, including completed read-only documents.
   await page.getByRole('link',{name:'A small beginning',exact:false}).click();await page.getByRole('textbox',{name:'Rename document',exact:true}).waitFor();
   assert.equal(await page.getByRole('textbox',{name:'Rename document',exact:true}).inputValue(),first.title);
-  await page.waitForFunction(expected=>document.querySelector('.uw-project-controls select')?.value===expected,NOVEL);
+  await page.waitForFunction(expected=>(document.querySelector('[aria-label="Active project"]')?.getAttribute('data-project-value')??document.querySelector('[aria-label="Active project"]')?.value)===expected,NOVEL);
   await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Home',exact:true}).click();await home.waitFor();
   await page.getByRole('link',{name:'A finished chapter',exact:false}).click();await page.getByRole('textbox',{name:'Rename document',exact:true}).waitFor();
   assert.equal(await page.getByRole('textbox',{name:'Rename document',exact:true}).inputValue(),completed.title);

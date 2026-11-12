@@ -10,6 +10,7 @@
 .uw-progress-sync { display:flex; justify-content:space-between; align-items:center; gap:14px; margin:24px 0; }
 .uw-progress-sync > div { display:grid; gap:5px; }
 .uw-progress-sync p { font-size:12px; color:var(--studio-muted); }
+@media(max-width:599px) { .uw-progress-sync p { min-block-size:2lh; } }
 .uw-progress-sync button, .uw-progress .uw-studio-button { gap:8px; }
 .uw-progress-sync .uw-studio-button { color:var(--studio-link); }
 .uw-progress-summary { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:20px; }

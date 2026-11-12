@@ -1,0 +1,67 @@
+{
+  "scope": "Actual production editor with synthetic test projects/documents, IndexedDB and isolated persistence/AI response APIs. No live provider, real account or physical device.",
+  "results": [
+    {
+      "name": "Create two real test projects and distinct documents through editor controls",
+      "result": "passed"
+    },
+    {
+      "name": "Immediate type/switch flushes final characters; slow save remains pending; current draft stays visible",
+      "result": "passed"
+    },
+    {
+      "name": "Active/paused switches preserve session IDs, document attribution, counts and paused time",
+      "result": "passed"
+    },
+    {
+      "name": "Failed autosave keeps the original project/body; retry persists it before switching",
+      "result": "passed"
+    },
+    {
+      "name": "Failed project metadata sync preserves the current document and retries the existing queue",
+      "result": "passed"
+    },
+    {
+      "name": "Slow cold load keeps the old label/body until ready; ready typing works during the fade",
+      "result": "passed"
+    },
+    {
+      "name": "Failed document load does not commit a new project; retry opens the intact target",
+      "result": "passed"
+    },
+    {
+      "name": "An uncached offline target cannot replace the current project or draft; online retry succeeds",
+      "result": "passed"
+    },
+    {
+      "name": "Switch defaults to Current Project, resets consent/results, updates goals/library, and sends only explicit scoped AI payload",
+      "result": "passed"
+    },
+    {
+      "name": "Cached offline switching protects local edits and reconnect synchronizes documents/preferences",
+      "result": "passed"
+    },
+    {
+      "name": "Rapid attempts are disabled while pending; successive committed switches are deterministic and never move documents",
+      "result": "passed"
+    },
+    {
+      "name": "Long documents, 320–1440px layouts, picker keyboard navigation, focus return and axe WCAG checks",
+      "result": "passed"
+    },
+    {
+      "name": "Mobile touch selection, dark portaled menu, active marker and Spanish keyboard selection",
+      "result": "passed"
+    },
+    {
+      "name": "Reduced-motion switching retains functionality without a document/picker animation",
+      "result": "passed"
+    },
+    {
+      "name": "Completed documents remain closed; reload restores the correct project, unfinished writing and session history",
+      "result": "passed"
+    }
+  ],
+  "documents": 3,
+  "sessions": 3
+}

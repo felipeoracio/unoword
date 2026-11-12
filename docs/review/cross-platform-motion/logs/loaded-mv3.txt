@@ -1,0 +1,5 @@
+PASS Actual Chrome action popup has native constrained dimensions and no horizontal overflow
+PASS Closing native popup keeps the real background session; real content-script typing counts four words once
+PASS Pause/resume/end use existing worker state and preserve one session/history record
+PASS Real content script suppresses counting/counter at the editor origin; isolated app-owned text is not double counted
+PASS Actual popup dark/reduced-motion/Spanish state remains usable with no running animations

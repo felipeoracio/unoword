@@ -1,0 +1,98 @@
+/* Shared motion source of truth, including surfaces rendered into body portals.
+   Reserved signature/navigation timings do not activate later-phase effects. */
+:root {
+  --uno-motion-feedback: 120ms;
+  --uno-motion-hover: 180ms;
+  --uno-motion-dropdown: 180ms;
+  --uno-motion-panel: 220ms;
+  --uno-motion-dialog: 260ms;
+  --uno-motion-page: 280ms;
+  --uno-motion-sidebar: 260ms;
+  --uno-motion-project: 360ms;
+  --uno-motion-focus: 420ms;
+  --uno-motion-achievement: 650ms;
+  --uno-motion-exit: 140ms;
+  --uno-motion-reveal: 420ms;
+  --uno-motion-stagger: 40ms;
+  --uno-motion-reveal-offset: 16px;
+  --uno-motion-hero-offset: 8px;
+  --uno-motion-hover-offset: 2px;
+  --uno-motion-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --uno-motion-exit-ease: cubic-bezier(0.4, 0, 1, 1);
+  --uno-motion-state-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --uno-motion-popup-offset: 4px;
+  --uno-motion-dialog-offset: 6px;
+}
+
+.uw-motion-control {
+  transition-property: background-color, border-color, color, opacity, translate;
+  transition-duration: var(--uno-motion-feedback);
+  transition-timing-function: var(--uno-motion-state-ease);
+}
+.uw-motion-control:active:not([aria-haspopup]):not(:disabled):not([aria-disabled="true"]) {
+  translate: 0 1px;
+}
+
+/* Base UI owns focus, opening, closing and unmounting. No JS animation timers. */
+.uw-motion-popup,
+.uw-motion-dialog,
+.uw-motion-overlay {
+  opacity: 1;
+  transition-property: opacity, transform;
+  transition-duration: var(--uno-motion-dropdown);
+  transition-timing-function: var(--uno-motion-enter-ease);
+}
+.uw-motion-popup,
+.uw-motion-dialog {
+  transform: translateY(0);
+}
+.uw-motion-dialog {
+  transition-duration: var(--uno-motion-dialog);
+}
+.uw-motion-overlay {
+  transition-property: opacity;
+}
+:is(.uw-motion-popup, .uw-motion-dialog, .uw-motion-overlay)[data-starting-style],
+:is(.uw-motion-popup, .uw-motion-dialog, .uw-motion-overlay)[data-ending-style] {
+  opacity: 0;
+}
+.uw-motion-popup[data-starting-style] {
+  transform: translateY(calc(-1 * var(--uno-motion-popup-offset)));
+}
+.uw-motion-popup[data-side="top"][data-starting-style] {
+  transform: translateY(var(--uno-motion-popup-offset));
+}
+.uw-motion-dialog[data-starting-style] {
+  transform: translateY(var(--uno-motion-dialog-offset));
+}
+:is(.uw-motion-popup, .uw-motion-dialog, .uw-motion-overlay)[data-ending-style] {
+  transition-duration: var(--uno-motion-exit);
+  transition-timing-function: var(--uno-motion-exit-ease);
+}
+/* Select aligns the current item to the trigger: preserve that exact position. */
+.uw-motion-popup[data-align-trigger="true"] {
+  transform: none;
+  transition-property: opacity;
+}
+.uw-motion-popup[data-instant] {
+  transition: none;
+}
+
+/* Covers body portals and preference changes while an interaction is running. */
+@media (prefers-reduced-motion: reduce) {
+  .uw-motion-control,
+  .uw-motion-popup,
+  .uw-motion-dialog,
+  .uw-motion-overlay {
+    transition: none !important;
+    animation: none !important;
+  }
+  .uw-motion-control:active,
+  .uw-motion-popup,
+  .uw-motion-dialog {
+    transform: none !important;
+  }
+  .uw-motion-control:active {
+    translate: none !important;
+  }
+}

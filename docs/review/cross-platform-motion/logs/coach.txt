@@ -1,0 +1,1 @@
+PASS coaching: non-AI prompts, explicit scope/consent and unchanged payloads, private document permission preserved, saved result retry without generation or insertion, all guidance/suggestion and protected pending quota gates, stable author content/session count, compact usage, responsive context review, EN/ES and dark mode.

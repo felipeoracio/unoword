@@ -1,0 +1,22 @@
+PASS Short document selection, cursor, stable text/view and enter/exit
+PASS Typing during transition: all characters saved, five legitimate words, same active session
+PASS Long document at middle: selection/scroll stable throughout every frame
+PASS Paused session: enter/exit preserves content and selection
+PASS Paused typing saved without adding session words/time or restarting the session
+PASS Active session: Focus never pauses, ends or duplicates activity
+PASS Active time stays within wall-clock tolerance; no duplicate or misattributed sessions
+PASS Sidebars fade and become inert; original open state restored without AI requests
+PASS Responsive selection/position 1440px
+PASS Responsive selection/position 1024px
+PASS Responsive selection/position 768px
+PASS Responsive selection/position 390px
+PASS Responsive selection/position 320px
+PASS Keyboard Enter/Escape, persistent save/session controls and WCAG checks at five widths
+PASS Dark theme selection and position
+PASS Touch activation, IME Escape, dark mode and Spanish focus controls
+PASS Reduced motion: selection, content, session and scroll preserved
+PASS Reduced motion at activation and preference change during transition
+PASS Intentional scrolling and rapid reversals remain under writer control
+PASS Failed save never shown as saved; retry persists the intact draft
+PASS Offline local save, reconnect, full reload/persistence, unchanged sessions and no AI calls
+PASS Phase 2 actual-editor functional suite: 21 scenarios.

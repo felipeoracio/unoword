@@ -1,0 +1,1 @@
+PASS subtitle/copy: metadata autosave/reopen/clear, separate exact title/subtitle/body clipboard and rich body formats, permission failure, offline editing/copy/reload/reconnect, no word/session inflation, TXT/MD exports, completed read-only copying, focus/dark/EN/ES and 320–1440px accessibility.

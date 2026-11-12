@@ -4,11 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   AppState,
-  Modal,
   ScrollView,
   View,
   useWindowDimensions,
 } from "react-native";
+import { StudioModal as Modal } from "../components/motion";
 import { useApp, useRepository } from "../providers/AppProvider";
 import {
   Button,
@@ -415,7 +415,6 @@ export default function Write() {
       <ProjectControls/>
       <Modal
         visible={details}
-        animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setDetails(false)}
       >

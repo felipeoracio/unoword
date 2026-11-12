@@ -5,9 +5,14 @@
 @import "@fontsource-variable/playfair-display";
 @import "@fontsource-variable/jetbrains-mono";
 @import "./styles/studio-tokens.css";
+@import "./styles/studio-motion.css";
+@import "./styles/supporting-motion.css";
 @import "./styles/studio-primitives.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Keep pending-route margins from moving BODY as account views resolve. */
+#root { display: flow-root; min-height: 100dvh; }
 
 @theme inline {
     --font-heading: var(--font-sans);

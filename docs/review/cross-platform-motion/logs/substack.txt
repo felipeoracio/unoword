@@ -1,0 +1,1 @@
+PASS production bundle with synthetic fixtures: different billing/login email, email is not Pro, invalid code, verified-proof recovery without resend, active Pro refresh, expiry display, cancel-vs-disconnect, Lifetime preservation, account switching, 1440/768/320px, WCAG, disabled live activation, CSV staging and Spanish admin.

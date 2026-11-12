@@ -1,0 +1,137 @@
+{
+  "scope": "Final local production frontend working tree; isolated non-sensitive accounts/persistence/provider APIs. Not live Supabase, email, AI, payment or devices. Reports identify approved baseline HEAD plus dirty working tree, not a production release SHA.",
+  "web": {
+    "commit": "839aa51e4968ad82c0f407c86d5f74eb2b39c982",
+    "dirty": true,
+    "startedAt": "2026-11-12T20:08:33.914Z",
+    "updatedAt": "2026-11-12T20:09:34.623Z",
+    "browser": "/usr/bin/chromium",
+    "axe": true,
+    "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+    "results": [
+      {
+        "name": "studio-progress",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 10.97,
+        "log": "tests/artifacts/phase8/studio-progress.log"
+      },
+      {
+        "name": "studio-home",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 11.37,
+        "log": "tests/artifacts/phase8/studio-home.log"
+      },
+      {
+        "name": "studio-library-settings",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 12.44,
+        "log": "tests/artifacts/phase8/studio-library-settings.log"
+      },
+      {
+        "name": "substack",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 7.29,
+        "log": "tests/artifacts/phase8/substack.log"
+      },
+      {
+        "name": "onboarding",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 21.38,
+        "log": "tests/artifacts/phase8/onboarding.log"
+      },
+      {
+        "name": "account-security",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 3.19,
+        "log": "tests/artifacts/phase8/account-security.log"
+      },
+      {
+        "name": "account-billing",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 21.82,
+        "log": "tests/artifacts/phase8/account-billing.log"
+      },
+      {
+        "name": "rewards",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 29.96,
+        "log": "tests/artifacts/phase8/rewards.log"
+      }
+    ]
+  },
+  "onboardingMode": "SUPPORT_MOTION=1; actual Tiptap and retained-tour/no-word-replay assertions.",
+  "rewardsSQL": "Existing rewards browser job uses PGlite with actual migrations/evaluation/claims and browser fixtures; no live reward account.",
+  "build": "passed: branding, TypeScript, client/SSR, prerender",
+  "lint": {
+    "status": "passed",
+    "existingWarnings": 4
+  },
+  "scenarioCounts": {
+    "editor-regression.json": 8,
+    "focus-regression.json": 21,
+    "project-regression.json": 15,
+    "navigation-regression.json": 8,
+    "editor-departure.json": {
+      "result": "passed",
+      "checks": 5
+    },
+    "marketing-regression.json": 7
+  },
+  "dedicatedSupportingGroups": 5,
+  "changesCorrectedDuringAudit": [
+    "Question wrapper retains original label spacing.",
+    "Profile buttons have measured >=44px target; native progress uses studio accent.",
+    "Two dark reward links used a 2.56:1 contrast color; now use the shared theme link token."
+  ],
+  "fixtureCorrections": [
+    "Completed timezone/statistics and AI quota response schemas, keeping application guards intact.",
+    "Awaited server-confirmed asynchronous reward preference state instead of immediate checkbox check assumptions.",
+    "Validated label then used retained textarea node for typing identity.",
+    "Preserved explicit theme choices across fixture navigations for real dark-view audits."
+  ],
+  "outstanding": [
+    "Cold private-page initial layout shifts and slow mobile lab LCP exist in both builds; not resolved Web Vitals goals.",
+    "Single matched input trials do not prove zero-overhead, INP gains or physical-device performance.",
+    "Live providers/accounts/payments, manual screen readers, physical devices, native platforms and long-session memory remain unverified."
+  ]
+}

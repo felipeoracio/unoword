@@ -1,0 +1,1 @@
+PASS: production editor; auth isolation; autosave/reopen; formatting; typed/pasted counts; library/folders/trash; conflicts; consent and coaching without insertion; profile and sources; import/export; focus/themes; 320/390/768/1440px EN/ES; offline create/edit/reload/reconnect; Free editor denial and preserved drafts; verified Pro and Lifetime access.
