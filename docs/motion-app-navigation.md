@@ -1,5 +1,8 @@
 # Phase 5 — Application navigation
 
+Phase 5 was subsequently approved. [Phase 6](motion-marketing.md) adds restrained
+marketing motion while retaining this navigation and its editor departure gate.
+
 The owner approved Phase 4 and requested this separately reviewable phase.
 It builds on PR #35. Production deployment and Phase 6 marketing motion require
 separate approval; extension/iOS and supporting profile/reward work remain in

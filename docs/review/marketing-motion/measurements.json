@@ -1,0 +1,721 @@
+{
+  "baselineCommit": "6528c31",
+  "implementationBranch": "feature/motion-marketing",
+  "capturedAgainstWorkingTree": true,
+  "scope": "Sequential local production Chromium trials with isolated synthetic catalog/persistence responses, no competing browser tests. Single run per route/device/CPU; not field/device metrics, INP, GPU FPS or proof of leak absence.",
+  "landing": {
+    "before-1x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 1,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2600,
+            "shifts": 0,
+            "longTasks": [
+              128
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2600
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2600
+              }
+            ],
+            "transferredBytes": 682380
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 24,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4159800,
+          "heapAfterBytes": 4238528
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2664,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              93
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2664
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2664
+              }
+            ],
+            "transferredBytes": 841302
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 28,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4155168,
+          "heapAfterBytes": 4232700
+        }
+      ]
+    },
+    "after-1x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 1,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2512,
+            "shifts": 0,
+            "longTasks": [
+              114
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2512
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2512
+              }
+            ],
+            "transferredBytes": 687353
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 110,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4215996,
+          "heapAfterBytes": 4299136
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2684,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              103
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2684
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2684
+              }
+            ],
+            "transferredBytes": 846275
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 107,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4215456,
+          "heapAfterBytes": 4296732
+        }
+      ]
+    },
+    "before-4x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 4,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2676,
+            "shifts": 0,
+            "longTasks": [
+              264,
+              59,
+              109,
+              103
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2676
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2676
+              }
+            ],
+            "transferredBytes": 682380
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.799999999999272,
+            "frameSamples": 41,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4165760,
+          "heapAfterBytes": 4245988
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2832,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              276,
+              86,
+              119,
+              140,
+              161
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2832
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2832
+              }
+            ],
+            "transferredBytes": 841302
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 46,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4169540,
+          "heapAfterBytes": 4249736
+        }
+      ]
+    },
+    "after-4x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 4,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2836,
+            "shifts": 0,
+            "longTasks": [
+              381,
+              142,
+              68,
+              223
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2836
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2836
+              }
+            ],
+            "transferredBytes": 687353
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.799999999999272,
+            "frameSamples": 126,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4223948,
+          "heapAfterBytes": 4308612
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2828,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              255,
+              93,
+              84,
+              151,
+              166
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2828
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2828
+              }
+            ],
+            "transferredBytes": 846275
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 125,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4227808,
+          "heapAfterBytes": 4311544
+        }
+      ]
+    }
+  },
+  "editor": {
+    "editor-before": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10099636,
+      "heapAfterBytes": 11118512,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.599999994039536,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.900000005960464,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 33.099999994039536,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.20000000298023,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "editor-after": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10059680,
+      "heapAfterBytes": 11122032,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 46.5,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.400000005960464,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 33.6000000089407,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 48.29999999701977,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "editor-repeat-before": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10071296,
+      "heapAfterBytes": 11132112,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.400000005960464,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 33.599999994039536,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 37.30000001192093,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 35.79999999701977,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    },
+    "editor-repeat-after": {
+      "scope": "Sequential actual production editor trials, 52k-character non-sensitive document, isolated persistence and held AI-response APIs. Capture-phase beforeinput to second rAF includes editor handling but is not INP; frame intervals are not GPU FPS; short heap snapshots do not prove leak absence. Not physical-device or live-provider testing.",
+      "cpuRate": 1,
+      "heapBeforeBytes": 10075176,
+      "heapAfterBytes": 11169728,
+      "rows": [
+        {
+          "width": 1440,
+          "condition": "idle",
+          "paperWidth": 820,
+          "documentCharacters": 52800,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 36.79999999701977,
+          "frameIntervalP95Ms": 16.800000000000182,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "idle",
+          "paperWidth": 370,
+          "documentCharacters": 52825,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 32.79999999701977,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 1440,
+          "condition": "AI pending",
+          "paperWidth": 735.625,
+          "documentCharacters": 52850,
+          "sessionState": "active",
+          "assistantVisible": true,
+          "beforeInputToSecondFrameP95Ms": 32.5,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        },
+        {
+          "width": 390,
+          "condition": "AI pending",
+          "paperWidth": 370,
+          "documentCharacters": 52875,
+          "sessionState": "active",
+          "assistantVisible": false,
+          "beforeInputToSecondFrameP95Ms": 31.600000008940697,
+          "frameIntervalP95Ms": 16.700000000000728,
+          "longTasksMs": [],
+          "layoutShiftExcludingRecentInput": 0,
+          "inputSamples": 25
+        }
+      ]
+    }
+  },
+  "repeatOrder": "First editor pair before then after; repeat after then before. Both pairs retained without selecting a preferred result.",
+  "earlierLandingDiagnostics": {
+    "1x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 1,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2512,
+            "shifts": 0,
+            "longTasks": [
+              102
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2512
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2512
+              }
+            ],
+            "transferredBytes": 687269
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 105,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4214488,
+          "heapAfterBytes": 4297632
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2636,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              90,
+              60
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2636
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2636
+              }
+            ],
+            "transferredBytes": 846191
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 107,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4218484,
+          "heapAfterBytes": 4299764
+        }
+      ]
+    },
+    "4x": {
+      "scope": "Sequential local Chromium production trials; synthetic product API; cold cache, 150ms latency / 1.6Mbps download; no reduced motion. Initial LCP/FCP before scrolling. Two repeated scroll cycles. rAF intervals are not GPU FPS; snapshots do not prove leak absence. Not field metrics, live providers or physical devices.",
+      "cpuRate": 4,
+      "rows": [
+        {
+          "width": 390,
+          "initial": {
+            "lcp": 2716,
+            "shifts": 0,
+            "longTasks": [
+              271,
+              54,
+              169,
+              138
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2716
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2716
+              }
+            ],
+            "transferredBytes": 687269
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.800000000000182,
+            "frameSamples": 119,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4219860,
+          "heapAfterBytes": 4304552
+        },
+        {
+          "width": 1440,
+          "initial": {
+            "lcp": 2892,
+            "shifts": 0.00011455530237268518,
+            "longTasks": [
+              321,
+              61,
+              132,
+              133
+            ],
+            "paint": [
+              {
+                "name": "first-paint",
+                "ms": 2892
+              },
+              {
+                "name": "first-contentful-paint",
+                "ms": 2892
+              }
+            ],
+            "transferredBytes": 846191
+          },
+          "scroll": {
+            "frameIntervalP95Ms": 16.700000000000728,
+            "frameSamples": 122,
+            "longTasks": [],
+            "shifts": 0
+          },
+          "heapBeforeBytes": 4219940,
+          "heapAfterBytes": 4302044
+        }
+      ]
+    }
+  },
+  "earlierDiagnosticNote": "Superseded by independent-translate fix that preserves the existing hero screenshot rotation.",
+  "bundles": {
+    "before": {
+      "index-*.js": [
+        {
+          "file": "index-DXyPkZUF.js",
+          "bytes": 282088,
+          "gzipBytes": 88803
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-pmxUJlJc.css",
+          "bytes": 132625,
+          "gzipBytes": 26917
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-Dudgz8sE.js",
+          "bytes": 414643,
+          "gzipBytes": 136068
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ]
+    },
+    "after": {
+      "index-*.js": [
+        {
+          "file": "index-BVFtBtr-.js",
+          "bytes": 285087,
+          "gzipBytes": 89799
+        }
+      ],
+      "index-*.css": [
+        {
+          "file": "index-ChwwSCTd.css",
+          "bytes": 134599,
+          "gzipBytes": 27319
+        }
+      ],
+      "WritingEditor-*.js": [
+        {
+          "file": "WritingEditor-_JOOZY6D.js",
+          "bytes": 414646,
+          "gzipBytes": 136056
+        }
+      ],
+      "WritingEditor-*.css": [
+        {
+          "file": "WritingEditor-Cyg3Ns1u.css",
+          "bytes": 37468,
+          "gzipBytes": 7194
+        }
+      ]
+    }
+  }
+}

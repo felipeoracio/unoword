@@ -12,6 +12,11 @@
   --uno-motion-focus: 420ms;
   --uno-motion-achievement: 650ms;
   --uno-motion-exit: 140ms;
+  --uno-motion-reveal: 420ms;
+  --uno-motion-stagger: 40ms;
+  --uno-motion-reveal-offset: 16px;
+  --uno-motion-hero-offset: 8px;
+  --uno-motion-hover-offset: 2px;
   --uno-motion-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --uno-motion-exit-ease: cubic-bezier(0.4, 0, 1, 1);
   --uno-motion-state-ease: cubic-bezier(0.4, 0, 0.2, 1);

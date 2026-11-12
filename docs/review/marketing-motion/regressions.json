@@ -1,0 +1,117 @@
+{
+  "scope": "Final production frontend working tree. Browser APIs/providers are isolated fixtures. No live signup/payment/Supabase/provider/device verification.",
+  "web": {
+    "commit": "6528c316f182af04bf4e3fc2dd56d3d71ce3193f",
+    "dirty": true,
+    "startedAt": "2026-11-12T19:17:29.101Z",
+    "updatedAt": "2026-11-12T19:18:27.932Z",
+    "browser": "/usr/bin/chromium",
+    "axe": true,
+    "scope": "Isolated fixtures only. Native Chrome and physical iPad unverified.",
+    "results": [
+      {
+        "name": "email-signup",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 12.21,
+        "log": "tests/artifacts/phase8/email-signup.log"
+      },
+      {
+        "name": "google-oauth",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 13.02,
+        "log": "tests/artifacts/phase8/google-oauth.log"
+      },
+      {
+        "name": "analytics",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 14.63,
+        "log": "tests/artifacts/phase8/analytics.log"
+      },
+      {
+        "name": "login-redirect",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 17.92,
+        "log": "tests/artifacts/phase8/login-redirect.log"
+      },
+      {
+        "name": "domain-migration",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 6.09,
+        "log": "tests/artifacts/phase8/domain-migration.log"
+      },
+      {
+        "name": "account-security",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 2.73,
+        "log": "tests/artifacts/phase8/account-security.log"
+      },
+      {
+        "name": "landing",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 12.81,
+        "log": "tests/artifacts/phase8/landing.log"
+      },
+      {
+        "name": "account-billing",
+        "group": "web",
+        "status": "passed",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "seconds": 22.29,
+        "log": "tests/artifacts/phase8/account-billing.log"
+      }
+    ]
+  },
+  "build": "passed (branding, TypeScript, client/SSR, prerender)",
+  "lint": {
+    "status": "passed",
+    "existingWarnings": 4
+  },
+  "editor": "8 editor/AI groups, 21 Focus Mode scenarios, 15 project switching groups passed",
+  "navigation": "8 groups plus actual Tiptap failed/held-save departure guard passed",
+  "changesCorrectedDuringAudit": [
+    "Use independent translate instead of replacing the existing hero screenshot rotation."
+  ],
+  "unresolved": [
+    "Single-run mobile 4x CPU LCP increased 160ms; samples do not establish field/device performance.",
+    "Editor input tails varied across two matched pairs; zero-overhead not established.",
+    "Live providers/accounts, actual mobile devices, manual screen readers and long-session memory remain unverified."
+  ]
+}
