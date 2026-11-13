@@ -1,3 +1,5 @@
+import { SessionCredit, sessionCreditWords } from "@/lib/session-credit";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import ProjectControls from "@/components/projects/ProjectControls";
 import ProjectManager from "@/components/projects/ProjectManager";
 import GuidedWritingProfile from "@/components/projects/GuidedWritingProfile";
@@ -596,7 +598,7 @@ export default function WritingEditor() {
       new CustomEvent("unoword-tour-action", { detail: "writing_goal_set" }),
     );
   }
-  function recordEdit(before: string, after: string, kind: string) {
+  function recordEdit(before: string, after: string, kind: string, beforeDoc: ProseMirrorNode, afterDoc: ProseMirrorNode) {
     const document = draftRef.current;
     if (!document || document.status !== "active") return;
     if (
@@ -611,35 +613,23 @@ export default function WritingEditor() {
         words: writingEngine.countWords(after),
       }));
     }
-    const delta = writingEngine.classifyDelta(before, after, kind);
-    if (!delta) return;
+    if (before === after && beforeDoc.eq(afterDoc)) return;
+    const current = session.current;
+    if (!current || current.document_id !== document.id || current.timer?.status !== "active") return;
     const timestamp = Date.now();
-    lastWritingInput.current = timestamp;
-    if (
-      session.current?.timer?.status === "paused" ||
-      session.current?.timer?.status === "ended"
-    )
-      return;
-    if (
-      session.current &&
-      writingDates.dayKey(Date.parse(session.current.started_at), timeZone) !==
-        writingDates.dayKey(timestamp, timeZone)
-    ) {
+    if (writingDates.dayKey(Date.parse(current.started_at), timeZone) !== writingDates.dayKey(timestamp, timeZone)) {
       changeSessionStatus("ended");
       session.current = null;
+      return;
     }
-    if (!session.current || session.current.document_id !== document.id)
-      startEditorSession();
-    const current = session.current;
-    if (!current) return;
-    const next = writingEngine.applyDelta(
-      { typedWords: current.typed_words, pastedWords: current.pasted_words },
-      delta,
-    );
+    lastWritingInput.current = timestamp;
+    const previous = sessionCreditWords(beforeDoc, current.id);
+    const next = sessionCreditWords(afterDoc, current.id);
+
     storeSession({
       ...current,
-      typed_words: next.typedWords,
-      pasted_words: next.pastedWords,
+      typed_words: Math.max(0, current.typed_words + next.typedWords - previous.typedWords),
+      pasted_words: Math.max(0, current.pasted_words + next.pastedWords - previous.pastedWords),
     });
   }
 
@@ -717,6 +707,22 @@ export default function WritingEditor() {
     extensions: [
       DocumentSubtitle,
       DocumentImage,
+      SessionCredit.configure({
+        credit: () => {
+          const document = draftRef.current;
+          if (!document || document.status !== "active" || document.completion_status === "completed") return null;
+          if (session.current?.document_id === document.id &&
+              (session.current.timer?.status === "paused" || session.current.timer?.status === "ended")) return null;
+          if (session.current && writingDates.dayKey(Date.parse(session.current.started_at), timeZone) !== writingDates.dayKey(Date.now(), timeZone)) {
+            changeSessionStatus("ended");
+            session.current = null;
+          }
+          if (!session.current || session.current.document_id !== document.id) startEditorSession();
+          const current = session.current;
+          if (!current) return null;
+          return { session: current.id, kind: ["insertFromPaste", "insertFromPasteAsQuotation", "insertFromDrop"].includes(inputKind.current) ? "pasted" : "typed" };
+        },
+      }),
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         code: false,
@@ -774,7 +780,7 @@ export default function WritingEditor() {
         plain_text: text,
       });
       if (!transaction.getMeta("unoImageInsertion"))
-        recordEdit(oldText, text, inputKind.current);
+        recordEdit(oldText, text, inputKind.current, transaction.before, editor.state.doc);
       inputKind.current = "insertText";
     },
     onSelectionUpdate: () => setToolbarVersion((version) => version + 1),

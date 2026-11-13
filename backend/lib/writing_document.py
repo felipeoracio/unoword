@@ -23,7 +23,7 @@ NODES = {
     "hardBreak",
     "image",
 }
-MARKS = {"bold", "italic", "underline", "strike", "link"}
+MARKS = {"bold", "italic", "underline", "strike", "link", "sessionCredit"}
 
 
 def safe_link(value):
@@ -65,7 +65,19 @@ def clean_document(value):
             for mark in node.get("marks", [])[:10]:
                 if not isinstance(mark, dict) or mark.get("type") not in MARKS:
                     continue
-                if mark["type"] == "link":
+                if mark["type"] == "sessionCredit":
+                    attrs = mark.get("attrs")
+                    if not isinstance(attrs, dict):
+                        continue
+                    session = attrs.get("session")
+                    if (isinstance(session, str)
+                            and re.fullmatch(r"[a-zA-Z0-9-]{1,64}", session)
+                            and isinstance(attrs.get("kind"), str)
+                            and attrs["kind"] in {"typed", "pasted"}):
+                        marks.append({"type": "sessionCredit", "attrs": {
+                            "session": session, "kind": attrs["kind"],
+                        }})
+                elif mark["type"] == "link":
                     href = safe_link(mark.get("attrs", {}).get("href", ""))
                     if href:
                         marks.append(
