@@ -1,7 +1,7 @@
 # Editor 2.0 — Phase 1 review
 
-Status: implemented locally on `feature/editor-2-canvas`. Not deployed. Approval
-is required before Phase 2, as specified in the brief.
+Status: Phase 1 approved by the user. Not deployed. Phase 2 implementation and
+review materials are available in [the Phase 2 review](../editor-2-phase-2/README.md).
 
 [Audit and implementation plan](../../editor-2-audit-and-plan.md)
 

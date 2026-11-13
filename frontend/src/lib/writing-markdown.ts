@@ -16,7 +16,7 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
     return `![${String(node.attrs?.alt || "").replace(/([\\`*_[\]<>])/g, "\\$1")}](${String(node.attrs?.src || "")})`;
   if (node.type === "hardBreak") return "  \n";
   if (node.type === "horizontalRule") return "\n---\n";
-  if (["bulletList", "orderedList"].includes(node.type || ""))
+  if (["bulletList", "orderedList", "taskList"].includes(node.type || ""))
     return (
       (node.content || [])
         .map(
@@ -24,7 +24,7 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
             "  ".repeat(depth) +
             (node.type === "orderedList"
               ? `${Number(node.attrs?.start || 1) + i}. `
-              : "- ") +
+              : node.type === "taskList" ? (item.attrs?.checked ? "- [x] " : "- [ ] ") : "- ") +
             toMarkdown(item, depth + 1).trim(),
         )
         .join("\n") + "\n"
@@ -32,7 +32,7 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
   const text = (node.content || [])
     .map((child) => toMarkdown(child, depth))
     .join(
-      ["doc", "listItem", "blockquote"].includes(node.type || "") ? "\n\n" : "",
+      ["doc", "listItem", "taskItem", "blockquote"].includes(node.type || "") ? "\n\n" : "",
     );
   if (
     node.type === "doc" &&

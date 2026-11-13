@@ -52,7 +52,7 @@ and export-aware layout are Phases 4/5, rather than hidden schema changes now.
 
 ## Approval checkpoints
 
-- **Phase 1 (current):** audit + canvas/layout/typography/image-fit preview. Stop
+- **Phase 1 (completed and approved):** audit + canvas/layout/typography/image-fit preview. Stop
   and request approval before Phase 2. Do not deploy this redesign without review.
 - **Phase 2:** grouped rich formatting, fonts/sizes/colors/highlight, paragraph
   styles, indentation/checklists and optional contextual toolbar. Extend frontend,

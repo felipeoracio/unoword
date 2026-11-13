@@ -40,10 +40,17 @@ export const SessionCredit = Mark.create<{ credit: () => Credit | null }>({
             });
           });
         });
-        if (!ranges.length) return null;
+        // List/heading transforms insert structural boundaries, not new prose.
+        // Do not start a writing session or relabel existing text for those edits.
+        const textRanges = ranges.filter(({ from, to }) => {
+          let hasText = false;
+          state.doc.nodesBetween(from, to, node => { if (node.isText) hasText = true; });
+          return hasText;
+        });
+        if (!textRanges.length) return null;
         const credit = getCredit();
         const tr = state.tr.setMeta("sessionCredit", true);
-        for (const { from, to } of ranges) {
+        for (const { from, to } of textRanges) {
           tr.removeMark(from, to, type);
           if (credit) tr.addMark(from, to, type.create(credit));
         }

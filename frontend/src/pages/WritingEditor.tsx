@@ -1,5 +1,9 @@
 import { SessionCredit, sessionCreditWords, type Credit } from "@/lib/session-credit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import EditorFormatting, { SelectionFormatting } from "@/components/EditorFormatting";
+import { DocumentFormatting, TextStyle, Highlight, typographyStyle } from "@/lib/document-formatting";
+import { useSelectionTools } from "@/lib/use-selection-tools";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
 import EditorViewMenu from "@/components/EditorViewMenu";
 import { usePageWidth } from "@/lib/use-page-width";
 import ProjectControls from "@/components/projects/ProjectControls";
@@ -65,6 +69,7 @@ import {
   Strikethrough,
   List,
   ListOrdered,
+  ListChecks,
   Quote,
   Link2,
   Minus,
@@ -119,6 +124,7 @@ import { cacheDelete } from "@/lib/writing-cache";
 import { toMarkdown } from "@/lib/writing-markdown";
 import "@/styles/writing-editor.css";
 import "@/styles/editor-canvas.css";
+import "@/styles/editor-formatting.css";
 import "@/styles/studio-coaching.css";
 
 const spanish: Record<string, string> = {
@@ -333,6 +339,8 @@ const toPlain = (content: JSONContent): string =>
             "bulletList",
             "orderedList",
             "listItem",
+            "taskList",
+            "taskItem",
             "blockquote",
           ].includes(content.type || "")
             ? "\n"
@@ -382,6 +390,7 @@ export default function WritingEditor() {
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
   const [pageWidth, setPageWidth] = usePageWidth(userId);
+  const [selectionTools, setSelectionTools] = useSelectionTools(userId);
   const localActivityIds = ws.localActivityIds.current;
   const writingDeviceId = useMemo(() => {
     const key = `uno-writing-device:${userId}`;
@@ -728,6 +737,11 @@ export default function WritingEditor() {
   const editor = useEditor({
     extensions: [
       DocumentSubtitle,
+      DocumentFormatting,
+      TextStyle,
+      Highlight,
+      TaskList,
+      TaskItem.configure({ nested: true, HTMLAttributes: { "data-type": "taskItem" }, a11y: { checkboxLabel: node => `Checklist: ${node.textContent || "Empty item"}` } }),
       DocumentImage,
       SessionCredit.configure({ credit: () => sessionCreditRef.current() }),
       StarterKit.configure({
@@ -810,7 +824,7 @@ export default function WritingEditor() {
     const stored = editor.schema.nodeFromJSON(activeDocument.content);
     if (loadedDocument.current !== activeDocument.id || !editor.state.doc.eq(stored)) {
       editor.commands.setContent(activeDocument.content, {emitUpdate:false});
-      editor.commands.command(({tr}) => {tr.setDocAttribute("subtitle",stored.attrs.subtitle);tr.setMeta("preventUpdate",true);return true;});
+      editor.commands.command(({tr}) => {for (const [key, value] of Object.entries(stored.attrs)) tr.setDocAttribute(key, value);tr.setMeta("preventUpdate",true);return true;});
       loadedDocument.current = activeDocument.id;
     }
     const paper = focusRoot.current?.querySelector<HTMLElement>(".uw-editor-paper");
@@ -846,7 +860,7 @@ export default function WritingEditor() {
       // setContent replaces body nodes but does not restore root attributes.
       // Hydrate metadata explicitly without treating a cloud load as an edit.
       editor.commands.command(({ tr }) => {
-        tr.setDocAttribute("subtitle", storedContent.attrs.subtitle);
+        for (const [key, value] of Object.entries(storedContent.attrs)) tr.setDocAttribute(key, value);
         tr.setMeta("preventUpdate", true);
         return true;
       });
@@ -2486,7 +2500,8 @@ export default function WritingEditor() {
                   aria-orientation="horizontal"
                   onKeyDown={event=>{
                     if(!(event.target instanceof HTMLButtonElement) || !["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
-                    const controls=[...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+                    if(event.target.closest('[popover]'))return;
+                    const controls=[...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')].filter(button=>button.getClientRects().length>0&&!button.closest('[popover]'));
                     const index=controls.indexOf(event.target);
                     const next=event.key==="Home"?0:event.key==="End"?controls.length-1:(index+(event.key==="ArrowRight"?1:-1)+controls.length)%controls.length;
                     event.preventDefault();controls[next]?.focus();
@@ -2495,31 +2510,31 @@ export default function WritingEditor() {
                 >
                   <select
                     aria-label="Heading level"
-                    disabled={activeDocument.status !== "active"}
+                    disabled={activeDocument.status !== "active" || activeDocument.completion_status === "completed"}
                     value={
-                      editor?.isActive("heading")
+                      editor?.getAttributes(editor.isActive("heading") ? "heading" : "paragraph").styleVariant ||
+                      (editor?.isActive("heading")
                         ? String(editor.getAttributes("heading").level)
-                        : "paragraph"
+                        : "paragraph")
                     }
                     onChange={(event) => {
                       const level = event.target.value;
-                      if (level === "paragraph")
-                        editor?.chain().focus().setParagraph().run();
+                      if (level === "paragraph" || level === "subtitle")
+                        editor?.chain().focus().setParagraph().updateAttributes("paragraph", { styleVariant: level === "subtitle" ? "subtitle" : null }).run();
                       else
-                        editor
-                          ?.chain()
-                          .focus()
-                          .setHeading({ level: Number(level) as 1 | 2 | 3 })
-                          .run();
+                        editor?.chain().focus().setHeading({ level: level === "title" ? 1 : Number(level) as 1 | 2 | 3 }).updateAttributes("heading", { styleVariant: level === "title" ? "title" : null }).run();
                     }}
                   >
                     <option value="paragraph">
                       {language === "es" ? "Texto" : "Text"}
                     </option>
-                    <option value="1">H1</option>
-                    <option value="2">H2</option>
-                    <option value="3">H3</option>
+                    <option value="title">{language === "es" ? "Título" : "Title"}</option>
+                    <option value="subtitle">{language === "es" ? "Subtítulo" : "Subtitle"}</option>
+                    <option value="1">{language === "es" ? "Encabezado 1" : "Heading 1"}</option>
+                    <option value="2">{language === "es" ? "Encabezado 2" : "Heading 2"}</option>
+                    <option value="3">{language === "es" ? "Encabezado 3" : "Heading 3"}</option>
                   </select>
+                  {editor && <EditorFormatting editor={editor} documentId={activeDocument.id} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} selectionTools={selectionTools} onSelectionTools={setSelectionTools} />}
                   {toolbarButton(
                     "Bold (Ctrl/⌘ B)",
                     <Bold size={16} />,
@@ -2556,6 +2571,12 @@ export default function WritingEditor() {
                     <ListOrdered size={17} />,
                     () => editor?.chain().focus().toggleOrderedList().run(),
                     editor?.isActive("orderedList"),
+                  )}
+                  {toolbarButton(
+                    language === "es" ? "Lista de tareas" : "Checklist",
+                    <ListChecks size={17} />,
+                    () => { editor?.chain().focus().toggleTaskList().run(); },
+                    editor?.isActive("taskList"),
                   )}
                   {toolbarButton(
                     "Blockquote",
@@ -2646,7 +2667,7 @@ export default function WritingEditor() {
                 </section>
               )}
               <div className="uw-editor-paper-scroll" inert={projectBusy}>
-                <article className="uw-editor-paper" ref={revealPaper}>
+                <article className="uw-editor-paper" ref={revealPaper} style={typographyStyle(activeDocument?.content.attrs?.typography)}>
                   {activeDocument && (
                     <label className="uw-project-move">
                       <span className="uw-sr-only">
@@ -2816,6 +2837,7 @@ export default function WritingEditor() {
                     )}
                   </div>
                   <EditorContent editor={editor} />
+                  {editor && <SelectionFormatting editor={editor} enabled={selectionTools && !projectBusy && activeDocument.status === "active" && activeDocument.completion_status !== "completed"} spanish={language === "es"} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
                   {(
                     <div className="uw-editor-document-options" inert={focus} aria-hidden={focus || undefined}>
                       <label>

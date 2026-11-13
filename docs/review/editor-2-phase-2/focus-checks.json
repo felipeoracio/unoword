@@ -1,0 +1,4 @@
+{
+  "scope": "Actual production Tiptap editor; non-sensitive short/long documents, real browser typing/selection/scroll and IndexedDB, isolated API persistence/session endpoints. Not a live Supabase/provider or physical-device test.",
+  "results": null
+}

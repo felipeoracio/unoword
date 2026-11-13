@@ -7,6 +7,7 @@ from io import BytesIO
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException
+from lib.writing_formatting import text_style, paragraph_style, typography, color
 from lib.writing_image import image_attributes, png_image, import_image
 
 EMPTY = {"type": "doc", "content": [{"type": "paragraph"}]}
@@ -18,12 +19,14 @@ NODES = {
     "bulletList",
     "orderedList",
     "listItem",
+    "taskList",
+    "taskItem",
     "blockquote",
     "horizontalRule",
     "hardBreak",
     "image",
 }
-MARKS = {"bold", "italic", "underline", "strike", "link", "sessionCredit"}
+MARKS = {"bold", "italic", "underline", "strike", "link", "sessionCredit", "textStyle", "highlight"}
 
 
 def safe_link(value):
@@ -65,7 +68,16 @@ def clean_document(value):
             for mark in node.get("marks", [])[:10]:
                 if not isinstance(mark, dict) or mark.get("type") not in MARKS:
                     continue
-                if mark["type"] == "sessionCredit":
+                if mark["type"] == "textStyle":
+                    attrs = text_style(mark.get("attrs"))
+                    if attrs:
+                        marks.append({"type": "textStyle", "attrs": attrs})
+                elif mark["type"] == "highlight":
+                    attrs = mark.get("attrs")
+                    shade = color(attrs.get("color")) if isinstance(attrs, dict) else None
+                    if shade:
+                        marks.append({"type": "highlight", "attrs": {"color": shade}})
+                elif mark["type"] == "sessionCredit":
                     attrs = mark.get("attrs")
                     if not isinstance(attrs, dict):
                         continue
@@ -102,6 +114,14 @@ def clean_document(value):
                 if subtitle is not None and (not isinstance(subtitle, str) or len(subtitle) > 500 or "\x00" in subtitle):
                     raise HTTPException(422, "invalid_document_subtitle")
                 allowed["subtitle"] = subtitle
+            if kind == "doc" and attrs.get("typography") is not None:
+                if not isinstance(attrs["typography"], dict):
+                    raise HTTPException(422, "invalid_document_typography")
+                allowed["typography"] = typography(attrs["typography"])
+            if kind in {"paragraph", "heading"}:
+                allowed.update(paragraph_style(attrs))
+            if kind == "taskItem":
+                allowed["checked"] = attrs.get("checked") is True
             if kind == "heading":
                 allowed["level"] = max(1, min(3, int(attrs.get("level", 1))))
             if kind in {"heading", "paragraph"} and attrs.get("textAlign") in {
@@ -124,6 +144,7 @@ def clean_document(value):
                     "heading",
                     "bulletList",
                     "orderedList",
+                    "taskList",
                     "blockquote",
                     "horizontalRule",
                     "image",
@@ -136,6 +157,8 @@ def clean_document(value):
                     "heading": {"text", "hardBreak"},
                     "bulletList": {"listItem"},
                     "orderedList": {"listItem"},
+                    "taskList": {"taskItem"},
+                    "taskItem": blocks,
                 }
                 if any(
                     child["type"] not in allowed_children.get(kind, set())
@@ -165,7 +188,7 @@ def plain_text(node):
     sep = (
         "\n"
         if node.get("type")
-        in {"doc", "bulletList", "orderedList", "listItem", "blockquote"}
+        in {"doc", "bulletList", "orderedList", "listItem", "taskList", "taskItem", "blockquote"}
         else ""
     )
     return sep.join(plain_text(child) for child in node.get("content", []))
@@ -201,18 +224,18 @@ def markdown(node, depth=0):
     if kind == "horizontalRule":
         return "\n---\n"
     children = node.get("content", [])
-    if kind in {"bulletList", "orderedList"}:
+    if kind in {"bulletList", "orderedList", "taskList"}:
         start = node.get("attrs", {}).get("start", 1)
         return (
             "\n".join(
                 ("  " * depth)
-                + (f"{start+i}. " if kind == "orderedList" else "- ")
+                + (f"{start+i}. " if kind == "orderedList" else ("- [x] " if child.get("attrs", {}).get("checked") else "- [ ] ") if kind == "taskList" else "- ")
                 + markdown(child, depth + 1).strip()
                 for i, child in enumerate(children)
             )
             + "\n"
         )
-    text = ("\n\n" if kind in {"doc", "listItem", "blockquote"} else "").join(
+    text = ("\n\n" if kind in {"doc", "listItem", "taskItem", "blockquote"} else "").join(
         markdown(child, depth) for child in children
     )
     if kind == "doc" and document_subtitle(node):
@@ -226,19 +249,31 @@ def markdown(node, depth=0):
 
 def to_docx(content, title):
     from docx import Document
-    from docx.shared import Inches
+    from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     from docx.opc.constants import RELATIONSHIP_TYPE
 
     document = Document()
+    defaults = typography(content.get("attrs", {}).get("typography"))
+    font_names = {"serif": "Georgia", "sans": "Arial", "mono": "Courier New"}
+    if content.get("attrs", {}).get("typography"):
+        normal = document.styles["Normal"]
+        normal.font.name = font_names[defaults["fontFamily"]]
+        normal.font.size = Pt(defaults["fontSize"] * .75)
+        normal.paragraph_format.line_spacing = defaults["lineHeight"]
+        normal.paragraph_format.space_after = Pt(defaults["paragraphSpacing"] * defaults["fontSize"] * .75)
     if document_subtitle(content):
         document.add_paragraph(document_subtitle(content), style="Subtitle")
 
-    def block(node, list_style=None):
+    def block(node, list_style=None, task_marker=None):
         kind = node["type"]
-        if kind in {"doc", "bulletList", "orderedList", "blockquote", "listItem"}:
+        if kind == "taskItem":
+            for index, child in enumerate(node.get("content", [])):
+                block(child, None, ("[x] " if node.get("attrs", {}).get("checked") else "[ ] ") if index == 0 else None)
+            return
+        if kind in {"doc", "bulletList", "orderedList", "taskList", "blockquote", "listItem"}:
             style = (
                 "List Bullet"
                 if kind == "bulletList"
@@ -258,7 +293,18 @@ def to_docx(content, title):
             picture._inline.docPr.set("descr", node["attrs"].get("alt", ""))
             return
         paragraph = document.add_paragraph(style=list_style)
-        if kind == "heading":
+        if task_marker:
+            paragraph.add_run(task_marker)
+        attrs = node.get("attrs", {})
+        if attrs.get("styleVariant") in {"title", "subtitle"}:
+            paragraph.style = attrs["styleVariant"].title()
+        if attrs.get("lineHeight") is not None:
+            paragraph.paragraph_format.line_spacing = attrs["lineHeight"]
+        if attrs.get("paragraphSpacing") is not None:
+            paragraph.paragraph_format.space_after = Pt(attrs["paragraphSpacing"] * defaults["fontSize"] * .75)
+        if attrs.get("indent"):
+            paragraph.paragraph_format.left_indent = Inches(attrs["indent"] * .25)
+        if kind == "heading" and not attrs.get("styleVariant"):
             paragraph.style = f'Heading {node.get("attrs",{}).get("level",1)}'
         alignment = node.get("attrs", {}).get("textAlign")
         if alignment:
@@ -280,6 +326,19 @@ def to_docx(content, title):
             run.italic = "italic" in marks
             run.underline = "underline" in marks
             run.font.strike = "strike" in marks
+            for mark in child.get("marks", []):
+                attrs = mark.get("attrs", {})
+                if mark["type"] == "textStyle":
+                    if attrs.get("fontFamily") in font_names:
+                        run.font.name = font_names[attrs["fontFamily"]]
+                    if attrs.get("fontSize"):
+                        run.font.size = Pt(attrs["fontSize"] * .75)
+                    if color(attrs.get("color")):
+                        run.font.color.rgb = RGBColor.from_string(attrs["color"][1:])
+                elif mark["type"] == "highlight" and color(attrs.get("color")):
+                    shade = OxmlElement("w:shd")
+                    shade.set(qn("w:fill"), attrs["color"][1:])
+                    run._r.get_or_add_rPr().append(shade)
             link = next(
                 (mark for mark in child.get("marks", []) if mark["type"] == "link"),
                 None,
@@ -306,6 +365,8 @@ def to_pdf(content, title):
     from reportlab.lib.styles import getSampleStyleSheet
 
     styles = getSampleStyleSheet()
+    defaults = typography(content.get("attrs", {}).get("typography"))
+    font_names = {"serif": "Times-Roman", "sans": "Helvetica", "mono": "Courier"}
     story = []
     if document_subtitle(content):
         story.extend([Paragraph(escape(document_subtitle(content)).replace("\n", "<br/>"), styles["Italic"]), Spacer(1, 12)])
@@ -321,7 +382,19 @@ def to_pdf(content, title):
                 "underline": "u",
                 "strike": "strike",
             }.get(mark["type"])
-            if wrapper:
+            if mark["type"] == "textStyle":
+                attrs = mark.get("attrs", {})
+                values = []
+                if attrs.get("fontFamily") in font_names:
+                    values.append(f'name="{font_names[attrs["fontFamily"]]}"')
+                if attrs.get("fontSize"):
+                    values.append(f'size="{attrs["fontSize"] * .75}"')
+                if color(attrs.get("color")):
+                    values.append(f'color="{attrs["color"]}"')
+                text = '<font ' + ' '.join(values) + '>' + text + '</font>' if values else text
+            elif mark["type"] == "highlight" and color(mark.get("attrs", {}).get("color")):
+                text = f'<span backColor="{mark["attrs"]["color"]}">{text}</span>'
+            elif wrapper:
                 text = f"<{wrapper}>{text}</{wrapper}>"
             elif mark["type"] == "link":
                 text = f'<link href="{escape(mark["attrs"]["href"],quote=True)}" color="blue">{text}</link>'
@@ -337,12 +410,12 @@ def to_pdf(content, title):
         if kind == "horizontalRule":
             story.extend([HRFlowable(width="100%", color="#b8c5d9"), Spacer(1, 12)])
             return
-        if kind in {"doc", "bulletList", "orderedList", "listItem", "blockquote"}:
+        if kind in {"doc", "bulletList", "orderedList", "listItem", "taskList", "taskItem", "blockquote"}:
             for index, child in enumerate(node.get("content", [])):
                 marker = (
                     f'{node.get("attrs",{}).get("start",1)+index}.'
                     if kind == "orderedList"
-                    else "•" if kind == "bulletList" else prefix
+                    else "•" if kind == "bulletList" else ("[x]" if child.get("attrs", {}).get("checked") else "[ ]") if kind == "taskList" else prefix
                 )
                 block(child, marker, quoted or kind == "blockquote")
             return
@@ -359,11 +432,31 @@ def to_pdf(content, title):
             ),
             leftIndent=18 if prefix or quoted else 0,
         )
+        attrs = node.get("attrs", {})
+        has_typography = bool(content.get("attrs", {}).get("typography"))
+        if has_typography or attrs.get("styleVariant"):
+            style.fontName = font_names[defaults["fontFamily"]]
+            if kind == "heading" or attrs.get("styleVariant") == "title":
+                style.fontName = {"serif": "Times-Bold", "sans": "Helvetica-Bold", "mono": "Courier-Bold"}[defaults["fontFamily"]]
+            elif attrs.get("styleVariant") == "subtitle":
+                style.fontName = {"serif": "Times-Italic", "sans": "Helvetica-Oblique", "mono": "Courier-Oblique"}[defaults["fontFamily"]]
+        if has_typography:
+            style.fontSize = defaults["fontSize"] * .75 * (1.5 if kind == "heading" else 1)
+        if attrs.get("styleVariant") == "title":
+            style.fontSize = defaults["fontSize"] * 1.5
+        elif attrs.get("styleVariant") == "subtitle":
+            style.fontSize = defaults["fontSize"] * .9
+        if has_typography or attrs.get("styleVariant") or attrs.get("lineHeight") is not None:
+            style.leading = style.fontSize * (attrs.get("lineHeight") or defaults["lineHeight"])
+        custom_spacing = has_typography or attrs.get("paragraphSpacing") is not None
+        if custom_spacing:
+            style.spaceAfter = style.fontSize * attrs.get("paragraphSpacing", defaults["paragraphSpacing"])
+        style.leftIndent += attrs.get("indent", 0) * 18
         text = "".join(inline(child) for child in node.get("content", []))
         story.extend(
             [
                 Paragraph(text or " ", style, bulletText=prefix),
-                Spacer(1, 8),
+                Spacer(1, 0 if custom_spacing else 8),
             ]
         )
 
