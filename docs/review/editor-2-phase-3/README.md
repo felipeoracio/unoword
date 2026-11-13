@@ -1,8 +1,9 @@
 # Editor 2.0 — Phase 3 review
 
 Phase 2 approved. Phase 3 adds image layouts/captions and tables to the existing
-Tiptap editor. This work is local, on `feature/editor-2-media`, and not deployed.
-Stop for approval before Phase 4.
+Tiptap editor. The user approved deployment and Phase 4. Commit `e351f93` is
+now deployed to https://unoword.app (Vercel READY).
+[Phase 4 review](../editor-2-phase-4/README.md) records the release checks and new work.
 
 [Implementation plan](../../editor-2-phase-3-plan.md)
 

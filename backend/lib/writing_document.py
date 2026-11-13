@@ -24,6 +24,7 @@ NODES = {
     "taskItem",
     "blockquote",
     "horizontalRule",
+    "pageBreak",
     "hardBreak",
     "image",
     "table",
@@ -125,6 +126,12 @@ def clean_document(value):
                 if subtitle is not None and (not isinstance(subtitle, str) or len(subtitle) > 500 or "\x00" in subtitle):
                     raise HTTPException(422, "invalid_document_subtitle")
                 allowed["subtitle"] = subtitle
+            if kind == "doc" and attrs.get("printLayout") is not None:
+                layout = attrs["printLayout"]
+                if (not isinstance(layout, dict) or layout.get("size") not in {"letter", "a4"}
+                        or layout.get("margin") not in {"normal", "narrow", "wide"}):
+                    raise HTTPException(422, "invalid_document_print_layout")
+                allowed["printLayout"] = {"size": layout["size"], "margin": layout["margin"]}
             if kind == "doc" and attrs.get("typography") is not None:
                 if not isinstance(attrs["typography"], dict):
                     raise HTTPException(422, "invalid_document_typography")
@@ -164,7 +171,7 @@ def clean_document(value):
                     "table",
                 }
                 allowed_children = {
-                    "doc": blocks,
+                    "doc": blocks | {"pageBreak"},
                     "blockquote": blocks,
                     "listItem": blocks,
                     "paragraph": {"text", "hardBreak"},
@@ -251,6 +258,8 @@ def markdown(node, depth=0):
         return f'![{alt}]({node["attrs"]["src"]})' + ("\n\n" + caption if caption else "")
     if kind == "hardBreak":
         return "  \n"
+    if kind == "pageBreak":
+        return '\n<div data-page-break="true"></div>\n'
     if kind == "horizontalRule":
         return "\n---\n"
     children = node.get("content", [])
@@ -286,6 +295,14 @@ def to_docx(content, title):
     from docx.opc.constants import RELATIONSHIP_TYPE
 
     document = Document()
+    layout = content.get("attrs", {}).get("printLayout")
+    if layout:
+        section = document.sections[0]
+        section.page_width = Inches(8.27 if layout["size"] == "a4" else 8.5)
+        section.page_height = Inches(11.69 if layout["size"] == "a4" else 11)
+        margin = Inches({"normal": 1, "narrow": .5, "wide": 1.25}[layout["margin"]])
+        section.top_margin = section.bottom_margin = section.left_margin = section.right_margin = margin
+    available_pixels = (document.sections[0].page_width - document.sections[0].left_margin - document.sections[0].right_margin) / 914400 * 96
     defaults = typography(content.get("attrs", {}).get("typography"))
     font_names = {"serif": "Georgia", "sans": "Arial", "mono": "Courier New"}
     if content.get("attrs", {}).get("typography"):
@@ -317,6 +334,9 @@ def to_docx(content, title):
             for child in node.get("content", []):
                 block(child, style, container=container)
             return
+        if kind == "pageBreak":
+            container.add_page_break()
+            return
         if kind == "table":
             from lib.writing_table_exports import docx_table
             docx_table(node, container, block, Inches, OxmlElement, qn)
@@ -325,9 +345,9 @@ def to_docx(content, title):
             from lib.writing_table_exports import image_display_width
             data, (width, height) = png_image(node["attrs"]["src"])
             cell_width = getattr(container, "width", None)
-            available = min(576, cell_width.inches * 96) if cell_width else 576
+            available = min(available_pixels, cell_width.inches * 96) if cell_width else available_pixels
             target = image_display_width(node["attrs"], width, available)
-            scale = min(target / width, 7.2 * 96 / height)
+            scale = min(target / width, (document.sections[0].page_height - document.sections[0].top_margin - document.sections[0].bottom_margin) / 914400 * 96 / height)
             paragraph = container.add_paragraph()
             paragraph.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(node["attrs"].get("align"), WD_ALIGN_PARAGRAPH.LEFT)
             picture = paragraph.add_run().add_picture(BytesIO(data), width=Inches(width / 96 * scale))
@@ -404,9 +424,18 @@ def to_docx(content, title):
 
 
 def to_pdf(content, title):
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Image as PDFImage
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, PageBreak, Image as PDFImage
     from reportlab.lib.styles import getSampleStyleSheet
 
+    from reportlab.lib.pagesizes import A4, letter
+    layout = content.get("attrs", {}).get("printLayout")
+    page_options = {}
+    available_points = 420
+    if layout:
+        page_size = A4 if layout["size"] == "a4" else letter
+        margin = {"normal": 72, "narrow": 36, "wide": 90}[layout["margin"]]
+        page_options = {"pagesize": page_size, "leftMargin": margin, "rightMargin": margin, "topMargin": margin, "bottomMargin": margin}
+        available_points = page_size[0] - 2 * margin - 12
     styles = getSampleStyleSheet()
     defaults = typography(content.get("attrs", {}).get("typography"))
     font_names = {"serif": "Times-Roman", "sans": "Helvetica", "mono": "Courier"}
@@ -443,9 +472,13 @@ def to_pdf(content, title):
                 text = f'<link href="{escape(mark["attrs"]["href"],quote=True)}" color="blue">{text}</link>'
         return text
 
-    def block(node, prefix=None, quoted=False, target=None, available=420):
+    def block(node, prefix=None, quoted=False, target=None, available=None):
+        available = available_points if available is None else available
         target = story if target is None else target
         kind = node["type"]
+        if kind == "pageBreak":
+            target.append(PageBreak())
+            return
         if kind == "table":
             from lib.writing_table_exports import pdf_table
             target.extend([pdf_table(node, block, available), Spacer(1, 12)])
@@ -514,7 +547,7 @@ def to_pdf(content, title):
 
     block(content)
     output = BytesIO()
-    SimpleDocTemplate(output, title=title, author="UnoWord").build(story)
+    SimpleDocTemplate(output, title=title, author="UnoWord", **page_options).build(story)
     return output.getvalue()
 
 

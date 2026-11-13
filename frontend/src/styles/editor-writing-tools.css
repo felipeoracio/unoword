@@ -1,0 +1,23 @@
+.uw-writing-tool-actions{display:grid;gap:5px}
+.uw-editor .uw-editor-toolbar .uw-writing-tool-actions button{width:auto;min-height:38px;height:auto;padding:9px 12px;text-align:start}
+.uw-document-search,.uw-document-outline{position:fixed;z-index:55;right:16px;top:236px;max-width:calc(100vw - 24px);border:1px solid var(--we-line,#ccd5e3);border-radius:12px;background:var(--we-paper,#fff);color:var(--we-text,#102b55);box-shadow:0 8px 30px #102b5526;padding:12px}
+.uw-document-search{width:440px}
+.uw-document-search [role=search],.uw-replace-controls{display:flex;align-items:center;gap:6px}
+.uw-document-search input:not([type=checkbox]){min-width:0;flex:1;width:100%;padding:8px;border:1px solid var(--we-line,#ccd5e3);border-radius:6px;background:var(--we-bg,#f6f8fc);color:inherit}
+.uw-document-search button,.uw-document-outline button{min-height:36px;min-width:36px;padding:6px;border-radius:6px;color:inherit;background:transparent;border:1px solid var(--we-line,#ccd5e3)}
+.uw-search-options{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;font-size:12px}
+.uw-search-options label{display:flex;gap:5px;align-items:center}.uw-search-options [role=status]{margin-inline-start:auto}
+.uw-replace-controls{flex-wrap:wrap}.uw-replace-controls input{flex-basis:100%!important}.uw-replace-controls button{flex:1}
+.uw-writing-canvas .uw-search-match{background:#fff0a6;color:#102b55}.uw-writing-canvas .uw-search-active{background:#d8eaff;outline:2px solid #086bff}
+.uw-document-outline{width:240px;max-height:min(65vh,560px);overflow:auto}
+.uw-document-outline header,.uw-writing-tools-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.uw-document-outline ol{list-style:none;padding:0;margin:12px 0 0}.uw-document-outline li{margin:4px 0}.uw-document-outline nav button{width:100%;text-align:start;border:0;overflow-wrap:anywhere}.uw-document-outline nav button:hover{background:var(--we-soft,#e9f1fc)}
+.uw-writing-tools-dialog{margin:auto;color:#102b55;background:#f6f8fc;border:1px solid #ccd5e3;border-radius:16px;padding:24px;width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;font-family:system-ui,sans-serif}
+.uw-writing-tools-dialog::backdrop{background:#102b555c}.uw-writing-tools-dialog h2{font-size:20px;margin:0}.uw-writing-tools-dialog p{font-size:13px;line-height:1.6}
+.uw-writing-tools-dialog button,.uw-writing-tools-dialog select{min-height:40px;border:1px solid #bbc7d9;border-radius:7px;padding:7px 10px;color:#102b55;background:white}
+.uw-document-statistics>div,.uw-shortcut-list>div{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #d9e0eb;padding:12px 0;font-size:14px}.uw-document-statistics dd{font-weight:650}.uw-document-statistics dd,.uw-shortcut-list dd{margin:0;text-align:end}.uw-shortcut-list kbd{font:12px ui-monospace,monospace}
+.uw-print-dialog{width:min(1000px,calc(100vw - 24px))}.uw-print-settings{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:16px}.uw-print-settings label{display:grid;gap:5px;font-size:13px}.uw-print-dialog iframe{width:100%;height:55vh;border:1px solid #ccd5e3;border-radius:8px;background:#e9edf3}
+.uw-writing-canvas [data-page-break]{display:block;position:relative;border-top:1px dashed #879ab6;margin:30px 0;height:22px;user-select:none}.uw-writing-canvas [data-page-break]::after{content:'Page break';display:block;text-align:center;font:11px system-ui,sans-serif;color:var(--we-muted,#536782);padding-top:4px}.uw-writing-canvas [data-page-break].ProseMirror-selectednode{outline:2px solid #086bff}
+.uw-document-search button:disabled,.uw-writing-tool-actions button:disabled{opacity:.5}.uw-document-search :focus-visible,.uw-document-outline :focus-visible,.uw-writing-tools-dialog :focus-visible{outline:2px solid #086bff;outline-offset:2px}
+@media(max-width:600px){.uw-document-search,.uw-document-outline{right:12px;top:328px}.uw-document-search button,.uw-document-outline button{min-height:44px;min-width:40px}.uw-writing-tools-dialog{padding:16px}.uw-shortcut-list>div{flex-direction:column;gap:6px}.uw-shortcut-list dd{text-align:start}.uw-print-settings label{flex:1}.uw-print-dialog iframe{height:48vh}}
+@media print{.uw-document-search,.uw-document-outline,.uw-writing-tools-dialog{display:none!important}}

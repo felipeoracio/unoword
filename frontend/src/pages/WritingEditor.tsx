@@ -1,3 +1,6 @@
+import EditorWritingTools from "@/components/EditorWritingTools";
+import { DocumentSearch } from "@/lib/document-search";
+import { DocumentPageBreak, PrintSettings } from "@/lib/document-tools";
 import { SessionCredit, sessionCreditWords, type Credit } from "@/lib/session-credit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { ImageControls, TableControls } from "@/components/EditorMediaControls";
@@ -744,6 +747,7 @@ export default function WritingEditor() {
   const editor = useEditor({
     extensions: [
       DocumentSubtitle,
+      DocumentSearch, DocumentPageBreak, PrintSettings,
       DocumentFormatting,
       TextStyle,
       Highlight,
@@ -2543,6 +2547,7 @@ export default function WritingEditor() {
                     <option value="2">{language === "es" ? "Encabezado 2" : "Heading 2"}</option>
                     <option value="3">{language === "es" ? "Encabezado 3" : "Heading 3"}</option>
                   </select>
+                  {editor && <EditorWritingTools editor={editor} documentId={`${userId}:${activeDocument.id}`} title={activeDocument.title} subtitle={documentSubtitle(activeDocument.content)} focus={focus} busy={projectBusy} spanish={language === "es"} onSave={ws.flushWrites} onFocus={() => setFocus(!focus)} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
                   {editor && <ImageControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
                   {editor && <TableControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
                   {editor && <EditorFormatting editor={editor} documentId={activeDocument.id} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} selectionTools={selectionTools} onSelectionTools={setSelectionTools} />}

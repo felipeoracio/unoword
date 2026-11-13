@@ -17,6 +17,7 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
   if (node.type === "image")
     return `![${String(node.attrs?.alt || "").replace(/([\\`*_[\]<>])/g, "\\$1")}](${String(node.attrs?.src || "")})` + ((node.content || []).length ? "\n\n" + (node.content || []).map(child => toMarkdown(child, depth)).join("") : "");
   if (node.type === "hardBreak") return "  \n";
+  if (node.type === "pageBreak") return '\n<div data-page-break="true"></div>\n';
   if (node.type === "horizontalRule") return "\n---\n";
   if (["bulletList", "orderedList", "taskList"].includes(node.type || ""))
     return (

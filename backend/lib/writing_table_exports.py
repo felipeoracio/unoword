@@ -54,14 +54,16 @@ def docx_table(node, container, block, Inches, OxmlElement, qn):
     table.style = "Table Grid"
     table.autofit = False
     total = sum(widths)
+    section = container.sections[0]
+    available_inches = (section.page_width - section.left_margin - section.right_margin) / 914400
     for column, width in zip(table.columns, widths):
-        column.width = Inches(6 * width / total)
+        column.width = Inches(available_inches * width / total)
     for cell, r, c in placements:
         attrs = cell.get("attrs", {})
         target = table.cell(r, c)
         if attrs.get("colspan", 1) > 1 or attrs.get("rowspan", 1) > 1:
             target = target.merge(table.cell(r + attrs.get("rowspan", 1) - 1, c + attrs.get("colspan", 1) - 1))
-        target.width = Inches(6 * sum(widths[c:c + attrs.get("colspan", 1)]) / total)
+        target.width = Inches(available_inches * sum(widths[c:c + attrs.get("colspan", 1)]) / total)
         for child in cell.get("content", []):
             if attrs.get("align") and child["type"] in {"paragraph", "heading"} and not child.get("attrs", {}).get("textAlign"):
                 child = {**child, "attrs": {**child.get("attrs", {}), "textAlign": attrs["align"]}}
