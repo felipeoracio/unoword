@@ -1,0 +1,49 @@
+/* Phase 3: images remain block figures; tables scroll inside the paper. */
+.uw-editor .uw-writing-canvas .uw-document-image {
+  position: relative; box-sizing: border-box; max-width: 100%; min-width: 0;
+  margin-block: 28px; margin-inline: auto; padding: 0;
+}
+.uw-editor .uw-writing-canvas .uw-document-image[data-align="left"] { margin-left: 0; margin-right: auto; }
+.uw-editor .uw-writing-canvas .uw-document-image[data-align="right"] { margin-left: auto; margin-right: 0; }
+.uw-editor[data-page-width] .uw-writing-canvas .uw-document-image img {
+  width: 100%; max-width: 100%; height: auto; display: block; margin: 0;
+  border-radius: 6px; cursor: default;
+}
+.uw-editor .uw-document-image.ProseMirror-selectednode { outline: 2px solid var(--we-blue); outline-offset: 5px; border-radius: 6px; }
+.uw-editor .uw-image-media { position: relative; display: block; width: 100%; }
+.uw-editor .uw-image-caption { margin-top: 10px; font-size: .82em; line-height: 1.5; text-align: center; color: var(--we-muted); outline: none; }
+.uw-editor .uw-image-caption[hidden] { display: none; }
+.uw-editor .uw-image-caption[data-empty="true"]::before { content: "Add a caption…"; pointer-events: none; opacity: .8; }
+.uw-editor[lang="es"] .uw-image-caption[data-empty="true"]::before { content: "Añade un pie de imagen…"; }
+.uw-editor .uw-image-handle { position: absolute; z-index: 3; top: calc(100% - 8px); width: 20px; height: 20px; border: 2px solid var(--we-paper); border-radius: 5px; background: var(--we-blue); box-shadow: 0 0 0 1px var(--we-blue); padding: 0; touch-action: none; }
+.uw-editor .uw-image-handle[hidden] { display: none; }
+.uw-editor .uw-image-handle-left { left: -8px; cursor: nesw-resize; }
+.uw-editor .uw-image-handle-right { right: -8px; cursor: nwse-resize; }
+.uw-editor .uw-image-handle:focus-visible { outline: 3px solid var(--we-blue); outline-offset: 4px; }
+.uw-editor .uw-writing-canvas[contenteditable="false"] .uw-image-handle { display: none; }
+.uw-editor .uw-format-panel input:is([type="number"], [type="text"]) { width: 100%; min-height: 40px; padding: 8px; border: 1px solid var(--we-line); border-radius: 7px; background: var(--we-paper); color: var(--we-text); font: inherit; }
+.uw-editor .uw-media-actions { display: grid; gap: 8px; margin-top: 16px; }
+.uw-editor .uw-table-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0; }
+.uw-editor .uw-table-actions .uw-format-action { font-size: 11px; }
+.uw-editor .uw-format-panel form { margin: 12px 0; }
+.uw-editor .uw-writing-canvas .tableWrapper {
+  max-width: 100%; width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+  margin-block: 24px; padding: 3px 1px 12px; scrollbar-width: thin;
+}
+.uw-editor .tableWrapper:focus-visible { outline: 2px solid var(--we-blue); outline-offset: 2px; }
+.uw-editor .uw-writing-canvas table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 0; font-size: .9em; }
+.uw-editor .uw-writing-canvas :is(td, th) { position: relative; min-width: 80px; border: 1px solid var(--we-line); padding: 10px 12px; vertical-align: top; overflow-wrap: anywhere; }
+.uw-editor .uw-writing-canvas th { font-weight: 650; background: var(--we-soft); }
+.uw-editor .uw-writing-canvas :is(td, th) > :last-child { margin-bottom: 0; }
+.uw-editor .uw-writing-canvas .selectedCell::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #086bff18; pointer-events: none; }
+.uw-editor .uw-writing-canvas .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background: var(--we-blue); pointer-events: none; }
+.uw-editor .uw-writing-canvas.resize-cursor { cursor: col-resize; }
+@media(max-width:600px) {
+  .uw-editor .uw-image-handle { width: 28px; height: 28px; top: calc(100% - 12px); }
+  .uw-editor .uw-format-panel input:is([type="number"], [type="text"]) { min-height: 44px; }
+  .uw-editor .uw-writing-canvas :is(td, th) { padding: 8px; }
+}
+@media (forced-colors:active) {
+  .uw-editor .uw-image-handle { background: Highlight; border-color: Canvas; }
+  .uw-editor .uw-writing-canvas .selectedCell::after { outline: 2px solid Highlight; background: transparent; }
+}

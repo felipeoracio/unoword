@@ -7,7 +7,7 @@ const origin=process.env.WRITING_TEST_ORIGIN||'http://localhost:4175';
 const owner='00000000-0000-4000-8000-000000000001';
 const other='00000000-0000-4000-8000-000000000002';
 const empty={type:'doc',content:[{type:'paragraph'}]};
-const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','listItem','bulletList','orderedList','taskList','taskItem'].includes(n.type)?'\n':'');
+const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','listItem','bulletList','orderedList','taskList','taskItem','table','tableRow','tableCell','tableHeader'].includes(n.type)?'\n':'');
 const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,sorted(v)])):value;
 (async()=>{
  const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
@@ -78,7 +78,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      status=409;value={detail:'revision_conflict'};
     }else{
      let content=body.content;
-     if(process.env.EDITOR_FORMATTING_ONLY==='1' && process.env.FORMATTING_PYTHON){
+     if((process.env.EDITOR_FORMATTING_ONLY==='1'||process.env.EDITOR_MEDIA_ONLY==='1') && process.env.FORMATTING_PYTHON){
       const result=require('node:child_process').spawnSync(process.env.FORMATTING_PYTHON,['-c','import sys,json;from lib.writing_document import clean_document;print(json.dumps(clean_document(json.load(sys.stdin))))'],{input:JSON.stringify(content),encoding:'utf8',env:{...process.env,PYTHONPATH:path.resolve('backend')}});
       assert.equal(result.status,0,result.stderr);content=JSON.parse(result.stdout);
      }
@@ -138,6 +138,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      ['layout-shift',entries=>{for(const e of entries)if(!e.hadRecentInput)window.__studioLab.layoutShift+=e.value;}],
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
+  }
+  if(process.env.EDITOR_MEDIA_ONLY==='1'){
+   await require('./helpers/editor-media-flow.cjs')({page,context,origin,documents,activity,requests,errors,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   return;
   }
   if(process.env.EDITOR_FORMATTING_ONLY==='1'){
    await require('./helpers/editor-formatting-flow.cjs')({page,context,origin,documents,activity,requests,errors,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});

@@ -43,7 +43,25 @@ def image_attributes(attrs):
     title = attrs.get("title")
     if not isinstance(alt, str) or len(alt) > 500 or (title is not None and (not isinstance(title, str) or len(title) > 500)) or "\x00" in alt or (title and "\x00" in title):
         raise HTTPException(422, "invalid_document_image")
-    return {"src": attrs["src"], "alt": alt, "title": title, "width": width, "height": height}
+    out = {"src": attrs["src"], "alt": alt, "title": title, "width": width, "height": height}
+    if "displayMode" in attrs:
+        if attrs["displayMode"] not in {"auto", "original", "fit", "custom"}:
+            raise HTTPException(422, "invalid_document_image")
+        out["displayMode"] = attrs["displayMode"]
+    if "displayWidth" in attrs:
+        value = attrs["displayWidth"]
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool) or not 80 <= value <= 1600):
+            raise HTTPException(422, "invalid_document_image")
+        out["displayWidth"] = value
+    if "align" in attrs:
+        if attrs["align"] not in {"left", "center", "right"}:
+            raise HTTPException(422, "invalid_document_image")
+        out["align"] = attrs["align"]
+    if "captionVisible" in attrs:
+        if not isinstance(attrs["captionVisible"], bool):
+            raise HTTPException(422, "invalid_document_image")
+        out["captionVisible"] = attrs["captionVisible"]
+    return out
 
 def png_image(source):
     data, size = read_image(source)

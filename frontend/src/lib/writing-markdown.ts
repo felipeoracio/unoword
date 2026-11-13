@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/react";
+import { tableMarkdown } from "./table-markdown";
 export function toMarkdown(node: JSONContent, depth = 0): string {
   if (node.type === "text") {
     let text = (node.text || "").replace(/([\\`*_[\]<>])/g, "\\$1");
@@ -12,8 +13,9 @@ export function toMarkdown(node: JSONContent, depth = 0): string {
     }
     return text;
   }
+  if (node.type === "table") return tableMarkdown(node, toMarkdown);
   if (node.type === "image")
-    return `![${String(node.attrs?.alt || "").replace(/([\\`*_[\]<>])/g, "\\$1")}](${String(node.attrs?.src || "")})`;
+    return `![${String(node.attrs?.alt || "").replace(/([\\`*_[\]<>])/g, "\\$1")}](${String(node.attrs?.src || "")})` + ((node.content || []).length ? "\n\n" + (node.content || []).map(child => toMarkdown(child, depth)).join("") : "");
   if (node.type === "hardBreak") return "  \n";
   if (node.type === "horizontalRule") return "\n---\n";
   if (["bulletList", "orderedList", "taskList"].includes(node.type || ""))

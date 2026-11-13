@@ -1,5 +1,7 @@
 import { SessionCredit, sessionCreditWords, type Credit } from "@/lib/session-credit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { ImageControls, TableControls } from "@/components/EditorMediaControls";
+import { DocumentTable, DocumentTableRow, DocumentTableCell, DocumentTableHeader, TableLimits } from "@/lib/document-table";
 import EditorFormatting, { SelectionFormatting } from "@/components/EditorFormatting";
 import { DocumentFormatting, TextStyle, Highlight, typographyStyle } from "@/lib/document-formatting";
 import { useSelectionTools } from "@/lib/use-selection-tools";
@@ -125,6 +127,7 @@ import { toMarkdown } from "@/lib/writing-markdown";
 import "@/styles/writing-editor.css";
 import "@/styles/editor-canvas.css";
 import "@/styles/editor-formatting.css";
+import "@/styles/editor-media.css";
 import "@/styles/studio-coaching.css";
 
 const spanish: Record<string, string> = {
@@ -341,6 +344,10 @@ const toPlain = (content: JSONContent): string =>
             "listItem",
             "taskList",
             "taskItem",
+            "table",
+            "tableRow",
+            "tableCell",
+            "tableHeader",
             "blockquote",
           ].includes(content.type || "")
             ? "\n"
@@ -743,6 +750,7 @@ export default function WritingEditor() {
       TaskList,
       TaskItem.configure({ nested: true, HTMLAttributes: { "data-type": "taskItem" }, a11y: { checkboxLabel: node => `Checklist: ${node.textContent || "Empty item"}` } }),
       DocumentImage,
+      DocumentTable, DocumentTableRow, DocumentTableCell, DocumentTableHeader, TableLimits,
       SessionCredit.configure({ credit: () => sessionCreditRef.current() }),
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -1945,7 +1953,8 @@ export default function WritingEditor() {
         disabled={
           activeDocument?.status !== "active" ||
           activeDocument?.completion_status === "completed" ||
-          ws.completionBusy
+          ws.completionBusy ||
+          (Boolean(editor?.isActive("image")) && ["Bullet list", "Numbered list", "Checklist", "Lista de tareas", "Blockquote", "Divider"].includes(label))
         }
         aria-label={label}
         title={label}
@@ -2510,7 +2519,7 @@ export default function WritingEditor() {
                 >
                   <select
                     aria-label="Heading level"
-                    disabled={activeDocument.status !== "active" || activeDocument.completion_status === "completed"}
+                    disabled={activeDocument.status !== "active" || activeDocument.completion_status === "completed" || editor?.isActive("image")}
                     value={
                       editor?.getAttributes(editor.isActive("heading") ? "heading" : "paragraph").styleVariant ||
                       (editor?.isActive("heading")
@@ -2534,6 +2543,8 @@ export default function WritingEditor() {
                     <option value="2">{language === "es" ? "Encabezado 2" : "Heading 2"}</option>
                     <option value="3">{language === "es" ? "Encabezado 3" : "Heading 3"}</option>
                   </select>
+                  {editor && <ImageControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
+                  {editor && <TableControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
                   {editor && <EditorFormatting editor={editor} documentId={activeDocument.id} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} selectionTools={selectionTools} onSelectionTools={setSelectionTools} />}
                   {toolbarButton(
                     "Bold (Ctrl/⌘ B)",

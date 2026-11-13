@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 from fastapi import HTTPException
 from lib.writing_formatting import text_style, paragraph_style, typography, color
+from lib.writing_tables import cell_attributes, table_grid
 from lib.writing_image import image_attributes, png_image, import_image
 
 EMPTY = {"type": "doc", "content": [{"type": "paragraph"}]}
@@ -25,6 +26,10 @@ NODES = {
     "horizontalRule",
     "hardBreak",
     "image",
+    "table",
+    "tableRow",
+    "tableCell",
+    "tableHeader",
 }
 MARKS = {"bold", "italic", "underline", "strike", "link", "sessionCredit", "textStyle", "highlight"}
 
@@ -45,7 +50,7 @@ def safe_link(value):
 def clean_document(value):
     count = 0
 
-    def visit(node, depth=0):
+    def visit(node, depth=0, inside_table=False):
         nonlocal count
         count += 1
         if (
@@ -56,11 +61,17 @@ def clean_document(value):
         ):
             raise HTTPException(422, "unsupported_document_structure")
         kind = node["type"]
+        if kind == "table" and inside_table:
+            raise HTTPException(422, "invalid_document_table")
         out = {"type": kind}
         if kind == "image":
-            if node.get("content"):
-                raise HTTPException(422, "invalid_document_structure")
             out["attrs"] = image_attributes(node.get("attrs") or {})
+            if "content" in node:
+                if not isinstance(node["content"], list):
+                    raise HTTPException(422, "invalid_document_structure")
+                out["content"] = [visit(child, depth + 1, inside_table or kind == "table") for child in node["content"]]
+                if any(child["type"] not in {"text", "hardBreak"} for child in out["content"]) or len(plain_text(out)) > 2000:
+                    raise HTTPException(422, "invalid_document_image_caption")
             return out
         if kind == "text":
             out["text"] = str(node.get("text", ""))
@@ -120,6 +131,8 @@ def clean_document(value):
                 allowed["typography"] = typography(attrs["typography"])
             if kind in {"paragraph", "heading"}:
                 allowed.update(paragraph_style(attrs))
+            if kind in {"tableCell", "tableHeader"}:
+                allowed.update(cell_attributes(attrs))
             if kind == "taskItem":
                 allowed["checked"] = attrs.get("checked") is True
             if kind == "heading":
@@ -138,7 +151,7 @@ def clean_document(value):
             if "content" in node:
                 if not isinstance(node["content"], list):
                     raise HTTPException(422, "invalid_document")
-                out["content"] = [visit(child, depth + 1) for child in node["content"]]
+                out["content"] = [visit(child, depth + 1, inside_table or kind == "table") for child in node["content"]]
                 blocks = {
                     "paragraph",
                     "heading",
@@ -148,6 +161,7 @@ def clean_document(value):
                     "blockquote",
                     "horizontalRule",
                     "image",
+                    "table",
                 }
                 allowed_children = {
                     "doc": blocks,
@@ -159,12 +173,22 @@ def clean_document(value):
                     "orderedList": {"listItem"},
                     "taskList": {"taskItem"},
                     "taskItem": blocks,
+                    "table": {"tableRow"},
+                    "tableRow": {"tableCell", "tableHeader"},
+                    "tableCell": blocks - {"table"},
+                    "tableHeader": blocks - {"table"},
                 }
                 if any(
                     child["type"] not in allowed_children.get(kind, set())
                     for child in out["content"]
                 ):
                     raise HTTPException(422, "invalid_document_structure")
+        if kind in {"table", "tableRow", "tableCell", "tableHeader"} and "content" not in out:
+            raise HTTPException(422, "invalid_document_table")
+        if kind in {"tableCell", "tableHeader"} and not out.get("content"):
+            raise HTTPException(422, "invalid_document_table")
+        if kind == "table":
+            table_grid(out)
         return out
 
     try:
@@ -185,10 +209,12 @@ def plain_text(node):
         return node.get("text", "")
     if node.get("type") == "hardBreak":
         return "\n"
+    if node.get("type") == "tableRow":
+        return "\t".join(plain_text(child) for child in node.get("content", []))
     sep = (
         "\n"
         if node.get("type")
-        in {"doc", "bulletList", "orderedList", "listItem", "taskList", "taskItem", "blockquote"}
+        in {"doc", "bulletList", "orderedList", "listItem", "taskList", "taskItem", "blockquote", "table", "tableCell", "tableHeader"}
         else ""
     )
     return sep.join(plain_text(child) for child in node.get("content", []))
@@ -216,9 +242,13 @@ def markdown(node, depth=0):
                 wrapper = {"bold": "**", "italic": "*", "strike": "~~"}[name]
                 text = wrapper + text + wrapper
         return text
+    if kind == "table":
+        from lib.writing_table_exports import table_markdown
+        return table_markdown(node, markdown)
     if kind == "image":
         alt = re.sub(r"([\\`*_\[\]<>])", r"\\\1", node["attrs"].get("alt", ""))
-        return f'![{alt}]({node["attrs"]["src"]})'
+        caption = "".join(markdown(child) for child in node.get("content", []))
+        return f'![{alt}]({node["attrs"]["src"]})' + ("\n\n" + caption if caption else "")
     if kind == "hardBreak":
         return "  \n"
     if kind == "horizontalRule":
@@ -267,11 +297,12 @@ def to_docx(content, title):
     if document_subtitle(content):
         document.add_paragraph(document_subtitle(content), style="Subtitle")
 
-    def block(node, list_style=None, task_marker=None):
+    def block(node, list_style=None, task_marker=None, container=None):
+        container = document if container is None else container
         kind = node["type"]
         if kind == "taskItem":
             for index, child in enumerate(node.get("content", [])):
-                block(child, None, ("[x] " if node.get("attrs", {}).get("checked") else "[ ] ") if index == 0 else None)
+                block(child, None, ("[x] " if node.get("attrs", {}).get("checked") else "[ ] ") if index == 0 else None, container)
             return
         if kind in {"doc", "bulletList", "orderedList", "taskList", "blockquote", "listItem"}:
             style = (
@@ -284,15 +315,27 @@ def to_docx(content, title):
                 )
             )
             for child in node.get("content", []):
-                block(child, style)
+                block(child, style, container=container)
+            return
+        if kind == "table":
+            from lib.writing_table_exports import docx_table
+            docx_table(node, container, block, Inches, OxmlElement, qn)
             return
         if kind == "image":
+            from lib.writing_table_exports import image_display_width
             data, (width, height) = png_image(node["attrs"]["src"])
-            scale = min(6 / (width / 96), 7.2 / (height / 96), 1)
-            picture = document.add_paragraph().add_run().add_picture(BytesIO(data), width=Inches(width / 96 * scale))
+            cell_width = getattr(container, "width", None)
+            available = min(576, cell_width.inches * 96) if cell_width else 576
+            target = image_display_width(node["attrs"], width, available)
+            scale = min(target / width, 7.2 * 96 / height)
+            paragraph = container.add_paragraph()
+            paragraph.alignment = {"left": WD_ALIGN_PARAGRAPH.LEFT, "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT}.get(node["attrs"].get("align"), WD_ALIGN_PARAGRAPH.LEFT)
+            picture = paragraph.add_run().add_picture(BytesIO(data), width=Inches(width / 96 * scale))
             picture._inline.docPr.set("descr", node["attrs"].get("alt", ""))
+            if node.get("content"):
+                block({"type": "paragraph", "attrs": {"textAlign": node["attrs"].get("align", "center")}, "content": node["content"]}, container=container)
             return
-        paragraph = document.add_paragraph(style=list_style)
+        paragraph = container.add_paragraph(style=list_style)
         if task_marker:
             paragraph.add_run(task_marker)
         attrs = node.get("attrs", {})
@@ -400,15 +443,24 @@ def to_pdf(content, title):
                 text = f'<link href="{escape(mark["attrs"]["href"],quote=True)}" color="blue">{text}</link>'
         return text
 
-    def block(node, prefix=None, quoted=False):
+    def block(node, prefix=None, quoted=False, target=None, available=420):
+        target = story if target is None else target
         kind = node["type"]
+        if kind == "table":
+            from lib.writing_table_exports import pdf_table
+            target.extend([pdf_table(node, block, available), Spacer(1, 12)])
+            return
         if kind == "image":
+            from lib.writing_table_exports import image_display_width
             data, (width, height) = png_image(node["attrs"]["src"])
-            scale = min(420 / width, 600 / height, 1)
-            story.extend([PDFImage(BytesIO(data), width=width*scale, height=height*scale, hAlign="LEFT"), Spacer(1, 12)])
+            target_width = image_display_width(node["attrs"], width, available / .75) * .75
+            scale = min(target_width / width, 600 / height)
+            target.extend([PDFImage(BytesIO(data), width=width*scale, height=height*scale, hAlign=node["attrs"].get("align", "left").upper()), Spacer(1, 8)])
+            if node.get("content"):
+                block({"type": "paragraph", "attrs": {"textAlign": node["attrs"].get("align", "center")}, "content": node["content"]}, target=target, available=available)
             return
         if kind == "horizontalRule":
-            story.extend([HRFlowable(width="100%", color="#b8c5d9"), Spacer(1, 12)])
+            target.extend([HRFlowable(width="100%", color="#b8c5d9"), Spacer(1, 12)])
             return
         if kind in {"doc", "bulletList", "orderedList", "listItem", "taskList", "taskItem", "blockquote"}:
             for index, child in enumerate(node.get("content", [])):
@@ -417,7 +469,7 @@ def to_pdf(content, title):
                     if kind == "orderedList"
                     else "•" if kind == "bulletList" else ("[x]" if child.get("attrs", {}).get("checked") else "[ ]") if kind == "taskList" else prefix
                 )
-                block(child, marker, quoted or kind == "blockquote")
+                block(child, marker, quoted or kind == "blockquote", target, available)
             return
         style = (
             styles[f'Heading{node.get("attrs",{}).get("level",1)}']
@@ -453,7 +505,7 @@ def to_pdf(content, title):
             style.spaceAfter = style.fontSize * attrs.get("paragraphSpacing", defaults["paragraphSpacing"])
         style.leftIndent += attrs.get("indent", 0) * 18
         text = "".join(inline(child) for child in node.get("content", []))
-        story.extend(
+        target.extend(
             [
                 Paragraph(text or " ", style, bulletText=prefix),
                 Spacer(1, 0 if custom_spacing else 8),

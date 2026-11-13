@@ -23,7 +23,7 @@ export const SessionCredit = Mark.create<{ credit: () => Credit | null }>({
     return [new Plugin({
       appendTransaction(transactions, _oldState, state) {
         if (!transactions.some(tr => tr.docChanged) ||
-            transactions.some(tr => isHistoryTransaction(tr) || tr.getMeta("preventUpdate") || tr.getMeta("sessionCredit"))) return null;
+            transactions.some(tr => isHistoryTransaction(tr) || tr.getMeta("preventUpdate") || tr.getMeta("sessionCredit") || tr.getMeta("unoPreserveCredit"))) return null;
         const ranges: { from: number; to: number }[] = [];
         transactions.forEach((transaction, transactionIndex) => {
           transaction.steps.forEach((_step, stepIndex) => {

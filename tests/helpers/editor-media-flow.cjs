@@ -1,0 +1,117 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {waitProject}=require('./project-picker.cjs');
+module.exports=async({page,context,origin,documents,activity,requests,errors,setSignedIn,setOffline})=>{
+ const out=path.resolve('tests/artifacts/editor-media');fs.mkdirSync(out,{recursive:true});setSignedIn(true);
+ await context.addInitScript(()=>localStorage.setItem('uno-tour-launch-hidden:00000000-0000-4000-8000-000000000001','1'));
+ const results=[],pass=name=>{results.push(name);console.log('PASS '+name)};
+ const canvas=page.getByRole('textbox',{name:'Document content',exact:true});
+ const saved=()=>page.locator('.uw-editor-save .uw-studio-status[data-tone="success"]').waitFor();
+ const body=()=>canvas.evaluate(el=>el.editor.getJSON());
+ const credits=()=>[...activity.values()].reduce((s,a)=>({typed:s.typed+a.typed_words,pasted:s.pasted+a.pasted_words}),{typed:0,pasted:0});
+ const imageNode=async()=> (await body()).content.find(n=>n.type==='image');
+ const settle=()=>page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})))});
+ async function panel(name){const node=page.locator('.uw-format-panel').filter({has:page.getByRole('heading',{name:name==='Image'?'Image layout':/table/i})});if(!await node.isVisible())await page.getByRole('button',{name,exact:true}).click();return node;}
+ const dismiss=()=>page.keyboard.press('Escape');
+ const undo=async()=>{await page.getByRole('button',{name:'Undo (Ctrl/⌘ Z)',exact:true}).click();await saved()};
+ const redo=async()=>{await page.getByRole('button',{name:'Redo (Ctrl/⌘ Shift Z)',exact:true}).click();await saved()};
+ async function picture(width,height){return Buffer.from(await page.evaluate(({width,height})=>{const c=document.createElement('canvas');c.width=width;c.height=height;const d=c.getContext('2d'),g=d.createLinearGradient(0,0,0,height);g.addColorStop(0,'#a7c6d5');g.addColorStop(1,'#e8ddc4');d.fillStyle=g;d.fillRect(0,0,width,height);d.fillStyle='#f6edcf';d.beginPath();d.arc(width*.73,height*.28,Math.min(width,height)*.11,0,2*Math.PI);d.fill();for(const [color,y,peak] of [['#8fa6ac',.7,.32],['#627e86',.9,.5],['#344e5c',1.1,.7]]){d.fillStyle=color;d.beginPath();d.moveTo(0,height*y);d.lineTo(width*.26,height*peak);d.lineTo(width*.5,height*(y-.1));d.lineTo(width*.7,height*(peak+.1));d.lineTo(width,height*(y-.2));d.lineTo(width,height);d.lineTo(0,height);d.fill();}return c.toDataURL('image/png').split(',')[1]},{width,height}),'base64');}
+ await page.goto(origin+'/editor');await waitProject(page,'');await page.getByRole('button',{name:'Start New Document',exact:true}).click();
+ await page.getByLabel('Rename document',{exact:true}).fill('Notes on a quiet journey');await canvas.focus();await page.keyboard.type('A quiet place gives a story room to grow.');await saved();
+ const originalCredit=credits(),originalText=await canvas.innerText();await canvas.evaluate(el=>{window.__mediaView=el.editor.view;el.editor.commands.setTextSelection({from:3,to:15});el.editor.view.focus()});
+ await page.getByRole('button',{name:'Add image',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Add image',exact:true});await dialog.getByLabel('Image file',{exact:true}).setInputFiles({name:'journey.png',mimeType:'image/png',buffer:await picture(1200,700)});await dialog.getByRole('button',{name:'Insert image',exact:true}).click();await dialog.waitFor({state:'hidden'});await saved();
+ const img=canvas.locator('figure[data-document-image] img').first();await img.evaluate(el=>el.decode());
+ assert.ok((await canvas.innerText()).includes(originalText),'image insertion does not replace selected prose');assert.deepEqual(credits(),originalCredit);
+ await img.click();const figure=canvas.locator('figure[data-document-image]').first();await page.getByRole('button',{name:'Image',exact:true}).waitFor();
+ let p=await panel('Image');await p.getByLabel('Image description',{exact:true}).fill('A quiet mountain landscape');await p.getByLabel('Image width',{exact:true}).fill('320');await p.getByRole('button',{name:'Apply size',exact:true}).click();await dismiss();await saved();
+ assert.equal((await imageNode()).attrs.displayWidth,320);assert.ok(Math.abs((await img.boundingBox()).width-320)<1);
+ await undo();assert.equal((await imageNode()).attrs.displayMode,'auto');await redo();assert.equal((await imageNode()).attrs.displayWidth,320);
+ p=await panel('Image');await p.getByLabel('Image alignment',{exact:true}).selectOption('right');await dismiss();await saved();
+ const aligned=await figure.evaluate(el=>({right:el.getBoundingClientRect().right,parentRight:el.parentElement.getBoundingClientRect().right}));assert.ok(Math.abs(aligned.right-aligned.parentRight)<2);
+ p=await panel('Image');await p.getByLabel('Image size',{exact:true}).selectOption('fit');await dismiss();await saved();assert.equal((await imageNode()).attrs.displayMode,'fit');
+ assert.ok(Math.abs((await img.boundingBox()).width-await canvas.evaluate(el=>el.clientWidth))<2);
+ p=await panel('Image');await p.getByLabel('Image size',{exact:true}).selectOption('original');await dismiss();await saved();
+ assert.ok((await img.boundingBox()).width<=await canvas.evaluate(el=>el.clientWidth));
+ p=await panel('Image');await p.getByLabel('Image width',{exact:true}).fill('400');await p.getByRole('button',{name:'Apply size',exact:true}).click();await dismiss();await saved();
+ await img.click();const handle=figure.getByRole('slider',{name:'Resize image from right',exact:true});await handle.focus();await page.keyboard.press('ArrowLeft');await saved();assert.equal((await imageNode()).attrs.displayWidth,390);
+ await img.click();const h=await handle.boundingBox();await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+h.width/2+60,h.y+h.height/2,{steps:6});await page.mouse.up();await saved();
+ assert.ok(Math.abs((await imageNode()).attrs.displayWidth-450)<2);await undo();assert.equal((await imageNode()).attrs.displayWidth,390);await redo();assert.deepEqual(credits(),originalCredit);
+ pass('Image insertion preserves selected writing; numeric, keyboard and drag resizing preserve ratio and have one-step undo/redo');
+ p=await panel('Image');await p.getByRole('button',{name:'Add caption',exact:true}).click();const caption=figure.locator('figcaption');await page.keyboard.type('Figure 1 — A place to begin.');await saved();
+ assert.ok((await imageNode()).content.some(n=>n.marks?.some(m=>m.type==='sessionCredit')));assert.equal(credits().typed,originalCredit.typed+6);
+ await caption.evaluate(el=>{const data=new DataTransfer();data.setData('text/plain',' Pasted details');el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}))});await saved();assert.equal(credits().pasted,originalCredit.pasted+2,'caption paste stays separate from typed progress');
+ const captionSnapshot=await body();
+ await canvas.evaluate(el=>{let pos;el.editor.state.doc.descendants((node,p)=>{if(node.type.name==='image')pos=p});el.editor.commands.setTextSelection(pos+1);el.editor.view.focus()});await page.keyboard.press('Backspace');assert.equal(await caption.evaluate(el=>el.dispatchEvent(new InputEvent('beforeinput',{inputType:'deleteContentBackward',bubbles:true,cancelable:true}))),false,'soft-keyboard deletion is blocked at the caption boundary');assert.deepEqual(await body(),captionSnapshot,'Backspace at caption start cannot remove the image');
+ await canvas.evaluate(el=>{let pos,size;el.editor.state.doc.descendants((node,p)=>{if(node.type.name==='image'){pos=p;size=node.content.size}});el.editor.commands.setTextSelection(pos+1+size);el.editor.view.focus()});await page.keyboard.press('Delete');assert.deepEqual(await body(),captionSnapshot,'Delete at caption end cannot pull surrounding prose into the caption');
+ assert.equal(await page.getByLabel('Heading level',{exact:true}).isDisabled(),true,'body heading styles cannot convert a caption into a paragraph and discard its image');
+ await page.keyboard.press('ControlOrMeta+Alt+1');assert.equal(await canvas.locator('figure').count(),1);
+ await page.keyboard.press('Enter');await page.keyboard.type('A few details are worth keeping.');await saved();assert.equal(await canvas.locator('figure').count(),1,'Enter exits the caption instead of duplicating the image');
+ const afterCaption=await body(),captionCredit=credits();await img.click();p=await panel('Image');await p.getByRole('button',{name:'Delete image',exact:true}).click();await dismiss();await saved();assert.equal(await canvas.locator('figure').count(),0);await undo();assert.deepEqual(await body(),afterCaption);assert.deepEqual(credits(),captionCredit);
+ await img.click();p=await panel('Image');await p.getByLabel('Replacement image file',{exact:true}).setInputFiles({name:'portrait.png',mimeType:'image/png',buffer:await picture(600,1000)});await p.getByRole('button',{name:'Replace image',exact:true}).waitFor();await dismiss();await saved();
+ await img.evaluate(el=>el.decode());assert.equal((await imageNode()).attrs.width,600);assert.equal((await imageNode()).attrs.height,1000);assert.ok((await imageNode()).content.length);assert.deepEqual(credits(),captionCredit);
+ const box=await img.boundingBox();assert.ok(Math.abs(box.width/box.height-.6)<.01);
+ const idleTransactions=await canvas.evaluate(el=>new Promise(resolve=>{const before=Number(document.querySelector('.uw-editor-toolbar').getAttribute('data-version'));requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(Number(document.querySelector('.uw-editor-toolbar').getAttribute('data-version'))-before)))}));assert.ok(idleTransactions<10,'caption view must settle without a mutation/autosave loop');
+ pass('Caption writing participates in session credit; deletion/undo restores image, caption and credit; replacement retains caption and aspect ratio');
+ await page.setViewportSize({width:1440,height:1200});await img.click();await panel('Image');await page.screenshot({path:path.join(out,'image-desktop.png')});await dismiss();
+ await canvas.evaluate(el=>{el.editor.commands.setTextSelection({from:1,to:15});el.editor.view.focus()});const beforeTableText=await canvas.innerText(),beforeTableCredit=credits();
+ p=await panel('Table');await p.getByLabel('Table rows',{exact:true}).fill('3');await p.getByLabel('Table columns',{exact:true}).fill('3');await p.getByRole('button',{name:'Insert table',exact:true}).click();await dismiss();await saved();
+ assert.ok((await canvas.innerText()).includes(originalText),'table insertion preserves selected prose');assert.deepEqual(credits(),beforeTableCredit);
+ const cells=canvas.locator('th,td');await cells.nth(0).click();await page.keyboard.type('Moment');await page.keyboard.press('Tab');await page.keyboard.type('Detail');await page.keyboard.press('Tab');await page.keyboard.type('Question');await page.keyboard.press('Tab');await page.keyboard.type('Morning');await page.keyboard.press('Tab');await page.keyboard.type('A quiet room');await saved();
+ const enteredCredit=credits();
+ p=await panel('Table');await p.getByLabel('Cell alignment',{exact:true}).selectOption('center');await p.getByLabel('Column width',{exact:true}).fill('220');await p.getByRole('button',{name:'Apply column width',exact:true}).click();await dismiss();await saved();
+ let table=(await body()).content.find(n=>n.type==='table');assert.ok(table.content.some(row=>row.content.some(cell=>cell.attrs.colwidth?.includes(220))));assert.deepEqual(credits(),enteredCredit);
+ p=await panel('Table');await p.getByRole('button',{name:'Add row below',exact:true}).click();await dismiss();await saved();table=(await body()).content.find(n=>n.type==='table');assert.equal(table.content.length,4);
+ p=await panel('Table');await p.getByRole('button',{name:'Add column after',exact:true}).click();await dismiss();await saved();table=(await body()).content.find(n=>n.type==='table');assert.equal(table.content[0].content.length,4);
+ p=await panel('Table');await p.getByRole('button',{name:'Delete column',exact:true}).click();await dismiss();await saved();p=await panel('Table');await p.getByRole('button',{name:'Delete row',exact:true}).click();await dismiss();await saved();
+ pass('Table insertion preserves prose; real Tab navigation, cell alignment, numeric widths and row/column editing save through server validation');
+ await canvas.evaluate(el=>{const positions=[];el.editor.state.doc.descendants((node,pos)=>{if(node.type.name==='tableHeader')positions.push({pos,size:node.nodeSize})});el.editor.commands.setTextSelection(positions[1].pos+positions[1].size-2);el.editor.view.focus();const data=new DataTransfer();data.setData('text/plain',' Pasted notes');el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}))});await saved();
+ // Select a real rectangular cell range through the documented gesture.
+ await canvas.locator('th').nth(0).click();await canvas.locator('th').nth(1).click({modifiers:['Shift']});
+ assert.ok(await canvas.locator('.selectedCell').count()>=2,'Shift + click selects cells for merging');
+ const beforeMerge=await body(),mergeCredit=credits();p=await panel('Table');await p.getByRole('button',{name:'Merge cells',exact:true}).click();await dismiss();await saved();
+ table=(await body()).content.find(n=>n.type==='table');assert.equal(table.content[0].content[0].attrs.colspan,2);assert.deepEqual(credits(),mergeCredit);
+ await undo();assert.deepEqual(await body(),beforeMerge);await redo();p=await panel('Table');await p.getByRole('button',{name:'Split cell',exact:true}).click();await dismiss();await saved();table=(await body()).content.find(n=>n.type==='table');assert.equal(table.content[0].content[0].attrs.colspan,1);
+ pass('Merge/split preserve cell text and original credit; undo/redo restores the complete table');
+ await cells.nth(0).click();p=await panel('Table');await p.getByLabel('Column width',{exact:true}).fill('300');await p.getByRole('button',{name:'Apply column width',exact:true}).click();await dismiss();await saved();
+ const firstCell=await cells.nth(0).boundingBox();
+ await page.mouse.move(firstCell.x+firstCell.width-2,firstCell.y+firstCell.height/2);await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.classList.contains('resize-cursor'));
+ await page.mouse.down();await page.mouse.move(firstCell.x+firstCell.width+38,firstCell.y+firstCell.height/2,{steps:6});await page.mouse.up();await saved();
+ table=(await body()).content.find(n=>n.type==='table');assert.ok(Math.abs(table.content[0].content[0].attrs.colwidth[0]-340)<3,'pointer column resizing saves its width');
+ pass('Pointer column resizing preserves table content and saves the resulting width');
+ for(const [index,text] of [[1,'Observation'],[3,'Morning'],[4,'A quiet room'],[5,'What changed?'],[6,'Journey'],[7,'An open path'],[8,'Where next?']]) { await cells.nth(index).click();await page.keyboard.type(text); }
+ await saved();await canvas.locator('.tableWrapper').scrollIntoViewIfNeeded();
+ await page.screenshot({path:path.join(out,'table-desktop.png')});
+ const written=await body(),writtenCredit=credits();await page.reload();await waitProject(page,'');await canvas.waitFor();await saved();assert.deepEqual(await body(),written);assert.deepEqual(credits(),writtenCredit);
+ pass('Reopening restores image dimensions/alignment/caption, table widths, structure and session history');
+ if(process.env.AXE_SCRIPT)await page.addScriptTag({path:process.env.AXE_SCRIPT});
+ for(const width of [1440,1024,768,390,320]){
+  await page.setViewportSize({width,height:1100});await img.scrollIntoViewIfNeeded();await img.evaluate(el=>el.decode());let geometry=await img.boundingBox();assert.ok(geometry.width<=await canvas.evaluate(el=>el.clientWidth)+1);assert.ok(Math.abs(geometry.width/geometry.height-.6)<.01);
+  await img.click();await panel('Image');if(width===390)await page.screenshot({path:path.join(out,'image-mobile.png')});
+  if(process.env.AXE_SCRIPT){const violations=await page.evaluate(async()=> (await axe.run(document.querySelector('.uw-studio'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));assert.deepEqual(violations,[]);}await dismiss();
+  await cells.nth(0).scrollIntoViewIfNeeded();await cells.nth(0).click();p=await panel('Table');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  if(width<=390)assert.ok(await canvas.locator('.tableWrapper').evaluate(el=>el.scrollWidth>el.clientWidth),'wide tables scroll within the paper');
+  if(process.env.AXE_SCRIPT){const violations=await page.evaluate(async()=> (await axe.run(document.querySelector('.uw-studio'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})));assert.deepEqual(violations,[]);}
+  if(width===390)await page.screenshot({path:path.join(out,'table-mobile.png')});await dismiss();
+ }
+ pass('Images fit five viewport widths; wide tables scroll inside the paper on mobile; image/table controls pass axe checks');
+ await page.setViewportSize({width:1440,height:1100});setOffline(true);await context.setOffline(true);await img.click();p=await panel('Image');await p.getByLabel('Image alignment',{exact:true}).selectOption('left');await dismiss();await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.toLowerCase().includes('offline'));
+ const offline=await body();setOffline(false);await context.setOffline(false);await page.getByRole('button',{name:'Refresh / retry sync',exact:true}).click();await saved();assert.deepEqual(await body(),offline);
+ await canvas.evaluate(el=>window.__currentMediaView=el.editor.view);await page.getByRole('button',{name:'Enter focus mode',exact:true}).click();await settle();await img.click();assert.equal(await canvas.evaluate(el=>el.editor.view===window.__currentMediaView),true,'focus preserves the current editor instance');await page.screenshot({path:path.join(out,'focus-media.png')});await page.getByRole('button',{name:'Exit focus mode',exact:true}).click();await settle();
+ // Delay image conversion, switch documents, then release: the replacement
+ // must never land in the new document or mutate the original after departure.
+ const originalDoc=[...documents.values()][0],originalSource=originalDoc.content.content.find(n=>n.type==='image').attrs.src;
+ const delayedPicture=await picture(900,500);
+ await img.click();p=await panel('Image');
+ await page.evaluate(()=>{const original=HTMLCanvasElement.prototype.toBlob;window.__mediaBlob={pending:null,done:false,original};HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){const canvas=this;window.__mediaBlob.pending=()=>original.call(canvas,blob=>{callback(blob);window.__mediaBlob.done=true},type,quality)}});
+ await p.getByLabel('Replacement image file',{exact:true}).setInputFiles({name:'delayed.png',mimeType:'image/png',buffer:delayedPicture});await page.waitForFunction(()=>typeof window.__mediaBlob.pending==='function');
+ await page.getByRole('button',{name:'New document',exact:true}).click();await page.locator('.uw-editor-session-controls[data-session-state="ready"]').waitFor();
+ await page.evaluate(()=>{HTMLCanvasElement.prototype.toBlob=window.__mediaBlob.original;window.__mediaBlob.pending()});await page.waitForFunction(()=>window.__mediaBlob.done);await page.evaluate(()=>new Promise(requestAnimationFrame));
+ assert.equal(await canvas.locator('figure').count(),0,'late image replacement cannot write into another document');
+ assert.equal(documents.get(originalDoc.id).content.content.find(n=>n.type==='image').attrs.src,originalSource);
+ pass('Delayed image replacement is cancelled safely across document switches');
+ const typedBeforePaste=credits().typed;
+ await canvas.evaluate(el=>{el.editor.view.focus();const data=new DataTransfer();data.setData('text/html','<table><tr><td colspan="999999999999" colwidth="999999999999">Safe content</td></tr></table>');data.setData('text/plain','Safe content');el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}))});await saved();
+ const safeTable=(await body()).content.find(node=>node.type==='table');assert.ok(!safeTable||safeTable.content[0].content[0].attrs.colspan<=20,'rich paste spans are bounded before grid allocation');assert.equal(credits().typed,typedBeforePaste);
+ pass('Oversized rich-paste table spans cannot allocate an unbounded grid or earn typed credit');
+ assert.deepEqual(errors,[]);
+ fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({scope:'Actual built editor, real Python document validator, isolated HTTP persistence and real IndexedDB. No live Supabase/private writing.',results},null,2)+'\n');console.log('PASS Phase 3 media suite: '+results.length+' grouped scenarios');
+};

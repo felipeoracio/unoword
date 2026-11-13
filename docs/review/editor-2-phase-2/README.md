@@ -1,7 +1,8 @@
 # Editor 2.0 — Phase 2 review
 
-Phase 1 was approved. Phase 2 adds rich formatting to the existing editor; no
-Phase 3 image/table features are included. This work is local and not deployed.
+Phases 1 and 2 were approved. This report records the Phase 2 formatting work.
+[Phase 3 image/table review](../editor-2-phase-3/README.md) is now available.
+This work is local and not deployed.
 
 [Implementation plan](../../editor-2-phase-2-plan.md)
 
