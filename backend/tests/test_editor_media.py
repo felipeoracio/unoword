@@ -63,7 +63,7 @@ def test_pdf_contains_caption_and_table_text():
 def test_markdown_retains_caption_and_safe_merged_table():
     result = markdown(clean_document(document()))
     assert "Figure 1" in result
-    assert '<th colspan="2" rowspan="1">' in result
+    assert '<th colspan="2" rowspan="1" colwidth="120,180">' in result
     assert "First idea" in result and "Second idea" in result
 
 
@@ -116,6 +116,9 @@ def test_simple_tables_export_as_markdown_with_escaped_pipes():
         {"type": "tableHeader", "content": [paragraph("Detail")]},
     ]
     source["content"][1]["content"][1]["content"][1]["content"] = [paragraph("a | b")]
+    for row in source["content"][1]["content"]:
+        for cell in row["content"]:
+            cell.get("attrs", {}).pop("colwidth", None)
     result = markdown(clean_document(source))
     assert "| Moment | Detail |\n| --- | --- |" in result
     assert "a \\| b" in result

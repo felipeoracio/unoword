@@ -1,8 +1,8 @@
 # Editor 2.0 — Phase 4 review
 
-Phase 3 is approved and deployed. Phase 4 is on the local
-`feature/editor-2-writing-tools` branch; stop before Phase 5 and release only
-after review.
+Phase 4 was approved and deployed at commit `1015bbc`.
+[Phase 5 review](../editor-2-phase-5/README.md) records its release checks and
+new import/export work.
 
 [Implementation plan](../../editor-2-phase-4-plan.md)
 

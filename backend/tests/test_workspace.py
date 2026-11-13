@@ -285,7 +285,9 @@ def test_private_reads_always_have_owner_predicate(fixture):
     assert client.get(f"/api/workspace/documents/{uuid4()}").status_code == 404
 
 
-def test_signed_out_cannot_read_or_write(fixture):
+def test_signed_out_cannot_read_or_write(fixture, monkeypatch):
+    from lib import auth
+    monkeypatch.setattr(auth, "auth_is_configured", lambda: True)
     client, _, calls = fixture
     app.dependency_overrides.pop(require_user)
     assert client.get("/api/workspace/documents").status_code == 401
@@ -705,7 +707,7 @@ def test_subtitle_exports_plain_safe_text_and_docx_metadata(fixture):
     assert content['attrs']=={'subtitle':subtitle}
     assert subtitle not in plain_text(content)
     assert export_text(content).startswith(subtitle+'\n\n')
-    assert markdown(content).startswith('A \\<quiet\\> start & a new perspective\n\n')
+    assert 'data-document-subtitle="true">A &lt;quiet&gt; start &amp; a new perspective</p>' in markdown(content)
     for format in ['docx','pdf']:
         response=c.post('/api/workspace/export/'+format,json={'expected_user_id':OWNER,'title':'An essay','content':content},headers=ORIGIN)
         assert response.status_code==200
@@ -736,7 +738,9 @@ def test_embedded_images_save_private_metadata_and_do_not_count_alt_text(fixture
     assert image['attrs']['alt']=='Blue garden illustration' and 'onclick' not in image['attrs']
     assert 'Blue garden illustration' not in saved['plain_text'] and 'data:' not in saved['plain_text']
     assert c.get('/api/workspace/documents/'+doc).json()['content']['content'][1]==image
-    assert markdown(saved['content']).find('![Blue garden illustration](data:image/png;base64,')>=0
+    assert '<figure data-document-image="true"' in markdown(saved['content'])
+    assert 'src="data:image/png;base64,' in markdown(saved['content'])
+    assert 'alt="Blue garden illustration"' in markdown(saved['content'])
 
 
 @pytest.mark.parametrize('source',[
@@ -793,3 +797,28 @@ def test_image_exports_preserve_palette_transparency_and_photo_orientation():
     data=BytesIO();image.save(data,format='JPEG',exif=exif)
     src='data:image/jpeg;base64,'+base64.b64encode(data.getvalue()).decode()
     _,size=png_image(src);assert size==(2,3)
+
+
+def test_portable_docx_import_notes_and_export_are_isolated_from_storage(fixture):
+    from tests.test_document_portability import sample
+    c, records, calls = fixture
+    source = sample()
+    response = c.post('/api/workspace/export/docx', json={'expected_user_id':OWNER,'title':'Portable sample','content':source}, headers=ORIGIN)
+    assert response.status_code == 200
+    imported = c.post('/api/workspace/import', files={'file':('portable.docx',response.content)}, headers=ORIGIN)
+    assert imported.status_code == 200
+    result = imported.json()
+    assert result['title'] == 'Portable sample' and 'docx_compatibility' in result['warnings']
+    assert any(node['type']=='table' for node in result['content']['content'])
+    assert records == {} and not any(call[0]!='GET' for call in calls)
+
+
+def test_malformed_docx_xml_returns_controlled_import_error(fixture):
+    from zipfile import ZipFile
+    c,records,_ = fixture
+    output=BytesIO()
+    with ZipFile(output,'w') as archive:
+        archive.writestr('[Content_Types].xml','<broken')
+        archive.writestr('word/document.xml','<broken')
+    response=c.post('/api/workspace/import',files={'file':('broken.docx',output.getvalue())},headers=ORIGIN)
+    assert response.status_code==422 and records=={}

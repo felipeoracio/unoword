@@ -78,7 +78,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      status=409;value={detail:'revision_conflict'};
     }else{
      let content=body.content;
-     if((process.env.EDITOR_FORMATTING_ONLY==='1'||process.env.EDITOR_MEDIA_ONLY==='1'||process.env.EDITOR_TOOLS_ONLY==='1') && process.env.FORMATTING_PYTHON){
+     if((process.env.EDITOR_FORMATTING_ONLY==='1'||process.env.EDITOR_MEDIA_ONLY==='1'||process.env.EDITOR_TOOLS_ONLY==='1'||process.env.EDITOR_PORTABILITY_ONLY==='1') && process.env.FORMATTING_PYTHON){
       const result=require('node:child_process').spawnSync(process.env.FORMATTING_PYTHON,['-c','import sys,json;from lib.writing_document import clean_document;print(json.dumps(clean_document(json.load(sys.stdin))))'],{input:JSON.stringify(content),encoding:'utf8',env:{...process.env,PYTHONPATH:path.resolve('backend')}});
       assert.equal(result.status,0,result.stderr);content=JSON.parse(result.stdout);
      }
@@ -138,6 +138,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      ['layout-shift',entries=>{for(const e of entries)if(!e.hadRecentInput)window.__studioLab.layoutShift+=e.value;}],
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
+  }
+  if(process.env.EDITOR_PORTABILITY_ONLY==='1'){
+   await require('./helpers/editor-portability-flow.cjs')({page,context,origin,documents,activity,requests,errors,projectFixture,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v});
+   return;
   }
   if(process.env.EDITOR_TOOLS_ONLY==='1'){
    await require('./helpers/editor-writing-tools-flow.cjs')({page,context,origin,documents,activity,requests,errors,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v});
@@ -267,10 +271,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    await page.reload({waitUntil:'domcontentloaded'});await canvas.locator('img').first().waitFor();assert.equal(await canvas.locator('img').count(),2);assert.ok(await canvas.locator('img').evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0)));
    offline=false;await context.setOffline(false);await until(()=>imgCount(documents.get(saved.id).content)===2);
    await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});await page.getByRole('button',{name:'Copy body',exact:true}).click();await page.getByText('Body copied',{exact:true}).waitFor();const html=await page.evaluate(async()=>{for(const item of await navigator.clipboard.read())if(item.types.includes('text/html'))return (await item.getType('text/html')).text();return '';});assert.ok(html.includes('data:image/webp;base64,'));
-   await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'MD',exact:true}).click();const md=fs.readFileSync(await (await downloading).path(),'utf8');assert.ok(md.includes('![Blue garden illustration](data:image/webp;base64,'));
+   await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'MD',exact:true}).click();const md=fs.readFileSync(await (await downloading).path(),'utf8');assert.ok(md.includes('data-document-image="true"'));assert.ok(md.includes('src="data:image/webp;base64,'));
    for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await canvas.locator('img').first().evaluate(img=>img.getBoundingClientRect().width<=img.closest('.uw-writing-canvas').getBoundingClientRect().width+1));if(process.env.WRITING_SCREENSHOTS&&[1440,390].includes(width)){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,'editor-images-'+width+'.png'),fullPage:true});}}
-   await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Dark theme',exact:true}).click();
-   if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});assert.deepEqual(await page.evaluate(async()=>(await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}
+   await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Dark theme',exact:true}).click();await page.evaluate(async()=>{await Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{})))});
+   if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});assert.deepEqual(await page.evaluate(async()=>(await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(node=>node.target)}))),[]);}
    await page.getByLabel('Language').selectOption('es');await page.getByRole('button',{name:'Añadir imagen',exact:true}).click();await page.getByRole('dialog',{name:'Añadir imagen',exact:true}).getByRole('button',{name:'Cancelar',exact:true}).click();await page.getByLabel('Idioma').selectOption('en');
    // An image-only document creates no writing activity or word count inflation.
    await page.getByRole('button',{name:'New document',exact:true}).click();await insert();const second=()=>[...documents.values()].find(d=>d.id!==saved.id);await until(()=>second()&&imgCount(second().content)===1);
@@ -279,6 +283,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    await page.getByRole('button',{name:'Mark Document as Complete',exact:true}).click();await page.getByRole('heading',{name:'Document Completed!'}).waitFor();await page.locator('.uw-editor-document').filter({hasText:'Untitled'}).click();await canvas.locator('img').waitFor();assert.equal(await page.getByRole('button',{name:'Add image',exact:true}).isDisabled(),true);
    let externalImages=0;await page.route('https://unoword-tracker.invalid/**',route=>{externalImages++;return route.abort();});
    await page.getByTestId('document-import').setInputFiles({name:'Image roundtrip.md',mimeType:'text/markdown',buffer:Buffer.from(md+'\n\n![remote](https://unoword-tracker.invalid/pixel)\n<img src="https://unoword-tracker.invalid/raw">')});
+  await page.getByRole('dialog',{name:'Review import',exact:true}).getByRole('button',{name:'Create new document',exact:true}).click();
    await page.waitForFunction(()=>document.querySelector('.uw-editor-title').value==='Image roundtrip');await until(()=>[...documents.values()].some(d=>d.title==='Image roundtrip'&&imgCount(d.content)===2));assert.equal(await canvas.locator('img').count(),2);assert.equal(externalImages,0,'Markdown import never loads remote image URLs');
    assert.deepEqual(errors,[]);assert.equal(requests.some(r=>r.key==='/workspace/assistant'),false);
    console.log('PASS document images: upload, alt text, resize/compression, private embedded save/reopen, removal/undo, SVG/oversize rejection, offline insert/reload/reconnect, rich clipboard and Markdown export, image-only no new activity, completed read-only gate, EN/ES, dark/accessibility and 320–1440px layouts.');return;
@@ -317,7 +322,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    await page.reload({waitUntil:'domcontentloaded'});await subtitle.waitFor();assert.equal(await subtitle.inputValue(),offlineSubtitle);
    offline=false;await context.setOffline(false);await until(()=>documents.get(saved.id)?.content.attrs?.subtitle===offlineSubtitle);
    // All export formats retain subtitle metadata; browser TXT/MD are fully local.
-   for(const format of ['TXT','MD']){await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:format,exact:true}).click();const download=await downloading;assert.ok(fs.readFileSync(await download.path(),'utf8').startsWith(offlineSubtitle+'\n\n'));}
+   for(const format of ['TXT','MD']){await page.locator('.uw-editor-export summary').click();const downloading=page.waitForEvent('download');await page.getByRole('button',{name:format,exact:true}).click();const download=await downloading;const exported=fs.readFileSync(await download.path(),'utf8');assert.ok(format==='TXT'?exported.startsWith(offlineSubtitle+'\n\n'):exported.includes('data-document-subtitle="true"'));}
    for(const width of [1440,768,390,320]){
     await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.ok(await subtitle.evaluate(e=>e.scrollHeight<=e.clientHeight+2),'Subtitle is not clipped');
@@ -567,6 +572,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'TXT',exact:true}).click();
   const download=await downloading;assert.ok(download.suggestedFilename().endsWith('.txt'));
   await page.getByTestId('document-import').setInputFiles({name:'Imported thoughts.md',mimeType:'text/markdown',buffer:Buffer.from('# A fresh start\n\n**Bold ideas** and careful words.\n<script>window.compromised=true</script>\n[unsafe](javascript:alert(1))')});
+  await page.getByRole('dialog',{name:'Review import',exact:true}).getByRole('button',{name:'Create new document',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.uw-editor-title').value==='Imported thoughts');
   assert.equal(await page.locator('.uw-writing-canvas h1').count(),1);assert.equal(await page.locator('.uw-writing-canvas strong').count(),1);
   assert.equal(await page.evaluate(()=>window.compromised),undefined);assert.equal(await page.locator('.uw-writing-canvas a[href^="javascript"]').count(),0);

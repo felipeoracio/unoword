@@ -1,3 +1,7 @@
+import { resetDocumentHistory } from "@/lib/document-history";
+import DocumentImportReview from "@/components/DocumentImportReview";
+import { importTextFile, validateImportedDocument, type ImportPreview } from "@/lib/document-import";
+import { exportMarkdown } from "@/lib/portable-markdown";
 import EditorWritingTools from "@/components/EditorWritingTools";
 import { DocumentSearch } from "@/lib/document-search";
 import { DocumentPageBreak, PrintSettings } from "@/lib/document-tools";
@@ -48,10 +52,8 @@ import "@/styles/editor-polish.css";
 import CoachingContext from "@/components/studio/CoachingContext";
 import SaveGuidanceButton from "@/components/studio/SaveGuidanceButton";
 import { coachingModes, usesGuidanceAllowance, sharesCurrentDraft } from "@/lib/coaching-modes";
-import { generateJSON } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { DocumentSubtitle, documentSubtitle } from "@/lib/document-subtitle";
 import { copyWriting } from "@/lib/copy-writing";
@@ -60,7 +62,6 @@ import {
   prepareDocumentImage,
   imageDocumentFits,
   containsDocumentImage,
-  safeImageSource,
 } from "@/lib/document-image";
 import type { SelectionBookmark } from "@tiptap/pm/state";
 import {
@@ -126,7 +127,6 @@ import {
   type AssistantItem,
 } from "@/lib/writing";
 import { cacheDelete } from "@/lib/writing-cache";
-import { toMarkdown } from "@/lib/writing-markdown";
 import "@/styles/writing-editor.css";
 import "@/styles/editor-canvas.css";
 import "@/styles/editor-formatting.css";
@@ -568,6 +568,11 @@ export default function WritingEditor() {
     else imageDialog.current?.close();
   }, [imageOpen]);
   const importInput = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null), [importBusy, setImportBusy] = useState(false), [exportBusy, setExportBusy] = useState(false);
+  const importRequest = useRef(0), exportRequest = useRef(0), importAbort = useRef<AbortController | null>(null);
+  const importScope = useRef(""); importScope.current = `${userId}:${activeProject || "general"}`;
+  useEffect(() => { importRequest.current++; importAbort.current?.abort(); setImportPreview(null); setImportBusy(false); }, [userId, activeProject]);
+  useEffect(() => { exportRequest.current++; setExportBusy(false); }, [userId, activeDocument?.id]);
   const titleInput = useRef<HTMLTextAreaElement>(null);
   const subtitleInput = useRef<HTMLTextAreaElement>(null);
   const [copyResult, setCopyResult] = useState<{
@@ -837,6 +842,7 @@ export default function WritingEditor() {
     if (loadedDocument.current !== activeDocument.id || !editor.state.doc.eq(stored)) {
       editor.commands.setContent(activeDocument.content, {emitUpdate:false});
       editor.commands.command(({tr}) => {for (const [key, value] of Object.entries(stored.attrs)) tr.setDocAttribute(key, value);tr.setMeta("preventUpdate",true);return true;});
+      if (loadedDocument.current !== activeDocument.id) resetDocumentHistory(editor);
       loadedDocument.current = activeDocument.id;
     }
     const paper = focusRoot.current?.querySelector<HTMLElement>(".uw-editor-paper");
@@ -876,6 +882,7 @@ export default function WritingEditor() {
         tr.setMeta("preventUpdate", true);
         return true;
       });
+      if (loadedDocument.current !== activeDocument.id) resetDocumentHistory(editor);
       loadedDocument.current = activeDocument.id;
     }
     // Tiptap emits an update by default even if editable did not change. That
@@ -1582,99 +1589,40 @@ export default function WritingEditor() {
     setQuickHistory((all) => [picked.id, ...all].slice(0, 12));
   }
   async function importFile(file: File) {
-    const owner = ws.user?.id;
-    if (!owner) return;
+    const owner = ownerRef.current, scope = importScope.current;
+    if (!owner || !editor || importBusy || projectBusy) return;
+    const request = ++importRequest.current;
+    setImportBusy(true); setImportPreview(null);
     try {
       if (file.size > 5 * 1024 * 1024) throw new ApiError(413, {});
-      // TXT/Markdown work offline; DOCX uses the existing bounded server parser.
-      let title = file.name.replace(/\.[^.]+$/, ""),
-        content: JSONContent;
-      if (/\.(txt|md|markdown)$/i.test(file.name)) {
-        const text = await file.text();
-        if (text.length > (/\.txt$/i.test(file.name) ? 200000 : 1048576))
-          throw new ApiError(413, {});
-        if (/\.txt$/i.test(file.name))
-          content = {
-            type: "doc",
-            content: text.split(/\r?\n/).map((line) => ({
-              type: "paragraph",
-              ...(line ? { content: [{ type: "text", text: line }] } : {}),
-            })),
-          };
-        else {
-          const html = DOMPurify.sanitize(
-            await marked.parse(text, { async: false }),
-            {
-              ALLOWED_TAGS: [
-                "p",
-                "h1",
-                "h2",
-                "h3",
-                "strong",
-                "b",
-                "em",
-                "i",
-                "u",
-                "s",
-                "del",
-                "ul",
-                "ol",
-                "li",
-                "blockquote",
-                "a",
-                "hr",
-                "br",
-                "img",
-              ],
-              ALLOWED_ATTR: [
-                "href",
-                "start",
-                "src",
-                "alt",
-                "title",
-                "width",
-                "height",
-              ],
-              RETURN_DOM_FRAGMENT: true,
-            },
-          );
-          // Strip external images before any content enters the live editor.
-          // Embedded raster images remain inside the same private document.
-          html.querySelectorAll("img").forEach((image) => {
-            if (!safeImageSource(image.getAttribute("src"))) image.remove();
-          });
-          const container = document.createElement("div");
-          container.appendChild(html);
-          // Tiptap parses supported schema nodes only; no raw HTML is rendered.
-          content = generateJSON(
-            container.innerHTML,
-            editor!.extensionManager.extensions,
-          );
-        }
-      } else {
-        const form = new FormData();
-        form.append("file", file);
-        const response = await fetch("/api/workspace/import", {
-          method: "POST",
-          body: form,
-        });
-        if (!response.ok)
-          throw new ApiError(response.status, await response.json());
-        const result = await response.json();
-        title = result.title;
-        content = result.content;
-      }
-      if (ownerRef.current !== owner) return;
-      if (
-        toPlain(content).length > 200000 ||
-        (containsDocumentImage(content) && !imageDocumentFits(content))
-      )
-        throw new ApiError(413, {});
-      await createInProject(title, { content, plain_text: toPlain(content) });
-      setFilter("active");
+      let result: ImportPreview;
+      if (/\.(txt|md|markdown)$/i.test(file.name)) result = await importTextFile(file, editor);
+      else if (/\.docx$/i.test(file.name)) {
+        importAbort.current = new AbortController();
+        const form = new FormData(); form.append("file", file);
+        const response = await fetch("/api/workspace/import", { method: "POST", body: form, signal: importAbort.current.signal });
+        if (!response.ok) throw new ApiError(response.status, await response.json());
+        const parsed = await response.json();
+        result = { title: parsed.title, content: validateImportedDocument(parsed.content, editor), warnings: parsed.warnings || ["docx_compatibility"] };
+      } else throw Error("unsupported_import_format");
+      if (ownerRef.current !== owner || importScope.current !== scope || request !== importRequest.current) return;
+      setImportPreview(result);
     } catch (failure) {
-      ws.setError(editorError(failure));
-    }
+      const detail = failure instanceof ApiError ? (failure.body as { detail?: string })?.detail : failure instanceof Error ? failure.message : "";
+      if (ownerRef.current === owner && importScope.current === scope && request === importRequest.current)
+        ws.setError(detail === "invalid_document_table" ? (language === "es" ? "No se puede conservar la estructura de esta tabla. Simplifica las tablas anidadas o irregulares e inténtalo de nuevo." : "This table structure cannot be preserved. Simplify nested or irregular tables and import again.") :(language === "es" ? "No se pudo importar el archivo. Usa TXT/Markdown UTF-8 o un DOCX compatible, dentro de los límites del documento." : "This file could not be imported. Use UTF-8 TXT/Markdown or a supported DOCX within the document limits."));
+    } finally { if (request === importRequest.current) setImportBusy(false); }
+  }
+  async function confirmImport(title: string) {
+    if (!importPreview || importBusy || projectBusy) return;
+    const preview = importPreview, scope = importScope.current, request = importRequest.current;
+    setImportBusy(true);
+    try {
+      if (!(await ws.flushWrites(!ws.online))) return;
+      if (scope !== importScope.current || request !== importRequest.current || projectChanging.current) return;
+      const created = await createInProject(title, { content: preview.content, plain_text: toPlain(preview.content) });
+      if (created && scope === importScope.current && request === importRequest.current) { setImportPreview(null); setFilter("active"); }
+    } finally { if (request === importRequest.current) setImportBusy(false); }
   }
   function closeImageDialog() {
     imageRequest.current++;
@@ -1844,7 +1792,9 @@ export default function WritingEditor() {
     );
   }
   async function exportFile(format: string) {
-    if (!activeDocument || !editor) return;
+    if (!activeDocument || !editor || exportBusy) return;
+    const owner = ownerRef.current, id = activeDocument.id, title = activeDocument.title, content = editor.getJSON();
+    const request = ++exportRequest.current; setExportBusy(true);
     try {
       // Text and Markdown exports use the latest editor content, including offline edits.
       let blob: Blob;
@@ -1860,7 +1810,7 @@ export default function WritingEditor() {
           },
         );
       else if (format === "md") {
-        blob = new Blob([toMarkdown(editor.getJSON())], {
+        blob = new Blob([exportMarkdown(content)], {
           type: "text/markdown;charset=utf-8",
         });
       } else {
@@ -1870,19 +1820,20 @@ export default function WritingEditor() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             expected_user_id: ws.user!.id,
-            title: activeDocument.title,
-            content: editor.getJSON(),
+            title,
+            content,
           }),
         });
         if (!response.ok)
           throw new ApiError(response.status, await response.json());
         blob = await response.blob();
       }
+      if (ownerRef.current !== owner || draftRef.current?.id !== id || request !== exportRequest.current) return;
       const url = URL.createObjectURL(blob),
         anchor = document.createElement("a");
       anchor.href = url;
       const filename =
-        Array.from(activeDocument.title)
+        Array.from(title)
           .map((character) =>
             '<>:"/\\|?*'.includes(character) || character.codePointAt(0)! < 32
               ? "_"
@@ -1893,8 +1844,8 @@ export default function WritingEditor() {
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (failure) {
-      ws.setError(editorError(failure));
-    }
+      if (ownerRef.current === owner && request === exportRequest.current) ws.setError(editorError(failure));
+    } finally { if (request === exportRequest.current) setExportBusy(false); }
   }
   async function saveProfile() {
     if (!profile || !ws.user) return;
@@ -2354,10 +2305,11 @@ export default function WritingEditor() {
             )}
             <button
               className="uw-editor-import"
+              disabled={importBusy || projectBusy}
               onClick={() => importInput.current?.click()}
             >
               <Upload size={16} />
-              {t("Import")} TXT, MD, DOCX
+              {importBusy ? (language === "es" ? "Preparando…" : "Preparing…") : t("Import")} TXT, MD, DOCX
             </button>
             <input
               ref={importInput}
@@ -2448,15 +2400,23 @@ export default function WritingEditor() {
                   <div className="uw-editor-focus-optional" inert={focus} aria-hidden={focus || undefined}>
                     <EditorViewMenu width={pageWidth} onChange={setPageWidth} spanish={language === "es"} />
                   </div>
-                  <details className="uw-editor-export">
-                    <summary aria-label={t("Export")}>
+                  <details className="uw-editor-export" onToggle={event => {
+                    if (!event.currentTarget.open) return;
+                    const menu = event.currentTarget.querySelector<HTMLElement>(":scope > div");
+                    const box = event.currentTarget.querySelector("summary")?.getBoundingClientRect();
+                    if (menu && box) { Object.assign(menu.style, { position: "fixed", left: `${Math.max(12, Math.min(box.right - 280, innerWidth - 292))}px`, right: "auto", top: `${box.bottom + 8}px`, width: `${Math.min(280, innerWidth - 24)}px`, maxHeight: `${Math.max(80, innerHeight - box.bottom - 24)}px`, overflowY: "auto" }); }
+                  }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}>
+                    <summary aria-label={t("Export")} aria-busy={exportBusy}>
                       <Download size={17} />
                       <span>{t("Export")}</span>
                     </summary>
                     <div>
+                      <p className="uw-export-note">{language === "es" ? "PDF/DOCX conservan el formato compatible y los márgenes. Markdown usa HTML seguro para estilos avanzados; TXT contiene solo texto. PDF usa fuentes incluidas; algunos alfabetos o emoji pueden requerir Imprimir del navegador. Pueden variar diseños Word complejos." : "PDF/DOCX retain supported formatting and margins. Markdown uses safe HTML for advanced styles; TXT is text only. PDF uses bundled fonts; some scripts or emoji may need browser Print. Complex Word layouts can differ."}</p>
+                      {exportBusy && <p role="status" className="uw-export-note">{language === "es" ? "Preparando descarga…" : "Preparing download…"}</p>}
                       {["md", "txt", "docx", "pdf"].map((format) => (
                         <button
                           key={format}
+                          disabled={exportBusy}
                           onClick={(event) => {
                             event.currentTarget
                               .closest("details")
@@ -3595,6 +3555,7 @@ export default function WritingEditor() {
           </div>
         </form>
       </dialog>
+      <DocumentImportReview preview={importPreview} busy={importBusy} spanish={language === "es"} onCancel={() => setImportPreview(null)} onCreate={title => void confirmImport(title)} />
       <dialog
         ref={linkDialog}
         aria-label={language === "es" ? "Añadir enlace" : "Add a link"}

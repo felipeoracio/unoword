@@ -52,9 +52,9 @@ and export-aware layout are Phases 4/5, rather than hidden schema changes now.
 
 ## Approval checkpoints
 
-Phases 1–3 are approved and deployed at commit `e351f93`. Phase 4 is
-implemented separately for [review](review/editor-2-phase-4/README.md); its release
-and Phase 5 remain pending approval. Historical phase descriptions follow.
+Phases 1–4 are approved and deployed at commit `1015bbc`. Phase 5 is
+implemented separately for [review](review/editor-2-phase-5/README.md); its release
+and Phase 6 remain pending approval. Historical phase descriptions follow.
 
 - **Phase 1 (completed and approved):** audit + canvas/layout/typography/image-fit preview. Stop
   and request approval before Phase 2. Do not deploy this redesign without review.

@@ -346,7 +346,9 @@ async def import_file(
     title = Path(file.filename or "Imported document").stem[:300]
     try:
         if suffix == ".docx":
-            return {"title": title, "content": import_docx(data), "format": "json"}
+            from lib.writing_docx_import import import_docx_result
+            result = import_docx_result(data)
+            return {**result, "title": result["title"] or title, "format": "json"}
         if suffix not in {".txt", ".md", ".markdown"}:
             raise HTTPException(422, "unsupported_import_format")
         text = data.decode("utf-8-sig")

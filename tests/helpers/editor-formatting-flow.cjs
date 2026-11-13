@@ -72,6 +72,7 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,set
  await floating.getByRole('button',{name:'Selection: Heading 2',exact:true}).click();
  assert.equal((await body()).content[0].attrs.level,2);assert.equal((await body()).content[0].attrs.styleVariant,null);
  await page.getByLabel('Heading level',{exact:true}).selectOption('paragraph');await select();await floating.waitFor();
+ await page.waitForFunction(()=>{const selection=window.getSelection();if(!selection?.rangeCount)return false;const range=selection.getRangeAt(0).getBoundingClientRect(),menu=document.querySelector('.uw-selection-toolbar')?.getBoundingClientRect();return menu&&!(menu.bottom>range.top&&menu.top<range.bottom)&&menu.left>=0&&menu.right<=innerWidth});
  const geometry=await canvas.evaluate(el=>{
   const range=window.getSelection().getRangeAt(0).getBoundingClientRect(),menu=document.querySelector('.uw-selection-toolbar').getBoundingClientRect();
   return {overlap:menu.bottom>range.top&&menu.top<range.bottom,left:menu.left,right:menu.right,viewport:innerWidth,view:el.editor.view===window.__formatView};

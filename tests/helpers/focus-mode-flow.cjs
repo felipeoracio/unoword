@@ -61,6 +61,7 @@ module.exports=async({page,canvas,context,documents,activity,requests,errors,set
  async function importLong(){
   const body=Array.from({length:360},(_,i)=>`Paragraph ${i+1}. A patient writer notices the morning light, keeps a steady rhythm, and lets each idea find its own words.`).join('\n\n');
   await page.getByTestId('document-import').setInputFiles({name:'Focus — long sample.txt',mimeType:'text/plain',buffer:Buffer.from(body)});
+  await page.getByRole('dialog',{name:'Review import',exact:true}).getByRole('button',{name:'Create new document',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.uw-editor-title')?.value==='Focus — long sample');await saved();
   assert.ok((await canvas.textContent()).includes('Paragraph 360.'));
  }

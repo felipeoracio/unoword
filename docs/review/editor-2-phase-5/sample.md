@@ -1,0 +1,26 @@
+<!-- unoword-document:%7B%22version%22%3A1%2C%22attrs%22%3A%7B%22subtitle%22%3A%22A%20patient%20beginning%22%2C%22printLayout%22%3A%7B%22size%22%3A%22a4%22%2C%22margin%22%3A%22normal%22%7D%2C%22typography%22%3A%7B%22fontFamily%22%3A%22sans%22%2C%22fontSize%22%3A18%2C%22lineHeight%22%3A1.7%2C%22paragraphSpacing%22%3A0.9%7D%7D%7D -->
+
+<p data-document-subtitle="true">A patient beginning</p>
+
+## Chapter one
+
+<p data-paragraph-spacing="1.5" data-indent="1" style="text-align:right;line-height:2;margin-bottom:1.5em"><mark style="background-color:#fff0a6"><span style="font-family:&quot;JetBrains Mono Variable&quot;, monospace;font-size:22px;color:#7136a2"><u><em><strong>Café Ελληνικά Привет</strong></em></u></span></mark></p>
+
+<table><tr><th colspan="2" rowspan="1" colwidth="120,180"><p>A shared heading</p></th></tr><tr><td colspan="1" rowspan="1" colwidth="120"><p>First idea</p></td><td colspan="1" rowspan="1" colwidth="180"><p>Second idea</p></td></tr></table>
+
+Between the table and image.
+
+<figure data-document-image="true" data-size-mode="custom" data-display-width="240" data-align="right"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAGQCAIAAADZR5NjAAAHKUlEQVR4nO3WQQ3AIADAQMAnAjHIeyaakCx3Cvrs3OcOAAA663UAAMDfGCwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIGSwAgJjBAgCIfQJzBRwZ1FdOAAAAAElFTkSuQmCC" alt="Landscape" width="800" height="400"><figcaption>Figure 1 — A small beginning</figcaption></figure>
+
+4. First item
+
+  - Nested idea
+5. Second item
+
+
+- [x] Keep the detail
+
+
+<div data-page-break="true"></div>
+
+On the next page.

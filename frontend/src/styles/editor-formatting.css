@@ -56,3 +56,10 @@
 @media (forced-colors: active) {
   .uw-editor .uw-selection-toolbar button[aria-pressed="true"] { outline: 1px solid Highlight; }
 }
+.uw-import-review{max-height:calc(100dvh - 32px);overflow:auto}
+.uw-import-review h3{font-size:14px;font-weight:650;margin-top:16px}.uw-import-review ul{padding-inline-start:20px;font-size:13px;line-height:1.6}.uw-import-review pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;font:14px/1.6 Georgia,serif;border:1px solid var(--we-line);border-radius:8px;padding:12px;background:var(--we-bg)}
+.uw-export-note{max-width:260px;font-size:11px;line-height:1.5;padding:8px 12px;color:var(--we-muted)}
+
+.uw-editor-export button{min-height:40px}@media(max-width:600px){.uw-editor-export button{min-height:44px}}
+
+.uw-import-review .uw-editor-primary{background:#0757ce;color:#fff}.uw-import-review pre:focus-visible{outline:2px solid #086bff;outline-offset:2px}

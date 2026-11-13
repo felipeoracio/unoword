@@ -239,6 +239,9 @@ def export_text(content):
 
 def markdown(node, depth=0):
     kind = node["type"]
+    if kind == "doc":
+        from lib.writing_portable_markdown import portable_markdown
+        return portable_markdown(node, markdown)
     if kind == "text":
         text = re.sub(r"([\\`*_\[\]<>])", r"\\\1", node.get("text", ""))
         for mark in node.get("marks", []):
@@ -295,7 +298,7 @@ def to_docx(content, title):
     from docx.opc.constants import RELATIONSHIP_TYPE
 
     document = Document()
-    layout = content.get("attrs", {}).get("printLayout")
+    layout = content.get("attrs", {}).get("printLayout") or {"size": "letter", "margin": "normal"}
     if layout:
         section = document.sections[0]
         section.page_width = Inches(8.27 if layout["size"] == "a4" else 8.5)
@@ -305,34 +308,61 @@ def to_docx(content, title):
     available_pixels = (document.sections[0].page_width - document.sections[0].left_margin - document.sections[0].right_margin) / 914400 * 96
     defaults = typography(content.get("attrs", {}).get("typography"))
     font_names = {"serif": "Georgia", "sans": "Arial", "mono": "Courier New"}
-    if content.get("attrs", {}).get("typography"):
-        normal = document.styles["Normal"]
-        normal.font.name = font_names[defaults["fontFamily"]]
-        normal.font.size = Pt(defaults["fontSize"] * .75)
-        normal.paragraph_format.line_spacing = defaults["lineHeight"]
-        normal.paragraph_format.space_after = Pt(defaults["paragraphSpacing"] * defaults["fontSize"] * .75)
+    # Explicit and default editor typography share the same portable styles.
+    normal = document.styles["Normal"]
+    for style_name in ["Normal", "Title", "Subtitle", "Caption", "Heading 1", "Heading 2", "Heading 3"]:
+        style = document.styles[style_name]
+        style.font.name = font_names[defaults["fontFamily"]]
+        if style.font.element.rPr is not None and style.font.element.rPr.rFonts is not None:
+            for key in ["asciiTheme", "hAnsiTheme", "eastAsiaTheme", "csTheme"]:
+                style.font.element.rPr.rFonts.attrib.pop(qn("w:"+key), None)
+    for level, factor in [(1,1.667),(2,1.389),(3,1.167)]:
+        document.styles[f"Heading {level}"].font.size = Pt(defaults["fontSize"] * .75 * factor)
+    document.styles["Title"].font.size = Pt(defaults["fontSize"] * 1.5)
+    document.styles["Subtitle"].font.size = Pt(defaults["fontSize"] * .9)
+    document.styles["Caption"].font.size = Pt(defaults["fontSize"] * .75 * .85)
+    normal.font.size = Pt(defaults["fontSize"] * .75)
+    normal.paragraph_format.line_spacing = defaults["lineHeight"]
+    normal.paragraph_format.space_after = Pt(defaults["paragraphSpacing"] * defaults["fontSize"] * .75)
+    document.styles["Caption"].font.italic = False
     if document_subtitle(content):
         document.add_paragraph(document_subtitle(content), style="Subtitle")
 
-    def block(node, list_style=None, task_marker=None, container=None):
+    from docx.enum.style import WD_STYLE_TYPE
+    for name, base in [("UnoWord Document Title", "Title"), ("UnoWord List Continuation", "Normal"), ("UnoWord Checklist", "Normal")]:
+        if name not in document.styles:
+            document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH).base_style = document.styles[base]
+    document.add_paragraph(title, style="UnoWord Document Title")
+
+    def numbering(kind, start):
+        root = document.part.numbering_part.element
+        abstract_id = max([int(item.get(qn("w:abstractNumId"))) for item in root.findall(qn("w:abstractNum"))] + [-1]) + 1
+        abstract = OxmlElement("w:abstractNum"); abstract.set(qn("w:abstractNumId"), str(abstract_id))
+        for level in range(7):
+            item = OxmlElement("w:lvl"); item.set(qn("w:ilvl"), str(level))
+            for tag, value in [("start", str(start)), ("numFmt", "bullet" if kind == "bulletList" else "decimal"), ("lvlText", "•" if kind == "bulletList" else f"%{level+1}."), ("lvlJc", "left")]:
+                element = OxmlElement("w:"+tag); element.set(qn("w:val"), value); item.append(element)
+            props=OxmlElement("w:pPr"); indent=OxmlElement("w:ind"); indent.set(qn("w:left"),str(360*(level+1)));indent.set(qn("w:hanging"),"240");props.append(indent);item.append(props);abstract.append(item)
+        root.append(abstract)
+        return root.add_num(abstract_id).numId
+
+    def block(node, list_style=None, task_marker=None, container=None, list_info=None, depth=0):
         container = document if container is None else container
         kind = node["type"]
-        if kind == "taskItem":
-            for index, child in enumerate(node.get("content", [])):
-                block(child, None, ("[x] " if node.get("attrs", {}).get("checked") else "[ ] ") if index == 0 else None, container)
+        if kind in {"bulletList", "orderedList"}:
+            info = (numbering(kind,node.get("attrs",{}).get("start",1)), min(depth,6))
+            for child in node.get("content",[]): block(child,container=container,list_info=info,depth=depth)
             return
-        if kind in {"doc", "bulletList", "orderedList", "taskList", "blockquote", "listItem"}:
-            style = (
-                "List Bullet"
-                if kind == "bulletList"
-                else (
-                    "List Number"
-                    if kind == "orderedList"
-                    else "Quote" if kind == "blockquote" else list_style
-                )
-            )
-            for child in node.get("content", []):
-                block(child, style, container=container)
+        if kind == "taskList":
+            for child in node.get("content",[]): block(child,container=container,depth=depth)
+            return
+        if kind in {"listItem", "taskItem"}:
+            for index, child in enumerate(node.get("content", [])):
+                marker = ("[x] " if node.get("attrs", {}).get("checked") else "[ ] ") if kind == "taskItem" and index == 0 else None
+                block(child, "UnoWord List Continuation" if index and child["type"]=="paragraph" else None, marker, container, list_info if index==0 else None, depth+1 if child["type"] in {"bulletList","orderedList","taskList"} else depth)
+            return
+        if kind in {"doc", "blockquote"}:
+            for child in node.get("content", []): block(child,"Quote" if kind=="blockquote" else list_style,container=container,depth=depth)
             return
         if kind == "pageBreak":
             container.add_page_break()
@@ -354,9 +384,17 @@ def to_docx(content, title):
             picture._inline.docPr.set("descr", node["attrs"].get("alt", ""))
             if node.get("content"):
                 block({"type": "paragraph", "attrs": {"textAlign": node["attrs"].get("align", "center")}, "content": node["content"]}, container=container)
+                container.paragraphs[-1].style = "Caption"
             return
         paragraph = container.add_paragraph(style=list_style)
+        if list_info:
+            props=paragraph._p.get_or_add_pPr();num=OxmlElement("w:numPr")
+            for tag,value in [("ilvl",list_info[1]),("numId",list_info[0])]:
+                element=OxmlElement("w:"+tag);element.set(qn("w:val"),str(value));num.append(element)
+            props.append(num)
         if task_marker:
+            paragraph.style = "UnoWord Checklist"
+            paragraph.paragraph_format.left_indent = Inches(depth*.25)
             paragraph.add_run(task_marker)
         attrs = node.get("attrs", {})
         if attrs.get("styleVariant") in {"title", "subtitle"}:
@@ -378,7 +416,7 @@ def to_docx(content, title):
                 "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
             }[alignment]
         if kind == "horizontalRule":
-            paragraph.add_run("────────────────")
+            border=OxmlElement("w:pBdr");bottom=OxmlElement("w:bottom");bottom.set(qn("w:val"),"single");bottom.set(qn("w:sz"),"6");bottom.set(qn("w:color"),"B8C5D9");border.append(bottom);paragraph._p.get_or_add_pPr().append(border)
             return
         for child in node.get("content", []):
             run = paragraph.add_run(
@@ -428,7 +466,7 @@ def to_pdf(content, title):
     from reportlab.lib.styles import getSampleStyleSheet
 
     from reportlab.lib.pagesizes import A4, letter
-    layout = content.get("attrs", {}).get("printLayout")
+    layout = content.get("attrs", {}).get("printLayout") or {"size": "letter", "margin": "normal"}
     page_options = {}
     available_points = 420
     if layout:
@@ -438,8 +476,13 @@ def to_pdf(content, title):
         available_points = page_size[0] - 2 * margin - 12
     styles = getSampleStyleSheet()
     defaults = typography(content.get("attrs", {}).get("typography"))
-    font_names = {"serif": "Times-Roman", "sans": "Helvetica", "mono": "Courier"}
-    story = []
+    from lib.writing_pdf_fonts import pdf_fonts
+    font_names = pdf_fonts()
+    for style_name in styles.byName:
+        styles[style_name].fontName = font_names[defaults["fontFamily"]]
+    styles["Italic"].fontName = font_names[defaults["fontFamily"]]+"-Italic"
+    styles["BodyText"].splitLongWords = 1
+    story = [Paragraph(escape(title), styles["Title"]), Spacer(1,12)]
     if document_subtitle(content):
         story.extend([Paragraph(escape(document_subtitle(content)).replace("\n", "<br/>"), styles["Italic"]), Spacer(1, 12)])
 
@@ -472,7 +515,7 @@ def to_pdf(content, title):
                 text = f'<link href="{escape(mark["attrs"]["href"],quote=True)}" color="blue">{text}</link>'
         return text
 
-    def block(node, prefix=None, quoted=False, target=None, available=None):
+    def block(node, prefix=None, quoted=False, target=None, available=None, depth=0):
         available = available_points if available is None else available
         target = story if target is None else target
         kind = node["type"]
@@ -487,7 +530,8 @@ def to_pdf(content, title):
             from lib.writing_table_exports import image_display_width
             data, (width, height) = png_image(node["attrs"]["src"])
             target_width = image_display_width(node["attrs"], width, available / .75) * .75
-            scale = min(target_width / width, 600 / height)
+            usable_height = page_options.get("pagesize", (595,842))[1] - page_options.get("topMargin",72) - page_options.get("bottomMargin",72) - 40
+            scale = min(target_width / width, min(600,usable_height) / height)
             target.extend([PDFImage(BytesIO(data), width=width*scale, height=height*scale, hAlign=node["attrs"].get("align", "left").upper()), Spacer(1, 8)])
             if node.get("content"):
                 block({"type": "paragraph", "attrs": {"textAlign": node["attrs"].get("align", "center")}, "content": node["content"]}, target=target, available=available)
@@ -502,7 +546,7 @@ def to_pdf(content, title):
                     if kind == "orderedList"
                     else "•" if kind == "bulletList" else ("[x]" if child.get("attrs", {}).get("checked") else "[ ]") if kind == "taskList" else prefix
                 )
-                block(child, marker, quoted or kind == "blockquote", target, available)
+                block(child, marker, quoted or kind == "blockquote", target, available, depth + (1 if kind in {"bulletList", "orderedList", "taskList"} else 0))
             return
         style = (
             styles[f'Heading{node.get("attrs",{}).get("level",1)}']
@@ -515,33 +559,30 @@ def to_pdf(content, title):
             alignment={"left": 0, "center": 1, "right": 2, "justify": 4}.get(
                 node.get("attrs", {}).get("textAlign"), 0
             ),
-            leftIndent=18 if prefix or quoted else 0,
+            leftIndent=(18 if quoted else 0) + (18 * max(1, depth) if prefix else 0),
         )
         attrs = node.get("attrs", {})
-        has_typography = bool(content.get("attrs", {}).get("typography"))
-        if has_typography or attrs.get("styleVariant"):
+        style.fontName = font_names[defaults["fontFamily"]] + ("-Bold" if kind=="heading" else "")
+        style.splitLongWords = 1
+        if attrs.get("styleVariant"):
             style.fontName = font_names[defaults["fontFamily"]]
             if kind == "heading" or attrs.get("styleVariant") == "title":
-                style.fontName = {"serif": "Times-Bold", "sans": "Helvetica-Bold", "mono": "Courier-Bold"}[defaults["fontFamily"]]
+                style.fontName = font_names[defaults["fontFamily"]]+"-Bold"
             elif attrs.get("styleVariant") == "subtitle":
-                style.fontName = {"serif": "Times-Italic", "sans": "Helvetica-Oblique", "mono": "Courier-Oblique"}[defaults["fontFamily"]]
-        if has_typography:
-            style.fontSize = defaults["fontSize"] * .75 * (1.5 if kind == "heading" else 1)
+                style.fontName = font_names[defaults["fontFamily"]]+"-Italic"
+        style.fontSize = defaults["fontSize"] * .75 * ({1:1.667,2:1.389,3:1.167}.get(attrs.get("level",1),1.667) if kind == "heading" else 1)
         if attrs.get("styleVariant") == "title":
             style.fontSize = defaults["fontSize"] * 1.5
         elif attrs.get("styleVariant") == "subtitle":
             style.fontSize = defaults["fontSize"] * .9
-        if has_typography or attrs.get("styleVariant") or attrs.get("lineHeight") is not None:
-            style.leading = style.fontSize * (attrs.get("lineHeight") or defaults["lineHeight"])
-        custom_spacing = has_typography or attrs.get("paragraphSpacing") is not None
-        if custom_spacing:
-            style.spaceAfter = style.fontSize * attrs.get("paragraphSpacing", defaults["paragraphSpacing"])
+        style.leading = style.fontSize * (attrs.get("lineHeight") or defaults["lineHeight"])
+        style.spaceAfter = style.fontSize * attrs.get("paragraphSpacing", defaults["paragraphSpacing"])
         style.leftIndent += attrs.get("indent", 0) * 18
         text = "".join(inline(child) for child in node.get("content", []))
         target.extend(
             [
                 Paragraph(text or " ", style, bulletText=prefix),
-                Spacer(1, 0 if custom_spacing else 8),
+                Spacer(1, 0),
             ]
         )
 
@@ -552,102 +593,5 @@ def to_pdf(content, title):
 
 
 def import_docx(data):
-    from docx import Document
-    from lib.document_processing import _validate_docx_archive
-
-    _validate_docx_archive(data)
-    document = Document(BytesIO(data))
-    blocks = []
-    subtitle = ""
-    imported_images = {}
-    for paragraph in document.paragraphs:
-        if not blocks and not subtitle and paragraph.style and paragraph.style.name == "Subtitle" and len(paragraph.text) <= 500:
-            subtitle = paragraph.text
-            continue
-        inline = []
-        from docx.text.hyperlink import Hyperlink
-
-        runs = []
-        for part in paragraph.iter_inner_content():
-            if isinstance(part, Hyperlink):
-                runs.extend((run, safe_link(part.url)) for run in part.runs)
-            else:
-                runs.append((part, None))
-        for run, href in runs:
-            if not run.text:
-                continue
-            marks = [
-                {"type": name}
-                for name, value in [
-                    ("bold", run.bold),
-                    ("italic", run.italic),
-                    ("underline", run.underline),
-                    ("strike", run.font.strike),
-                ]
-                if value
-            ]
-            if href:
-                marks.append({"type": "link", "attrs": {"href": href}})
-            inline.append(
-                {
-                    "type": "text",
-                    "text": run.text,
-                    **({"marks": marks} if marks else {}),
-                }
-            )
-        node = {"type": "paragraph", "content": inline}
-        name = paragraph.style.name if paragraph.style else ""
-        if name.startswith("Heading ") and name[-1:] in {"1", "2", "3"}:
-            node.update(type="heading", attrs={"level": int(name[-1])})
-        if paragraph.alignment in {0, 1, 2, 3}:
-            node.setdefault("attrs", {})["textAlign"] = {
-                0: "left",
-                1: "center",
-                2: "right",
-                3: "justify",
-            }[paragraph.alignment]
-        if name in {"List Bullet", "List Number"}:
-            list_kind = "bulletList" if name == "List Bullet" else "orderedList"
-            if not blocks or blocks[-1]["type"] != list_kind:
-                blocks.append({"type": list_kind, "content": []})
-            blocks[-1]["content"].append({"type": "listItem", "content": [node]})
-        else:
-            blocks.append(node)
-        for picture in paragraph._p.xpath('.//pic:pic'):
-            blips=picture.xpath('.//a:blip')
-            if not blips:
-                continue
-            from docx.oxml.ns import qn
-            relationship=blips[0].get(qn('r:embed'))
-            if not relationship:
-                continue  # External relationships are never fetched.
-            part=document.part.related_parts.get(relationship)
-            if part is None:
-                continue
-            if relationship not in imported_images:
-                imported_images[relationship]=import_image(part.blob)
-            description=picture.xpath('.//pic:cNvPr')
-            alt=(description[0].get('descr','') if description else '')[:500]
-            # python-docx writes accessibility text on the drawing wrapper.
-            drawing=picture.getparent()
-            while drawing is not None and not drawing.tag.endswith('}inline'):
-                drawing=drawing.getparent()
-            if drawing is not None:
-                doc_pr=drawing.find(qn('wp:docPr'))
-                if doc_pr is not None:
-                    alt=doc_pr.get('descr',alt)[:500]
-            blocks.append({'type':'image','attrs':image_attributes({'src':imported_images[relationship],'alt':alt})})
-    for table in document.tables:
-        for row in table.rows:
-            blocks.append(
-                {
-                    "type": "paragraph",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": " | ".join(cell.text for cell in row.cells),
-                        }
-                    ],
-                }
-            )
-    return clean_document({"type": "doc", **({"attrs": {"subtitle": subtitle}} if subtitle else {}), "content": blocks or EMPTY["content"]})
+    from lib.writing_docx_import import import_docx_result
+    return import_docx_result(data)["content"]
