@@ -133,6 +133,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
   }
+  if(process.env.EDITOR_CANVAS_ONLY==='1'){
+   await require('./helpers/editor-canvas-flow.cjs')({page,context,origin,documents,activity,requests,errors,setSignedIn:v=>signedIn=v});
+   return;
+  }
   if(process.env.EDITOR_POLISH_ONLY==='1'){
    await require('./helpers/editor-polish-flow.cjs')({page,context,origin,documents,activity,requests,errors,network:polishNetwork,projectNetwork,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
    if(process.env.POLISH_PAUSE==='1')await page.pause();

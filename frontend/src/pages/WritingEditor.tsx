@@ -1,5 +1,7 @@
-import { SessionCredit, sessionCreditWords } from "@/lib/session-credit";
+import { SessionCredit, sessionCreditWords, type Credit } from "@/lib/session-credit";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import EditorViewMenu from "@/components/EditorViewMenu";
+import { usePageWidth } from "@/lib/use-page-width";
 import ProjectControls from "@/components/projects/ProjectControls";
 import ProjectManager from "@/components/projects/ProjectManager";
 import GuidedWritingProfile from "@/components/projects/GuidedWritingProfile";
@@ -116,6 +118,7 @@ import {
 import { cacheDelete } from "@/lib/writing-cache";
 import { toMarkdown } from "@/lib/writing-markdown";
 import "@/styles/writing-editor.css";
+import "@/styles/editor-canvas.css";
 import "@/styles/studio-coaching.css";
 
 const spanish: Record<string, string> = {
@@ -378,6 +381,7 @@ export default function WritingEditor() {
   const projectBusy = projectOperationBusy || !projectInitialized;
   const recheckIdentity = ws.recheckIdentity;
   const userId = ws.user?.id;
+  const [pageWidth, setPageWidth] = usePageWidth(userId);
   const localActivityIds = ws.localActivityIds.current;
   const writingDeviceId = useMemo(() => {
     const key = `uno-writing-device:${userId}`;
@@ -703,26 +707,29 @@ export default function WritingEditor() {
       );
   }
 
+  // Extensions are installed once. Read the latest identity/session functions
+  // rather than retaining the render from before authentication completed.
+  const sessionCreditRef = useRef<() => Credit | null>(() => null);
+  sessionCreditRef.current = () => {
+    const document = draftRef.current;
+    if (!document || document.status !== "active" || document.completion_status === "completed") return null;
+    if (session.current?.document_id === document.id &&
+        (session.current.timer?.status === "paused" || session.current.timer?.status === "ended")) return null;
+    if (session.current && writingDates.dayKey(Date.parse(session.current.started_at), timeZone) !== writingDates.dayKey(Date.now(), timeZone)) {
+      changeSessionStatus("ended");
+      session.current = null;
+    }
+    if (!session.current || session.current.document_id !== document.id) startEditorSession();
+    const current = session.current;
+    if (!current) return null;
+    return { session: current.id, kind: ["insertFromPaste", "insertFromPasteAsQuotation", "insertFromDrop"].includes(inputKind.current) ? "pasted" : "typed" };
+  };
+
   const editor = useEditor({
     extensions: [
       DocumentSubtitle,
       DocumentImage,
-      SessionCredit.configure({
-        credit: () => {
-          const document = draftRef.current;
-          if (!document || document.status !== "active" || document.completion_status === "completed") return null;
-          if (session.current?.document_id === document.id &&
-              (session.current.timer?.status === "paused" || session.current.timer?.status === "ended")) return null;
-          if (session.current && writingDates.dayKey(Date.parse(session.current.started_at), timeZone) !== writingDates.dayKey(Date.now(), timeZone)) {
-            changeSessionStatus("ended");
-            session.current = null;
-          }
-          if (!session.current || session.current.document_id !== document.id) startEditorSession();
-          const current = session.current;
-          if (!current) return null;
-          return { session: current.id, kind: ["insertFromPaste", "insertFromPasteAsQuotation", "insertFromDrop"].includes(inputKind.current) ? "pasted" : "typed" };
-        },
-      }),
+      SessionCredit.configure({ credit: () => sessionCreditRef.current() }),
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         code: false,
@@ -1997,6 +2004,7 @@ export default function WritingEditor() {
       }}
       className={`uw-editor ${focus ? "uw-editor-focus" : ""}${overlayOpen ? " uw-editor-panel-open" : ""}`}
       data-theme={theme}
+      data-page-width={pageWidth}
       data-project-state={projectTransition?.phase || "idle"}
       aria-busy={projectBusy || activeDocument?.content_loaded === false}
       lang={language}
@@ -2410,6 +2418,9 @@ export default function WritingEditor() {
                       fill={activeDocument.favorite ? "currentColor" : "none"}
                     />
                   </button>
+                  <div className="uw-editor-focus-optional" inert={focus} aria-hidden={focus || undefined}>
+                    <EditorViewMenu width={pageWidth} onChange={setPageWidth} spanish={language === "es"} />
+                  </div>
                   <details className="uw-editor-export">
                     <summary aria-label={t("Export")}>
                       <Download size={17} />

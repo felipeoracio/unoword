@@ -1,0 +1,109 @@
+/* Editor 2.0 / Phase 1: presentation only. No authored styles or JSON change. */
+.uw-editor[data-page-width] {
+  --canvas-paper-width: 816px;
+  --canvas-side-padding: 48px;
+}
+.uw-editor[data-page-width="standard"] {
+  --canvas-side-padding: 72px;
+}
+.uw-editor[data-page-width="wide"] { --canvas-paper-width: 1136px; }
+.uw-editor[data-page-width="full"] { --canvas-paper-width: none; }
+
+.uw-editor[data-page-width] .uw-editor-paper-scroll {
+  padding: 32px clamp(16px, 2.5vw, 40px) 48px;
+}
+.uw-editor[data-page-width].uw-editor-focus .uw-editor-paper-scroll {
+  padding-top: var(--focus-scroll-padding, 32px);
+}
+.uw-editor[data-page-width]:not(.uw-editor-focus) .uw-editor-paper {
+  max-width: var(--canvas-paper-width);
+}
+.uw-editor[data-page-width] .uw-editor-paper {
+  box-sizing: border-box;
+  padding: 56px var(--canvas-side-padding) 64px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px #102b5505, 0 12px 40px #102b5508;
+}
+.uw-editor[data-page-width="standard"] .uw-editor-paper { min-height: 1056px; }
+.uw-editor[data-page-width] .uw-writing-canvas {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 18px;
+  line-height: 1.7;
+  letter-spacing: normal;
+  text-wrap: pretty;
+}
+.uw-editor[data-page-width] .uw-writing-canvas p { margin: 0 0 0.9em; }
+.uw-editor[data-page-width] .uw-writing-canvas :is(h1, h2, h3) {
+  margin: 1.35em 0 0.55em;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.uw-editor[data-page-width] .uw-writing-canvas h1 { font-size: 30px; }
+.uw-editor[data-page-width] .uw-writing-canvas h2 { font-size: 25px; }
+.uw-editor[data-page-width] .uw-writing-canvas h3 { font-size: 21px; }
+.uw-editor[data-page-width] .uw-writing-canvas :is(ul, ol) { padding-inline-start: 1.6em; margin-block: 0.7em 1em; }
+.uw-editor[data-page-width] .uw-writing-canvas li > p { margin-bottom: 0.3em; }
+.uw-editor[data-page-width] .uw-writing-canvas li :is(ul, ol) { margin-block: 0.3em; }
+.uw-editor[data-page-width] .uw-writing-canvas img {
+  /* Keep stored small images small. Large images fit both the paper and a
+     comfortable display cap, while native width/height reserve aspect ratio. */
+  max-width: min(100%, 560px);
+  height: auto;
+  margin: 28px auto;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.uw-editor[data-page-width] .uw-editor-title,
+.uw-editor[data-page-width] .uw-editor-subtitle { min-width: 0; max-width: 100%; }
+
+.uw-editor-view { position: relative; color: var(--we-text); }
+.uw-editor-view > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--we-line);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.uw-editor-view > summary::-webkit-details-marker { display: none; }
+.uw-editor-view > summary:is(:hover, :focus-visible),
+.uw-editor-view[open] > summary { background: var(--we-soft); }
+.uw-editor-view > summary:focus-visible { outline: 2px solid var(--we-blue); outline-offset: 2px; }
+.uw-editor-view-popover {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 224px;
+  max-width: calc(100vw - 28px);
+  padding: 16px;
+  border: 1px solid var(--we-line);
+  border-radius: 12px;
+  background: var(--we-paper);
+  box-shadow: 0 12px 32px #102b551a;
+}
+.uw-editor-view-popover label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; }
+.uw-editor-view-popover select {
+  width: 100%; min-height: 44px; padding: 8px;
+  border: 1px solid var(--we-line); border-radius: 7px;
+  color: var(--we-text); background: var(--we-paper); font: inherit;
+}
+.uw-editor-view-popover p { margin: 12px 0 0; font-size: 11px; line-height: 1.6; color: var(--we-muted); }
+@media (max-width: 900px) {
+  .uw-editor[data-page-width] { --canvas-side-padding: 32px; }
+}
+@media (max-width: 600px) {
+  .uw-editor[data-page-width] { --canvas-side-padding: 20px; }
+  .uw-editor[data-page-width] .uw-editor-paper-scroll { padding: 16px 10px 28px; }
+  .uw-editor[data-page-width] .uw-editor-paper { padding-block: 32px 44px; border-radius: 6px; }
+  .uw-editor[data-page-width="standard"] .uw-editor-paper { min-height: 100%; }
+  .uw-editor[data-page-width] .uw-writing-canvas { font-size: 17px; line-height: 1.7; }
+  .uw-editor-view > summary { min-height: 44px; padding-inline: 8px; }
+}

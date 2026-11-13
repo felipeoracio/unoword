@@ -1,0 +1,206 @@
+[
+  {
+    "label": "baseline",
+    "viewport": 1920,
+    "paper": {
+      "left": 709,
+      "right": 1529,
+      "width": 820,
+      "height": 2824.1875
+    },
+    "text": {
+      "left": 780,
+      "right": 1458,
+      "width": 678,
+      "height": 2287.5
+    },
+    "image": {
+      "left": 780,
+      "right": 1458,
+      "width": 678,
+      "height": 381.375
+    },
+    "workspace": {
+      "left": 318,
+      "right": 1920,
+      "width": 1602,
+      "height": 761.5
+    },
+    "fontSize": "19px",
+    "lineHeight": "36.1px",
+    "padding": "70px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  },
+  {
+    "label": "baseline",
+    "viewport": 1440,
+    "paper": {
+      "left": 469,
+      "right": 1289,
+      "width": 820,
+      "height": 2821.78125
+    },
+    "text": {
+      "left": 540,
+      "right": 1218,
+      "width": 678,
+      "height": 2287.5
+    },
+    "image": {
+      "left": 540,
+      "right": 1218,
+      "width": 678,
+      "height": 381.375
+    },
+    "workspace": {
+      "left": 318,
+      "right": 1440,
+      "width": 1122,
+      "height": 737
+    },
+    "fontSize": "19px",
+    "lineHeight": "36.1px",
+    "padding": "70px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  },
+  {
+    "label": "baseline",
+    "viewport": 1024,
+    "paper": {
+      "left": 140,
+      "right": 960,
+      "width": 820,
+      "height": 2812.296875
+    },
+    "text": {
+      "left": 192.1875,
+      "right": 907.8125,
+      "width": 715.625,
+      "height": 2308.65625
+    },
+    "image": {
+      "left": 192.1875,
+      "right": 907.8125,
+      "width": 715.625,
+      "height": 402.53125
+    },
+    "workspace": {
+      "left": 76,
+      "right": 1024,
+      "width": 948,
+      "height": 737
+    },
+    "fontSize": "19px",
+    "lineHeight": "36.1px",
+    "padding": "51.2px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  },
+  {
+    "label": "baseline",
+    "viewport": 768,
+    "paper": {
+      "left": 23.03125,
+      "right": 744.96875,
+      "width": 721.9375,
+      "height": 2763.578125
+    },
+    "text": {
+      "left": 62.421875,
+      "right": 705.578125,
+      "width": 643.15625,
+      "height": 2267.890625
+    },
+    "image": {
+      "left": 62.421875,
+      "right": 705.578125,
+      "width": 643.15625,
+      "height": 361.765625
+    },
+    "workspace": {
+      "left": 0,
+      "right": 768,
+      "width": 768,
+      "height": 737
+    },
+    "fontSize": "19px",
+    "lineHeight": "36.1px",
+    "padding": "38.4px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  },
+  {
+    "label": "baseline",
+    "viewport": 390,
+    "paper": {
+      "left": 10,
+      "right": 380,
+      "width": 370,
+      "height": 3963.5625
+    },
+    "text": {
+      "left": 33,
+      "right": 357,
+      "width": 324,
+      "height": 3385.875
+    },
+    "image": {
+      "left": 33,
+      "right": 357,
+      "width": 324,
+      "height": 182.25
+    },
+    "workspace": {
+      "left": 0,
+      "right": 390,
+      "width": 390,
+      "height": 614
+    },
+    "fontSize": "18px",
+    "lineHeight": "33.3px",
+    "padding": "22px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  },
+  {
+    "label": "baseline",
+    "viewport": 320,
+    "paper": {
+      "left": 10,
+      "right": 310,
+      "width": 300,
+      "height": 4425.4375
+    },
+    "text": {
+      "left": 33,
+      "right": 287,
+      "width": 254,
+      "height": 3847.75
+    },
+    "image": {
+      "left": 33,
+      "right": 287,
+      "width": 254,
+      "height": 142.875
+    },
+    "workspace": {
+      "left": 0,
+      "right": 320,
+      "width": 320,
+      "height": 594
+    },
+    "fontSize": "18px",
+    "lineHeight": "33.3px",
+    "padding": "22px",
+    "pageOverflow": false,
+    "paperOverflow": false,
+    "viewRetained": true
+  }
+]

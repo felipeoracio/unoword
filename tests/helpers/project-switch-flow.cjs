@@ -94,6 +94,7 @@ module.exports=async({page,context,origin,documents,activity,requests,fixture,se
  if(process.env.PROJECT_LAB_ONLY==='1'){await lab();return;}
 
  // Immediate typing + pending save, with no fixed animation delay substituted for I/O.
+ await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
  if(await page.getByRole('button',{name:'Resume Session',exact:true}).isVisible())await page.getByRole('button',{name:'Resume Session',exact:true}).click();
  await until(()=>[...activity.values()].some(row=>row.document_id===da.id&&row.timer?.status==='active'),'active outgoing sample');
  const idsBefore=[...activity.keys()],associations=structuredClone(state().associations),callsBefore=requests.length;
