@@ -5,7 +5,8 @@
 Shared web, extension and native motion tokens match.
 UnoWord branding: 819 project text files checked; no spelling variants found.
 vite v8.1.5 building client environment for production...
-[2Ktransforming...✓ 6289 modules transformed.
+[2K
+transforming...✓ 6289 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                                                       3.79 kB │ gzip:   1.08 kB
@@ -123,13 +124,14 @@ dist/assets/AdminDashboard-BOJsMmHh.js                              430.56 kB �
 dist/assets/WritingEditor-CfWqwJ5f.js                               554.87 kB │ gzip: 179.55 kB
 
 ✓ built in 2.23s
-[plugin builtin:vite-reporter] 
+[plugin builtin:vite-reporter]
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 vite v8.1.5 building ssr environment for production...
-[2Ktransforming...✓ 2215 modules transformed.
+[2K
+transforming...✓ 2215 modules transformed.
 rendering chunks...
 computing gzip size...
 node_modules/.tmp/marketing-ssr/assets/session-Nah2ANlh.js                0.30 kB │ gzip:   0.20 kB
