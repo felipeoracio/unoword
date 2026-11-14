@@ -1,8 +1,8 @@
 # Editor 2.0 — Phase 5 review
 
-Phase 4 is approved and live. Phase 5 is local on
-`feature/editor-2-portable-documents`, ready for review before release.
-Stop before Phase 6.
+Phase 5 is approved and deployed to https://unoword.app at commit
+`92538d951ca0e56df1404ae9989a4e9c562dd64f`. Vercel reports production READY.
+[Phase 6 review](../editor-2-phase-6/README.md).
 
 [Implementation plan](../../editor-2-phase-5-plan.md)
 

@@ -1,5 +1,8 @@
 # UnoWord Editor 2.0 — audit and phased plan
 
+Phases 1–5 are approved and deployed. Phase 6 is implemented locally for
+[review](review/editor-2-phase-6/README.md); Phase 7 awaits approval.
+
 ## Architecture and existing capabilities
 
 Audit of `frontend/src/pages/WritingEditor.tsx`, `lib/document-image.ts`,
@@ -52,9 +55,9 @@ and export-aware layout are Phases 4/5, rather than hidden schema changes now.
 
 ## Approval checkpoints
 
-Phases 1–4 are approved and deployed at commit `1015bbc`. Phase 5 is
-implemented separately for [review](review/editor-2-phase-5/README.md); its release
-and Phase 6 remain pending approval. Historical phase descriptions follow.
+Phases 1–5 are approved and deployed at commit `92538d9`. Phase 6 is
+implemented separately for [review](review/editor-2-phase-6/README.md); its release
+and Phase 7 remain pending approval. Historical phase descriptions follow.
 
 - **Phase 1 (completed and approved):** audit + canvas/layout/typography/image-fit preview. Stop
   and request approval before Phase 2. Do not deploy this redesign without review.

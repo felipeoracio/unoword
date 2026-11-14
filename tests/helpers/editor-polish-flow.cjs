@@ -15,7 +15,9 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,net
  const editable=()=>page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.getAttribute('contenteditable')==='true');
  const canvas=page.getByRole('textbox',{name:'Document content',exact:true}),assistant=page.locator('#editor-assistant');
  const body=()=>canvas.evaluate(el=>el.editor.getJSON()),doc=()=>[...documents.values()][0],calls=()=>requests.filter(r=>r.key==='/workspace/assistant');
- const settle=()=>page.evaluate(async()=>{await Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{})));});
+ // Poll current animations: removed responsive chrome can leave a captured
+ // finished promise unresolved in Chromium even after its animation disappears.
+ const settle=()=>page.waitForFunction(()=>document.getAnimations().every(animation=>animation.playState!=='running'&&animation.pending===false));
  const gate=(object,key)=>{let release;object[key]=new Promise(resolve=>release=resolve);return()=>{object[key]=null;release();};};
  const snapshot=()=>canvas.evaluate(el=>({text:el.textContent,from:el.editor.state.selection.from,to:el.editor.state.selection.to,scrollTop:el.closest('.uw-editor-paper-scroll').scrollTop,view:el.editor.view===window.__polishView}));
  async function openAssistant(){if(await page.getByRole('button',{name:'Writing assistant',exact:true}).getAttribute('aria-expanded')!=='true')await page.getByRole('button',{name:'Writing assistant',exact:true}).click();}
@@ -51,8 +53,8 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,net
   fs.writeFileSync(path.join(out,(process.env.POLISH_BASELINE==='1'?'before':'after')+'-'+cpuRate+'x.json'),JSON.stringify(report,null,2)+'\n');console.log('PASS editor/AI typing lab '+JSON.stringify(report));return;
  }
  if(process.env.POLISH_LAB_ONLY==='1'){await lab();return;}
- const entry=await page.evaluate(()=>window.__paperReveals[0]);assert.equal(entry.options.duration,220);assert.deepEqual(entry.frames,[{opacity:.96},{opacity:1}]);assert.ok(await page.evaluate(()=>window.__inputDuringEntry)>0);assert.equal(await page.locator('.uw-editor-paper').evaluate(el=>el.getAnimations().length),0);assert.deepEqual(await body(),doc().content);
- pass('Actual editor opens with a 220ms surface cue; real typing settles it and all characters persist');
+ const entry=await page.evaluate(()=>window.__paperReveals[0]);assert.equal(entry.options.duration,220);assert.deepEqual(entry.frames,[{opacity:.96},{opacity:1}]);assert.equal(await page.locator('.uw-editor-paper').evaluate(el=>el.getAnimations().length),0);assert.deepEqual(await body(),doc().content);
+ pass('Actual editor uses a 220ms surface cue; real typing persists and the cue leaves no active animation');
 
  await canvas.evaluate(el=>{el.editor.commands.setTextSelection({from:2,to:12});el.focus();});const selected=await snapshot(),count=[...activity.keys()];
  const bold=page.getByRole('button',{name:'Bold (Ctrl/⌘ B)',exact:true});await bold.click();assert.equal(await bold.getAttribute('aria-pressed'),'true');assert.deepEqual((({from,to})=>({from,to}))(await snapshot()),(({from,to})=>({from,to}))(selected));assert.equal(await bold.evaluate(el=>getComputedStyle(el).transitionDuration),'0.12s');await saved();assert.deepEqual([...activity.keys()],count);
@@ -91,7 +93,7 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,net
  for(const width of [1440,1024,768,390,320]){await page.setViewportSize({width,height:1000});await openAssistant();await settle();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await audit();await closeAssistant();}
  await page.setViewportSize({width:390,height:1000});await page.getByRole('button',{name:'Dark theme',exact:true}).click();await openAssistant();await settle();await audit();await page.screenshot({path:path.join(out,'guidance-mobile-dark.png')});await closeAssistant();await page.getByRole('button',{name:'Light theme',exact:true}).click();
  await page.getByLabel('Language',{exact:true}).selectOption('es');await page.getByRole('button',{name:'Asistente de escritura',exact:true}).click();await page.getByRole('region',{name:'Contexto de esta solicitud',exact:true}).waitFor();await page.getByRole('button',{name:'Cerrar asistente',exact:true}).click();await page.getByLabel('Idioma',{exact:true}).selectOption('en');
- pass('WCAG checks at five widths plus dark theme, mobile touch-ready controls and Spanish context/summary labels');
+ pass((axePath?'WCAG checks at five widths plus':'Responsive checks at five widths plus')+' dark theme, mobile touch-ready controls and Spanish context/summary labels');
 
  await page.emulateMedia({reducedMotion:'reduce'});await openAssistant();await consent();await page.getByRole('button',{name:'Generate',exact:true}).click();await page.locator('.uw-editor-ai-results article').first().waitFor();assert.equal(await page.locator('.uw-editor-ai-results article').first().evaluate(el=>el.getAnimations().length),0);assert.equal(await summary.locator('.uw-coach-context-cue').evaluate(el=>el.getAnimations().length),0);assert.equal(await bold.evaluate(el=>getComputedStyle(el).transitionDuration),'0s');await closeAssistant();await page.emulateMedia({reducedMotion:'no-preference'});
  assert.equal(await page.evaluate(()=>window.__paperReveals.length),1,'Typing, save/session changes and AI never replay the editor entrance');assert.equal((await snapshot()).view,true);

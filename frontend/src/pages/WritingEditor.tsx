@@ -49,6 +49,7 @@ import { motionMilliseconds, revealOpacity } from "@/lib/motion";
 import "@/styles/focus-mode.css";
 import "@/styles/project-motion.css";
 import "@/styles/editor-polish.css";
+import "@/styles/editor-interactions.css";
 import CoachingContext from "@/components/studio/CoachingContext";
 import SaveGuidanceButton from "@/components/studio/SaveGuidanceButton";
 import { coachingModes, usesGuidanceAllowance, sharesCurrentDraft } from "@/lib/coaching-modes";
@@ -380,6 +381,7 @@ export default function WritingEditor() {
   const openingMotion = useRef<Animation|null>(null);
   const openingPaper = useRef<HTMLElement|null>(null);
   const openingPending = useRef(false);
+  const openingSeen = useRef<string | null>(null);
   const revealPaper = useCallback((paper: HTMLElement | null) => {
     openingMotion.current?.cancel();
     openingMotion.current = null;
@@ -838,6 +840,8 @@ export default function WritingEditor() {
     if (!projectReveal.current || !editor || activeDocument?.content_loaded === false) return;
     projectReveal.current = false;
     if (!activeDocument) return;
+    openingSeen.current = activeDocument.id;
+    openingPending.current = false;
     const stored = editor.schema.nodeFromJSON(activeDocument.content);
     if (loadedDocument.current !== activeDocument.id || !editor.state.doc.eq(stored)) {
       editor.commands.setContent(activeDocument.content, {emitUpdate:false});
@@ -901,11 +905,26 @@ export default function WritingEditor() {
   const openingDocumentId = activeDocument?.id;
   const openingDocumentLoaded = activeDocument?.content_loaded !== false;
   useEffect(() => {
-    if (!openingPending.current || !openingPaper.current || !openingDocumentId ||
+    if (!openingPaper.current || !openingDocumentId || (!openingPending.current && openingSeen.current === openingDocumentId) ||
       !openingDocumentLoaded || projectBusy || loadedDocument.current !== openingDocumentId) return;
     openingPending.current = false;
+    openingSeen.current = openingDocumentId;
+    openingMotion.current?.cancel();
     openingMotion.current = revealOpacity(openingPaper.current);
   }, [editor, openingDocumentId, openingDocumentLoaded, projectBusy]);
+
+  useEffect(() => {
+    openingMotion.current?.cancel();
+    projectMotion.current?.cancel();
+    if (!focus) return;
+    const root = focusRoot.current;
+    const popovers = root?.querySelectorAll<HTMLElement>("[popover]:popover-open");
+    const details = root?.querySelectorAll<HTMLDetailsElement>(".uw-editor-view[open], .uw-editor-export[open]");
+    const restoreEditor = !!popovers?.length || !!details?.length || (document.activeElement instanceof HTMLElement && !!document.activeElement.closest(".uw-editor-toolbar, .uw-document-search, .uw-document-outline"));
+    popovers?.forEach(element => element.hidePopover());
+    details?.forEach(element => { element.open = false; });
+    if (restoreEditor) editor?.view.focus();
+  }, [focus, editor, focusRoot]);
 
   useEffect(() => {
     localStorage.setItem("uno-writing-language", language);
@@ -1202,6 +1221,7 @@ export default function WritingEditor() {
     const current = () => ownerRef.current === owner && projectSequence.current === ticket;
     const name = projects.snapshot()?.projects.find(p=>p.id===next)?.name || (language==="es"?"Escritura general":"General Writing");
     projectMotion.current?.cancel();
+    openingMotion.current?.cancel();
     setProjectTransition({phase:"saving",name});
     try {
       if (!initial && session.current?.timer?.status === "active")

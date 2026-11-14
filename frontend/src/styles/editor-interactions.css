@@ -1,0 +1,82 @@
+/* Editor 2.0 Phase 6: surface-only motion, reusing the shared motion vocabulary. */
+.uw-editor .uw-format-panel {
+  opacity: .96;
+  translate: 0 var(--uno-motion-popup-offset);
+  transition: opacity var(--uno-motion-exit) var(--uno-motion-exit-ease),
+    translate var(--uno-motion-exit) var(--uno-motion-exit-ease),
+    display var(--uno-motion-exit) allow-discrete,
+    overlay var(--uno-motion-exit) allow-discrete;
+}
+.uw-editor .uw-format-panel:popover-open {
+  opacity: 1;
+  translate: 0 0;
+  transition-duration: var(--uno-motion-dropdown);
+  transition-timing-function: var(--uno-motion-enter-ease);
+}
+.uw-editor .uw-format-panel:not(:popover-open) { pointer-events: none; }
+@starting-style {
+  .uw-editor .uw-format-panel:popover-open { opacity: .96; translate: 0 var(--uno-motion-popup-offset); }
+}
+.uw-editor .uw-format-trigger > svg,
+.uw-editor .uw-editor-view > summary > svg {
+  transition: rotate var(--uno-motion-feedback) var(--uno-motion-state-ease);
+}
+.uw-editor .uw-format-trigger:has(+ .uw-format-panel:popover-open) > svg,
+.uw-editor .uw-editor-view[open] > summary > svg { rotate: 180deg; }
+.uw-editor .uw-format-trigger:has(+ .uw-format-panel:popover-open) {
+  background: var(--we-soft);
+  box-shadow: inset 0 -2px var(--we-blue);
+}
+.uw-editor .uw-selection-toolbar {
+  animation: uno-editor-feedback var(--uno-motion-dropdown) var(--uno-motion-enter-ease);
+}
+.uw-document-search, .uw-document-outline,
+.uw-editor-view[open] .uw-editor-view-popover {
+  animation: uno-writing-tools-enter var(--uno-motion-panel) var(--uno-motion-enter-ease);
+}
+@keyframes uno-writing-tools-enter {
+  from { opacity: .96; translate: 0 var(--uno-motion-popup-offset); }
+  to { opacity: 1; translate: 0 0; }
+}
+.uw-writing-tools-dialog {
+  opacity: .96;
+  translate: 0 var(--uno-motion-dialog-offset);
+  transition: opacity var(--uno-motion-exit) var(--uno-motion-exit-ease),
+    translate var(--uno-motion-exit) var(--uno-motion-exit-ease),
+    display var(--uno-motion-exit) allow-discrete,
+    overlay var(--uno-motion-exit) allow-discrete;
+}
+.uw-writing-tools-dialog[open] {
+  opacity: 1; translate: 0 0;
+  transition-duration: var(--uno-motion-dialog);
+  transition-timing-function: var(--uno-motion-enter-ease);
+}
+.uw-writing-tools-dialog:not([open]) { pointer-events: none; }
+@starting-style {
+  .uw-writing-tools-dialog[open] { opacity: .96; translate: 0 var(--uno-motion-dialog-offset); }
+}
+:is(.uw-document-search, .uw-document-outline, .uw-writing-tools-dialog) :is(button, input, select),
+.uw-editor .uw-format-panel :is(button, input, select),
+.uw-editor .uw-selection-toolbar button,
+.uw-editor .uw-editor-view-popover select {
+  transition: background-color var(--uno-motion-feedback) var(--uno-motion-state-ease),
+    border-color var(--uno-motion-feedback) var(--uno-motion-state-ease),
+    color var(--uno-motion-feedback) var(--uno-motion-state-ease),
+    box-shadow var(--uno-motion-feedback) var(--uno-motion-state-ease);
+}
+.uw-editor-save .uw-studio-status > span {
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent);
+  transition: background-color var(--uno-motion-feedback) var(--uno-motion-state-ease),
+    box-shadow var(--uno-motion-feedback) var(--uno-motion-state-ease);
+}
+/* User preferences apply to body portals as well as the editor subtree. */
+@media (prefers-reduced-motion: reduce) {
+  .uw-editor .uw-format-panel, .uw-editor .uw-format-trigger > svg,
+  .uw-editor .uw-editor-view > summary > svg, .uw-editor .uw-selection-toolbar,
+  .uw-document-search, .uw-document-outline, .uw-writing-tools-dialog,
+  .uw-editor-view[open] .uw-editor-view-popover,
+  :is(.uw-document-search, .uw-document-outline, .uw-writing-tools-dialog) :is(button, input, select),
+  .uw-editor .uw-format-panel :is(button, input, select),
+  .uw-editor .uw-selection-toolbar button, .uw-editor .uw-editor-view-popover select,
+  .uw-editor-save .uw-studio-status > span { transition: none !important; animation: none !important; }
+}

@@ -13,7 +13,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
  const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.EDITOR_POLISH_ONLY==='1',
-   recordVideo:process.env.NAV_GUARD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/guard-video'),size:{width:1440,height:1000}}:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
+   recordVideo:process.env.EDITOR_INTERACTIONS_RECORD==='1'?{dir:path.resolve('tests/artifacts/editor-interactions/video'),size:{width:1440,height:1000}}:process.env.NAV_GUARD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/guard-video'),size:{width:1440,height:1000}}:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
   let signedIn=false,pro=true,offline=false,failSave=false,failFolders=false,conflictNext=false,currentOwner=owner,aiUsed=0,aiPending=0,guidanceRemaining=30,monthlyRemaining=200,legacy=false,failIdeaSave=false;
   const savedCoachIdeas=new Map();
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
@@ -138,6 +138,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      ['layout-shift',entries=>{for(const e of entries)if(!e.hadRecentInput)window.__studioLab.layoutShift+=e.value;}],
     ])if(PerformanceObserver.supportedEntryTypes.includes(type))new PerformanceObserver(list=>callback(list.getEntries())).observe({type,buffered:true});
    });
+  }
+  if(process.env.EDITOR_INTERACTIONS_ONLY==='1'){
+   await require('./helpers/editor-interactions-flow.cjs')({page,context,origin,documents,activity,requests,errors,network:projectNetwork,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v,setFailSave:v=>failSave=v});
+   return;
   }
   if(process.env.EDITOR_PORTABILITY_ONLY==='1'){
    await require('./helpers/editor-portability-flow.cjs')({page,context,origin,documents,activity,requests,errors,projectFixture,setSignedIn:v=>signedIn=v,setOffline:v=>offline=v});

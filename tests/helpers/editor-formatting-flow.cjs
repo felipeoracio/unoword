@@ -13,7 +13,7 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,set
  const select=()=>canvas.evaluate(el=>{el.editor.commands.setTextSelection({from:1,to:1+el.editor.state.doc.firstChild.content.size});el.editor.view.focus()});
  const settle=()=>page.evaluate(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})))});
  const panels={Text:'Selected text',Paragraph:'Paragraph settings','Document style':'Document typography'};
- async function open(name){const panel=page.locator('.uw-format-panel').filter({has:page.getByRole('heading',{name:panels[name],exact:true})});if(!await panel.isVisible())await page.getByRole('button',{name,exact:true}).click();return panel;}
+ async function open(name){const panel=page.locator('.uw-format-panel').filter({has:page.getByRole('heading',{name:panels[name],exact:true,includeHidden:true})});if(!await panel.evaluate(el=>el.matches(':popover-open')))await page.getByRole('button',{name,exact:true}).click();return panel;}
  async function set(panel,label,value){const p=await open(panel);await p.getByLabel(label,{exact:true}).selectOption(String(value));}
  const dismiss=()=>page.keyboard.press('Escape');
  const serverMatches=async()=>{
