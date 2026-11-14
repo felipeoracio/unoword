@@ -1,0 +1,39 @@
+{
+  "scope": "Local Chromium production bundle; synthetic API responses. 4x CPU slowdown; 150ms network latency, 1.6Mbps download; cache disabled. Input event to second animation frame, not INP or physical iPad data.",
+  "navigation": {
+    "domContentLoadedMs": 276.60000000009313,
+    "loadMs": 2028.6000000000931,
+    "transferredBytes": 342050,
+    "lcp": 2088,
+    "longTasks": [
+      139,
+      162,
+      80,
+      53,
+      273,
+      90,
+      69,
+      514,
+      73,
+      90,
+      82,
+      167
+    ],
+    "layoutShift": 0.001416336556893808
+  },
+  "documentCharacters": 52850,
+  "inputToFrame": [
+    {
+      "width": 1440,
+      "characters": 25,
+      "p50Ms": 146,
+      "p95Ms": 249
+    },
+    {
+      "width": 390,
+      "characters": 25,
+      "p50Ms": 147.29999999981374,
+      "p95Ms": 211.20000000018626
+    }
+  ]
+}

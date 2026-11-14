@@ -1,0 +1,11 @@
+PASS Selected font/size/color/highlight and document/paragraph styles survive real Python validation without changing session credit
+PASS Title, Subtitle, H1–H3 and normal styles retain semantic structure
+PASS Clear formatting preserves provenance; one undo restores formats and redo does not count words again
+PASS Checklist toggles, checkbox state, Enter, Tab and Shift+Tab work through the official nested-list commands
+PASS Optional selection toolbar formats existing selection, avoids overlap and can be disabled without remounting the editor
+PASS All three formatting panels fit five viewport widths and pass axe WCAG 2/2.1 AA checks
+PASS Reopen preserves root typography, text marks, paragraph attributes, checklist state and session history
+PASS Offline formatting stays local and synchronizes intact after reconnect
+PASS Large text and maximum paragraph indentation remain contained at 320px
+PASS Formatting an existing draft without typing does not start a session or award words
+PASS Phase 2 formatting suite: 10 grouped scenarios

@@ -1,7 +1,9 @@
 # Editor 2.0 — Phase 6 review
 
 Phase 5 is live at https://unoword.app, commit `92538d951ca0e56df1404ae9989a4e9c562dd64f`.
-Phase 6 is local on `feature/editor-2-interaction-polish`. Deployment and Phase 7 await approval.
+Phase 6 is approved and deployed to https://unoword.app at commit `e2ad836`.
+Vercel deployment `dpl_AQ1CSYDptppw4wxV539kSXTWBMCh` reached production READY.
+[Phase 7 verification](../editor-2-phase-7/README.md) is authorized.
 
 [Implementation plan](../../editor-2-phase-6-plan.md)
 

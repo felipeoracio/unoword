@@ -1,0 +1,5 @@
+locator.evaluate: Target page, context or browser has been closed
+    at accessibility (/workspace/unoword/tests/writing-workspace.browser.cjs:588:37)
+    at /workspace/unoword/tests/writing-workspace.browser.cjs:597:9 {
+  log: []
+}

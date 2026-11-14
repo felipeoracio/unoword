@@ -1,0 +1,18 @@
+PASS Grouped menus use shared entrance/exit timing; Escape and immediate reversal preserve selection, view, canvas width, content and word credit
+PASS Find, outline and portaled dialogs have restrained surface cues, immediate close/focus return, and no document transactions
+PASS Retained paper reveals once per document; typing/saves/Focus never replay it, and Focus from an open menu restores writing input and one-key Escape
+save-debug Saved on this device · syncing… Every quiet observation can become a story. Keep noticing. Still saving. {
+  active: '<div contenteditable="true" role="textbox" data-tour="canvas" aria-label="Document content" aria-multiline="true" spellcheck="true" translate="no" class="tiptap ProseMirror uw-writing-canvas ProseMirror-focused" tabindex="0" style=""><p><span>Every quiet observation can become a story.</span> Keep noticing. Still saving.</p></div>',
+  focus: 'uw-editor '
+}
+page.waitForFunction: Timeout 15000ms exceeded.
+    at module.exports (/workspace/unoword/tests/helpers/editor-interactions-flow.cjs:33:191)
+    at async /workspace/unoword/tests/writing-workspace.browser.cjs:143:4 {
+  log: [],
+  name: 'TimeoutError'
+}
+Error: Interaction checks exited 1
+    at ChildProcess.<anonymous> (/workspace/unoword/tests/editor-interactions.browser.cjs:2:383)
+    at ChildProcess.emit (node:events:514:28)
+    at maybeClose (node:internal/child_process:1172:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:335:5)

@@ -1,0 +1,1 @@
+PASS proposed ledger hardening: repeatable; existing history retained; anon/authenticated read/write/truncate denied; owner and service migration access preserved. Local PostgreSQL only.

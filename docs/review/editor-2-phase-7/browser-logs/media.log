@@ -1,0 +1,10 @@
+PASS Image insertion preserves selected writing; numeric, keyboard and drag resizing preserve ratio and have one-step undo/redo
+PASS Caption writing participates in session credit; deletion/undo restores image, caption and credit; replacement retains caption and aspect ratio
+PASS Table insertion preserves prose; real Tab navigation, cell alignment, numeric widths and row/column editing save through server validation
+PASS Merge/split preserve cell text and original credit; undo/redo restores the complete table
+PASS Pointer column resizing preserves table content and saves the resulting width
+PASS Reopening restores image dimensions/alignment/caption, table widths, structure and session history
+PASS Images fit five viewport widths; wide tables scroll inside the paper on mobile; image/table controls pass axe checks
+PASS Delayed image replacement is cancelled safely across document switches
+PASS Oversized rich-paste table spans cannot allocate an unbounded grid or earn typed credit
+PASS Phase 3 media suite: 9 grouped scenarios

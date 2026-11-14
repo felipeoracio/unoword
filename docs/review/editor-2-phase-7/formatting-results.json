@@ -1,0 +1,16 @@
+{
+  "scope": "Actual production editor + isolated HTTP fixtures + real Python clean_document for writes; real IndexedDB. No live/private Supabase or physical-device validation.",
+  "results": [
+    "Selected font/size/color/highlight and document/paragraph styles survive real Python validation without changing session credit",
+    "Title, Subtitle, H1–H3 and normal styles retain semantic structure",
+    "Clear formatting preserves provenance; one undo restores formats and redo does not count words again",
+    "Checklist toggles, checkbox state, Enter, Tab and Shift+Tab work through the official nested-list commands",
+    "Optional selection toolbar formats existing selection, avoids overlap and can be disabled without remounting the editor",
+    "All three formatting panels fit five viewport widths and pass axe WCAG 2/2.1 AA checks",
+    "Reopen preserves root typography, text marks, paragraph attributes, checklist state and session history",
+    "Offline formatting stays local and synchronizes intact after reconnect",
+    "Large text and maximum paragraph indentation remain contained at 320px",
+    "Formatting an existing draft without typing does not start a session or award words"
+  ],
+  "requestsValidated": 24
+}

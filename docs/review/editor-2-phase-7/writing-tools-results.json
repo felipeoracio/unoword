@@ -1,0 +1,16 @@
+{
+  "scope": "Local production bundle, real Python document validation, isolated HTTP/IndexedDB fixtures; no live private data",
+  "results": [
+    "Find spans formatting, match-case/navigation work, single/all replacement preserve old/typed/pasted provenance with one-step undo/redo",
+    "Literal queries/replacements treat regex punctuation as text and closing Find clears decorations",
+    "Outline updates semantic headings and navigates the same editor; document statistics include selected words separately from session credit",
+    "Page breaks undo/redo without word credit; isolated print preview applies saved A4/margins and invokes browser printing without remounting",
+    "Page breaks and print metadata survive real server validation, autosave and reopen",
+    "Save/Focus/Find shortcuts and the reference work; Find exits Focus Mode without remounting",
+    "Find/replace and statistics fit desktop/tablet/mobile down to 320px and pass axe WCAG 2/2.1 AA checks",
+    "Offline replacements stay local, show pending status and synchronize with original credit after reconnect",
+    "Switching documents clears search/outline state and cannot carry page breaks into a new draft",
+    "Long-document search highlights are bounded, replaces all 5,400 matches, preserves credit and remains editable",
+    "Completed documents allow search/print while replacement and print-metadata editing remain disabled; session records stay unchanged"
+  ]
+}

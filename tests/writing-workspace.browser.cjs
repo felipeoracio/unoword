@@ -11,6 +11,8 @@ const plain=n=>n.type==='text'?n.text:(n.content||[]).map(plain).join(['doc','li
 const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>[key,sorted(v)])):value;
 (async()=>{
  const browser=await chromium.launch({headless:process.env.FOCUS_HEADED!=='1'&&process.env.PROJECT_HEADED!=='1'&&process.env.POLISH_HEADED!=='1',executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
+ // A scoped matrix timeout closes this test's browser through Playwright.
+ process.once('SIGTERM',()=>{void browser.close().finally(()=>process.exit(143));});
  try {
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,hasTouch:process.env.FOCUS_MODE_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.EDITOR_POLISH_ONLY==='1',
    recordVideo:process.env.EDITOR_INTERACTIONS_RECORD==='1'?{dir:path.resolve('tests/artifacts/editor-interactions/video'),size:{width:1440,height:1000}}:process.env.NAV_GUARD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/navigation-motion/guard-video'),size:{width:1440,height:1000}}:process.env.POLISH_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/editor-polish/video'),size:{width:1440,height:1000}}:process.env.PROJECT_RECORD_VIDEO==='1'?{dir:path.resolve('tests/artifacts/project-motion/video'),size:{width:1440,height:1000}}:process.env.FOCUS_RECORD_VIDEO==='1'&&process.env.FOCUS_LAB_ONLY!=='1'?{dir:path.resolve('tests/artifacts/focus/video'),size:{width:1440,height:1000}}:undefined});context.setDefaultTimeout(15000);
@@ -347,7 +349,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   }
   if(process.env.WRITING_SESSION_COMPLETION_ONLY==='1'){
    const snap=async name=>{if(process.env.WRITING_SCREENSHOTS){fs.mkdirSync(process.env.WRITING_SCREENSHOTS,{recursive:true});await page.screenshot({path:path.join(process.env.WRITING_SCREENSHOTS,name+'.png'),fullPage:true});}};
-   const checkA11y=async()=>{if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});const result=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(result.violations.map(v=>v.id),[]);}};
+   const checkA11y=async()=>{if(process.env.AXE_SCRIPT){await page.addScriptTag({path:process.env.AXE_SCRIPT});const result=await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));if(result.violations.length){const diagnostics=result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,html:n.html,summary:n.failureSummary}))}));fs.mkdirSync(path.resolve('tests/artifacts/editor-final'),{recursive:true});fs.writeFileSync(path.resolve('tests/artifacts/editor-final/session-accessibility.json'),JSON.stringify(diagnostics,null,2));await page.screenshot({path:path.resolve('tests/artifacts/editor-final/session-accessibility.png')});console.error('Session accessibility:',JSON.stringify(diagnostics));}assert.deepEqual(result.violations.map(v=>v.id),[]);}};
 
    const until=async(check)=>{for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,50));}throw Error('Timed out waiting for fixture persistence');};
    await page.getByRole('button',{name:'Pause Session',exact:true}).click();
@@ -426,7 +428,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    await page.getByRole('button',{name:/^Trash/}).click();
    const empty=page.getByRole('button',{name:'Empty Trash',exact:true});await empty.click();
    const trashDialog=page.getByRole('dialog',{name:'Empty Trash',exact:true});
-   await trashDialog.getByText('Permanently delete 1 document(s)?',{exact:true}).waitFor();await snap('empty-trash-desktop');await checkA11y();await page.setViewportSize({width:390,height:900});await snap('empty-trash-mobile');await checkA11y();await page.setViewportSize({width:1440,height:1000});
+   await trashDialog.getByText('Permanently delete 1 document(s)?',{exact:true}).waitFor();await snap('empty-trash-desktop');await checkA11y();await trashDialog.getByRole('button',{name:'Permanently Delete',exact:true}).hover();await checkA11y();fs.mkdirSync(path.resolve('tests/artifacts/editor-final'),{recursive:true});await page.screenshot({path:path.resolve('tests/artifacts/editor-final/confirmation-accessible.png')});await page.setViewportSize({width:390,height:900});await snap('empty-trash-mobile');await checkA11y();await page.setViewportSize({width:1440,height:1000});
    await trashDialog.getByRole('button',{name:'Cancel',exact:true}).click();
    assert.ok(documents.has(saved.id),'Cancel never deletes documents');
    offline=true;await context.setOffline(true);await page.waitForFunction(()=>document.querySelector('.uw-editor-empty-trash').disabled);assert.equal(await empty.isEnabled(),false);
@@ -585,7 +587,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.keyboard.press('Escape');assert.equal(await page.locator('.uw-editor-library').count(),1);
   async function accessibility(label){
    if(!process.env.AXE_SCRIPT)return;
-   await page.locator('.uw-editor').evaluate(async el=>{await Promise.all(el.getAnimations({subtree:true}).map(a=>a.finished.catch(()=>{})));});
+   // Poll current transitions with Playwright's timeout; a removed native
+   // surface can leave an earlier captured finished promise unresolved.
+   await page.waitForFunction(()=>document.querySelector('.uw-editor')?.getAnimations({subtree:true}).every(animation=>animation.playState!=='running'&&!animation.pending));
    await page.addScriptTag({path:process.env.AXE_SCRIPT});
    const violations=await page.evaluate(async()=> (await axe.run(document.querySelector('.uw-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,description:v.description,nodes:v.nodes.map(n=>n.target)})));
    assert.deepEqual(violations,[],label+' accessibility');

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "color-contrast",
+    "nodes": [
+      {
+        "target": [
+          "dialog[aria-label=\"Empty Trash\"] > form > div > .uw-editor-primary[type=\"submit\"]"
+        ],
+        "html": "<button type=\"submit\" class=\"uw-editor-primary\">Permanently Delete</button>",
+        "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.34 (foreground color: #ffffff, background color: #1271ff, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1"
+      }
+    ]
+  }
+]

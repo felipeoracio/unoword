@@ -1,0 +1,971 @@
+{
+  "scope": "Actual production Tiptap UI and IndexedDB with isolated API fixtures. No live Supabase or private writing.",
+  "measurements": [
+    {
+      "label": "comfortable",
+      "viewport": 2560,
+      "paper": {
+        "left": 1031,
+        "right": 1847,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 1080,
+        "right": 1798,
+        "width": 718,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 1159,
+        "right": 1719,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 2560,
+        "width": 2242,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 2560,
+      "paper": {
+        "left": 1031,
+        "right": 1847,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 1104,
+        "right": 1774,
+        "width": 670,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 1159,
+        "right": 1719,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 2560,
+        "width": 2242,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "72px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 2560,
+      "paper": {
+        "left": 871,
+        "right": 2007,
+        "width": 1136,
+        "height": 2216.328125
+      },
+      "text": {
+        "left": 920,
+        "right": 1958,
+        "width": 1038,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 1159,
+        "right": 1719,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 2560,
+        "width": 2242,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 2560,
+      "paper": {
+        "left": 358,
+        "right": 2520,
+        "width": 2162,
+        "height": 1788.015625
+      },
+      "text": {
+        "left": 407,
+        "right": 2471,
+        "width": 2064,
+        "height": 1239.578125
+      },
+      "image": {
+        "left": 1159,
+        "right": 1719,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 2560,
+        "width": 2242,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 1920,
+      "paper": {
+        "left": 711,
+        "right": 1527,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 760,
+        "right": 1478,
+        "width": 718,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 839,
+        "right": 1399,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1920,
+        "width": 1602,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 1920,
+      "paper": {
+        "left": 711,
+        "right": 1527,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 784,
+        "right": 1454,
+        "width": 670,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 839,
+        "right": 1399,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1920,
+        "width": 1602,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "72px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 1920,
+      "paper": {
+        "left": 551,
+        "right": 1687,
+        "width": 1136,
+        "height": 2216.328125
+      },
+      "text": {
+        "left": 600,
+        "right": 1638,
+        "width": 1038,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 839,
+        "right": 1399,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1920,
+        "width": 1602,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 1920,
+      "paper": {
+        "left": 358,
+        "right": 1880,
+        "width": 1522,
+        "height": 2216.328125
+      },
+      "text": {
+        "left": 407,
+        "right": 1831,
+        "width": 1424,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 839,
+        "right": 1399,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1920,
+        "width": 1602,
+        "height": 761.5
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 1440,
+      "paper": {
+        "left": 471,
+        "right": 1287,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 520,
+        "right": 1238,
+        "width": 718,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 599,
+        "right": 1159,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1440,
+        "width": 1122,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 1440,
+      "paper": {
+        "left": 471,
+        "right": 1287,
+        "width": 816,
+        "height": 2644.640625
+      },
+      "text": {
+        "left": 544,
+        "right": 1214,
+        "width": 670,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 599,
+        "right": 1159,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1440,
+        "width": 1122,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "72px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 1440,
+      "paper": {
+        "left": 354,
+        "right": 1404,
+        "width": 1050,
+        "height": 2216.328125
+      },
+      "text": {
+        "left": 403,
+        "right": 1355,
+        "width": 952,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 599,
+        "right": 1159,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1440,
+        "width": 1122,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 1440,
+      "paper": {
+        "left": 354,
+        "right": 1404,
+        "width": 1050,
+        "height": 2216.328125
+      },
+      "text": {
+        "left": 403,
+        "right": 1355,
+        "width": 952,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 599,
+        "right": 1159,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 318,
+        "right": 1440,
+        "width": 1122,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 1024,
+      "paper": {
+        "left": 142,
+        "right": 958,
+        "width": 816,
+        "height": 2630.640625
+      },
+      "text": {
+        "left": 191,
+        "right": 909,
+        "width": 718,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 270,
+        "right": 830,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 76,
+        "right": 1024,
+        "width": 948,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 1024,
+      "paper": {
+        "left": 142,
+        "right": 958,
+        "width": 816,
+        "height": 2630.640625
+      },
+      "text": {
+        "left": 215,
+        "right": 885,
+        "width": 670,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 270,
+        "right": 830,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 76,
+        "right": 1024,
+        "width": 948,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "72px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 1024,
+      "paper": {
+        "left": 101.59375,
+        "right": 998.40625,
+        "width": 896.8125,
+        "height": 2202.328125
+      },
+      "text": {
+        "left": 150.59375,
+        "right": 949.40625,
+        "width": 798.8125,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 270,
+        "right": 830,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 76,
+        "right": 1024,
+        "width": 948,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 1024,
+      "paper": {
+        "left": 101.59375,
+        "right": 998.40625,
+        "width": 896.8125,
+        "height": 2202.328125
+      },
+      "text": {
+        "left": 150.59375,
+        "right": 949.40625,
+        "width": 798.8125,
+        "height": 1667.890625
+      },
+      "image": {
+        "left": 270,
+        "right": 830,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 76,
+        "right": 1024,
+        "width": 948,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "48px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 768,
+      "paper": {
+        "left": 19.1875,
+        "right": 748.8125,
+        "width": 729.625,
+        "height": 2629.640625
+      },
+      "text": {
+        "left": 52.1875,
+        "right": 715.8125,
+        "width": 663.625,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 104,
+        "right": 664,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 0,
+        "right": 768,
+        "width": 768,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "32px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 768,
+      "paper": {
+        "left": 19.1875,
+        "right": 748.8125,
+        "width": 729.625,
+        "height": 2629.640625
+      },
+      "text": {
+        "left": 52.1875,
+        "right": 715.8125,
+        "width": 663.625,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 104,
+        "right": 664,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 0,
+        "right": 768,
+        "width": 768,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "32px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 768,
+      "paper": {
+        "left": 19.1875,
+        "right": 748.8125,
+        "width": 729.625,
+        "height": 2629.640625
+      },
+      "text": {
+        "left": 52.1875,
+        "right": 715.8125,
+        "width": 663.625,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 104,
+        "right": 664,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 0,
+        "right": 768,
+        "width": 768,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "32px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 768,
+      "paper": {
+        "left": 19.1875,
+        "right": 748.8125,
+        "width": 729.625,
+        "height": 2629.640625
+      },
+      "text": {
+        "left": 52.1875,
+        "right": 715.8125,
+        "width": 663.625,
+        "height": 2096.203125
+      },
+      "image": {
+        "left": 104,
+        "right": 664,
+        "width": 560,
+        "height": 315
+      },
+      "workspace": {
+        "left": 0,
+        "right": 768,
+        "width": 768,
+        "height": 737
+      },
+      "fontSize": "18px",
+      "lineHeight": "30.6px",
+      "padding": "32px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 390,
+      "paper": {
+        "left": 10,
+        "right": 380,
+        "width": 370,
+        "height": 3297.1875
+      },
+      "text": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 2707.625
+      },
+      "image": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 184.5
+      },
+      "workspace": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 612
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 390,
+      "paper": {
+        "left": 10,
+        "right": 380,
+        "width": 370,
+        "height": 3297.1875
+      },
+      "text": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 2707.625
+      },
+      "image": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 184.5
+      },
+      "workspace": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 612
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 390,
+      "paper": {
+        "left": 10,
+        "right": 380,
+        "width": 370,
+        "height": 3297.1875
+      },
+      "text": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 2707.625
+      },
+      "image": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 184.5
+      },
+      "workspace": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 612
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 390,
+      "paper": {
+        "left": 10,
+        "right": 380,
+        "width": 370,
+        "height": 3297.1875
+      },
+      "text": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 2707.625
+      },
+      "image": {
+        "left": 31,
+        "right": 359,
+        "width": 328,
+        "height": 184.5
+      },
+      "workspace": {
+        "left": 0,
+        "right": 390,
+        "width": 390,
+        "height": 612
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "comfortable",
+      "viewport": 320,
+      "paper": {
+        "left": 10,
+        "right": 310,
+        "width": 300,
+        "height": 3662.28125
+      },
+      "text": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 3072.71875
+      },
+      "image": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 145.125
+      },
+      "workspace": {
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "height": 592
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "standard",
+      "viewport": 320,
+      "paper": {
+        "left": 10,
+        "right": 310,
+        "width": 300,
+        "height": 3662.28125
+      },
+      "text": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 3072.71875
+      },
+      "image": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 145.125
+      },
+      "workspace": {
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "height": 592
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "wide",
+      "viewport": 320,
+      "paper": {
+        "left": 10,
+        "right": 310,
+        "width": 300,
+        "height": 3662.28125
+      },
+      "text": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 3072.71875
+      },
+      "image": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 145.125
+      },
+      "workspace": {
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "height": 592
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    },
+    {
+      "label": "full",
+      "viewport": 320,
+      "paper": {
+        "left": 10,
+        "right": 310,
+        "width": 300,
+        "height": 3662.28125
+      },
+      "text": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 3072.71875
+      },
+      "image": {
+        "left": 31,
+        "right": 289,
+        "width": 258,
+        "height": 145.125
+      },
+      "workspace": {
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "height": 592
+      },
+      "fontSize": "17px",
+      "lineHeight": "28.9px",
+      "padding": "20px",
+      "pageOverflow": false,
+      "paperOverflow": false,
+      "viewRetained": true
+    }
+  ],
+  "checks": [
+    "28 responsive layout combinations",
+    "Image bounds/aspect/centering",
+    "Stable JSON/view/selection",
+    "No view-only autosave or session word mutations",
+    "Focus text width and scroll",
+    "Undo/redo after view changes",
+    "Reload preserves layout, JSON and credit",
+    "Dark mode, Spanish labels, Escape dismissal",
+    "Portrait/small images retain ratio and size",
+    "Layout usable with browser storage unavailable",
+    "Completed session records unchanged",
+    "axe WCAG 2/2.1 AA audit with open View menu at 4 widths"
+  ]
+}

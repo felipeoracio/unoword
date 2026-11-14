@@ -1,0 +1,65 @@
+{
+  "url": "https://unoword.app/editor",
+  "htmlBytes": 58976,
+  "assets": [
+    {
+      "path": "/assets/index-C3gTl_JC.js",
+      "status": 200,
+      "bytes": 285139,
+      "phase6SurfaceStyles": false
+    },
+    {
+      "path": "/assets/chunk-KS7C4IRE-CqIbuuKS.js",
+      "status": 200,
+      "bytes": 50996,
+      "phase6SurfaceStyles": false
+    },
+    {
+      "path": "/assets/api-CzOSnylN.js",
+      "status": 200,
+      "bytes": 15642,
+      "phase6SurfaceStyles": false
+    },
+    {
+      "path": "/assets/lucide-react-B7ak6GA8.js",
+      "status": 200,
+      "bytes": 14296,
+      "phase6SurfaceStyles": false
+    },
+    {
+      "path": "/assets/index-BOenAK2V.css",
+      "status": 200,
+      "bytes": 136361,
+      "phase6SurfaceStyles": false
+    },
+    {
+      "path": "/assets/WritingEditor-UXTjGvCW.css",
+      "status": 200,
+      "bytes": 57327,
+      "matchesLocalBuild": true,
+      "phase6SurfaceStyles": true
+    },
+    {
+      "path": "/assets/WritingEditor-gkLcNy6W.js",
+      "status": 200,
+      "bytes": 554871,
+      "matchesLocalBuild": true,
+      "phase6SurfaceStyles": false
+    }
+  ],
+  "readOnly": true,
+  "publicApi": [
+    {
+      "path": "/api/",
+      "status": 200,
+      "bytes": 39,
+      "jsonObject": true
+    },
+    {
+      "path": "/api/product",
+      "status": 200,
+      "bytes": 2716,
+      "jsonObject": true
+    }
+  ]
+}

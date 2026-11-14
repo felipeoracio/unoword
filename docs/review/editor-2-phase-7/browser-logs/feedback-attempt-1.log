@@ -1,0 +1,9 @@
+PASS Actual editor uses a 220ms surface cue; real typing persists and the cue leaves no active animation
+PASS Toolbar pressed/hover feedback preserves selection and session IDs; native link/export controls stay functional
+PASS Save labels stay immediate/truthful through held writes, failure/retry and offline/reconnect
+PASS Non-AI prompts stay local; explicit request shows restrained pending/results; typing and source previews preserve authored writing
+PASS Mode/context changes discard stale guidance and reset consent; failed requests retry without altering authored content
+PASS Pause/resume/end feedback and read-only summary use existing session counters without duplicate sessions
+PASS WCAG checks at five widths plus dark theme, mobile touch-ready controls and Spanish context/summary labels
+PASS Reduced motion removes new effects; reload preserves full writing, session history and ended summary
+PASS Phase 4 editor/AI suite: 8 grouped scenarios.

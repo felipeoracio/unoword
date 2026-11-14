@@ -1,0 +1,17 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'color-contrast'
++ ]
+- []
+
+    at checkA11y (/workspace/unoword/tests/writing-workspace.browser.cjs:352:237)
+    at async /workspace/unoword/tests/writing-workspace.browser.cjs:431:126 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

@@ -1,0 +1,15 @@
+{
+  "url": "https://unoword.app",
+  "target": "production",
+  "status": "READY",
+  "commit": "e2ad8366ffe9c4fa7a73e1a40274f96becd4f6a2",
+  "deploymentId": "dpl_AQ1CSYDptppw4wxV539kSXTWBMCh",
+  "deploymentUrl": "https://unoword-8vidt9ruv-unoword.vercel.app",
+  "projectId": "prj_vy231P3hZ7WgCmd0nUobA6fBPJOA",
+  "teamId": "team_ik0wgr3SArH5rb20kTpmXDI0",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 55.162,
+  "runtimeErrorScan": "No error/fatal groups returned in the deployment-scoped 15-minute check repeated after public API verification.",
+  "drains": 0,
+  "monitoringLimit": "Point-in-time checks, not continuous external monitoring. No drains configured."
+}

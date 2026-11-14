@@ -60,7 +60,16 @@
   animation: uno-editor-feedback var(--uno-motion-panel) var(--uno-motion-enter-ease);
 }
 .uw-editor-dialog:not(.uw-project-dialog):not(.uw-editor-profile-dialog)[open] {
-  animation: uno-editor-feedback var(--uno-motion-dialog) var(--uno-motion-enter-ease);
+  /* Opaque controls retain their text contrast throughout the entrance. */
+  animation: uno-editor-dialog-enter var(--uno-motion-dialog) var(--uno-motion-enter-ease);
+}
+.uw-editor-dialog .uw-editor-primary:hover {
+  filter: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--we-blue) 14%, transparent);
+}
+@keyframes uno-editor-dialog-enter {
+  from { translate: 0 var(--uno-motion-dialog-offset); }
+  to { translate: 0 0; }
 }
 @keyframes uno-editor-feedback { from { opacity: 0.96; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

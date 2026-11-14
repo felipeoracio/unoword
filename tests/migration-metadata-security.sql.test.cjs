@@ -1,0 +1,12 @@
+/** Proposed ledger hardening on disposable PostgreSQL; never connects to Supabase. */
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {PGlite}=require((process.env.PGLITE_ROOT||require('node:path').resolve('tests/node_modules'))+'/@electric-sql/pglite');
+(async()=>{const db=new PGlite();try{
+ await db.exec("create role anon;create role authenticated;create role service_role bypassrls;create table public.unoword_schema_migrations(version text primary key,applied_at timestamptz default now());insert into public.unoword_schema_migrations(version) values('existing-release');grant all on public.unoword_schema_migrations to anon,authenticated,service_role;");
+ await db.exec('set role anon');assert.equal((await db.query('select version from public.unoword_schema_migrations')).rows.length,1);await db.exec('reset role');
+ const sql=fs.readFileSync('docs/review/editor-2-phase-7/proposed-migration-table-hardening.sql','utf8');await db.exec(sql);await db.exec(sql);
+ for(const role of ['anon','authenticated']){await db.exec('set role '+role);for(const query of ["select * from public.unoword_schema_migrations","insert into public.unoword_schema_migrations(version) values('tampered')","update public.unoword_schema_migrations set version='tampered'","delete from public.unoword_schema_migrations","truncate public.unoword_schema_migrations"]){await assert.rejects(db.query(query),/permission denied/)}await db.exec('reset role')}
+ await db.exec('set role service_role');assert.equal((await db.query('select version from public.unoword_schema_migrations')).rows[0].version,'existing-release');await db.query("insert into public.unoword_schema_migrations(version) values('service-release')");await db.exec('reset role');await db.query("insert into public.unoword_schema_migrations(version) values('owner-release')");assert.deepEqual((await db.query('select version from public.unoword_schema_migrations order by version')).rows.map(r=>r.version),['existing-release','owner-release','service-release']);
+ assert.equal((await db.query("select relrowsecurity from pg_class where oid='public.unoword_schema_migrations'::regclass")).rows[0].relrowsecurity,true);
+ console.log('PASS proposed ledger hardening: repeatable; existing history retained; anon/authenticated read/write/truncate denied; owner and service migration access preserved. Local PostgreSQL only.');
+}finally{await db.close()}})().catch(error=>{console.error(error);process.exitCode=1});

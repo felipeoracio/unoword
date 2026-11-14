@@ -1,0 +1,14 @@
+{
+  "scope": "Actual built editor, real Python document validator, isolated HTTP persistence and real IndexedDB. No live Supabase/private writing.",
+  "results": [
+    "Image insertion preserves selected writing; numeric, keyboard and drag resizing preserve ratio and have one-step undo/redo",
+    "Caption writing participates in session credit; deletion/undo restores image, caption and credit; replacement retains caption and aspect ratio",
+    "Table insertion preserves prose; real Tab navigation, cell alignment, numeric widths and row/column editing save through server validation",
+    "Merge/split preserve cell text and original credit; undo/redo restores the complete table",
+    "Pointer column resizing preserves table content and saves the resulting width",
+    "Reopening restores image dimensions/alignment/caption, table widths, structure and session history",
+    "Images fit five viewport widths; wide tables scroll inside the paper on mobile; image/table controls pass axe checks",
+    "Delayed image replacement is cancelled safely across document switches",
+    "Oversized rich-paste table spans cannot allocate an unbounded grid or earn typed credit"
+  ]
+}

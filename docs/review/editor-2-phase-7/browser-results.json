@@ -1,0 +1,378 @@
+{
+  "applicationBaseCommit": "e2ad8366ffe9c4fa7a73e1a40274f96becd4f6a2",
+  "localApplicationFix": "Opaque legacy dialogs and contrast-preserving primary hover in editor-polish.css; affected suites rerun from editor-final-fixed.",
+  "completedAt": "2026-11-14T19:37:45.261595+00:00",
+  "status": "passed",
+  "scope": "Serial local production frontend with synthetic API/IndexedDB; no live account writes or paid AI calls. Chromium viewports, not physical devices.",
+  "browserJobsPassed": 14,
+  "results": [
+    {
+      "name": "canvas",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 42.86,
+      "log": "tests/artifacts/editor-final/canvas.log",
+      "reviewLog": "browser-logs/canvas.log",
+      "attempts": [
+        {
+          "name": "canvas",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 42.86,
+          "log": "tests/artifacts/editor-final/canvas.log",
+          "reviewLog": "browser-logs/canvas.log"
+        }
+      ]
+    },
+    {
+      "name": "formatting",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 87.85,
+      "log": "tests/artifacts/editor-final/formatting.log",
+      "reviewLog": "browser-logs/formatting.log",
+      "attempts": [
+        {
+          "name": "formatting",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 87.85,
+          "log": "tests/artifacts/editor-final/formatting.log",
+          "reviewLog": "browser-logs/formatting.log"
+        }
+      ]
+    },
+    {
+      "name": "media",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 118.43,
+      "log": "tests/artifacts/editor-final/media.log",
+      "reviewLog": "browser-logs/media.log",
+      "attempts": [
+        {
+          "name": "media",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 118.43,
+          "log": "tests/artifacts/editor-final/media.log",
+          "reviewLog": "browser-logs/media.log"
+        }
+      ]
+    },
+    {
+      "name": "writing-tools",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 74.53,
+      "log": "tests/artifacts/editor-final/writing-tools.log",
+      "reviewLog": "browser-logs/writing-tools.log",
+      "attempts": [
+        {
+          "name": "writing-tools",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 74.53,
+          "log": "tests/artifacts/editor-final/writing-tools.log",
+          "reviewLog": "browser-logs/writing-tools.log"
+        }
+      ]
+    },
+    {
+      "name": "portability",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 33.29,
+      "log": "tests/artifacts/editor-final-fixed/portability.log",
+      "reviewLog": "browser-logs/portability.log",
+      "attempts": [
+        {
+          "name": "portability",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 31.4,
+          "log": "tests/artifacts/editor-final/portability.log",
+          "reviewLog": "browser-logs/portability-attempt-1.log"
+        },
+        {
+          "name": "portability",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 33.29,
+          "log": "tests/artifacts/editor-final-fixed/portability.log",
+          "reviewLog": "browser-logs/portability.log"
+        }
+      ]
+    },
+    {
+      "name": "interactions",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 24.85,
+      "log": "tests/artifacts/editor-final-fixed/interactions.log",
+      "reviewLog": "browser-logs/interactions.log",
+      "attempts": [
+        {
+          "name": "interactions",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 32.2,
+          "log": "tests/artifacts/editor-final/interactions.log",
+          "reviewLog": "browser-logs/interactions-attempt-1.log"
+        },
+        {
+          "name": "interactions",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 24.85,
+          "log": "tests/artifacts/editor-final-fixed/interactions.log",
+          "reviewLog": "browser-logs/interactions.log"
+        }
+      ]
+    },
+    {
+      "name": "focus",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 55.06,
+      "log": "tests/artifacts/editor-final/focus.log",
+      "reviewLog": "browser-logs/focus.log",
+      "attempts": [
+        {
+          "name": "focus",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 55.06,
+          "log": "tests/artifacts/editor-final/focus.log",
+          "reviewLog": "browser-logs/focus.log"
+        }
+      ]
+    },
+    {
+      "name": "projects",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 65.32,
+      "log": "tests/artifacts/editor-final/projects.log",
+      "reviewLog": "browser-logs/projects.log",
+      "attempts": [
+        {
+          "name": "projects",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 65.32,
+          "log": "tests/artifacts/editor-final/projects.log",
+          "reviewLog": "browser-logs/projects.log"
+        }
+      ]
+    },
+    {
+      "name": "feedback",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 34.16,
+      "log": "tests/artifacts/editor-final-fixed/feedback.log",
+      "reviewLog": "browser-logs/feedback.log",
+      "attempts": [
+        {
+          "name": "feedback",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 33.33,
+          "log": "tests/artifacts/editor-final/feedback.log",
+          "reviewLog": "browser-logs/feedback-attempt-1.log"
+        },
+        {
+          "name": "feedback",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 34.16,
+          "log": "tests/artifacts/editor-final-fixed/feedback.log",
+          "reviewLog": "browser-logs/feedback.log"
+        }
+      ]
+    },
+    {
+      "name": "workspace",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 48.52,
+      "log": "tests/artifacts/editor-final-fixed/workspace.log",
+      "reviewLog": "browser-logs/workspace.log",
+      "attempts": [
+        {
+          "name": "workspace",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": true,
+          "seconds": 300.16,
+          "log": "tests/artifacts/editor-final/workspace.log",
+          "reviewLog": "browser-logs/workspace-attempt-1.log"
+        },
+        {
+          "name": "workspace",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 48.52,
+          "log": "tests/artifacts/editor-final-fixed/workspace.log",
+          "reviewLog": "browser-logs/workspace.log"
+        }
+      ]
+    },
+    {
+      "name": "session-completion",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 38.25,
+      "log": "tests/artifacts/editor-final-fixed/session-completion.log",
+      "reviewLog": "browser-logs/session-completion.log",
+      "attempts": [
+        {
+          "name": "session-completion",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 26.95,
+          "log": "tests/artifacts/editor-final/session-completion.log",
+          "reviewLog": "browser-logs/session-completion-attempt-1.log"
+        },
+        {
+          "name": "session-completion",
+          "status": "failed",
+          "code": 1,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 28.06,
+          "log": "tests/artifacts/editor-final-retries/session-completion.log",
+          "reviewLog": "browser-logs/session-completion-attempt-2.log"
+        },
+        {
+          "name": "session-completion",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 38.25,
+          "log": "tests/artifacts/editor-final-fixed/session-completion.log",
+          "reviewLog": "browser-logs/session-completion.log"
+        }
+      ]
+    },
+    {
+      "name": "typing-1x",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 20.25,
+      "log": "tests/artifacts/editor-final/typing-1x.log",
+      "reviewLog": "browser-logs/typing-1x.log",
+      "attempts": [
+        {
+          "name": "typing-1x",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 20.25,
+          "log": "tests/artifacts/editor-final/typing-1x.log",
+          "reviewLog": "browser-logs/typing-1x.log"
+        }
+      ]
+    },
+    {
+      "name": "typing-4x",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 45.33,
+      "log": "tests/artifacts/editor-final/typing-4x.log",
+      "reviewLog": "browser-logs/typing-4x.log",
+      "attempts": [
+        {
+          "name": "typing-4x",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 45.33,
+          "log": "tests/artifacts/editor-final/typing-4x.log",
+          "reviewLog": "browser-logs/typing-4x.log"
+        }
+      ]
+    },
+    {
+      "name": "typing-network-4x",
+      "status": "passed",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "seconds": 33.2,
+      "log": "tests/artifacts/editor-final-fixed/typing-network-4x.log",
+      "reviewLog": "browser-logs/typing-network-4x.log",
+      "attempts": [
+        {
+          "name": "typing-network-4x",
+          "status": "passed",
+          "code": 0,
+          "signal": null,
+          "timedOut": false,
+          "seconds": 33.2,
+          "log": "tests/artifacts/editor-final-fixed/typing-network-4x.log",
+          "reviewLog": "browser-logs/typing-network-4x.log"
+        }
+      ]
+    }
+  ]
+}

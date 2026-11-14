@@ -1,0 +1,48 @@
+{
+  "project": "jvcbpnmtnjhftpukgppw",
+  "checkedAt": "2026-11-14T19:18:33.409Z",
+  "mode": "Read-only production health, advisor, policy and function metadata. No live user rows fetched or modified.",
+  "health": "ACTIVE_HEALTHY; health advisor returned no lints",
+  "writingTables": "RLS enabled on all 14 writing_* tables inspected. Documents/activity use permissive owner checks plus restrictive entitlement policies. Project resources/preferences use owner and entitlement checks.",
+  "rpc": "Project SECURITY DEFINER RPCs use fixed search_path and delegate to workspace_project_owner(), which rejects a null auth.uid() or missing Pro access. Disposable SQL tests exercise cross-account/scoped access.",
+  "findings": [
+    {
+      "severity": "error",
+      "name": "Migration ledger lacks RLS and grants browser roles table privileges",
+      "table": "public.unoword_schema_migrations",
+      "columns": [
+        "version",
+        "applied_at"
+      ],
+      "impact": "Anonymous/authenticated roles have SELECT/INSERT/UPDATE/DELETE/TRUNCATE privileges on infrastructure migration metadata; table contains migration identifiers/timestamps, not writing content.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public",
+      "proposal": "proposed-migration-table-hardening.sql",
+      "state": "Proposed and tested locally; not applied to production."
+    },
+    {
+      "severity": "warning",
+      "name": "Leaked password protection disabled",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+      "state": "Existing Auth setting; unchanged."
+    },
+    {
+      "severity": "review",
+      "name": "12 authenticated SECURITY DEFINER RPC warnings",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "state": "Intended project APIs; owner-helper source and local isolation tests reviewed. Not blanket revoked."
+    },
+    {
+      "severity": "info",
+      "name": "31 RLS-enabled tables have no policies",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "state": "Includes service-only tables; absence of policies denies browser-row access, not blanket public access."
+    }
+  ],
+  "performanceAdvisors": {
+    "unindexedForeignKeys": 17,
+    "authRlsInitplanWarnings": 18,
+    "unusedIndexes": 5,
+    "changesApplied": false
+  },
+  "limits": "Metadata audit and local SQL contracts do not prove existing stored document content or live cross-device behavior."
+}

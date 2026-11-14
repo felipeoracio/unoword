@@ -1,0 +1,12 @@
+PASS Find spans formatting, match-case/navigation work, single/all replacement preserve old/typed/pasted provenance with one-step undo/redo
+PASS Literal queries/replacements treat regex punctuation as text and closing Find clears decorations
+PASS Outline updates semantic headings and navigates the same editor; document statistics include selected words separately from session credit
+PASS Page breaks undo/redo without word credit; isolated print preview applies saved A4/margins and invokes browser printing without remounting
+PASS Page breaks and print metadata survive real server validation, autosave and reopen
+PASS Save/Focus/Find shortcuts and the reference work; Find exits Focus Mode without remounting
+PASS Find/replace and statistics fit desktop/tablet/mobile down to 320px and pass axe WCAG 2/2.1 AA checks
+PASS Offline replacements stay local, show pending status and synchronize with original credit after reconnect
+PASS Switching documents clears search/outline state and cannot carry page breaks into a new draft
+PASS Long-document search highlights are bounded, replaces all 5,400 matches, preserves credit and remains editable
+PASS Completed documents allow search/print while replacement and print-metadata editing remain disabled; session records stay unchanged
+PASS Phase 4 writing tools: 11 grouped scenarios

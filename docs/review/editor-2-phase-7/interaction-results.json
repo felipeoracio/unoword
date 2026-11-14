@@ -1,0 +1,11 @@
+{
+  "scope": "Built editor, isolated persistence/IndexedDB and synthetic writing. No live private writing or AI calls.",
+  "results": [
+    "Grouped menus use shared entrance/exit timing; Escape and immediate reversal preserve selection, view, canvas width, content and word credit",
+    "Find, outline and portaled dialogs have restrained surface cues, immediate close/focus return, and no document transactions",
+    "Retained paper reveals once per document; typing/saves/Focus never replay it, and Focus from an open menu restores writing input and one-key Escape",
+    "Save feedback remains truthful through held persistence, offline edits, failed sync and retry; tone/halo never manufactures Saved",
+    "Reduced motion disables new surface motion and control transitions, including preference changes while a menu is open",
+    "Animated controls fit desktop/tablet/mobile down to 320px and pass axe WCAG 2/2.1 AA checks"
+  ]
+}

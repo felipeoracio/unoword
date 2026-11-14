@@ -1,0 +1,1 @@
+PASS projects SQL: repeatable additive migration; Pro/RLS and cross-account isolation; project/assignment/preference CAS; shared resources without copies; five scoped modes before text; scoped search; immutable account counts; guided-answer preservation; archive/delete fallbacks and preserved writing.

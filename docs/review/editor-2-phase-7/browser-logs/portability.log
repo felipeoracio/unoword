@@ -1,0 +1,10 @@
+PASS DOCX review/cancel writes nothing; confirmation creates a separate document preserving ordered tables, figures/captions, typography and page settings with no typed credit
+PASS All four downloads use current local writing; DOCX/PDF are real generated files, Markdown keeps rich layout and TXT stays plain Unicode
+PASS Rich Markdown roundtrip restores fonts, tables, image layout/caption and metadata; scripts, unsafe links and remote images never enter the editor or fetch
+PASS Standard Markdown headings, GFM tables and checklist state import as semantic editable structures
+PASS TXT and Markdown review/import work offline and sync intact after reconnect without counting imports as typed words
+PASS Import review and export notes fit desktop/tablet/mobile down to 320px; import dialog passes axe WCAG 2/2.1 AA checks
+PASS Delayed export responses are discarded after a document switch; undo cannot restore writing from the previous document
+PASS Project changes cancel delayed DOCX conversion and prevent stale imports into unrelated projects
+PASS Invalid UTF-8, NUL text and oversized files fail without creating or overwriting documents
+PASS Phase 5 portability: 9 grouped scenarios
