@@ -1,0 +1,20 @@
+{
+  "project": "jvcbpnmtnjhftpukgppw",
+  "migration": "restrict_unoword_migration_history_access",
+  "version": "20261114195333",
+  "status": "applied_and_verified",
+  "rlsEnabled": true,
+  "anonymousAnyTablePrivilege": false,
+  "authenticatedAnyTablePrivilege": false,
+  "serviceSelectAndInsertPreserved": true,
+  "ownerSelectAndInsertPreserved": true,
+  "historyCountBefore": 9,
+  "historyCountAfter": 9,
+  "historyFingerprintBefore": "bb6dbee9ab25fff747d97a9669e79b82",
+  "historyFingerprintAfter": "bb6dbee9ab25fff747d97a9669e79b82",
+  "securityAdvisorRlsDisabledFindingCleared": true,
+  "remainingNotices": "RLS enabled with no policies is intentional for this service-only metadata table; existing project RPC and Auth notices remain unchanged.",
+  "dataScope": "Permissions/RLS on the migration ledger only. No document or activity row changes.",
+  "serviceBypassesRls": true,
+  "ownerBypassesRls": true
+}

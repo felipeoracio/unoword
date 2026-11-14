@@ -1,8 +1,8 @@
 # UnoWord Editor 2.0 — audit and phased plan
 
-Phases 1–6 are approved and deployed at `e2ad836`. Phase 7 automated checks are complete for
-[review](review/editor-2-phase-7/README.md), with a local dialog-contrast fix and
-a separately proposed database permission change awaiting release approval.
+Phases 1–7 are approved and deployed at `31cb4ef`.
+[Phase 7 results and release verification](review/editor-2-phase-7/README.md)
+include the deployed contrast fix and verified Supabase ledger hardening.
 
 ## Architecture and existing capabilities
 
@@ -56,9 +56,9 @@ and export-aware layout are Phases 4/5, rather than hidden schema changes now.
 
 ## Approval checkpoints
 
-Phases 1–6 are approved and deployed at commit `e2ad836`. Phase 7 is
-authorized for [verification](review/editor-2-phase-7/README.md); any resulting
-production fixes require review before release. Historical phase descriptions follow.
+Phases 1–7 are approved and deployed at commit `31cb4ef`.
+[Phase 7 verification and release](review/editor-2-phase-7/README.md) are complete;
+physical-device QA and constrained-CPU optimization remain documented follow-ups. Historical phase descriptions follow.
 
 - **Phase 1 (completed and approved):** audit + canvas/layout/typography/image-fit preview. Stop
   and request approval before Phase 2. Do not deploy this redesign without review.

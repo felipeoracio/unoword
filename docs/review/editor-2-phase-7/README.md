@@ -1,14 +1,18 @@
 # Editor 2.0 — Phase 7 verification
 
-Phase 6 is deployed to **https://unoword.app**, commit `e2ad836`.
-Vercel production deployment `dpl_AQ1CSYDptppw4wxV539kSXTWBMCh` is READY;
-its build took 55.162 seconds. Public API health/catalog probes returned HTTP 200.
-The deployed editor JS/CSS matched the Phase 6 production build byte-for-byte
-at release verification. The later Phase 7 contrast fix is local and unreleased.
-Any production hardening or resulting editor fixes remain subject to review before release.
+Phase 7 is approved and deployed to **https://unoword.app**, commit `31cb4ef`.
+Vercel production deployment `dpl_38MnPtZFDPqLQvzxz3u4SSQBQXJF` is READY;
+its build took 63.97 seconds. Deployed editor JS/CSS match the tested build byte-for-byte.
+The editor and public API health/catalog probes returned HTTP 200. No error/fatal
+groups were returned in the deployment-scoped post-release log check.
 
-[Plan](../../editor-2-phase-7-plan.md) · [Deployment](deployment.json) ·
-[Production smoke checks](production-smoke.json)
+The approved Supabase migration-history hardening is also applied and verified.
+All nine existing ledger records retain the same fingerprint. Browser roles have
+no ledger privileges; RLS is enabled and service/owner access remains intact.
+
+[Phase 7 release](phase-7-release.json) · [Supabase release](supabase-release.json) ·
+[Plan](../../editor-2-phase-7-plan.md). Earlier Phase 6 release evidence is preserved
+in [deployment.json](deployment.json) and [production-smoke.json](production-smoke.json).
 
 ## Verification results
 
@@ -43,7 +47,7 @@ Initial failures/timeouts are retained in the attempt history. One genuine UI is
 was fixed locally: generic dialog opacity and primary-button hover reduced label
 contrast. Dialogs now enter with the existing 6px movement at full opacity, with
 a contrast-preserving hover ring. Affected suites were rerun on the local build.
-The production release remains the approved Phase 6 commit.
+The contrast fix was subsequently approved and deployed in the Phase 7 release.
 
 [Foundation results](foundation-results.json): production build passed; 25 frontend
 unit tests and 202 backend tests passed. Full frontend lint completed with four
@@ -88,7 +92,7 @@ input-event-to-second-frame p95 was 249ms desktop and 211.2ms mobile.
 after `input`, unlike the `beforeinput` table, so the numbers are not directly
 comparable. These tests assert editing/save integrity rather than a speed budget.
 
-## Local dialog-contrast fix
+## Deployed dialog-contrast fix
 
 The Empty Trash confirmation's primary label fell to **4.34:1** during its opacity
 entrance, below WCAG AA's 4.5:1 threshold for this text. The brand blue itself is
@@ -98,8 +102,8 @@ Primary dialog hover uses a subtle ring instead of a brightness filter that also
 reduces contrast. Reduced-motion overrides and focus behavior remain intact.
 
 The completion test scans immediately after opening, explicitly audits the
-confirmation button while hovered, and checks mobile layout. This CSS-only fix is
-local for review; it has not been deployed with Phase 6.
+confirmation button while hovered, and checks mobile layout. This CSS-only fix was
+approved and deployed in Phase 7.
 
 [Original contrast finding](contrast-before.json) · [Fixed confirmation](confirmation-accessible.png).
 
@@ -114,31 +118,33 @@ visually inspected for table/image containment and preserved formatting.
 [LibreOffice-rendered PDF](docx-render.pdf). This is compatible-application evidence,
 not a claim of perfect Microsoft Word compatibility.
 
-## Supabase review and separate hardening proposal
+## Supabase review and approved hardening
 
 [Read-only Supabase findings](supabase-review.json). The existing project is
 ACTIVE_HEALTHY and its health advisor returned no lints. All 14 inspected
 `writing_*` tables have RLS enabled. Document/activity ownership policies combine
 with restrictive entitlement policies. The project RPC owner helper rejects
 missing identities and missing Pro access; scoped access is exercised locally.
-No production documents, activity rows, statistics, permissions or Auth settings
-were changed by this verification.
+No production documents, activity rows, statistics or Auth settings were changed.
+The separately approved release changed only the migration-ledger permissions/RLS.
 
-The existing `public.unoword_schema_migrations` ledger has RLS disabled and
-anonymous/authenticated SELECT, INSERT, UPDATE, DELETE and TRUNCATE privileges.
+The initial audit found that `public.unoword_schema_migrations` had RLS disabled
+and anonymous/authenticated SELECT, INSERT, UPDATE, DELETE and TRUNCATE privileges.
 Its columns are migration version and timestamp, not authored documents, but
 untrusted clients should not be able to tamper with migration history.
 
-[Proposed SQL](proposed-migration-table-hardening.sql) revokes browser-role access
-and enables RLS, leaving migration-owner/service access intact. It has **not** been
-applied to production. [Local verification](hardening-sql.log) proves idempotence,
-preservation of existing history, rejection of browser-role reads/writes/truncation
-and continued migration access. Approval is needed for this separate production
-permission change. [Supabase remediation reference](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public).
+[Approved SQL](proposed-migration-table-hardening.sql) was applied through Supabase
+as `20261114195333_restrict_unoword_migration_history_access`. It revokes browser-role
+access and enables RLS, leaving migration-owner/service access intact.
+[Local verification](hardening-sql.log) proves idempotence and role behavior;
+[production verification](supabase-release.json) confirms unchanged ledger count and
+fingerprint, revoked browser access, preserved service/owner privileges and RLS.
+The RLS-disabled advisor finding is cleared. The new no-policy informational notice
+is expected for service-only metadata. [Supabase remediation reference](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public).
 
 Other existing notices: [leaked-password protection is disabled](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection),
-12 authenticated SECURITY DEFINER project-RPC notices, 31 RLS tables with no
-policies (including deliberately service-only tables), 18 RLS init-plan warnings,
+12 authenticated SECURITY DEFINER project-RPC notices, 32 RLS tables with no
+policies (31 before hardening) (including deliberately service-only tables), 18 RLS init-plan warnings,
 17 unindexed foreign keys and five unused indexes. No blanket RPC revocation,
 policy addition, subscription or index changes were made.
 

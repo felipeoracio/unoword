@@ -44,5 +44,6 @@
     "unusedIndexes": 5,
     "changesApplied": false
   },
-  "limits": "Metadata audit and local SQL contracts do not prove existing stored document content or live cross-device behavior."
+  "limits": "Metadata audit and local SQL contracts do not prove existing stored document content or live cross-device behavior.",
+  "auditContext": "Initial pre-release audit; approved ledger fix applied later. See supabase-release.json for current verification."
 }

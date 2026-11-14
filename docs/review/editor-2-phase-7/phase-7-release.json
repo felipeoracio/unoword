@@ -1,0 +1,43 @@
+{
+  "url": "https://unoword.app",
+  "target": "production",
+  "status": "READY",
+  "commit": "31cb4ef68de39457094b3ea806e51bbf2d80de22",
+  "deploymentId": "dpl_38MnPtZFDPqLQvzxz3u4SSQBQXJF",
+  "deploymentUrl": "https://unoword-qj9v2yjq0-unoword.vercel.app",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 63.97,
+  "checkedAt": "2026-11-14T19:56:16.752519+00:00",
+  "checks": [
+    {
+      "path": "/assets/WritingEditor-CqXfhX3_.css",
+      "status": 200,
+      "matchesTestedBuild": true,
+      "bytes": 57557
+    },
+    {
+      "path": "/assets/WritingEditor-CfWqwJ5f.js",
+      "status": 200,
+      "matchesTestedBuild": true,
+      "bytes": 554871
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "bytes": 58976
+    },
+    {
+      "path": "/api/",
+      "status": 200,
+      "bytes": 39
+    },
+    {
+      "path": "/api/product",
+      "status": 200,
+      "bytes": 2716
+    }
+  ],
+  "scope": "Read-only public editor/assets/API verification. No production writing or session mutations.",
+  "runtimeErrorScan": "Deployment-scoped 15-minute error/fatal count query returned no groups after public smoke checks.",
+  "monitoringLimit": "Point-in-time verification; no continuous monitoring or drain changes made."
+}
