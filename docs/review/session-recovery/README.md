@@ -1,5 +1,11 @@
 # Session-check incident and recovery
 
+Deployed to **https://unoword.app** at `da5f2a6`. Vercel production deployment
+`dpl_9GcMsDsMJUbPAAfxpV2BRVdsmats` reached READY; its build took 61.882 seconds.
+[Release verification](release.json) confirms deployed files match the tested build,
+a real database lookup succeeds, Google sign-in is enabled, signed-out access is
+rejected and invalid password credentials are still rejected by the provider.
+
 The live Data API stopped serving account queries: Supabase logs reported internal
 pool timeouts (`PGRST003`) and subsequently an unavailable schema cache (`PGRST002`).
 Verified session checks require the account's entitlement lookup, so both password

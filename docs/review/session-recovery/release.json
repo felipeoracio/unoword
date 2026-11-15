@@ -1,0 +1,52 @@
+{
+  "url": "https://unoword.app",
+  "target": "production",
+  "status": "READY",
+  "commit": "da5f2a66fa4768731af2ff656d957135132bded1",
+  "deploymentId": "dpl_9GcMsDsMJUbPAAfxpV2BRVdsmats",
+  "framework": "Vercel Services: Vite/FastAPI",
+  "buildDurationSeconds": 61.882,
+  "checkedAt": "2026-11-15T17:37:03.364596+00:00",
+  "checks": [
+    {
+      "asset": "Account-B5wfGK02.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "WritingEditor-gO6vgDQp.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "path": "/api/product",
+      "status": 200,
+      "seconds": 0.6,
+      "databaseLookupSucceeded": true
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "signedOutRejected": true
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.43,
+      "enabled": true
+    },
+    {
+      "path": "/api/auth/login",
+      "status": 401,
+      "invalidCredentialsRejectedByProvider": true
+    },
+    {
+      "asset": "api-CUntjIAh.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    }
+  ],
+  "scope": "Public/API read checks and one deliberately invalid diagnostic sign-in. No customer credentials or private sign-in used.",
+  "runtimeErrorScan": "Deployment-scoped error/fatal count query returned no groups after release.",
+  "monitoringLimit": "Point-in-time check, not continuous monitoring."
+}
