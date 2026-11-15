@@ -562,7 +562,8 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await page.locator('[data-tour=profile]').click();
   assert.equal(await profileDialog.getByLabel('What do you want to write?').inputValue(),'Essays about craft and community');
   await profileDialog.getByLabel('What do you want to write?').fill('Patient observation and practical craft');
-  await profileDialog.getByRole('button',{name:'Save profile',exact:true}).click();assert.equal(profile.writing_goal,'Patient observation and practical craft');
+  const profileSaved=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/ai/profile'&&response.request().method()==='PUT'&&response.ok());
+  await profileDialog.getByRole('button',{name:'Save profile',exact:true}).click();await profileSaved;await profileDialog.waitFor({state:'hidden'});assert.equal(profile.writing_goal,'Patient observation and practical craft');
   Object.assign(sources[0],{processing_status:'processing',processing_phase:'indexing',processing_progress:50});
   await page.getByRole('button',{name:'Writing knowledge',exact:true}).click();
   await page.getByText('Processing · 50%',{exact:true}).waitFor();

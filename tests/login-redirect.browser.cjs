@@ -8,7 +8,7 @@ const owner='00000000-0000-4000-8000-000000000001';
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  try{
   const context=await browser.newContext();context.setDefaultTimeout(15000);
-  let signed=false,paid=false,rejected=false,unverified=false;
+  let signed=false,paid=false,rejected=false,unverified=false,sessionOutage=false,outageAfterLogin=false,expired=false,refreshOutage=false;
   const requests=[],errors=[];
   await context.route(origin+'/api/**',async route=>{
    const req=route.request(),key=new URL(req.url()).pathname.slice(4);requests.push({key,method:req.method()});
@@ -18,8 +18,11 @@ const owner='00000000-0000-4000-8000-000000000001';
    else if(key==='/auth/login'){
     assert.equal(req.method(),'POST');assert.equal(req.postDataJSON().email,'writer@example.com');
     if(rejected){status=401;value={detail:'invalid_login_credentials'};}
-    else{signed=!unverified;value={authenticated:true,user:{id:owner,email:'writer@example.com',plan:paid?'pro':'free',ai_access:paid}};}
-   }else if(!signed){status=401;value={detail:'Authentication required'};}
+    else{signed=!unverified;if(outageAfterLogin)sessionOutage=true;value={authenticated:true,user:{id:owner,email:'writer@example.com',plan:paid?'pro':'free',ai_access:paid}};}
+   }else if(key==='/auth/refresh'&&signed){if(refreshOutage){status=503;value={detail:'temporary_auth_outage'}}else{expired=false;value={authenticated:true}}}
+   else if(key==='/auth/me'&&sessionOutage){status=502;value={detail:'database_temporarily_unavailable'};}
+   else if(key==='/auth/me'&&expired){status=401;value={detail:'session_expired'};}
+   else if(!signed){status=401;value={detail:'Authentication required'};}
    else if(key==='/auth/me')value={id:owner,email:'writer@example.com',plan:paid?'pro':'free',ai_access:paid};
    else if(key==='/progress/preferences')value={user_id:owner,revision:1,daily_goal:250,timezone:'UTC',language:'en',themes:[]};
    else if(key==='/progress/summary')value={user_id:owner,reportingDate:new Date().toISOString().slice(0,10),timezone:'UTC',dailyWordCount:0,dailyActiveWritingSeconds:0,lifetimeActiveWritingSeconds:0,lifetimeWordCount:0,dailyGoal:250,displayedStreak:0,updatedAt:new Date().toISOString(),sessions:[]};
@@ -56,6 +59,23 @@ const owner='00000000-0000-4000-8000-000000000001';
   await page.goto(origin+'/account');await page.getByText('Signed in as',{exact:false}).waitFor();assert.equal(new URL(page.url()).pathname,'/account');
   rejected=true;await login('/account');await page.getByRole('status').filter({hasText:'That sign-in was not accepted'}).waitFor();assert.equal(new URL(page.url()).pathname,'/account');
   rejected=false;unverified=true;await login('/account');await page.getByRole('status').filter({hasText:'Please sign in again'}).waitFor();assert.equal(new URL(page.url()).pathname,'/account');
+  // Transient session/account outages must preserve accepted authentication.
+  unverified=false;paid=true;signed=true;sessionOutage=true;
+  let logins=requests.filter(r=>r.key==='/auth/login').length;
+  await page.goto(origin+'/account');await page.getByRole('button',{name:'Retry session check',exact:true}).waitFor();
+  sessionOutage=false;await page.getByRole('button',{name:'Retry session check',exact:true}).click();await page.getByTestId('studio-home').waitFor();
+  assert.equal(requests.filter(r=>r.key==='/auth/login').length,logins,'existing session recovers without password submission');
+  outageAfterLogin=true;await login('/account');await page.getByRole('status').filter({hasText:'Your sign-in was accepted'}).waitFor();
+  logins=requests.filter(r=>r.key==='/auth/login').length;outageAfterLogin=false;sessionOutage=false;
+  await page.getByRole('button',{name:'Retry session check',exact:true}).click();await page.getByTestId('studio-home').waitFor();
+  assert.equal(requests.filter(r=>r.key==='/auth/login').length,logins,'successful password login is not repeated');
+  signed=true;sessionOutage=true;await page.goto(origin+'/account?oauth=success');await page.getByRole('button',{name:'Retry session check',exact:true}).waitFor();
+  assert.equal(new URL(page.url()).searchParams.has('oauth'),false);sessionOutage=false;await page.getByRole('button',{name:'Retry session check',exact:true}).click();await page.getByTestId('studio-home').waitFor();
+  assert.equal(requests.filter(r=>r.key==='/auth/login').length,logins,'OAuth recovery does not request a password');
+  signed=true;expired=true;refreshOutage=true;await page.goto(origin+'/account');await page.getByRole('button',{name:'Retry session check',exact:true}).waitFor();
+  refreshOutage=false;await page.getByRole('button',{name:'Retry session check',exact:true}).click();await page.getByTestId('studio-home').waitFor();
+  assert.equal(requests.filter(r=>r.key==='/auth/login').length,logins,'refresh recovery preserves the session');
+  console.log('PASS session recovery: initial lookup outage, accepted password sign-in, Google callback outage and refresh-provider failure recover through Retry without repeating credentials or changing plan.');
   assert.equal(requests.some(r=>r.method==='POST'&&r.key.startsWith('/subscription')),false);assert.deepEqual(errors,[]);
   console.log('PASS sign-in destinations: verified Free/Pro password login opens Home; unsafe next falls back to Home; Settings/install/billing/plan links remain intentional; existing Settings visit, failed login and unverified sessions stay put; no plan mutation.');
  }finally{await browser.close();await server.close();}

@@ -1,0 +1,2 @@
+PASS session recovery: initial lookup outage, accepted password sign-in, Google callback outage and refresh-provider failure recover through Retry without repeating credentials or changing plan.
+PASS sign-in destinations: verified Free/Pro password login opens Home; unsafe next falls back to Home; Settings/install/billing/plan links remain intentional; existing Settings visit, failed login and unverified sessions stay put; no plan mutation.

@@ -6,7 +6,8 @@ import "../../../extension/shared/dates.js";
 import "../../../extension/shared/writing-progress.js";
 import "../../../extension/shared/prompts.js";
 import type { JSONContent } from "@tiptap/react";
-import { apiGet, apiPost, ApiError } from "./api";
+import { apiGet, ApiError } from "./api";
+import { currentUser } from "./current-user";
 import type { AuthUser } from "./auth-types";
 
 export type Delta = {
@@ -207,13 +208,9 @@ export async function fetchWritingActivity(): Promise<Activity[]> {
 }
 
 export async function currentWriter(): Promise<AuthUser> {
-  try {
-    return await apiGet<AuthUser>("/auth/me");
-  } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 401) throw error;
-    await apiPost("/auth/refresh");
-    return apiGet<AuthUser>("/auth/me");
-  }
+  const user = await currentUser();
+  if (!user) throw new ApiError(401, { detail: "Authentication required" });
+  return user;
 }
 
 export function newDocument(

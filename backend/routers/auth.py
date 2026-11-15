@@ -1,5 +1,7 @@
 """Supabase Auth proxy using httpOnly cookies for browser sessions."""
 
+import logging
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 
 from lib.auth import AuthenticatedUser, require_user
@@ -11,6 +13,7 @@ from lib.request_security import limit_sensitive
 from lib.browser_auth import clear_flow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 ACCESS_COOKIE = "uno_session"
 REFRESH_COOKIE = "uno_refresh"
@@ -128,7 +131,14 @@ async def me(user: AuthenticatedUser = Depends(require_user)) -> AuthUser:
         raise_http(error)
     if str(identity.get("id")) != user.id:
         raise HTTPException(401, "session_expired")
-    entitlement = await get_entitlement(user.id)
+    try:
+        entitlement = await get_entitlement(user.id)
+    except HTTPException as error:
+        if error.status_code >= 500:
+            # Make handled upstream failures observable without logging identity,
+            # cookies, tokens or private account information.
+            logger.warning("session_account_lookup_unavailable status=%s", error.status_code)
+        raise
     return AuthUser(
         id=user.id,
         email=identity.get("email"),

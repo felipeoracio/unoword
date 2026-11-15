@@ -24,6 +24,7 @@ import Brand from "@/components/marketing/Brand";
 import { ApiError, apiGet, apiPost } from "@/lib/api";
 import type { AuthResult, AuthUser } from "@/lib/auth-types";
 import { beginSession } from "@/lib/session";
+import { currentUser } from "@/lib/current-user";
 import { useProduct } from "@/lib/product";
 import "@/styles/marketing.css";
 import "@/styles/account.css";
@@ -32,19 +33,6 @@ import { useStudioPreferences } from "@/lib/studio-preferences";
 import { StudioButton, StudioPageHeader } from "@/components/studio/StudioPrimitives";
 import "@/styles/studio-settings.css";
 
-async function currentUser(): Promise<AuthUser | null> {
-  try {
-    return await apiGet<AuthUser>("/auth/me");
-  } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 401) throw error;
-    try {
-      await apiPost("/auth/refresh");
-    } catch {
-      return null;
-    }
-    return apiGet<AuthUser>("/auth/me");
-  }
-}
 function messageFor(error: unknown) {
   if (!(error instanceof ApiError))
     return "We couldn’t connect. Please try again.";
@@ -90,6 +78,8 @@ function messageFor(error: unknown) {
     return "That sign-in was not accepted. Check your email and password and try again.";
   if (error.status === 422)
     return "Please enter a valid email and a password of at least 8 characters.";
+  if ([502, 503, 504].includes(error.status))
+    return "Sign-in is temporarily unavailable. Please try again shortly.";
   return "This request could not be completed. Please try again.";
 }
 type Subscription = {
@@ -140,6 +130,7 @@ export default function Account() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
+  const [sessionCheckFailed, setSessionCheckFailed] = useState(false);
   const [recoveryNotice, setRecoveryNotice] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -179,10 +170,12 @@ export default function Account() {
         }
       })
       .catch(() => {
-        if (!cancelled)
+        if (!cancelled) {
+          setSessionCheckFailed(true);
           setMessage(
-            "We couldn’t check your session. You can try signing in below.",
+            "We couldn’t check your session right now. Retry the session check or sign in below.",
           );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -292,12 +285,34 @@ export default function Account() {
       clearTimeout(timer);
     };
   }, [billingOwner, params]);
+  async function retrySessionCheck() {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setMessage("");
+    try {
+      const fresh = await currentUser();
+      setUser(fresh);
+      setSessionCheckFailed(false);
+      if (fresh && loginDestination)
+        window.location.assign(recoveryPath(loginDestination));
+      if (!fresh) setMessage("Please sign in again to continue.");
+    } catch {
+      setSessionCheckFailed(true);
+      setMessage("We couldn’t check your session right now. Please retry shortly.");
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
   async function authenticate(event: FormEvent) {
     event.preventDefault();
     if (submitting.current) return;
     submitting.current = true;
     setBusy(true);
     setMessage("");
+    setSessionCheckFailed(false);
+    let accepted = false;
     try {
       if (mode === "recovery") {
         await apiPost("/auth/recovery", { email });
@@ -332,13 +347,17 @@ export default function Account() {
         return;
       }
       beginSession();
+      accepted = true;
       const fresh = await currentUser();
       setUser(fresh);
       if (fresh && loginDestination)
         window.location.assign(recoveryPath(loginDestination));
       if (!fresh) setMessage("Please sign in again to continue.");
     } catch (error) {
-      setMessage(messageFor(error));
+      setSessionCheckFailed(accepted);
+      setMessage(accepted
+        ? "Your sign-in was accepted, but we couldn’t load your account yet. Retry the session check."
+        : messageFor(error));
     } finally {
       setPassword("");
       setBusy(false);
@@ -808,6 +827,11 @@ export default function Account() {
             <p className="uw-account-message" role="status">
               {message}
             </p>
+          )}
+          {sessionCheckFailed && (
+            <button type="button" className="uw-button uw-button-outline" disabled={busy} onClick={retrySessionCheck}>
+              {busy ? t("Checking session…", "Comprobando sesión…") : t("Retry session check", "Reintentar comprobar la sesión")}
+            </button>
           )}
         </section>
         <p className="uw-account-footer">

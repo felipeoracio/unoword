@@ -18,9 +18,13 @@ export class ApiError extends Error {
 
 type JsonBody = unknown;
 let refreshRequest: Promise<boolean> | null = null;
-function refreshSession() {
+export function refreshSession() {
   return (refreshRequest ||= fetch(`${BASE}/auth/refresh`, { method: "POST" })
-    .then((r) => r.ok)
+    .then(async (r) => {
+      if (r.ok) return true;
+      if ([400, 401, 403].includes(r.status)) return false;
+      throw new ApiError(r.status, await r.json().catch(() => null));
+    })
     .finally(() => {
       refreshRequest = null;
     }));

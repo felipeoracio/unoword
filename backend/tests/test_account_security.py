@@ -166,7 +166,9 @@ def test_email_verification_does_not_claim_both_links_complete(fixture):
     assert result.status_code == 200 and result.json()['status'] == 'verification_accepted_check_both_addresses'
     assert next(c for c in calls if c[1] == 'verify')[2]['json']['type'] == 'email_change'
 
-def test_signed_out_cannot_mutate(fixture):
+def test_signed_out_cannot_mutate(fixture, monkeypatch):
+    # Exercise a configured deployment without relying on local credentials.
+    monkeypatch.setattr("lib.auth.auth_is_configured", lambda: True)
     client, calls, _ = fixture
     app.dependency_overrides.clear()
     result = client.post('/api/auth/password/change', json=owned(new_password=NEW, confirm_password=NEW), headers=ORIGIN)

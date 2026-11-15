@@ -1,0 +1,34 @@
+{
+  "cause": "Supabase Data API/PostgREST internal pool timeouts (PGRST003), then unavailable schema cache (PGRST002). Account entitlement lookups returned 504 although Auth/password validation and direct SQL worked.",
+  "recovery": "Existing free project paused and resumed to restart the failed Data API after config/schema reload and a narrowly scoped idle-connection reset did not recover it. No new project, schema rollback or writing/activity mutation.",
+  "providerRecovered": true,
+  "livePublicDatabaseCheck": {
+    "endpoint": "/api/product",
+    "status": 200,
+    "allowanceAvailable": true,
+    "seconds": 0.57
+  },
+  "liveGoogleConfiguration": {
+    "enabled": true,
+    "status": 200
+  },
+  "ledger": {
+    "rows": 9,
+    "fingerprintUnchanged": true,
+    "rlsEnabled": true,
+    "browserPrivilegesStillRevoked": true
+  },
+  "verification": {
+    "frontendUnitTests": 37,
+    "backendTests": 93,
+    "browserSuites": [
+      "login destinations and four session recovery scenarios",
+      "Google OAuth callbacks and account/cache boundaries",
+      "verified email signup",
+      "full writing workspace"
+    ],
+    "productionBuild": "passed",
+    "focusedLint": "passed"
+  },
+  "limits": "Production recovery was verified through public APIs, provider health and metadata. No customer password, private live sign-in, paid-model call or email send was used."
+}
