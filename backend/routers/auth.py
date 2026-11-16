@@ -5,7 +5,8 @@ import logging
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 
 from lib.auth import AuthenticatedUser, require_user
-from lib.ai_access import entitlement_is_active, get_entitlement
+from lib.ai_access import entitlement_is_active
+from lib.session_access import get_session_entitlement as get_entitlement
 from lib.plans import plan_features
 from lib.supabase_client import SupabaseAPIError, auth_request, raise_http
 from models.auth import AuthCredentials, AuthResult, AuthUser

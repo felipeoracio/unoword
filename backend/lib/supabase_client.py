@@ -37,9 +37,10 @@ async def _request(
     params: dict[str, str] | None = None,
     json: Any = None,
     content: bytes | None = None,
+    timeout: float = 20.0,
 ) -> Any:
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.request(method, url, headers=headers, params=params, json=json, content=content)
     except httpx.HTTPError as exc:
         raise SupabaseAPIError(502, "Supabase is temporarily unreachable") from exc
