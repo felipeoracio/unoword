@@ -1,0 +1,46 @@
+[
+  {
+    "path": "/api/health/ready",
+    "status": 200,
+    "seconds": 0.57,
+    "result": {
+      "status": "ready",
+      "checks": {
+        "session_database": "ok",
+        "data_api": "ok"
+      }
+    }
+  },
+  {
+    "path": "/api/product",
+    "status": 200,
+    "seconds": 0.52,
+    "result": {
+      "allowance_available": true
+    }
+  },
+  {
+    "path": "/api/auth/google",
+    "status": 200,
+    "seconds": 0.46,
+    "result": {
+      "enabled": true
+    }
+  },
+  {
+    "path": "/api/auth/me",
+    "status": 401,
+    "seconds": 0.32,
+    "result": {
+      "expected_unauthorized": true
+    }
+  },
+  {
+    "path": "/api/auth/login",
+    "status": 401,
+    "seconds": 0.46,
+    "result": {
+      "expected_unauthorized": true
+    }
+  }
+]
