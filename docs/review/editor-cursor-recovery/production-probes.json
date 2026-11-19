@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/api/health/ready",
+    "status": 200,
+    "seconds": 0.76,
+    "result": {
+      "status": "ready",
+      "checks": {
+        "session_database": "ok",
+        "data_api": "ok"
+      }
+    }
+  },
+  {
+    "path": "/api/auth/google",
+    "status": 200,
+    "seconds": 0.75,
+    "result": {
+      "enabled": true
+    }
+  },
+  {
+    "path": "/editor",
+    "status": 200
+  },
+  {
+    "editorChunk": "WritingEditor-BQKgBYWT.js",
+    "status": 200,
+    "matchesTestedLocalBuild": true,
+    "hasReconciliationLogic": true
+  }
+]
