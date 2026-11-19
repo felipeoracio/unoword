@@ -80,7 +80,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
      status=409;value={detail:'revision_conflict'};
     }else{
      let content=body.content;
-     if((process.env.EDITOR_FORMATTING_ONLY==='1'||process.env.EDITOR_MEDIA_ONLY==='1'||process.env.EDITOR_TOOLS_ONLY==='1'||process.env.EDITOR_PORTABILITY_ONLY==='1') && process.env.FORMATTING_PYTHON){
+     if((process.env.EDITOR_CURSOR_ONLY==='1'||process.env.EDITOR_FORMATTING_ONLY==='1'||process.env.EDITOR_MEDIA_ONLY==='1'||process.env.EDITOR_TOOLS_ONLY==='1'||process.env.EDITOR_PORTABILITY_ONLY==='1') && process.env.FORMATTING_PYTHON){
       const result=require('node:child_process').spawnSync(process.env.FORMATTING_PYTHON,['-c','import sys,json;from lib.writing_document import clean_document;print(json.dumps(clean_document(json.load(sys.stdin))))'],{input:JSON.stringify(content),encoding:'utf8',env:{...process.env,PYTHONPATH:path.resolve('backend')}});
       assert.equal(result.status,0,result.stderr);content=JSON.parse(result.stdout);
      }
@@ -184,6 +184,12 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.EDITOR_CURSOR_ONLY==='1'){
+   await require('./helpers/editor-cursor-flow.cjs')({page,canvas,documents,errors});return;
+  }
+  if(process.env.EDITOR_CURSOR_ONLY==='1'){
+   await require('./helpers/editor-cursor-flow.cjs')({page,canvas,documents,requests,errors});return;
+  }
   if(process.env.NAVIGATION_GUARD_ONLY==='1'){
    await require('./helpers/navigation-guard-flow.cjs')({page,canvas,documents,activity,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
   }

@@ -1,4 +1,5 @@
 import { resetDocumentHistory } from "@/lib/document-history";
+import { reconcileSavedDocument } from "@/lib/document-sync";
 import DocumentImportReview from "@/components/DocumentImportReview";
 import { importTextFile, validateImportedDocument, type ImportPreview } from "@/lib/document-import";
 import { exportMarkdown } from "@/lib/portable-markdown";
@@ -843,12 +844,12 @@ export default function WritingEditor() {
     openingSeen.current = activeDocument.id;
     openingPending.current = false;
     const stored = editor.schema.nodeFromJSON(activeDocument.content);
-    if (loadedDocument.current !== activeDocument.id || !editor.state.doc.eq(stored)) {
+    if (loadedDocument.current !== activeDocument.id) {
       editor.commands.setContent(activeDocument.content, {emitUpdate:false});
       editor.commands.command(({tr}) => {for (const [key, value] of Object.entries(stored.attrs)) tr.setDocAttribute(key, value);tr.setMeta("preventUpdate",true);return true;});
       if (loadedDocument.current !== activeDocument.id) resetDocumentHistory(editor);
       loadedDocument.current = activeDocument.id;
-    }
+    } else reconcileSavedDocument(editor, stored);
     const paper = focusRoot.current?.querySelector<HTMLElement>(".uw-editor-paper");
     if (paper && !matchMedia("(prefers-reduced-motion: reduce)").matches && paper.animate) {
       const style = getComputedStyle(paper);
@@ -874,10 +875,7 @@ export default function WritingEditor() {
     if (activeDocument.content_loaded === false) return;
     // Never reset selection/undo history on each autosave response.
     const storedContent = editor.schema.nodeFromJSON(activeDocument.content);
-    if (
-      loadedDocument.current !== activeDocument.id ||
-      !editor.state.doc.eq(storedContent)
-    ) {
+    if (loadedDocument.current !== activeDocument.id) {
       editor.commands.setContent(activeDocument.content, { emitUpdate: false });
       // setContent replaces body nodes but does not restore root attributes.
       // Hydrate metadata explicitly without treating a cloud load as an edit.
@@ -888,7 +886,7 @@ export default function WritingEditor() {
       });
       if (loadedDocument.current !== activeDocument.id) resetDocumentHistory(editor);
       loadedDocument.current = activeDocument.id;
-    }
+    } else reconcileSavedDocument(editor, storedContent);
     // Tiptap emits an update by default even if editable did not change. That
     // would create an autosave/render loop and continually reset the debounce.
     editor.setEditable(
