@@ -1,0 +1,62 @@
+{
+  "deployment": "dpl_54WcsjFy6m9tyQF3ZC6XH56MEGVq",
+  "commit": "ecc10c06ce02ba7b8365f7f9df1a680c6a3f8b49",
+  "target": "production",
+  "status": "READY",
+  "checks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.6,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.61,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.42
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "seconds": 0.3
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.22
+    },
+    {
+      "asset": "WritingEditor-DbpxUKJ4.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "index-BnF2jRNr.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    }
+  ],
+  "limits": "Public production health, route and asset checks; no customer account or live private writing accessed.",
+  "url": "https://unoword.app",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 77.175,
+  "postDeployObservability": {
+    "errorScan": "No error/fatal groups returned for this deployment in the latest five-minute scan.",
+    "drains": "Not assessed or changed",
+    "monitoring": "Point-in-time verification; no new continuous monitoring configured"
+  }
+}
