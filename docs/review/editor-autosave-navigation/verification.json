@@ -1,0 +1,29 @@
+{
+  "issue": "False save warning when leaving the editor while newer mutations remain queued; deferred router transition can update the URL without rendering the target page.",
+  "changes": [
+    "Drain pending document/folder mutations before navigation rather than treating another successful queued pass as failure.",
+    "Re-arm the autosave debounce for newer eligible writes after a successful write pass; do not aggressively retry failed network writes or conflict-only queues.",
+    "Track acknowledged session sequence numbers so the departure snapshot is persisted without waiting indefinitely for subsequent clock snapshots.",
+    "Allow an already-saved workspace to leave during an unrelated background refresh, and distinguish refresh failures from unconfirmed writes.",
+    "Commit router navigation without a deferred transition after persistence checks. Existing explicit page/sidebar motion remains in place."
+  ],
+  "verification": {
+    "frontendBuild": "passed",
+    "unitTests": 42,
+    "unitTestFiles": 8,
+    "targetedLint": "passed",
+    "overlappingAutosaveNavigation": "passed; real Home and Library DOM rendered; saved content reopened intact",
+    "failedAndSlowSaveProtection": "passed; failed save blocks departure; slow save keeps the draft and session attribution",
+    "fullWorkspaceBrowser": "passed",
+    "projectSwitchingGroupedScenarios": 15,
+    "studioNavigationGroupedScenarios": 8,
+    "whitespace": "passed"
+  },
+  "reproduction": "Original navigation timed out with queued edits. After fixing the queue, target DOM assertions exposed deferred routing retaining the editor despite URL updates. Both actual target-page assertions now pass.",
+  "testMaintenance": "The short entry-animation test now holds the actual animation at its start and verifies cancellation on departure, rather than racing a 280ms observation window.",
+  "limits": [
+    "Browser tests use the actual built application with isolated persistence/authentication fixtures. No live customer writing or credentials were used.",
+    "Existing Vite config native-loader deprecation warning remains.",
+    "No database schema, subscription pricing, AI limits or stored writing statistics were changed."
+  ]
+}

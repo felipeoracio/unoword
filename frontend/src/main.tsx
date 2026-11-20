@@ -14,7 +14,8 @@ const root = document.getElementById("root")!;
 const app = (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Live editor updates must not defer a verified route departure indefinitely. */}
+      <BrowserRouter useTransitions={false}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

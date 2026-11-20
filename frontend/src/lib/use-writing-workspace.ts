@@ -43,6 +43,7 @@ export function useWritingWorkspace() {
   const [folders, setFolderState] = useState<Folder[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const localActivityIds = useRef(new Set<string>());
+  const syncedActivitySequences = useRef(new Map<string, number>());
   const [selected, setSelected] = useState<string | null>(null);
   const selectedDocumentId = useRef(selected);
   selectedDocumentId.current = selected;
@@ -71,7 +72,7 @@ export function useWritingWorkspace() {
     pendingLocal = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null),
     active = useRef(true);
-  const syncRef = useRef<() => Promise<void>>(async () => {});
+  const syncRef = useRef<() => Promise<boolean>>(async () => false);
   const lastRemoteRead = useRef(0);
   const folderRows = useRef<Folder[]>([]);
   const setFolders = useCallback((next: Folder[]) => {
@@ -276,9 +277,10 @@ export function useWritingWorkspace() {
       !identity.current ||
       !active.current
     )
-      return;
+      return false;
     syncing.current = true;
     const owner = identity.current.id;
+    let savedPass = false;
     try {
       const verified = await currentWriter();
       if (verified.id !== owner || identity.current?.id !== owner)
@@ -286,9 +288,9 @@ export function useWritingWorkspace() {
       if (!identity.current?.ai_access && verified.ai_access) {
         verifyAccess(verified);
         window.location.reload();
-        return;
+        return false;
       }
-      if (!verifyAccess(verified)) return;
+      if (!verifyAccess(verified)) return false;
       // Folder UUIDs must exist remotely before document foreign keys reference them.
       for (const folder of [...folderRows.current]) {
         if (!folder.dirty) continue;
@@ -301,7 +303,7 @@ export function useWritingWorkspace() {
           !identity.current?.ai_access ||
           !active.current
         )
-          return;
+          return false;
         setFolders(
           folderRows.current.map((f) => (f.id === folder.id ? saved : f)),
         );
@@ -315,7 +317,7 @@ export function useWritingWorkspace() {
           !identity.current?.ai_access ||
           !active.current
         )
-          return;
+          return false;
         setStatus("Saving to your account…");
         try {
           const saved = await apiPut<WritingDocument>(
@@ -340,7 +342,7 @@ export function useWritingWorkspace() {
             !identity.current?.ai_access ||
             !active.current
           )
-            return;
+            return false;
           await cachePut(owner, "document", saved.id, saved);
           const latest = docs.current.find((d) => d.id === saved.id);
           if (!latest) continue;
@@ -375,7 +377,7 @@ export function useWritingWorkspace() {
               !identity.current?.ai_access ||
               !active.current
             )
-              return;
+              return false;
             conflictIds.current.add(draft.id);
             setConflicts((all) => ({ ...all, [draft.id]: remote }));
             setError(
@@ -397,11 +399,13 @@ export function useWritingWorkspace() {
           !identity.current?.ai_access ||
           !active.current
         )
-          return;
+          return false;
         await apiPut("/workspace/activity", {
           ...activitySnapshot(row),
           expected_user_id: owner,
         });
+        if (identity.current?.id !== owner || !active.current) return false;
+        syncedActivitySequences.current.set(`${owner}:${row.id}`, row.sequence);
         const latest = activityRows.current.find((a) => a.id === row.id);
         if (latest?.sequence === row.sequence) {
           const saved = { ...row, dirty: false };
@@ -415,6 +419,7 @@ export function useWritingWorkspace() {
           location.origin,
         );
       }
+      savedPass = true;
       if (Date.now() - lastRemoteRead.current >= 12000) {
         const [remoteIndex, remoteFolders, remoteActivity] = await Promise.all([
           fetchDocumentIndex(),
@@ -426,7 +431,7 @@ export function useWritingWorkspace() {
           !identity.current.ai_access ||
           !active.current
         )
-          return;
+          return false;
         const newlyCompleted = new Set(
           remoteIndex
             .filter(
@@ -512,13 +517,14 @@ export function useWritingWorkspace() {
             : "All changes saved",
         );
       }
+      return true;
     } catch (failure) {
       if (
         identity.current?.id !== owner ||
         !identity.current?.ai_access ||
         !active.current
       )
-        return;
+        return false;
       if (
         failure instanceof ApiError &&
         (failure.status === 401 ||
@@ -533,30 +539,55 @@ export function useWritingWorkspace() {
       }
       setError(editorError(failure));
       setStatus("Saved on this device · sync paused");
+      return false;
     } finally {
       syncing.current = false;
-      // Edits arriving during a network save get another pass, without polling
-      // endlessly when the network or backend is unavailable.
+      // A debounce can expire while this pass is still in flight. Re-arm it
+      // for newer writes only after success; failures retain the existing retry.
+      if (savedPass && (docs.current.some(d => d.dirty && !conflictIds.current.has(d.id)) || folderRows.current.some(f => f.dirty)
+          || activityRows.current.some(row => row.dirty && docs.current.some(d => d.id === row.document_id && d.revision > 0)))) schedule();
     }
-  }, [tab, publish, publishActivity, persist, verifyAccess, setFolders]);
+  }, [tab, publish, publishActivity, persist, verifyAccess, setFolders, schedule]);
   syncRef.current = sync;
 
   const flushWrites = useCallback(async (localOnly = false) => {
     const owner = identity.current;
     if (!owner?.ai_access) return false;
+    // Save the session snapshot present at departure, without endlessly chasing
+    // clock-only snapshots that advance during a slow network request.
+    const activityTargets = new Map(activityRows.current.filter(row => row.dirty
+      && docs.current.some(d => d.id === row.document_id)).map(row => [row.id, row.sequence]));
+    const hasPendingWrites = () => docs.current.some(d => d.dirty)
+      || folderRows.current.some(f => f.dirty)
+      || activityRows.current.some(row => row.dirty && activityTargets.has(row.id)
+        && (syncedActivitySequences.current.get(`${owner.id}:${row.id}`) ?? -1) < activityTargets.get(row.id)!);
     try {
       const deadline = Date.now() + 30000;
-      while (pendingLocal.current || syncing.current) {
+      for (;;) {
+        // Wait for local durability and any pass that owns writes. An unrelated
+        // background read must not block departure from an already-saved draft.
+        while (pendingLocal.current || (!localOnly && syncing.current && hasPendingWrites())) {
+          if (Date.now() > deadline) throw Error("save_pending");
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        if (identity.current?.id !== owner.id || !identity.current.ai_access) return false;
+        if (localOnly || !navigator.onLine) return true;
+        if (conflictIds.current.size) throw Error("save_conflict");
+        if (!hasPendingWrites()) return true;
         if (Date.now() > deadline) throw Error("save_pending");
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // A successful pass may acknowledge an older snapshot while a newer
+        // mutation remains queued. Drain it rather than treating it as failure.
+        const synced = await syncRef.current();
+        // A refresh can fail after writes were confirmed. Only unsaved writes
+        // (or a conflict checked above) should prevent departure.
+        if (!synced && hasPendingWrites()) throw Error("save_failed");
       }
-      if (navigator.onLine && !localOnly) {
-        await syncRef.current();
-        if (docs.current.some(d => d.dirty) || conflictIds.current.size) throw Error("save_pending");
-      }
-      return identity.current?.id === owner.id;
     } catch {
-      setError("Your writing could not be saved safely. Resolve the save or conflict before switching projects. Your draft is still here.");
+      setError(pendingLocal.current
+        ? "Your latest writing could not be saved on this device. Keep this editor open and retry or export a copy."
+        : conflictIds.current.size
+          ? "This document changed elsewhere. Compare versions or keep your edits as a separate copy before leaving."
+          : "Your latest changes are saved on this device, but cloud sync has not finished. Check your connection and try again; your draft is still here.");
       return false;
     }
   }, []);

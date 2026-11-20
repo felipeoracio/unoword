@@ -21,13 +21,14 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   const documents=new Map(),activity=new Map(),folders=[];let preferenceState={user_id:owner,revision:1,daily_goal:250,timezone:'America/Chicago',language:'en',themes:['ideas']};const requests=[],errors=[];
   const profile={id:'profile',user_id:owner,writing_goal:'Essays about craft and community',primary_topics:['craft','community'],favorite_subjects:['attention'],current_projects:[],avoid_topics:[],writing_style:'Reflective and clear',audience:'Curious readers',personal_context:'',ai_preferences:{prompt_themes:['ideas']}};
   const sources=[{id:'00000000-0000-4000-8000-000000000009',document_title:'Notes on building a garden',enabled:true,source_kind:'file'}];
-  const projectNetwork={saveGate:null,readGate:null,selectionGate:null,failRead:false,failSelection:false};
+  const projectNetwork={saveGate:null,readGate:null,indexGate:null,selectionGate:null,failRead:false,failSelection:false};
   const polishNetwork={aiGate:null,failAI:false,evidence:false};
   const projectFixture=require('./helpers/project-fixture.cjs').projectsFixture(()=>currentOwner,()=>[...documents.values()]);
   await context.route(origin+'/api/**',async route=>{
    if(offline)return route.abort('internetdisconnected');
    const req=route.request(),url=new URL(req.url()),key=url.pathname.replace('/api',''),method=req.method();
    const body=req.postData()?JSON.parse(req.postData()):null;requests.push({key,method,body});let status=200,value;
+   if(key==='/workspace/documents'&&method==='GET'&&projectNetwork.indexGate)await projectNetwork.indexGate;
    if(key==='/workspace/assistant'){
     if(polishNetwork.aiGate)await polishNetwork.aiGate;
     if(polishNetwork.failAI)return route.fulfill({status:503,json:{detail:'synthetic_guidance_unavailable'}});
@@ -184,11 +185,11 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
-  if(process.env.EDITOR_CURSOR_ONLY==='1'){
-   await require('./helpers/editor-cursor-flow.cjs')({page,canvas,documents,errors});return;
+  if(process.env.NAVIGATION_AUTOSAVE_ONLY==='1'){
+   await require('./helpers/navigation-autosave-flow.cjs')({page,canvas,documents,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
   }
   if(process.env.EDITOR_CURSOR_ONLY==='1'){
-   await require('./helpers/editor-cursor-flow.cjs')({page,canvas,documents,requests,errors});return;
+   await require('./helpers/editor-cursor-flow.cjs')({page,canvas,documents,errors});return;
   }
   if(process.env.NAVIGATION_GUARD_ONLY==='1'){
    await require('./helpers/navigation-guard-flow.cjs')({page,canvas,documents,activity,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
