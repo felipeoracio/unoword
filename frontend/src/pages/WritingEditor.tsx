@@ -1803,7 +1803,7 @@ export default function WritingEditor() {
         ) : (
           <Copy size={16} />
         )}
-        <span className={part === "body" ? undefined : "uw-sr-only"}>
+        <span className="uw-sr-only">
           {t(label)}
         </span>
       </button>
