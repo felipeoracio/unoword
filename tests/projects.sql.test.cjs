@@ -11,6 +11,7 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  await db.exec(migration('20260929010000_ai_writing_coach_foundation.sql').split('-- Private Supabase Storage bucket.')[0].replace(/create extension if not exists pgcrypto;/g,''));
  for(const name of ['20260930160000_link_sources.sql','20261001000000_knowledge_pipeline.sql','20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql'])await db.exec(migration(name));
  const sql=migration('20261109010000_multi_project_workspace.sql');await db.exec(sql);await db.exec(sql);
+ const contextSql=migration('20261123224404_document_ai_context_sharing.sql');await db.exec(contextSql);await db.exec(contextSql);
  const a=uuid(),b=uuid(),free=uuid(),pa=uuid(),pb=uuid(),foreign=uuid(),da=uuid(),dbid=uuid(),ra=uuid(),rb=uuid(),shared=uuid(),disabled=uuid(),foreignSource=uuid();
  await db.query('insert into auth.users values($1),($2),($3)',[a,b,free]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',10),($2,'pro','active',10),($3,'free','active',0)",[a,b,free]);
@@ -63,6 +64,32 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  let oneRequest=await rpc('workspace_ai_scope','current_project',pa,false,'[]');
  assert.deepEqual(oneRequest.document_ids,[]);assert.deepEqual(oneRequest.request_document_ids,[da],'one-request consent stays separate from persistent document consent');
  await db.query('update writing_documents set ai_allowed=true where id=$1',[da]);
+ // Permission targets are independent of document membership and statistics.
+ async function contextSave(patch){
+  const current=(await db.query('select * from writing_documents where id=$1',[da])).rows[0];
+  const data=Object.fromEntries(['title','content','plain_text','folder_id','favorite','status','completion_status','ai_allowed'].map(key=>[key,current[key]]));
+  return rpc('workspace_save_document',da,current.revision,uuid(),JSON.stringify({...data,...patch}));
+ }
+ await assert.rejects(rpc('workspace_document_context_target',a,da,pa),/permission denied/,'internal target resolver is not a public RPC');
+ let permission=await contextSave({ai_context_project_ids:[pb],ai_context_all_projects:false});
+ assert.deepEqual(permission.ai_context_project_ids,[pb]);
+ assert.deepEqual((await rpc('workspace_ai_scope','current_project',pa,false,'[]')).document_ids,[],'selected-only document excluded from other project');
+ assert.deepEqual((await rpc('workspace_ai_scope','current_project',pb,false,'[]')).document_ids,[da]);
+ assert.deepEqual((await rpc('workspace_ai_scope','all_projects',pa,false,'[]')).document_ids,[],'broad retrieval cannot override selected-project permission');
+ assert.deepEqual((await rpc('workspace_ai_scope','selected_resources',pa,false,JSON.stringify([{kind:'document',id:da}]))).document_ids,[],'resource selection cannot override target permission');
+ assert.deepEqual((await rpc('workspace_project_state')).associations.filter(row=>row.resource_kind==='document').map(row=>row.project_id),[pa],'context selection does not move document');
+ await assert.rejects(contextSave({ai_context_project_ids:[foreign]}),/invalid_ai_context_projects/);
+ permission=await contextSave({title:'Changed by an older client'});assert.deepEqual(permission.ai_context_project_ids,[pb],'omitted permissions preserve prior selection');
+ permission=await contextSave({ai_context_all_projects:true});
+ for(const target of [pa,pb,null])assert.deepEqual((await rpc('workspace_ai_scope','current_project',target,false,'[]')).document_ids,[da]);
+ const future=uuid();await project(future,0,uuid(),'Future project');
+ assert.deepEqual((await rpc('workspace_ai_scope','current_project',future,false,'[]')).document_ids,[da],'All projects covers future projects without copying documents');
+ await rpc('workspace_delete_project',future,1,'Future project');
+ permission=await contextSave({ai_allowed:false});
+ assert.deepEqual((await rpc('workspace_ai_scope','current_project',pb,false,'[]')).document_ids,[],'Off always excludes saved document content');
+ await db.query('update writing_documents set ai_allowed=true,ai_context_all_projects=false,ai_context_project_ids=null where id=$1',[da]);
+ console.log('PASS document AI context: selected/global/future/Off permissions; independent membership; cross-account and broad-scope denial; legacy save preservation.');
+
  const suggestion=uuid();
  await db.query("insert into ai_suggestions(id,user_id,title,suggestion,reason,context_summary,source_ids) values($1,$2,'A reflection','Consider a memory.','', $3,$4)",[suggestion,a,JSON.stringify({unoword_suggestion_version:1,project_id:pa}),[ra]]);
  assert.equal((await db.query('select project_id from ai_suggestions where id=$1',[suggestion])).rows[0].project_id,pa,'quota-compatible insert atomically preserves project provenance');
@@ -92,7 +119,7 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  state=await rpc('workspace_project_state');assert.ok(!state.associations.some(r=>r.resource_id===shared));
  await identity(free);assert.equal((await db.query('select * from writing_projects')).rows.length,0);
  await assert.rejects(project(uuid(),0,uuid(),'Free bypass'),/writing_workspace_pro_required/);
- await db.exec('reset role');await db.exec(sql);await identity(a);assert.equal((await rpc('workspace_project_state')).projects.length,1,'reapply preserves projects');
+ await db.exec('reset role');await db.exec(sql);await db.exec(contextSql);await identity(a);assert.equal((await rpc('workspace_project_state')).projects.length,1,'reapply preserves projects');
  await db.exec('set role anon');await assert.rejects(db.query('select * from writing_projects'),/permission denied/);
  await assert.rejects(rpc('workspace_project_state'),/permission denied/);
  console.log('PASS projects SQL: repeatable additive migration; Pro/RLS and cross-account isolation; project/assignment/preference CAS; shared resources without copies; five scoped modes before text; scoped search; immutable account counts; guided-answer preservation; archive/delete fallbacks and preserved writing.');

@@ -335,6 +335,10 @@ export function useWritingWorkspace() {
                 ? { completion_status: draft.completion_status }
                 : {}),
               ai_allowed: draft.ai_allowed,
+              ...(draft.ai_context_all_projects !== undefined
+                ? { ai_context_all_projects: draft.ai_context_all_projects } : {}),
+              ...(draft.ai_context_project_ids !== undefined
+                ? { ai_context_project_ids: draft.ai_context_project_ids } : {}),
             },
           );
           if (

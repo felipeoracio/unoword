@@ -6,11 +6,11 @@ const scopeLabels: Record<ContextScope,[string,string]> = {
   current_project:["Current project","Proyecto actual"], selected_resources:["Selected resources","Recursos seleccionados"],
   all_projects:["Full library","Biblioteca completa"],profile_only:["Writing profile only","Solo perfil de escritura"],none:["No library context","Sin contexto de biblioteca"],
 };
-export default function CoachingContext({scope,selected,documentId,project,language,onReview}:{
-  scope:ContextScope;selected:ResourceRef[];documentId?:string;project:string;language:string;onReview:()=>void;
+export default function CoachingContext({scope,selected,documentId,project,language,onReview,draftAllowed=true}:{
+  scope:ContextScope;selected:ResourceRef[];documentId?:string;project:string;language:string;onReview:()=>void;draftAllowed?:boolean;
 }) {
   const es=language==="es",t=(en:string,spanish:string)=>es?spanish:en;
-  const included=!!documentId && sharesCurrentDraft(scope,selected,documentId);
+  const included=draftAllowed && !!documentId && sharesCurrentDraft(scope,selected,documentId);
   const cue=useRef<HTMLSpanElement>(null);
   useEffect(()=>{
     const animation=cue.current ? revealOpacity(cue.current,0.35) : null;

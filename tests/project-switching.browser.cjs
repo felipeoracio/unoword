@@ -1,4 +1,4 @@
-/** Actual editor workflows, non-sensitive projects, isolated persistence APIs. */
+/** Project choices guide AI in one document library; isolated persistence APIs. */
 const {spawn}=require('node:child_process');
 (async()=>{
  const server=await require('./helpers/production-fixture-server.cjs').start({dist:process.env.PROJECT_TEST_DIST});

@@ -74,6 +74,8 @@ async def rest(method, table, user, **kwargs):
             raise HTTPException(409, "revision_conflict") from error
         if "document_not_found" in error.detail:
             raise HTTPException(404, "document_not_found") from error
+        if "invalid_ai_context_projects" in error.detail:
+            raise HTTPException(422, "invalid_ai_context_projects") from error
         # Do not echo stored content, constraints or database internals.
         code = error.response_status
         if code in {401, 403}:
@@ -108,7 +110,7 @@ async def documents(
     user: AuthenticatedUser = Depends(require_workspace_user),
 ):
     params = {
-        "select": "id,user_id,title,folder_id,favorite,status,completion_status,completed_at,ai_allowed,revision,mutation_id,created_at,updated_at",
+        "select": "id,user_id,title,folder_id,favorite,status,completion_status,completed_at,ai_allowed,ai_context_all_projects,ai_context_project_ids,revision,mutation_id,created_at,updated_at",
         "order": "updated_at.desc,id.asc",
         "limit": "200",
         "offset": str(offset),
@@ -138,6 +140,8 @@ class DocumentSave(Owned):
     status: Literal["active", "archived", "trashed"] = "active"
     completion_status: Literal["draft", "completed"] | None = None
     ai_allowed: bool = False
+    ai_context_all_projects: bool | None = None
+    ai_context_project_ids: list[UUID] | None = Field(default=None, max_length=200)
 
     @field_validator("content")
     @classmethod

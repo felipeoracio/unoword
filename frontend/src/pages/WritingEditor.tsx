@@ -16,12 +16,14 @@ import { useSelectionTools } from "@/lib/use-selection-tools";
 import { TaskList, TaskItem } from "@tiptap/extension-list";
 import EditorViewMenu from "@/components/EditorViewMenu";
 import { usePageWidth } from "@/lib/use-page-width";
+import DocumentAIContext, { type DocumentContextChoice } from "@/components/DocumentAIContext";
+import { documentContextIncludesProject } from "@/lib/document-ai-context";
+import "@/styles/document-ai-context.css";
 import ProjectControls from "@/components/projects/ProjectControls";
-import ProjectManager from "@/components/projects/ProjectManager";
+import ProjectManager from "@/components/projects/AIProjects";
 import GuidedWritingProfile from "@/components/projects/GuidedWritingProfile";
 import {
   useProjectWorkspace,
-  inProject,
   type ContextScope,
   type ResourceRef,
 } from "@/lib/use-project-workspace";
@@ -38,7 +40,7 @@ import {
 import AIUsage from "@/components/AIUsage";
 import WritingTour from "@/components/onboarding/WritingTour";
 import WritingTask from "@/components/WritingTask";
-import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { promptDraft, consumePromptDraft } from "@/lib/editor-launch";
 import { EditorContent, useEditor, type JSONContent } from "@tiptap/react";
@@ -46,7 +48,7 @@ import AppShell from "@/components/studio/AppShell";
 import { StudioStatus } from "@/components/studio/StudioPrimitives";
 import { useEditorPanels } from "@/lib/use-editor-panels";
 import { useFocusMode } from "@/lib/use-focus-mode";
-import { motionMilliseconds, revealOpacity } from "@/lib/motion";
+import { revealOpacity } from "@/lib/motion";
 import "@/styles/focus-mode.css";
 import "@/styles/project-motion.css";
 import "@/styles/editor-polish.css";
@@ -370,15 +372,12 @@ export default function WritingEditor() {
     ws.online,
     ws.flushWrites,
   );
-  const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [suggestionProject, setSuggestionProject] = useState<string | null>(null);
+  const [contextSaving, setContextSaving] = useState(false);
   const [contextScope, setContextScope] =
     useState<ContextScope>("current_project");
   const [selectedResources, setSelectedResources] = useState<ResourceRef[]>([]);
-  const [projectOpen, setProjectOpen] = useState(false),
-    [projectOperationBusy, setProjectBusy] = useState(false);
-  const [projectTransition, setProjectTransition] = useState<{phase:"saving"|"loading"|"syncing";name:string}|null>(null);
-  const projectSequence = useRef(0), projectReveal = useRef(false);
-  const projectMotion = useRef<Animation|null>(null);
+  const [projectOpen, setProjectOpen] = useState(false);
   const openingMotion = useRef<Animation|null>(null);
   const openingPaper = useRef<HTMLElement|null>(null);
   const openingPending = useRef(false);
@@ -387,7 +386,7 @@ export default function WritingEditor() {
     openingMotion.current?.cancel();
     openingMotion.current = null;
     openingPaper.current = paper;
-    openingPending.current = !!paper && !projectReveal.current;
+    openingPending.current = !!paper;
   }, []);
   const projectDialog = useRef<HTMLDialogElement>(null);
   const evidenceDialog = useRef<HTMLDialogElement>(null);
@@ -395,12 +394,12 @@ export default function WritingEditor() {
     title: string;
     text: string;
   } | null>(null);
-  const projectOwner = useRef<string | undefined>(undefined);
-  const projectChanging = useRef(false);
-  const projectReady = useRef(false);
-  const [projectInitialized, setProjectInitialized] = useState(false);
-  const projectBusy = projectOperationBusy || !projectInitialized;
+  const workspaceOwner = useRef<string | undefined>(undefined);
+  const documentReady = useRef(false);
+  const [documentInitialized, setDocumentInitialized] = useState(false);
+  const documentBusy = !documentInitialized;
   const recheckIdentity = ws.recheckIdentity;
+  const setWorkspaceError = ws.setError;
   const userId = ws.user?.id;
   const [pageWidth, setPageWidth] = usePageWidth(userId);
   const [selectionTools, setSelectionTools] = useSelectionTools(userId);
@@ -519,7 +518,7 @@ export default function WritingEditor() {
   const [folderBusy, setFolderBusy] = useState(false);
   const [toolbarVersion, setToolbarVersion] = useState(0);
   const requestedDocument = new URLSearchParams(routeLocation.search).get("document");
-  const displayedDocument = requestedDocument && !projectInitialized ? requestedDocument : ws.selected;
+  const displayedDocument = requestedDocument && !documentInitialized ? requestedDocument : ws.selected;
   const activeDocument = ws.documents.find((d) => d.id === displayedDocument) || null;
   const draftRef = useRef(activeDocument);
   draftRef.current = activeDocument;
@@ -573,8 +572,8 @@ export default function WritingEditor() {
   const importInput = useRef<HTMLInputElement>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null), [importBusy, setImportBusy] = useState(false), [exportBusy, setExportBusy] = useState(false);
   const importRequest = useRef(0), exportRequest = useRef(0), importAbort = useRef<AbortController | null>(null);
-  const importScope = useRef(""); importScope.current = `${userId}:${activeProject || "general"}`;
-  useEffect(() => { importRequest.current++; importAbort.current?.abort(); setImportPreview(null); setImportBusy(false); }, [userId, activeProject]);
+  const importScope = useRef(""); importScope.current = `${userId}:library`;
+  useEffect(() => { importRequest.current++; importAbort.current?.abort(); setImportPreview(null); setImportBusy(false); }, [userId]);
   useEffect(() => { exportRequest.current++; setExportBusy(false); }, [userId, activeDocument?.id]);
   const titleInput = useRef<HTMLTextAreaElement>(null);
   const subtitleInput = useRef<HTMLTextAreaElement>(null);
@@ -790,8 +789,6 @@ export default function WritingEditor() {
         beforeinput: (_view, event) => {
           // Yield the ready reveal before editing: long prose should not be
           // rerasterized into an opacity layer while the writer is typing.
-          projectMotion.current?.cancel();
-          projectMotion.current = null;
           openingMotion.current?.cancel();
           openingMotion.current = null;
           inputKind.current = (event as InputEvent).inputType || "insertText";
@@ -837,35 +834,6 @@ export default function WritingEditor() {
     },
   });
 
-  useLayoutEffect(() => {
-    if (!projectReveal.current || !editor || activeDocument?.content_loaded === false) return;
-    projectReveal.current = false;
-    if (!activeDocument) return;
-    openingSeen.current = activeDocument.id;
-    openingPending.current = false;
-    const stored = editor.schema.nodeFromJSON(activeDocument.content);
-    if (loadedDocument.current !== activeDocument.id) {
-      editor.commands.setContent(activeDocument.content, {emitUpdate:false});
-      editor.commands.command(({tr}) => {for (const [key, value] of Object.entries(stored.attrs)) tr.setDocAttribute(key, value);tr.setMeta("preventUpdate",true);return true;});
-      if (loadedDocument.current !== activeDocument.id) resetDocumentHistory(editor);
-      loadedDocument.current = activeDocument.id;
-    } else reconcileSavedDocument(editor, stored);
-    const paper = focusRoot.current?.querySelector<HTMLElement>(".uw-editor-paper");
-    if (paper && !matchMedia("(prefers-reduced-motion: reduce)").matches && paper.animate) {
-      const style = getComputedStyle(paper);
-      projectMotion.current = paper.animate([{opacity:0.86},{opacity:1}], {
-        duration:motionMilliseconds(style.getPropertyValue("--uno-motion-project")),
-        easing:style.getPropertyValue("--uno-motion-enter-ease").trim(),fill:"none",
-      });
-    }
-  }, [editor, activeProject, activeDocument, focusRoot]);
-  useEffect(() => {
-    const media=matchMedia("(prefers-reduced-motion: reduce)");
-    const stop=()=>{if(media.matches)projectMotion.current?.cancel();};
-    media.addEventListener("change",stop);
-    return ()=>{media.removeEventListener("change",stop);projectMotion.current?.cancel();};
-  }, [userId]);
-
   useEffect(() => {
     if (!editor) return;
     if (!activeDocument) {
@@ -893,10 +861,10 @@ export default function WritingEditor() {
       activeDocument.status === "active" &&
         activeDocument.completion_status !== "completed" &&
         !ws.completionBusy &&
-        !projectBusy,
+        !documentBusy,
       false,
     );
-  }, [editor, activeDocument, ws.completionBusy, projectBusy]);
+  }, [editor, activeDocument, ws.completionBusy, documentBusy]);
 
   // Follow ordinary hydration/editability; never reveal a still-opening body.
   // A retained paper does not replay on typing, saving or session clock ticks.
@@ -904,16 +872,15 @@ export default function WritingEditor() {
   const openingDocumentLoaded = activeDocument?.content_loaded !== false;
   useEffect(() => {
     if (!openingPaper.current || !openingDocumentId || (!openingPending.current && openingSeen.current === openingDocumentId) ||
-      !openingDocumentLoaded || projectBusy || loadedDocument.current !== openingDocumentId) return;
+      !openingDocumentLoaded || documentBusy || loadedDocument.current !== openingDocumentId) return;
     openingPending.current = false;
     openingSeen.current = openingDocumentId;
     openingMotion.current?.cancel();
     openingMotion.current = revealOpacity(openingPaper.current);
-  }, [editor, openingDocumentId, openingDocumentLoaded, projectBusy]);
+  }, [editor, openingDocumentId, openingDocumentLoaded, documentBusy]);
 
   useEffect(() => {
     openingMotion.current?.cancel();
-    projectMotion.current?.cancel();
     if (!focus) return;
     const root = focusRoot.current;
     const popovers = root?.querySelectorAll<HTMLElement>("[popover]:popover-open");
@@ -1163,11 +1130,6 @@ export default function WritingEditor() {
   const filtered = useMemo(
     () =>
       ws.documents
-        .filter(
-          (d) =>
-            !projects.state ||
-            inProject(projects.state, "document", d.id, activeProject),
-        )
         .filter((d) => {
           const matching =
             filter === "favorites"
@@ -1192,15 +1154,9 @@ export default function WritingEditor() {
       filter,
       serverMatches,
       completionFilter,
-      projects.state,
-      activeProject,
     ],
   );
-  const projectDocuments = ws.documents.filter(
-    (d) =>
-      !projects.state ||
-      inProject(projects.state, "document", d.id, activeProject),
-  );
+  const libraryDocuments = ws.documents;
   const resetAIContext = useCallback(() => {
     aiRequest.current++;
     setAiBusy(false);
@@ -1208,192 +1164,83 @@ export default function WritingEditor() {
     setAiError("");
     setConsent(false);
   }, []);
-  async function switchProject(next: string | null, initial = false) {
-    if (projectChanging.current) return;
-    if(!initial && next===activeProject && projectReady.current){setProjectOpen(false);return;}
-    projectChanging.current = true;
-    setProjectBusy(true);
-    editor?.setEditable(false, false);
-    const owner = userId;
-    const ticket = ++projectSequence.current;
-    const current = () => ownerRef.current === owner && projectSequence.current === ticket;
-    const name = projects.snapshot()?.projects.find(p=>p.id===next)?.name || (language==="es"?"Escritura general":"General Writing");
-    projectMotion.current?.cancel();
-    openingMotion.current?.cancel();
-    setProjectTransition({phase:"saving",name});
-    try {
-      if (!initial && session.current?.timer?.status === "active")
-        changeSessionStatus("paused");
-      if (!(await ws.flushWrites(initial))) throw Error("save");
-      if (!current()) return;
-      const state = projects.snapshot();
-      if (
-        !state ||
-        (next &&
-          !state.projects.some((p) => p.id === next && p.status !== "archived"))
-      )
-        throw Error("project");
-      const previous = activeProject || "general";
-      const remembered = state.preferences.last_documents[next || "general"];
-      const candidates = ws.documents.filter((d) =>
-        inProject(state, "document", d.id, next),
-      );
-      let reopen = documentToReopen(
-        candidates,
-        initial ? remembered || ws.selected : remembered,
-      );
-      // Only an explicit Home link may open a completed document. Ordinary
-      // restoration continues to reopen unfinished writing using existing rules.
-      const requested = new URLSearchParams(routeLocation.search).get("document");
-      if (initial && requested) reopen = candidates.find(d=>d.id===requested && d.status==="active")?.id || null;
-      const last_documents: Record<string, string | null> = {};
-      if (
-        !initial &&
-        (previous === "general" ||
-          state.projects.some((p) => p.id === previous))
-      )
-        last_documents[previous] =
-          draftRef.current?.completion_status === "completed"
-            ? null
-            : draftRef.current?.id || null;
-      last_documents[next || "general"] = candidates.find(d=>d.id===reopen)?.completion_status === "completed" ? null : reopen;
-      setProjectTransition({phase:"loading",name});
-      if (reopen) await ws.prepareDocument(reopen);
-      if (!current()) return;
-      // Restoring a saved workspace is not a new selection. Keep offline drafts
-      // available during startup without requiring an unrelated cloud save.
-      if(!initial || (requested && reopen)){
-        setProjectTransition({phase:"syncing",name});
-        await projects.select(next,last_documents);
-        if(ws.online && !await projects.flush())throw Error('sync');
-      }
-      if (!current()) return;
-      if (reopen) await ws.prepareDocument(reopen);
-      if (!current()) return;
-      projectReveal.current = !initial;
-      setActiveProject(next);
-      setContextScope("current_project");
-      setSelectedResources([]);
-      resetAIContext();
-      ws.setSelected(reopen);
-      setFilter("active");
-      setSearch("");
-      setServerMatches(null);
-      setProjectOpen(false);
-      projectReady.current = true;
-      setProjectInitialized(true);
-    } catch {
-      if (!current()) return;
-      ws.setError(
-        language === "es"
-          ? "No se cambió el proyecto. Resuelve los cambios pendientes y reintenta; tus textos se conservan."
-          : "Project was not switched. Resolve pending changes and retry; your writing is preserved.",
-      );
-    } finally {
-      if (current()) { projectChanging.current = false; setProjectBusy(false); setProjectTransition(null); }
-    }
-  }
-  const switchProjectRef = useRef(switchProject);
-  switchProjectRef.current = switchProject;
-  const projectStartup = useRef({ ws, projects, language, search: routeLocation.search });
-  projectStartup.current = { ws, projects, language, search: routeLocation.search };
+  const workspaceStartup = useRef({ ws, language, search: routeLocation.search });
+  workspaceStartup.current = { ws, language, search: routeLocation.search };
   useEffect(() => {
-    const { ws, projects, language, search } = projectStartup.current;
-    if (projectOwner.current !== userId) {
-      projectOwner.current = userId;
-      projectSequence.current++;
-      projectChanging.current = false;
-      projectReveal.current = false;
-      projectMotion.current?.cancel();
-      setProjectBusy(false);
-      setProjectTransition(null);
-      projectReady.current = false;
-      setProjectInitialized(false);
+    const { ws, language, search } = workspaceStartup.current;
+    if (workspaceOwner.current !== userId) {
+      workspaceOwner.current = userId;
+      documentReady.current = false;
+      setDocumentInitialized(false);
       setEvidencePreview(null);
       evidenceDialog.current?.close();
-      setActiveProject(null);
+      setSuggestionProject(null);
       setContextScope("current_project");
       setSelectedResources([]);
       setProjectOpen(false);
+      resetAIContext();
     }
-    if (
-      !userId ||
-      ws.loading ||
-      !projects.ready ||
-      !projects.state ||
-      projectReady.current ||
-      projectChanging.current
-    )
-      return;
+    if (!userId || ws.loading || documentReady.current) return;
     const requested = new URLSearchParams(search).get("document");
-    const target = requested ? ws.documents.find(d=>d.id===requested && d.status==="active") : null;
-    const memberships = target ? projects.ids("document", target.id) : [];
-    const available = memberships.filter(id=>projects.state!.projects.some(p=>p.id===id && p.status!=="archived"));
-    const previous = projects.state.preferences.active_project_id;
-    const next = target ? (available.includes(previous || "") ? previous : available[0] || null) : previous;
-    if (requested && (!target || (memberships.length>0 && !available.length))) ws.setError(
-      language === "es" ? "No se pudo abrir ese documento. Revisa tu biblioteca y los proyectos archivados." : "That document could not be opened. Check your library and archived projects.");
-    void switchProjectRef.current(
-      next,
-      true,
-    );
-  }, [userId, ws.loading, projects.ready, projects.state]);
+    const target = requested ? ws.documents.find(d => d.id === requested && d.status === "active") : null;
+    if (requested && !target) ws.setError(language === "es" ? "No se pudo abrir ese documento. Revisa tu biblioteca." : "That document could not be opened. Check your library.");
+    ws.setSelected(target?.id || documentToReopen(ws.documents, ws.selected));
+    documentReady.current = true;
+    setDocumentInitialized(true);
+  }, [userId, ws.loading, resetAIContext]);
   useEffect(() => {
-    if (
-      !projectReady.current ||
-      projectChanging.current ||
-      !projects.state ||
-      !activeProject
-    )
-      return;
-    if (
-      !projects.state.projects.some(
-        (p) => p.id === activeProject && p.status !== "archived",
-      )
-    )
-      void switchProjectRef.current(null);
-  }, [projects.state, activeProject]);
+    if (suggestionProject && projects.ready && !projects.loading && projects.state && !projects.state.projects.some(project => project.id === suggestionProject && project.status !== "archived")) setSuggestionProject(null);
+  }, [suggestionProject, projects.ready, projects.loading, projects.state]);
+  const projectLink = useRef("");
+  const aiProjectLinkPending = new URLSearchParams(routeLocation.search).has("ai_project")
+    && projectLink.current !== `${userId}:${routeLocation.key}`;
+  useEffect(() => {
+    const query = new URLSearchParams(routeLocation.search);
+    if (!userId || !projects.ready || projects.loading || !query.has("ai_project")) return;
+    const key = `${userId}:${routeLocation.key}`;
+    if (projectLink.current === key) return;
+    projectLink.current = key;
+    const id = query.get("ai_project");
+    const valid = !id || projects.state?.projects.some(project => project.id === id && project.status !== "archived");
+    setSuggestionProject(valid ? id || null : null);
+    resetAIContext();
+    if (!valid) setWorkspaceError(language === "es" ? "Ese proyecto de IA no está disponible. Elige otro antes de pedir orientación." : "That AI project is unavailable. Choose another before requesting guidance.");
+  }, [userId, projects.ready, projects.loading, projects.state, routeLocation.search, routeLocation.key, resetAIContext, language, setWorkspaceError]);
   useEffect(() => {
     if (projectOpen) projectDialog.current?.showModal();
     else projectDialog.current?.close();
   }, [projectOpen]);
   useEffect(() => {
     resetAIContext();
-  }, [activeProject, contextScope, selectedResources, resetAIContext]);
-  async function createInProject(...args: Parameters<typeof ws.create>) {
-    if (!projects.ready || !projectReady.current || projectChanging.current) {
-      ws.setError(
-        language === "es"
-          ? "Espera a que se carguen los proyectos."
-          : "Wait for projects to load before creating a document.",
-      );
-      return;
-    }
-    const project = activeProject,
-      owner = userId;
-    const document = await ws.create(...args);
-    if (document && ownerRef.current === owner)
-      try {
-        await projects.assign(
-          "document",
-          document.id,
-          project ? [project] : [],
-        );
-      } catch {
-        ws.setError(
-          language === "es"
-            ? "El texto está guardado; no se pudo asignar el proyecto."
-            : "Your document is saved; project assignment could not be saved.",
-        );
-      }
-    return document;
+  }, [suggestionProject, contextScope, selectedResources, resetAIContext]);
+  async function createDocument(...args: Parameters<typeof ws.create>) {
+    return ws.create(...args);
   }
-  const homeLaunchAction = useRef({ ws, createInProject, language, navigate });
-  homeLaunchAction.current = { ws, createInProject, language, navigate };
+  async function saveDocumentAIContext(choice: DocumentContextChoice, ids: string[]) {
+    const document = draftRef.current, owner = ownerRef.current;
+    if (!document || !owner || !ws.online || !projects.ready) throw Error("context_unavailable");
+    const valid = () => ownerRef.current === owner && draftRef.current?.id === document.id;
+    setContextSaving(true);
+    resetAIContext();
+    try {
+      if (choice === "selected" && !(await projects.flush())) throw Error("context_projects_pending");
+      if (!valid()) throw Error("context_changed");
+      // Context permissions save atomically with the document's revision. They do
+      // not move the document or change project/session attribution.
+      const matches = document.ai_allowed === (choice !== "off") && !!document.ai_context_all_projects === (choice === "all")
+        && (choice !== "selected" || (document.ai_context_project_ids != null && JSON.stringify([...document.ai_context_project_ids].sort()) === JSON.stringify([...ids].sort())));
+      // Reuse a pending mutation on retry, including a lost-response retry.
+      if (!matches) ws.update(document.id, { ai_allowed: choice !== "off", ai_context_all_projects: choice === "all",
+        ...(choice === "selected" ? { ai_context_project_ids: ids } : {}) });
+      if (!(await ws.flushWrites()) || !valid()) throw Error("context_save_failed");
+    } finally { setContextSaving(false); }
+  }
+  const homeLaunchAction = useRef({ ws, createDocument, language, navigate });
+  homeLaunchAction.current = { ws, createDocument, language, navigate };
   useEffect(() => {
-    const { ws, createInProject, language, navigate } = homeLaunchAction.current;
+    const { ws, createDocument, language, navigate } = homeLaunchAction.current;
     const nonce = new URLSearchParams(routeLocation.search).get("prompt");
-    if (!nonce || !userId || !ws.user?.ai_access || ws.loading || !projects.ready || !projectInitialized || projectBusy) return;
+    if (!nonce || !userId || !ws.user?.ai_access || ws.loading || !documentInitialized || documentBusy) return;
     const request = userId + ":" + nonce;
     if (homeLaunch.current === request) return;
     homeLaunch.current = request;
@@ -1401,13 +1248,13 @@ export default function WritingEditor() {
     if (!chosen) { ws.setError(language === "es" ? "Esta idea ya se abrió o caducó. Vuelve a Inicio para elegir otra." : "This prompt was already opened or has expired. Return Home to choose another."); return; }
     void (async () => {
       if (!(await ws.flushWrites())) return;
-      const document = await createInProject(chosen.text);
+      const document = await createDocument(chosen.text);
       if (!document || ownerRef.current !== userId) return;
       consumePromptDraft(nonce);
       setQuickPrompt(chosen.text); setRight(true);
       navigate(recoveryPath("/editor?document=" + encodeURIComponent(document.id)), { replace:true });
     })().catch(()=>ws.setError(language === "es" ? "No se pudo abrir el borrador. Tu escritura se conserva." : "The draft could not be opened. Your writing is preserved."));
-  }, [userId, ws.user?.ai_access, ws.loading, projects.ready, projectInitialized, projectBusy, routeLocation.search, setRight]);
+  }, [userId, ws.user?.ai_access, ws.loading, documentInitialized, documentBusy, routeLocation.search, setRight]);
   async function resolveWritingConflict(id:string,keepLocal:boolean) {
     const memberships=projects.ids('document',id);
     const recovered=await ws.resolveConflict(id,keepLocal);
@@ -1531,7 +1378,7 @@ export default function WritingEditor() {
   const conflict = activeDocument && ws.conflicts[activeDocument.id];
 
   async function generate() {
-    if (!ws.user || !activeDocument || !editor || !consent || aiBusy || projectBusy || projectChanging.current) return;
+    if (!ws.user || !activeDocument || !editor || !consent || aiBusy || documentBusy || contextSaving || !projects.ready || aiProjectLinkPending) return;
     const request = ++aiRequest.current;
     const owner = ws.user.id,
       id = activeDocument.id;
@@ -1548,14 +1395,15 @@ export default function WritingEditor() {
         draftRef.current?.id !== id
       )
         return;
-      const shareDraft = sharesCurrentDraft(contextScope,selectedResources,id);
+      const shareDraft = sharesCurrentDraft(contextScope,selectedResources,id)
+        && documentContextIncludesProject(draftRef.current!, suggestionProject, projects.ids("document", id));
       const progressTime = Date.now();
       const result = await apiPost<{ items: AssistantItem[] }>(
         "/workspace/assistant",
         {
           expected_user_id: owner,
           document_id: id,
-          project_id: activeProject,
+          project_id: suggestionProject,
           context_scope: contextScope,
           selected_resources: selectedResources,
           action,
@@ -1608,7 +1456,7 @@ export default function WritingEditor() {
   }
   async function importFile(file: File) {
     const owner = ownerRef.current, scope = importScope.current;
-    if (!owner || !editor || importBusy || projectBusy) return;
+    if (!owner || !editor || importBusy || documentBusy) return;
     const request = ++importRequest.current;
     setImportBusy(true); setImportPreview(null);
     try {
@@ -1632,13 +1480,13 @@ export default function WritingEditor() {
     } finally { if (request === importRequest.current) setImportBusy(false); }
   }
   async function confirmImport(title: string) {
-    if (!importPreview || importBusy || projectBusy) return;
+    if (!importPreview || importBusy || documentBusy) return;
     const preview = importPreview, scope = importScope.current, request = importRequest.current;
     setImportBusy(true);
     try {
       if (!(await ws.flushWrites(!ws.online))) return;
-      if (scope !== importScope.current || request !== importRequest.current || projectChanging.current) return;
-      const created = await createInProject(title, { content: preview.content, plain_text: toPlain(preview.content) });
+      if (scope !== importScope.current || request !== importRequest.current) return;
+      const created = await createDocument(title, { content: preview.content, plain_text: toPlain(preview.content) });
       if (created && scope === importScope.current && request === importRequest.current) { setImportPreview(null); setFilter("active"); }
     } finally { if (request === importRequest.current) setImportBusy(false); }
   }
@@ -2001,8 +1849,8 @@ export default function WritingEditor() {
       className={`uw-editor ${focus ? "uw-editor-focus" : ""}${overlayOpen ? " uw-editor-panel-open" : ""}`}
       data-theme={theme}
       data-page-width={pageWidth}
-      data-project-state={projectTransition?.phase || "idle"}
-      aria-busy={projectBusy || activeDocument?.content_loaded === false}
+      data-project-state="idle"
+      aria-busy={documentBusy || activeDocument?.content_loaded === false}
       lang={language}
       data-testid="writing-workspace"
     >
@@ -2053,46 +1901,6 @@ export default function WritingEditor() {
           </div>
         </div>
       </header>
-      <div className="uw-editor-focus-project" inert={focus} aria-hidden={focus || undefined}>
-      <ProjectControls
-        workspace={projects}
-        active={activeProject}
-        scope={contextScope}
-        selected={selectedResources}
-        busy={projectBusy}
-        pending={projectTransition}
-        theme={theme}
-        language={language}
-        onSwitch={(id) => void switchProject(id)}
-        onScope={setContextScope}
-        onSelected={setSelectedResources}
-        onManage={() => setProjectOpen(true)}
-      />
-      </div>
-      {projectReady.current &&
-        projects.state &&
-        projects.state.preferences.active_project_id !== activeProject &&
-        !projects.pending && (
-          <div className="uw-project-remote" role="status">
-            <span>
-              {language === "es"
-                ? "Otro dispositivo eligió un proyecto diferente. Tu espacio actual sigue abierto."
-                : "Another device selected a different project. Your current writing stays open."}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                void switchProject(
-                  projects.state!.preferences.active_project_id,
-                )
-              }
-            >
-              {language === "es"
-                ? "Cambiar al proyecto sincronizado"
-                : "Switch to synced project"}
-            </button>
-          </div>
-        )}
       {ws.error && (
         <div className="uw-editor-notice" role="alert">
           <span>{ws.error}</span>
@@ -2105,7 +1913,7 @@ export default function WritingEditor() {
         {overlayOpen && <button className="uw-editor-panel-backdrop" tabIndex={-1} aria-label={language==="es"?"Cerrar panel lateral":"Close side panel"} onClick={closePanel} />}
         {(
           <aside
-            inert={focus || projectBusy} aria-hidden={focus || undefined}
+            inert={focus || documentBusy} aria-hidden={focus || undefined}
             ref={libraryRef}
             id="editor-library"
             className={`uw-editor-library ${left ? "is-open" : ""}`}
@@ -2125,9 +1933,9 @@ export default function WritingEditor() {
             </div>
             <button
               className="uw-editor-primary"
-              disabled={!projects.ready || !projectReady.current || projectBusy}
+              disabled={!documentReady.current || documentBusy}
               onClick={() => {
-                void createInProject(t("Untitled"));
+                void createDocument(t("Untitled"));
                 setFilter("active");
                 if(compact)setLeft(false);
               }}
@@ -2136,11 +1944,6 @@ export default function WritingEditor() {
               {t("New document")}
             </button>
             <div className="uw-project-actions">
-              <button type="button" disabled={projectBusy} onClick={() => setProjectOpen(true)}>
-                {language === "es"
-                  ? "Proyectos y recursos"
-                  : "Projects & resources"}
-              </button>
               <button type="button" onClick={openWritingProfile}>
                 {t("My Writing Profile")}
               </button>
@@ -2174,7 +1977,7 @@ export default function WritingEditor() {
                   {t(label as string)}
                   <span>
                     {
-                      projectDocuments.filter((d) =>
+                      libraryDocuments.filter((d) =>
                         value === "favorites"
                           ? d.favorite && d.status === "active"
                           : d.status === value,
@@ -2298,10 +2101,10 @@ export default function WritingEditor() {
                 </summary>
                 {ws.recovery.map((d) => (
                   <button
-                    disabled={!projects.ready || !projectReady.current || projectBusy}
+                    disabled={!documentReady.current || documentBusy}
                     key={`${d.tab_id}:${d.id}`}
                     onClick={async () => {
-                      const recovered = await createInProject(`${d.title} (recovered)`, {
+                      const recovered = await createDocument(`${d.title} (recovered)`, {
                         content: d.content,
                         plain_text: d.plain_text,
                       });
@@ -2323,7 +2126,7 @@ export default function WritingEditor() {
             )}
             <button
               className="uw-editor-import"
-              disabled={importBusy || projectBusy}
+              disabled={importBusy || documentBusy}
               onClick={() => importInput.current?.click()}
             >
               <Upload size={16} />
@@ -2350,7 +2153,7 @@ export default function WritingEditor() {
           <div className="uw-editor-document-bar">
             <div>
               <button
-                disabled={projectBusy}
+                disabled={documentBusy}
                 ref={libraryTrigger}
                 className="uw-editor-icon"
                 aria-label={t("Open library")}
@@ -2369,7 +2172,7 @@ export default function WritingEditor() {
                     <button
                       className="uw-editor-complete"
                       aria-label={t("Mark as Draft")}
-                      disabled={ws.completionBusy || projectBusy}
+                      disabled={ws.completionBusy || documentBusy}
                       onClick={() =>
                         void ws.changeCompletion(activeDocument.id, "draft")
                       }
@@ -2383,7 +2186,7 @@ export default function WritingEditor() {
                       title={t("Mark Document as Complete")}
                       aria-label={t("Mark Document as Complete")}
                       disabled={
-                        ws.completionBusy || projectBusy ||
+                        ws.completionBusy || documentBusy ||
                         activeDocument.status !== "active" ||
                         activeDocument.content_loaded === false
                       }
@@ -2402,7 +2205,7 @@ export default function WritingEditor() {
                   <button
                     className="uw-editor-icon"
                     aria-label={t("Favorites")}
-                    disabled={projectBusy}
+                    disabled={documentBusy}
                     aria-pressed={activeDocument.favorite}
                     onClick={() =>
                       ws.update(activeDocument.id, {
@@ -2463,7 +2266,7 @@ export default function WritingEditor() {
                 {focus ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
               </button>
               <button
-                disabled={projectBusy}
+                disabled={documentBusy}
                 ref={assistantTrigger}
                 className="uw-editor-assistant-toggle"
                 aria-label={t("Writing assistant")}
@@ -2484,7 +2287,7 @@ export default function WritingEditor() {
             <>
               {(
                 <div
-                  inert={focus || projectBusy} aria-hidden={focus || undefined}
+                  inert={focus || documentBusy} aria-hidden={focus || undefined}
                   className="uw-editor-toolbar"
                   role="toolbar"
                   aria-label="Text formatting"
@@ -2525,10 +2328,10 @@ export default function WritingEditor() {
                     <option value="2">{language === "es" ? "Encabezado 2" : "Heading 2"}</option>
                     <option value="3">{language === "es" ? "Encabezado 3" : "Heading 3"}</option>
                   </select>
-                  {editor && <EditorWritingTools editor={editor} documentId={`${userId}:${activeDocument.id}`} title={activeDocument.title} subtitle={documentSubtitle(activeDocument.content)} focus={focus} busy={projectBusy} spanish={language === "es"} onSave={ws.flushWrites} onFocus={() => setFocus(!focus)} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
-                  {editor && <ImageControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
-                  {editor && <TableControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} />}
-                  {editor && <EditorFormatting editor={editor} documentId={activeDocument.id} disabled={!editor.isEditable || projectBusy} spanish={language === "es"} selectionTools={selectionTools} onSelectionTools={setSelectionTools} />}
+                  {editor && <EditorWritingTools editor={editor} documentId={`${userId}:${activeDocument.id}`} title={activeDocument.title} subtitle={documentSubtitle(activeDocument.content)} focus={focus} busy={documentBusy} spanish={language === "es"} onSave={ws.flushWrites} onFocus={() => setFocus(!focus)} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
+                  {editor && <ImageControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || documentBusy} spanish={language === "es"} />}
+                  {editor && <TableControls editor={editor} documentId={`${userId}:${activeDocument.id}`} disabled={!editor.isEditable || documentBusy} spanish={language === "es"} />}
+                  {editor && <EditorFormatting editor={editor} documentId={activeDocument.id} disabled={!editor.isEditable || documentBusy} spanish={language === "es"} selectionTools={selectionTools} onSelectionTools={setSelectionTools} />}
                   {toolbarButton(
                     "Bold (Ctrl/⌘ B)",
                     <Bold size={16} />,
@@ -2660,77 +2463,8 @@ export default function WritingEditor() {
                   </button>
                 </section>
               )}
-              <div className="uw-editor-paper-scroll" inert={projectBusy}>
+              <div className="uw-editor-paper-scroll" inert={documentBusy}>
                 <article className="uw-editor-paper" ref={revealPaper} style={typographyStyle(activeDocument?.content.attrs?.typography)}>
-                  {activeDocument && (
-                    <label className="uw-project-move">
-                      <span className="uw-sr-only">
-                        {language === "es"
-                          ? "Mover documento a proyecto"
-                          : "Move document to project"}
-                      </span>
-                      <select
-                        aria-label={
-                          language === "es"
-                            ? "Mover documento a proyecto"
-                            : "Move document to project"
-                        }
-                        value=""
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          if (!next) return;
-                          const title =
-                            next === "general"
-                              ? language === "es"
-                                ? "Escritura general"
-                                : "General Writing"
-                              : projects.state?.projects.find(
-                                  (p) => p.id === next,
-                                )?.name;
-                          if (
-                            window.confirm(
-                              language === "es"
-                                ? `¿Mover este documento a ${title}? Esto cambia su asignación, no el proyecto activo.`
-                                : `Move this document to ${title}? This changes its membership, not the active project.`,
-                            )
-                          )
-                            void (async () => {
-                              try {
-                                if (!(await ws.flushWrites())) return;
-                                await projects.assign(
-                                  "document",
-                                  activeDocument.id,
-                                  next === "general" ? [] : [next],
-                                );
-                                if (ws.online) await projects.flush();
-                              } catch {
-                                ws.setError(
-                                  "The project assignment could not be saved. Your writing is preserved.",
-                                );
-                              }
-                            })();
-                        }}
-                      >
-                        <option value="">
-                          {language === "es"
-                            ? "Mover documento…"
-                            : "Move document…"}
-                        </option>
-                        <option value="general">
-                          {language === "es"
-                            ? "Escritura general"
-                            : "General Writing"}
-                        </option>
-                        {projects.state?.projects
-                          .filter((p) => p.status !== "archived")
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
                   <div className="uw-editor-heading-field">
                     <textarea
                       ref={titleInput}
@@ -2743,7 +2477,7 @@ export default function WritingEditor() {
                         activeDocument.status !== "active" ||
                         activeDocument.completion_status === "completed" ||
                         ws.completionBusy ||
-                        projectBusy
+                        documentBusy
                       }
                       onChange={(event) =>
                         ws.update(activeDocument.id, {
@@ -2768,7 +2502,7 @@ export default function WritingEditor() {
                         activeDocument.status !== "active" ||
                         activeDocument.completion_status === "completed" ||
                         ws.completionBusy ||
-                        projectBusy
+                        documentBusy
                       }
                       placeholder={t("Add a subtitle…")}
                       onChange={(event) =>
@@ -2831,7 +2565,7 @@ export default function WritingEditor() {
                     )}
                   </div>
                   <EditorContent editor={editor} />
-                  {editor && <SelectionFormatting editor={editor} enabled={selectionTools && !projectBusy && activeDocument.status === "active" && activeDocument.completion_status !== "completed"} spanish={language === "es"} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
+                  {editor && <SelectionFormatting editor={editor} enabled={selectionTools && !documentBusy && activeDocument.status === "active" && activeDocument.completion_status !== "completed"} spanish={language === "es"} onLink={() => { setLinkHref(editor.getAttributes("link").href || ""); setLinkOpen(true); }} />}
                   {(
                     <div className="uw-editor-document-options" inert={focus} aria-hidden={focus || undefined}>
                       <label>
@@ -2854,9 +2588,9 @@ export default function WritingEditor() {
                       </label>
                       <div>
                         <button
-                          disabled={!projects.ready || !projectReady.current || projectBusy}
+                          disabled={!documentReady.current || documentBusy}
                           onClick={() =>
-                            void createInProject(
+                            void createDocument(
                               `${activeDocument.title} (copy)`,
                               {
                                 content: activeDocument.content,
@@ -2938,8 +2672,8 @@ export default function WritingEditor() {
               <p>{t("Every idea starts with UnoWord.")}</p>
               <button
                 className="uw-editor-primary"
-                disabled={!projects.ready || !projectReady.current || projectBusy}
-                onClick={() => void createInProject(t("Untitled"))}
+                disabled={!documentReady.current || documentBusy}
+                onClick={() => void createDocument(t("Untitled"))}
               >
                 <Plus size={17} />
                 {t("Start New Document")}
@@ -2961,11 +2695,11 @@ export default function WritingEditor() {
               </p>
               <button
                 className="uw-editor-primary"
-                disabled={!projects.ready || !projectReady.current || projectBusy}
+                disabled={!documentReady.current || documentBusy}
                 onClick={() => {
                   setCompletionNotice(false);
                   setCompletionFilter("all");
-                  void createInProject(t("Untitled"));
+                  void createDocument(t("Untitled"));
                 }}
               >
                 {t("Start New Document")}
@@ -3015,7 +2749,7 @@ export default function WritingEditor() {
               session.current.timer.status !== "ended" ? (
                 <>
                   <button
-                    disabled={projectBusy}
+                    disabled={documentBusy}
                     onClick={() =>
                       changeSessionStatus(
                         session.current?.timer?.status === "paused"
@@ -3035,7 +2769,7 @@ export default function WritingEditor() {
                         : "Pause Session",
                     )}
                   </button>
-                  <button disabled={projectBusy} onClick={() => changeSessionStatus("ended")}>
+                  <button disabled={documentBusy} onClick={() => changeSessionStatus("ended")}>
                     <Square size={14} />
                     {t("End Session")}
                   </button>
@@ -3178,7 +2912,7 @@ export default function WritingEditor() {
         </section>
         {right && (
           <aside
-            inert={focus || projectBusy} aria-hidden={focus || undefined}
+            inert={focus || documentBusy} aria-hidden={focus || undefined}
             ref={assistantRef}
             id="editor-assistant"
             className="uw-editor-assistant"
@@ -3231,6 +2965,24 @@ export default function WritingEditor() {
             {ws.user.ai_access ? (
               <>
                 <AIUsage usage={usage} language={language} compact />
+                <label className="uw-suggestion-project">{language === "es" ? "Sugerencia para" : "Suggestion for"}
+                  <select aria-label={language === "es" ? "Proyecto de la sugerencia" : "Suggestion project"}
+                    value={suggestionProject || ""} disabled={!projects.ready || aiBusy || aiProjectLinkPending}
+                    onChange={event => setSuggestionProject(event.target.value || null)}>
+                    <option value="">{aiProjectLinkPending ? (language === "es" ? "Abriendo proyecto…" : "Opening project…") : (language === "es" ? "Escritura general" : "General writing")}</option>
+                    {projects.state?.projects.filter(project => project.status !== "archived").map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="uw-ai-project-manage" onClick={() => setProjectOpen(true)}>{language === "es" ? "Gestionar proyectos de IA" : "Manage AI projects"}</button>
+                {activeDocument && <DocumentAIContext key={`${userId}:${activeDocument.id}`} document={activeDocument}
+                  projects={projects.state?.projects || []} assigned={activeDocument.ai_context_project_ids ?? projects.ids("document", activeDocument.id)}
+                  ready={projects.ready && ws.online && !documentBusy} spanish={language === "es"} onSave={saveDocumentAIContext} />}
+                <details className="uw-ai-context-options" data-ai-context-options>
+                  <summary>{language === "es" ? "Más opciones de contexto" : "More context options"}</summary>
+                  <ProjectControls contextOnly workspace={projects} active={suggestionProject} scope={contextScope}
+                    selected={selectedResources} busy={documentBusy} theme={theme} language={language}
+                    onSwitch={setSuggestionProject} onScope={setContextScope} onSelected={setSelectedResources} onManage={() => setProjectOpen(true)} />
+                </details>
                 <label className="uw-editor-tool-label">
                   {language==="es"?"Elige un modo":"Choose a mode"}
                   <select
@@ -3250,8 +3002,9 @@ export default function WritingEditor() {
                 <p key={action} id="editor-coach-mode-description" className="uw-coach-mode-description">{coachingModes.find(mode=>mode.id===action)?.description[language==="es"?1:0]}</p>
                 <p id="editor-coach-mode-allowance" className="uw-coach-allowance">{usage?.legacy_shared?(language==="es"?"Usa 1 solicitud de tu asignación diaria compartida protegida.":"Uses 1 request from your protected shared daily allowance."):usesGuidanceAllowance(action)?(language==="es"?"Usa 1 solicitud de Guía de escritura.":"Uses 1 Writing Guidance request."):(language==="es"?"Usa 1 solicitud de sugerencias para estas alternativas.":"Uses 1 suggestion request for these alternatives.")}</p>
                 <CoachingContext scope={contextScope} selected={selectedResources} documentId={activeDocument?.id}
-                  project={projects.state?.projects.find(project=>project.id===activeProject)?.name || (language==="es"?"Escritura general":"General Writing")}
-                  language={language} onReview={()=>{setRight(false);requestAnimationFrame(()=>document.querySelector<HTMLSelectElement>('.uw-project-controls select[aria-label="AI Context"], .uw-project-controls select[aria-label="Contexto de IA"]')?.focus());}}/>
+                  draftAllowed={!!activeDocument && documentContextIncludesProject(activeDocument, suggestionProject, projects.ids("document", activeDocument.id))}
+                  project={projects.state?.projects.find(project=>project.id===suggestionProject)?.name || (language==="es"?"Escritura general":"General Writing")}
+                  language={language} onReview={()=>{document.querySelector<HTMLDetailsElement>('[data-ai-context-options]')?.setAttribute("open", "");requestAnimationFrame(()=>document.querySelector<HTMLSelectElement>('.uw-project-controls select[aria-label="AI Context"], .uw-project-controls select[aria-label="Contexto de IA"]')?.focus());}}/>
                 <label className="uw-editor-consent">
                   <input
                     type="checkbox"
@@ -3259,13 +3012,14 @@ export default function WritingEditor() {
                     onChange={(event) => setConsent(event.target.checked)}
                   />
                   {activeDocument && sharesCurrentDraft(contextScope,selectedResources,activeDocument.id)
+                    && documentContextIncludesProject(activeDocument, suggestionProject, projects.ids("document", activeDocument.id))
                     ? t("Share this draft for this AI request.")
                     : language==="es"?"Permitir esta solicitud de IA con el contexto seleccionado.":"Allow this AI request with the selected context."}
                 </label>
                 <button
                   className="uw-editor-primary"
                   disabled={
-                    !consent || projectBusy ||
+                    !consent || documentBusy || contextSaving || !projects.ready || aiProjectLinkPending ||
                     !activeDocument ||
                     activeDocument.revision === 0 ||
                     ws.documents.some((document) => document.dirty) ||
@@ -3448,20 +3202,6 @@ export default function WritingEditor() {
                       </p>
                     </div>
                   )}
-                  {activeDocument && (
-                    <label className="uw-editor-consent">
-                      <input
-                        type="checkbox"
-                        checked={activeDocument.ai_allowed}
-                        onChange={(event) =>
-                          ws.update(activeDocument.id, {
-                            ai_allowed: event.target.checked,
-                          })
-                        }
-                      />
-                      {t("Use this document for future AI personalization")}
-                    </label>
-                  )}
                 </>
               )}
               <ConnectSubstack
@@ -3491,12 +3231,12 @@ export default function WritingEditor() {
       <WritingTour
         key={ws.user.id}
         owner={ws.user.id}
-        enabled={ws.user.ai_access && projects.ready && projectReady.current && !projectBusy}
+        enabled={ws.user.ai_access && documentReady.current && !documentBusy}
         documentId={activeDocument?.id || null}
-        documentIds={projectDocuments.map((document) => document.id)}
+        documentIds={libraryDocuments.map((document) => document.id)}
         select={ws.setSelected}
         create={() =>
-          createInProject(
+          createDocument(
             language === "es" ? "Mi primera frase" : "My first sentence",
           )
         }
@@ -3803,11 +3543,7 @@ export default function WritingEditor() {
           className="uw-project-actions"
           style={{ padding: "12px 24px", justifyContent: "space-between" }}
         >
-          <Link to="/projects">
-            {language === "es"
-              ? "Abrir panel de proyectos"
-              : "Open Projects dashboard"}
-          </Link>
+          <strong>{language === "es" ? "Proyectos de IA" : "AI projects"}</strong>
           <button
             type="button"
             onClick={() => setProjectOpen(false)}
@@ -3820,10 +3556,9 @@ export default function WritingEditor() {
         </div>
         <ProjectManager
           workspace={projects}
-          active={activeProject}
+          active={suggestionProject}
           language={language}
-          onOpen={(id) => void switchProject(id)}
-          onProfile={openWritingProfile}
+          onOpen={(id) => { setSuggestionProject(id); setProjectOpen(false); }}
         />
       </dialog>
       <dialog

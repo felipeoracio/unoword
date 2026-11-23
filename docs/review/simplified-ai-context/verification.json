@@ -1,0 +1,36 @@
+{
+  "behavior": [
+    "One document library; AI targets do not switch the writing workspace.",
+    "Per-document saved AI context: Off, All projects including future projects, or Selected projects.",
+    "Suggestion target selected independently; target changes reset request consent.",
+    "Simple AI projects contain a name and optional AI brief."
+  ],
+  "verification": {
+    "frontendBuild": "passed",
+    "frontendUnitTests": 45,
+    "frontendUnitTestFiles": 9,
+    "backendTests": 63,
+    "targetedLint": "passed",
+    "sql": "passed on PGlite PostgreSQL: repeatable migration, revision safety, ownership, legacy compatibility and context isolation",
+    "simplifiedContextBrowser": "passed on final build: context saves, retry, unchanged cursor/content/session/counts, Library handoff, 390px layout",
+    "fullWorkspaceBrowser": "passed before final AI-project UI/handoff refinements",
+    "autosaveNavigation": "passed",
+    "studioNavigationGroupedScenarios": 8,
+    "portabilityGroupedScenarios": 9,
+    "homeBrowser": "passed"
+  },
+  "regressionFoundAndFixed": "Cached project metadata could consume Library handoff before refresh. Online initial loading now lasts through refresh; handoff waits for it. Final browser test passed.",
+  "deployment": {
+    "status": "not deployed; approval required",
+    "order": [
+      "Apply additive 20261123224404_document_ai_context_sharing.sql to existing Supabase project.",
+      "Release backend and frontend.",
+      "Verify production context permissions, autosave and suggestion target."
+    ]
+  },
+  "limitations": [
+    "Browser tests operate the real built application with isolated synthetic authentication and persistence, not live customer accounts.",
+    "SQL tests use local PostgreSQL-compatible PGlite; production migration has not been applied.",
+    "Existing documents, membership data and completed session records are preserved; no production writes made."
+  ]
+}

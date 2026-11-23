@@ -171,12 +171,6 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    if(process.env.POLISH_PAUSE==='1')await page.pause();
    return;
   }
-  if(process.env.PROJECT_SWITCH_ONLY==='1'){
-   await require('./helpers/project-switch-flow.cjs')({page,context,origin,documents,activity,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,network:projectNetwork,errors});
-   if(process.env.PROJECT_PAUSE==='1')await page.pause();
-   return;
-  }
-  if(process.env.PROJECTS_ONLY==='1'){await require('./helpers/project-browser-flow.cjs')({page,context,origin,documents,requests,fixture:projectFixture,setSignedIn:v=>signedIn=v,setFailSave:v=>failSave=v,setOffline:v=>offline=v,errors});await context.close();return;}
   await page.goto(origin+'/editor');await page.getByRole('heading',{name:'Sign in to write'}).waitFor();
   assert.equal(await page.locator('[contenteditable=true]').count(),0,'Signed-out users cannot write');
   signedIn=true;await page.reload();await page.getByRole('button',{name:'Start New Document',exact:true}).click();
@@ -185,6 +179,9 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.AI_CONTEXT_SIMPLIFIED_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.PROJECTS_ONLY==='1'){
+   await require('./helpers/document-ai-context-flow.cjs')({page,canvas,documents,activity,requests,errors,projectFixture,owner,setFailSave:value=>failSave=value});return;
+  }
   if(process.env.NAVIGATION_AUTOSAVE_ONLY==='1'){
    await require('./helpers/navigation-autosave-flow.cjs')({page,canvas,documents,requests,errors,projectNetwork,setFailSave:value=>failSave=value});return;
   }
@@ -211,6 +208,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    assert.equal(await generate.isDisabled(),true,'Consent is still required');
    const summary=page.getByRole('region',{name:'Context for this request',exact:true});await summary.getByText('Shared only when you request',{exact:true}).waitFor();
    for(let i=0;i<3;i++)await page.getByRole('button',{name:'Another prompt',exact:true}).click();assert.equal(calls().length,0,'Quick Prompt never calls AI');
+   await summary.getByRole('button',{name:'Review',exact:true}).click();
    await page.getByLabel('AI Context',{exact:true}).selectOption('none');await summary.getByText('Excluded by this scope',{exact:true}).waitFor();await page.getByLabel('Allow this AI request with the selected context.',{exact:true}).check();
    await generate.click();await page.locator('.uw-editor-ai-results article').nth(2).waitFor();assert.equal(calls().at(-1).body.current_text,'');assert.equal(calls().at(-1).body.context_scope,'none');assert.equal(calls().at(-1).body.consent,true);assert.equal(await canvas.textContent(),content);
    const first=page.locator('.uw-editor-ai-results article').first();failIdeaSave=true;await first.getByRole('button',{name:'Save idea',exact:true}).click();await first.getByText('The idea could not be saved.',{exact:false}).waitFor();failIdeaSave=false;await first.getByRole('button',{name:'Save idea',exact:true}).click();await first.getByRole('button',{name:'Idea saved',exact:true}).waitFor();assert.equal(savedCoachIdeas.size,1);assert.equal(calls().length,1,'Saving a result does not generate again');await capture('coach-results');
@@ -228,7 +226,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    assert.equal(await canvas.textContent(),content);assert.equal(activity.size,sessions,'Coaching creates no writing sessions');assert.equal(await page.getByRole('button',{name:/Add to document|Apply to selection/}).count(),0);
    legacy=false;aiUsed=0;aiPending=0;monthlyRemaining=200;guidanceRemaining=30;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.waitForFunction(()=>document.querySelector('.uw-ai-usage').textContent.includes('100 left today'));await mode.selectOption('guidance');
    await page.locator('.uw-editor-assistant').evaluate(el=>el.scrollTop=0);await capture('coach-desktop-light');await page.getByRole('button',{name:'Dark theme',exact:true}).click();await capture('coach-desktop-dark');await page.getByRole('button',{name:'Light theme',exact:true}).click();
-   await page.setViewportSize({width:320,height:1000});await page.getByRole('dialog',{name:'Writing assistant',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await capture('coach-mobile');await summary.getByRole('button',{name:'Review',exact:true}).click();await page.getByRole('dialog',{name:'Writing assistant',exact:true}).waitFor({state:'hidden'});await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='AI Context');
+   await page.setViewportSize({width:320,height:1000});await page.getByRole('dialog',{name:'Writing assistant',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await capture('coach-mobile');await summary.getByRole('button',{name:'Review',exact:true}).click();await page.getByRole('dialog',{name:'Writing assistant',exact:true}).waitFor();await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='AI Context');await page.getByRole('button',{name:'Close assistant',exact:true}).click();
    await page.getByLabel('Language').selectOption('es');await page.getByRole('button',{name:'Asistente de escritura',exact:true}).click();await page.getByRole('region',{name:'Contexto de esta solicitud',exact:true}).waitFor();await capture('coach-mobile-es');await page.keyboard.press('Escape');await page.getByLabel('Idioma').selectOption('en');
    assert.deepEqual(errors,[]);console.log('PASS coaching: non-AI prompts, explicit scope/consent and unchanged payloads, private document permission preserved, saved result retry without generation or insertion, all guidance/suggestion and protected pending quota gates, stable author content/session count, compact usage, responsive context review, EN/ES and dark mode.');return;
   }
@@ -578,7 +576,10 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   assert.ok(requests.some(r=>r.key==='/processing/run'),'Pending knowledge refreshes through the authenticated worker');
   await page.getByLabel('Notes on building a garden').uncheck();
   assert.equal(sources[0].enabled,false);
-  await page.getByLabel('Use this document for future AI personalization').check();
+  const contextSettings=page.locator('.uw-document-ai-context');
+  await contextSettings.locator('summary').click();
+  await page.getByLabel('Document AI context',{exact:true}).selectOption('all');
+  await page.getByRole('button',{name:'Save AI context',exact:true}).click();
   await page.getByRole('button',{name:'Another prompt',exact:true}).click();assert.ok((await page.locator('.uw-editor-prompt').textContent()).length>35);
   // Export current unsynced text locally and import Markdown safely.
   await page.getByRole('button',{name:'Close assistant',exact:true}).click();

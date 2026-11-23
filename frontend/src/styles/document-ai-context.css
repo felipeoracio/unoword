@@ -1,0 +1,23 @@
+.uw-document-ai-context,.uw-ai-context-options { margin:16px 0; padding:12px; border:1px solid var(--we-line,#dce2ea); border-radius:10px; }
+.uw-document-ai-context summary,.uw-ai-context-options summary { cursor:pointer; font-size:13px; line-height:1.5; }
+.uw-document-ai-context summary strong { display:block; font-weight:500; color:var(--we-muted,#53637c); }
+.uw-document-ai-context label,.uw-suggestion-project { display:grid; gap:7px; margin-top:12px; font-size:13px; }
+.uw-document-ai-context select,.uw-suggestion-project select { width:100%; min-width:0; padding:9px; border:1px solid var(--we-line,#dce2ea); border-radius:8px; color:inherit; background:var(--we-panel,#fff); font:inherit; }
+.uw-document-ai-context fieldset { margin:12px 0; padding:10px; border:1px solid var(--we-line,#dce2ea); border-radius:8px; }
+.uw-document-ai-context fieldset label { display:flex; align-items:center; gap:8px; }
+.uw-document-ai-context p,.uw-document-ai-context small { display:block; font-size:12px; line-height:1.6; color:var(--we-muted,#53637c); }
+.uw-document-ai-context button,.uw-ai-project-manage { margin-top:8px; font-size:12px; padding:7px 10px; border:1px solid var(--we-line,#dce2ea); border-radius:7px; color:inherit; background:transparent; }
+.uw-ai-context-options .uw-project-controls { margin-top:12px; padding:0; flex-direction:column; align-items:stretch; }
+.uw-ai-context-options .uw-project-controls select { max-width:100%; }
+.uw-ai-projects { padding:16px; min-width:0; }
+.uw-ai-projects header,.uw-ai-project-summary > div,.uw-ai-project-form > div { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; }
+.uw-ai-projects p { color:var(--we-muted,var(--studio-muted,#53637c)); line-height:1.6; }
+.uw-ai-projects button { padding:8px 12px; border:1px solid var(--we-line,var(--studio-line,#dededb)); border-radius:8px; color:inherit; background:var(--we-bg,var(--studio-surface,#fff)); }
+.uw-ai-project-list { display:grid; gap:8px; margin:16px 0; }
+.uw-ai-project-row { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.uw-ai-project-form label { display:grid; gap:7px; margin:12px 0; }
+.uw-ai-project-form input,.uw-ai-project-form textarea { width:100%; max-width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--we-line,var(--studio-line,#dededb)); border-radius:8px; font:inherit; color:inherit; background:var(--we-bg,var(--studio-surface,#fff)); }
+.uw-ai-project-form textarea { min-height:100px; resize:vertical; }
+.uw-ai-project-summary,.uw-ai-project-form { margin:16px 0; border-top:1px solid var(--we-line,var(--studio-line,#dededb)); padding-top:14px; }
+.uw-ai-projects { overflow-wrap:anywhere; }
+.uw-ai-project-row > button { max-width:100%; overflow-wrap:anywhere; text-align:left; }

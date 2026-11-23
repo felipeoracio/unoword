@@ -34,6 +34,7 @@ export default function ProjectControls({
   pending,
   theme = "light",
   language = "en",
+  contextOnly = false,
 }: {
   workspace: Workspace;
   active: string | null;
@@ -47,6 +48,7 @@ export default function ProjectControls({
   pending?: { phase: "saving" | "loading" | "syncing"; name: string } | null;
   theme?: string;
   language?: string;
+  contextOnly?: boolean;
 }) {
   const es = language === "es",
     i = es ? 1 : 0,
@@ -77,7 +79,7 @@ export default function ProjectControls({
   useEffect(() => {
     let cancelled = false;
     setStatistics(null);
-    if (!owner || !active) return;
+    if (!owner || !active || contextOnly) return;
     async function load() {
       try {
         let value: ProjectStatistics | undefined;
@@ -105,7 +107,7 @@ export default function ProjectControls({
       cancelled = true;
       clearInterval(timer);
     };
-  }, [owner, active, workspace.online]);
+  }, [owner, active, workspace.online, contextOnly]);
   const project = workspace.state?.projects.find((p) => p.id === active);
   const projectStatistics = statistics?.project_id === active ? statistics : null;
   const switchRef = useRef(onSwitch);
@@ -122,7 +124,7 @@ export default function ProjectControls({
       className="uw-project-controls"
       aria-label={es ? "Proyecto y contexto de IA" : "Project and AI context"}
     >
-      <div className="uw-project-picker-label">
+      {!contextOnly && <><div className="uw-project-picker-label">
         <FolderKanban size={16} />
         <span>{es ? "Proyecto" : "Project"}</span>
         <ProjectPicker projects={workspace.state?.projects} active={active} busy={busy}
@@ -130,7 +132,7 @@ export default function ProjectControls({
       </div>
       <button type="button" disabled={busy} onClick={onManage}>
         {es ? "Gestionar proyectos" : "Manage projects"}
-      </button>
+      </button></>}
       <label>
         <SlidersHorizontal size={16} />
         <span>{es ? "Contexto de IA" : "AI Context"}</span>
@@ -168,7 +170,7 @@ export default function ProjectControls({
           {es ? "Restablecer contexto" : "Reset context"}
         </button>
       )}
-      <span className="uw-project-sync" role="status">
+      {!contextOnly && <span className="uw-project-sync" role="status">
         {pending
           ? es
             ? `${pending.phase === "saving" ? "Guardando antes de abrir" : pending.phase === "loading" ? "Abriendo" : "Sincronizando"} ${pending.name}…`
@@ -196,8 +198,8 @@ export default function ProjectControls({
                   : es
                     ? "Cargando proyectos…"
                     : "Loading projects…"}
-      </span>
-      {project && (
+      </span>}
+      {!contextOnly && project && (
         <small className="uw-project-current-progress" role="status">
           {es ? "Meta del proyecto hoy" : "Project today"}:{" "}
           {projectStatistics?.daily_words?.toLocaleString() ?? "—"}

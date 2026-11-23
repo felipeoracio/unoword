@@ -72,6 +72,8 @@ export type WritingDocument = {
   completion_status?: "draft" | "completed";
   completed_at?: string | null;
   ai_allowed: boolean;
+  ai_context_all_projects?: boolean;
+  ai_context_project_ids?: string[] | null;
   revision: number;
   mutation_id: string;
   created_at: string;
@@ -231,6 +233,7 @@ export function newDocument(
     completion_status: "draft",
     completed_at: null,
     ai_allowed: false,
+    ai_context_all_projects: false,
     revision: 0,
     mutation_id: crypto.randomUUID(),
     created_at: new Date().toISOString(),

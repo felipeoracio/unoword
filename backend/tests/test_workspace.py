@@ -167,6 +167,25 @@ def test_completion_requires_owner_pro_origin_and_trusted_timestamp(fixture, mon
     assert client.post(route, json=body, headers=ORIGIN).status_code == 403
 
 
+def test_document_context_targets_are_validated_and_older_clients_do_not_clear_them(fixture):
+    client, _, calls = fixture
+    doc, project = str(uuid4()), str(uuid4())
+    route = f"/api/workspace/documents/{doc}"
+    body = {**payload(), "ai_allowed": True, "ai_context_all_projects": False, "ai_context_project_ids": [project]}
+    response = client.put(route, json=body, headers=ORIGIN)
+    assert response.status_code == 200
+    assert response.json()["ai_context_project_ids"] == [project]
+    forwarded = [call for call in calls if call[1] == "rpc/workspace_save_document"][-1][3]["json"]["p_data"]
+    assert forwarded["ai_context_all_projects"] is False
+    assert forwarded["ai_context_project_ids"] == [project]
+    response = client.put(route, json={**payload(), "revision": 1}, headers=ORIGIN)
+    assert response.status_code == 200
+    forwarded = [call for call in calls if call[1] == "rpc/workspace_save_document"][-1][3]["json"]["p_data"]
+    assert "ai_context_project_ids" not in forwarded
+    assert "ai_context_all_projects" not in forwarded
+    assert client.put(route, json={**payload(), "ai_context_project_ids": ["not-a-project-id"]}, headers=ORIGIN).status_code == 422
+
+
 def test_activity_persists_paused_clock_without_changing_session_identity(fixture):
     client, _, calls = fixture
     doc = str(uuid4())

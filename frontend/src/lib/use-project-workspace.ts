@@ -177,8 +177,8 @@ export function useProjectWorkspace(
         adopted.current=rows.filter(row=>row.key!==`${id}:project_workspace:${tab.current}`&&(row.value as Cache).pending.length).map(row=>({id:row.key.slice((id+':project_workspace:').length),stamp:(row.value as Cache).mutation_id}));
         await persist(value);
         setReady(!!previous);
-        setLoading(false);
         if (navigator.onLine) await syncRef.current();
+        else setLoading(false);
       } catch {
         if (!cancelled) {
           setError(

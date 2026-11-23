@@ -92,12 +92,12 @@ const until=async f=>{for(let i=0;i<150;i++){if(f())return;await wait(100);}thro
   await page.getByText('You reached today’s goal.',{exact:false}).waitFor();
   conflict=true;await page.getByRole('button',{name:'Edit daily goal',exact:true}).click();await page.getByRole('spinbutton',{name:'Words per day',exact:true}).fill('800');await page.getByRole('button',{name:'Save goal',exact:true}).click();await page.getByRole('alert').filter({hasText:'another device'}).waitFor();assert.equal(prefs.daily_goal,600);await page.getByRole('button',{name:'Close goal settings',exact:true}).click();
   // The primary action restores existing writing without creating a new draft.
-  const initialCount=docs.size;await page.getByRole('link',{name:'Start Writing',exact:true}).click();await page.waitForFunction(expected=>document.querySelector('[aria-label="Rename document"]')?.value===expected,second.title);assert.equal(docs.size,initialCount);
+  const initialCount=docs.size;await page.getByRole('link',{name:'Start Writing',exact:true}).click();await page.waitForFunction(expected=>document.querySelector('[aria-label="Rename document"]')?.value===expected,first.title);assert.equal(docs.size,initialCount);
   await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Home',exact:true}).click();await home.waitFor();
-  // Direct recent-document links select the correct project, including completed read-only documents.
+  // Direct links open the requested document without switching a writing workspace, including completed read-only documents.
   await page.getByRole('link',{name:'A small beginning',exact:false}).click();await page.getByRole('textbox',{name:'Rename document',exact:true}).waitFor();
   assert.equal(await page.getByRole('textbox',{name:'Rename document',exact:true}).inputValue(),first.title);
-  await page.waitForFunction(expected=>(document.querySelector('[aria-label="Active project"]')?.getAttribute('data-project-value')??document.querySelector('[aria-label="Active project"]')?.value)===expected,NOVEL);
+  assert.equal(await page.getByRole('combobox',{name:'Active project',exact:true}).count(),0);assert.equal(projects('/workspace/projects','GET').state.preferences.active_project_id,MEMOIR,'opening a document does not change legacy workspace preferences');
   await page.locator('.uw-studio-sidebar').getByRole('link',{name:'Home',exact:true}).click();await home.waitFor();
   await page.getByRole('link',{name:'A finished chapter',exact:false}).click();await page.getByRole('textbox',{name:'Rename document',exact:true}).waitFor();
   assert.equal(await page.getByRole('textbox',{name:'Rename document',exact:true}).inputValue(),completed.title);
@@ -131,6 +131,6 @@ const until=async f=>{for(let i=0;i<150;i++){if(f())return;await wait(100);}thro
   assert.ok((await home.textContent()).includes('7 days'));await page.getByRole('button',{name:'Use This Prompt',exact:true}).click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),await prompt.textContent());
   assert.equal(requests.some(r=>r.key==='/workspace/assistant'||r.key==='/ai/suggestion'||r.key.includes('checkout')),false);
   assert.deepEqual(errors,[]);
-  console.log('PASS Home: auth/private metadata, shared totals/time/streak, selected-theme Quick Prompts, no automatic writes/AI, goal save/conflict, completed/current-project deep links, one-use empty prompt draft, no lost writing, 320–1440px EN/ES/themes, errors, account switching and downgrade isolation, Free prompt copying and extension CTA.');
+  console.log('PASS Home: auth/private metadata, shared totals/time/streak, selected-theme Quick Prompts, no automatic writes/AI, goal save/conflict, completed/global document deep links, one-use empty prompt draft, no lost writing, 320–1440px EN/ES/themes, errors, account switching and downgrade isolation, Free prompt copying and extension CTA.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

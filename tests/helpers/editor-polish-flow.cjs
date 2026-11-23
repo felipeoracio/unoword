@@ -20,7 +20,7 @@ module.exports=async({page,context,origin,documents,activity,requests,errors,net
  const settle=()=>page.waitForFunction(()=>document.getAnimations().every(animation=>animation.playState!=='running'&&animation.pending===false));
  const gate=(object,key)=>{let release;object[key]=new Promise(resolve=>release=resolve);return()=>{object[key]=null;release();};};
  const snapshot=()=>canvas.evaluate(el=>({text:el.textContent,from:el.editor.state.selection.from,to:el.editor.state.selection.to,scrollTop:el.closest('.uw-editor-paper-scroll').scrollTop,view:el.editor.view===window.__polishView}));
- async function openAssistant(){if(await page.getByRole('button',{name:'Writing assistant',exact:true}).getAttribute('aria-expanded')!=='true')await page.getByRole('button',{name:'Writing assistant',exact:true}).click();}
+ async function openAssistant(){if(await page.getByRole('button',{name:'Writing assistant',exact:true}).getAttribute('aria-expanded')!=='true')await page.getByRole('button',{name:'Writing assistant',exact:true}).click();const options=page.locator('[data-ai-context-options]');if(await options.getAttribute('open')===null)await options.locator('summary').click();}
  async function closeAssistant(){if(await page.getByRole('button',{name:'Close assistant',exact:true}).isVisible())await page.getByRole('button',{name:'Close assistant',exact:true}).click();}
  const consent=()=>page.getByLabel('Allow this AI request with the selected context.',{exact:true}).check();
  await page.goto(origin+'/editor');await waitProject(page,'');
