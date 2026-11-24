@@ -1,0 +1,84 @@
+{
+  "url": "https://unoword.app",
+  "deployment": "dpl_2HXy3Fz6J6BsRngHR9EdZd7bMXzJ",
+  "commit": "4cbc460821d883312d4b7847ba5716c9e3f40132",
+  "target": "production",
+  "status": "READY",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 42.848,
+  "change": "Remove Connect Substack and RewardsSettings from WritingEditor assistant. Existing Settings placement and RewardsWidget unchanged.",
+  "checks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.63,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.57,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "seconds": 0.47,
+      "result": {
+        "detail": "Authentication required"
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.35
+    },
+    {
+      "asset": "/assets/index-CN_i2OHE.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/chunk-KS7C4IRE-CqIbuuKS.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/api-CUntjIAh.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/lucide-react-B7ak6GA8.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "seconds": 0.62
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.18
+    }
+  ],
+  "errorScan": "No error/fatal groups returned for this deployment in five-minute release scan.",
+  "limits": [
+    "No schema or production customer-data changes.",
+    "Browser verification uses deployed application with isolated synthetic authentication and persistence.",
+    "Managed Chromium lacks proxy CA; disposable test ignores HTTPS errors. Independent Python probes use system HTTPS trust."
+  ],
+  "drains": "Not assessed or changed",
+  "monitoring": "Point-in-time release checks; no new continuous monitoring configured",
+  "browserVerification": "Passed: both cards absent from writing assistant and present in Settings; existing simplified AI context flow passed on deployed frontend."
+}
