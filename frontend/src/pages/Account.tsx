@@ -445,7 +445,7 @@ export default function Account() {
         </Link>
       </header>
       {user && <><StudioPageHeader title={t("Your settings", "Tus ajustes")} eyebrow={t("Make yourself at home.", "Siéntete como en casa.")} description={t("Your account, preferences and connections, in one place.", "Tu cuenta, preferencias y conexiones, en un solo lugar.")} /><nav className="uw-settings-nav" aria-label={t("Settings sections", "Secciones de ajustes")}>{[
-        ["account-settings", t("Account", "Cuenta")], ["settings-subscription", t("Plan & subscription", "Plan y suscripción")], ["settings-preferences", t("Preferences", "Preferencias")], ["settings-security", t("Security", "Seguridad")], ["install", t("Chrome extension", "Extensión de Chrome")],
+        ["account-settings", t("Account", "Cuenta")], ["settings-subscription", t("Plan & subscription", "Plan y suscripción")], ["settings-preferences", t("Preferences", "Preferencias")], ["settings-usage", t("Usage", "Uso")], ["settings-security", t("Security", "Seguridad")], ["install", t("Chrome extension", "Extensión de Chrome")],
       ].map(([id, name]) => <Link key={id} to={recoveryPath(location.pathname + location.search + "#" + id)} aria-current={(location.hash || "#account-settings") === "#" + id ? "location" : undefined}>{name}</Link>)}</nav></>}
       <main className="uw-account-main">
         <section className="uw-account-card" aria-labelledby="account-heading">
@@ -606,8 +606,12 @@ export default function Account() {
                 <WritingStreak key={user.id} owner={user.id} paid={user.ai_access} language={studioLanguage} />
               </div>
               <Link className="uw-text-link" to="/progress">{t("View your writing progress", "Ver tu progreso de escritura")}</Link>
-              {user.ai_access && <AIUsage usage={aiUsage.data} language={studioLanguage} />}
               </section>
+              {user.ai_access && <section className="uw-settings-section" id="settings-usage" tabIndex={-1} aria-labelledby="settings-usage-heading">
+                <h2 id="settings-usage-heading">{t("Usage", "Uso")}</h2>
+                <p>{t("There is no separate weekly allowance. Your daily and monthly usage is shown below.", "No hay una asignación semanal independiente. Tu uso diario y mensual se muestra a continuación.")}</p>
+                <AIUsage usage={aiUsage.data} language={studioLanguage} />
+              </section>}
               <section className="uw-settings-section" aria-labelledby="settings-extension-heading">
               <h2 id="settings-extension-heading">{t("Chrome extension", "Extensión de Chrome")}</h2>
               {!user.ai_access && <section id="quick-prompt" className="uw-studio-prompt-help" tabIndex={-1} aria-labelledby="quick-prompt-heading">
