@@ -28,9 +28,8 @@ import {
   type ResourceRef,
 } from "@/lib/use-project-workspace";
 import "@/styles/projects.css";
-import ConnectSubstack from "@/components/substack/ConnectSubstack";
 import { recoveryPath } from "@/lib/domain-recovery";
-import { RewardsSettings, RewardsWidget } from "@/components/rewards/Rewards";
+import { RewardsWidget } from "@/components/rewards/Rewards";
 import WritingRecovery from "@/components/WritingRecovery";
 import {
   useAccountWriting,
@@ -3204,14 +3203,6 @@ export default function WritingEditor() {
                   )}
                 </>
               )}
-              <ConnectSubstack
-                owner={ws.user.id}
-                language={language}
-                onAccessChange={async () => {
-                  await ws.recheckIdentity();
-                }}
-              />
-              <RewardsSettings owner={ws.user.id} language={language} />
               <label data-tour="goal" className="uw-editor-goal">
                 {t("Daily goal")}
                 <input
