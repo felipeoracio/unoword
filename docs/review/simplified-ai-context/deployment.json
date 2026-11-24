@@ -1,0 +1,95 @@
+{
+  "url": "https://unoword.app",
+  "deployment": "dpl_2UxQ6uqjVRHvvJaSqWrZMVd5zoGh",
+  "commit": "ea5f05e9ae95b5c0d2af6989a22c8b6ad18b8bb5",
+  "target": "production",
+  "status": "READY",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 61.761,
+  "migration": {
+    "project": "jvcbpnmtnjhftpukgppw",
+    "name": "document_ai_context_sharing",
+    "productionVersion": "20261124134006",
+    "source": "supabase/migrations/20261123224404_document_ai_context_sharing.sql",
+    "status": "applied; fields, RLS, helper denial and RPC execution privileges verified"
+  },
+  "checks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.64,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.7,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "seconds": 0.46,
+      "result": {
+        "detail": "Authentication required"
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.46
+    },
+    {
+      "asset": "/assets/index-LfSQtgYn.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/chunk-KS7C4IRE-CqIbuuKS.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/api-CUntjIAh.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/lucide-react-B7ak6GA8.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "seconds": 0.29
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.12
+    }
+  ],
+  "postDeployObservability": {
+    "errorScan": "No error/fatal groups returned for this deployment in five-minute scan.",
+    "drains": "Not assessed or changed",
+    "monitoring": "Point-in-time checks; no new continuous monitoring configured"
+  },
+  "limits": [
+    "Public readiness and route checks use production APIs. Browser scenario uses isolated synthetic auth/persistence; no customer account accessed.",
+    "Existing security advisories remain: service-only tables with RLS and no policies, authenticated owner-gated definer RPCs, leaked-password protection disabled."
+  ],
+  "git": {
+    "branch": "feat/simplified-ai-project-context",
+    "main": "Unchanged. Automatic approval review rejected direct push because it bypasses feature branch/PR workflow; deployment succeeded from approved feature commit."
+  },
+  "deployedBrowser": "Passed: one library, independent target, permission persistence/retry, cursor/session/count preservation, Library handoff, 390px layout. Actual production JavaScript with isolated HTTP fixtures. Managed Chromium proxy CA missing; disposable browser ignores HTTPS errors, independent Python HTTPS readiness checks use system trust."
+}
