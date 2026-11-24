@@ -1,0 +1,86 @@
+{
+  "url": "https://unoword.app",
+  "deployment": "dpl_3fVZD2yjqtjtbDcNuXHxNVjzy44n",
+  "commit": "de56c58ddbfc4a76f6edb1ba4586248cf0eb510c",
+  "target": "production",
+  "status": "READY",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 43.527,
+  "change": "Writing assistant displays daily requests/suggestions, daily remaining/pending and daily reset. Detailed usage moved to Settings Usage. Actual plan allowances unchanged.",
+  "checks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.58,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.69,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "seconds": 0.44,
+      "result": {
+        "detail": "Authentication required"
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.41
+    },
+    {
+      "asset": "/assets/index-CuBQiOhY.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/chunk-KS7C4IRE-CqIbuuKS.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/api-CUntjIAh.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/lucide-react-B7ak6GA8.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "seconds": 0.1
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.09
+    }
+  ],
+  "observability": {
+    "errorScan": "No error/fatal groups returned in five-minute deployment scan.",
+    "drains": "Not assessed or changed",
+    "monitoring": "Point-in-time release checks; no new continuous monitoring configured"
+  },
+  "limits": [
+    "Browser uses deployed application and isolated synthetic auth/persistence; no customer documents or accounts accessed.",
+    "Disposable Chromium ignores HTTPS errors because managed proxy CA is missing. Independent Python probes use system HTTPS trust.",
+    "No database migrations or allowance changes."
+  ],
+  "browserVerification": "Passed on deployed frontend: editor usage has daily allowance and reset only, no expandable monthly/guidance details; Settings Usage navigation and monthly reset present. Existing simplified AI-context browser checks also passed."
+}
