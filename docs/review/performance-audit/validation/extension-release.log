@@ -1,0 +1,3 @@
+PASS worker: explicit historical import; Day 15 Free=7/Pro=15; downgrade preserves rows; offline persistent outbox; metadata-only sync; deterministic IDs; midnight rollover; acknowledgements; account-switch isolation; no model calls.
+PASS persistent worker sessions: Free pause/resume, 45 active/10 paused/55 elapsed, input suppression, restored pause, duplicate-start/stop protection, same session identity.
+PASS project worker: owner-bound project loading and selection; wrong-account rejection before network; resource ownership; explicit AI scope forwarding; no live AI calls.

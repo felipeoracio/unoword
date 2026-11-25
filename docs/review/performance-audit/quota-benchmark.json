@@ -2,14 +2,14 @@
   "environment": "local PGlite PostgreSQL, synthetic account, 100 identical reads before/after",
   "before": {
     "calls": 100,
-    "elapsedMs": 2806.81,
+    "elapsedMs": 1370.3,
     "assignmentUpdates": 100
   },
   "after": {
     "calls": 100,
-    "elapsedMs": 76.9,
+    "elapsedMs": 89.18,
     "assignmentUpdates": 0
   },
   "assignmentWriteReductionPercent": 100,
-  "productionCpuChange": "not measured; migration not applied"
+  "productionCpuChange": "Not measured by this local benchmark"
 }

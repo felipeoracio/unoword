@@ -1,5 +1,9 @@
 # UnoWord — Chrome Extension
 
+Performance release **0.24.4** avoids redundant paused-session metadata checkpoints.
+The existing pending outbox still flushes on alarms; tracking and permissions remain unchanged.
+Update/reload unpacked installations to receive the new worker.
+
 Motion release **0.24.3** uses the shared web motion tokens, removes perpetual
 pulse/bounce and chart-height animation, and keeps native visibility/focus and
 reduced motion. Tracking, messages, storage and permissions are unchanged.
