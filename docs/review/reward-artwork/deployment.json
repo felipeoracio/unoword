@@ -1,0 +1,153 @@
+{
+  "url": "https://unoword.app",
+  "deployment": "dpl_EGooLe4PA7Tqi7bWaVvqeypUdL9J",
+  "commit": "3ac7f27e83c8c651dc452f25ea72172f015690b6",
+  "target": "production",
+  "status": "READY",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 41.619,
+  "assetVerification": {
+    "verifiedImages": 61,
+    "result": "All public PNG assets return 200 with matching source SHA-256 hashes",
+    "files": [
+      "ai-collaborator.png",
+      "consistent-writer.png",
+      "dedicated-writer.png",
+      "documents-1.png",
+      "documents-10.png",
+      "documents-100.png",
+      "documents-25.png",
+      "documents-5.png",
+      "documents-50.png",
+      "first-write.png",
+      "focus-session.png",
+      "goal-achiever.png",
+      "goals-10.png",
+      "goals-100.png",
+      "goals-25.png",
+      "goals-365.png",
+      "goals-5.png",
+      "goals-50.png",
+      "growth-finding-your-rhythm.png",
+      "growth-growing-your-practice.png",
+      "growth-personal-best.png",
+      "growth-steady-progress.png",
+      "growth-welcome-back.png",
+      "hours-1.png",
+      "hours-10.png",
+      "hours-100.png",
+      "hours-1000.png",
+      "hours-25.png",
+      "hours-250.png",
+      "hours-5.png",
+      "hours-50.png",
+      "hours-500.png",
+      "milestone-writer.png",
+      "pro-writer.png",
+      "project-creator.png",
+      "prompt-explorer.png",
+      "sessions-1.png",
+      "sessions-10.png",
+      "sessions-100.png",
+      "sessions-25.png",
+      "sessions-250.png",
+      "sessions-5.png",
+      "sessions-50.png",
+      "streak-100.png",
+      "streak-14.png",
+      "streak-180.png",
+      "streak-3.png",
+      "streak-30.png",
+      "streak-365.png",
+      "streak-60.png",
+      "streak-7.png",
+      "words-100.png",
+      "words-1000.png",
+      "words-100000.png",
+      "words-1000000.png",
+      "words-25000.png",
+      "words-250000.png",
+      "words-500.png",
+      "words-5000.png",
+      "words-50000.png",
+      "writing-streak.png"
+    ]
+  },
+  "checks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.26,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.22,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "seconds": 0.1,
+      "result": {
+        "detail": "Authentication required"
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.12
+    },
+    {
+      "asset": "/assets/index-Bc4jBIVx.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/chunk-KS7C4IRE-CqIbuuKS.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/api-CUntjIAh.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "asset": "/assets/lucide-react-B7ak6GA8.js",
+      "status": 200,
+      "matchesTestedBuild": true
+    },
+    {
+      "path": "/app",
+      "status": 200,
+      "seconds": 0.1
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.09
+    }
+  ],
+  "browser": "Passed read-only deployed check: all 53 mapped badge images decoded; desktop and 320px layout. All API requests intercepted with synthetic responses; non-GET denied.",
+  "observability": {
+    "errorScan": "No error/fatal groups returned in five-minute deployment scan.",
+    "drains": "Not assessed or changed",
+    "monitoring": "Point-in-time release verification"
+  },
+  "limits": [
+    "Automatic approval review rejected broad production browser suite because it includes admin updates/backfill. Replaced with narrower read-only browser check; broad production suite not run.",
+    "No production reward progress, thresholds, account data or database schema modified.",
+    "Native renderer code committed, but mobile app binaries not built or distributed.",
+    "Managed Chromium uses disposable HTTPS trust override for proxy CA; independent Python probes use system HTTPS trust."
+  ]
+}
