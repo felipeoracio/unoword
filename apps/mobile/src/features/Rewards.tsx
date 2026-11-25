@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Image, Switch, View } from "react-native";
+import { bundledRewardImage } from "../../../../shared/reward-artwork";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApp, useRepository } from "../providers/AppProvider";
@@ -59,6 +60,7 @@ const translator = (data?: Rewards) => (label: string) =>
   data?.language === "es" ? rewardLabels[label] || label : label;
 function Badge({ item }: { item: Achievement }) {
   const p = useTheme();
+  const image = item.badge_image || bundledRewardImage(item.id, "https://unoword.app");
   const colors: Record<string, string> = {
     bronze: "#9a552b",
     silver: "#526782",
@@ -82,9 +84,9 @@ function Badge({ item }: { item: Achievement }) {
       }}
     >
       <>
-        {item.badge_image ? (
+        {image ? (
           <Image
-            source={{ uri: item.badge_image }}
+            source={{ uri: image }}
             style={{ height: 40, width: 40 }}
             resizeMode="contain"
           />

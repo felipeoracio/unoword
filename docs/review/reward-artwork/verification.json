@@ -1,0 +1,29 @@
+{
+  "status": "implemented locally; not deployed",
+  "originalAssetChecks": "61 PNGs byte-identical to uploaded ZIPs",
+  "mappedAchievements": 53,
+  "missingIcons": [],
+  "reservedIcons": [
+    "ai-collaborator.png",
+    "consistent-writer.png",
+    "first-write.png",
+    "focus-session.png",
+    "milestone-writer.png",
+    "pro-writer.png",
+    "project-creator.png",
+    "prompt-explorer.png"
+  ],
+  "verification": {
+    "frontendProductionBuild": "passed",
+    "targetedLint": "passed",
+    "gitDiffCheck": "passed",
+    "browser": "passed: 53 reward cards, favorites, account isolation, Free/paid gates, cross-browser settings, EN/ES, reduced motion, WCAG checks, 1440/768/320px with no horizontal overflow, admin custom badge upload and threshold revision",
+    "databaseEvaluation": "Existing real PostgreSQL reward evaluation exercised by isolated PGlite browser fixture; no production database writes"
+  },
+  "limits": [
+    "Native renderer updated to share artwork mapping, but native dependencies/device runtime unavailable; native device validation not executed.",
+    "Native bundled artwork URLs require the web assets to be deployed before the updated native app release.",
+    "Original PNGs retained at 1024x1024. Web images are lazily loaded and rendered without stretching.",
+    "Existing reward titles and qualifying requirements unchanged; decorative badge captions may use different descriptive wording."
+  ]
+}

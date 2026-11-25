@@ -10,15 +10,17 @@ import {
   type Rewards,
 } from "@/lib/rewards";
 import "@/styles/rewards.css";
+import { bundledRewardImage } from "../../../../shared/reward-artwork";
 export function Badge({ achievement: a, fallbackImage }: { achievement: Achievement; fallbackImage?: string }) {
+  const image = a.badge_image || bundledRewardImage(a.id) || fallbackImage;
   return (
     <span
       className={"reward-badge reward-tier-" + a.tier}
       role="img"
       aria-label={a.name + " · " + a.tier}
     >
-      {a.badge_image || fallbackImage ? (
-        <img src={a.badge_image || fallbackImage} alt="" />
+      {image ? (
+        <img src={image} alt="" loading="lazy" decoding="async" width={96} height={96} />
       ) : (
         <svg viewBox="0 0 40 40" aria-hidden="true">
           <path d="M20 3 34 9v12c0 8-14 16-14 16S6 29 6 21V9Z" />
