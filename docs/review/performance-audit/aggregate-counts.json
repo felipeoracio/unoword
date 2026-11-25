@@ -1,0 +1,13 @@
+[
+  {
+    "aggregate_counts": {
+      "users": 32,
+      "captured_at": "2026-11-25T19:55:16.663161+00:00",
+      "activity_rows": 41,
+      "xact_rollback": 84298932,
+      "connection_max": "60",
+      "statement_timeout": "2min",
+      "writing_documents": 24
+    }
+  }
+]

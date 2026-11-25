@@ -1053,6 +1053,12 @@ export function useWritingWorkspace() {
     window.addEventListener("beforeunload", protect);
     window.addEventListener("storage", accountChanged);
     const retry = setInterval(() => {
+      // Keep draining durable writes in background tabs. An idle hidden editor
+      // can wait for the existing focus/visibility refresh instead of rereading
+      // documents, folders, history and identity every 15 seconds.
+      const pending = docs.current.some(d => d.dirty && !conflictIds.current.has(d.id))
+        || folderRows.current.some(f => f.dirty) || activityRows.current.some(a => a.dirty);
+      if (document.hidden && !pending) return;
       void syncRef.current();
     }, 15000);
     return () => {

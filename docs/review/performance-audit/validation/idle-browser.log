@@ -1,0 +1,1 @@
+PASS editor idle optimization: zero workspace index reads over 31 hidden paused seconds; pending hidden draft still persists.

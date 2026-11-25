@@ -1,0 +1,218 @@
+{
+  "title": "UnoWord performance audit and staged optimization report",
+  "status": "Production audit complete and first controlled optimization batch tested locally. Nothing applied or deployed; recoverable backup confirmation is pending. Full post-release CPU validation and later scalability work remain outstanding.",
+  "rootCause": {
+    "severity": "Critical",
+    "finding": "Business revision conflicts are raised with SQLSTATE 40001 in workspace RPC functions. That code requests transaction retry; the Hasql transaction driver retries it. A stale document revision cannot resolve by retrying the same mutation.",
+    "evidence": [
+      "83+ million rollback transactions since the recorded statistics epoch.",
+      "575.04 rollbacks/second across an 80.14-second sample. These are internal transactions, not distinct browser API requests.",
+      "Three active PostgREST workers sampled executing workspace_save_document.",
+      "Recent sampled PostgreSQL error logs: 900 revision_conflict records in a 15-minute window. Log sampling/rate limits mean this is not an exhaustive transaction count.",
+      "writing_documents index scans track the failed attempts despite only 24 document rows.",
+      "Recent completed API logs showed mainly scheduled ingestion/Substack activity; failed database transactions are not recorded as successful statement executions."
+    ],
+    "fix": "Return custom SQLSTATE PT409 for expected business conflicts in six existing functions (seven raise sites). Preserve successful saves, mutation replay, ownership, row locks, RLS, and revision checks. Genuine PostgreSQL serialization failures remain retryable."
+  },
+  "baseline": {
+    "reportedCpu": "User reported a Supabase notification above 80%; direct CPU/memory/compute-size time series is not exposed by connected tools. Sustained CPU percentage has not been independently measured.",
+    "registeredUsers": 32,
+    "documents": 24,
+    "activityRows": 41,
+    "databaseBytes": 50203795,
+    "maxConnections": 60,
+    "observedDatabaseConnections": 17,
+    "observedDeadlocks": 0,
+    "observedTempBytes": 0,
+    "statisticsEpoch": "2026-11-16T17:24:24.802830+00:00",
+    "projectStatus": "ACTIVE_HEALTHY (provider status, not a guarantee of CPU headroom)",
+    "rollbackRatePerSecond": 575.0386939213588,
+    "ordinaryReadPlan": "EXPLAIN ANALYZE on a zero-match indexed document metadata lookup: index scan, 1 shared block hit, 0 reads, 1.357ms execution. No live write function was executed for profiling.",
+    "backupEvidence": "WAL archiver reported 6,555 archived segments, 0 failures, recent archival. This does not verify a customer-recoverable base backup or restore window."
+  },
+  "rankedIssues": [
+    {
+      "priority": "P0",
+      "issue": "Retryable business-conflict SQLSTATE causes persistent internal save retry storm",
+      "impact": "Dominant observed live incident; can consume compute with almost no genuine traffic",
+      "action": "Tested nonretryable-conflict migration, pending backup/release gate"
+    },
+    {
+      "priority": "P1",
+      "issue": "ai_coach_state validates and rewrites an unchanged timezone during usage polling",
+      "impact": "Historical successful usage RPC mean 396.526ms over 1,193 calls; latency includes contention and is not pure CPU time",
+      "action": "Tested guard skips unchanged timezone lookup/update; quota locking and limits retained"
+    },
+    {
+      "priority": "P1 at growth",
+      "issue": "Reward GET evaluates history and updates reward preferences, including repeated aggregates/eligibility checks",
+      "impact": "Mean successful writing_rewards RPC 31.024ms over 380 calls; 15-second polling scales with concurrent clients and history",
+      "action": "No risky aggregate rewrite in first batch. Plan event-driven dirty revision and cached read model after incident recovery; invalidate on activity, goals, document completion, account timezone, plan, admin definitions, and calendar boundaries. Preserve quiet backfill and immutable awards."
+    },
+    {
+      "priority": "P2",
+      "issue": "Summary/streak hooks make a second delayed fetch on mount without a local revision change",
+      "impact": "One extra summary or streak request per mount; reduction estimated from execution path, not a production request comparison",
+      "action": "Staged revision-aware effect; initial/account-change query remains authoritative"
+    },
+    {
+      "priority": "P2",
+      "issue": "Clean hidden editor rereads indexes/history on fixed interval",
+      "impact": "Unnecessary idle traffic; previously up to 4 idle sync passes/minute, each doing identity verification plus index/folder/history reads",
+      "action": "Staged hidden-and-clean guard; pending writes, focus/reconnect refresh and local durability retained"
+    },
+    {
+      "priority": "P2",
+      "issue": "Paused Chrome extension clock generates new metadata revision each alarm checkpoint",
+      "impact": "Identical checkpoints can produce up to 60 avoidable writes/hour per paused active extension session",
+      "action": "Staged paused/ended checkpoint guard; alarm still flushes pending outbox"
+    },
+    {
+      "priority": "P2 at growth",
+      "issue": "Native project provider polls every 15 seconds, syncs repository, and fetches per-project statistics after workspace updated_at changes; server state returns now()",
+      "impact": "Potential O(project count) statistics reads per poll. Native app polling/foreground behavior needs device profiling",
+      "action": "Audited, not changed or released. Separate native testable batching/freshness phase required"
+    },
+    {
+      "priority": "P2 at growth",
+      "issue": "18 auth RLS init-plan warnings; 17 uncovered foreign-key indexes; 19 unused-index notices",
+      "impact": "Potential scale costs, not the cause of millions of failures on a 50MB database",
+      "action": "No blanket indexes, policy weakening, or index deletion. Prioritize verified query plans after the retry storm is resolved"
+    },
+    {
+      "priority": "P3",
+      "issue": "Cron execution history is about 23.65MB, the largest relation; fixed jobs run at 1 and 5 minute intervals",
+      "impact": "Retention/storage concern, not runaway client polling",
+      "action": "Jobs retained. No logs/data purged. Future retention policy requires explicit scope/approval"
+    },
+    {
+      "priority": "P3",
+      "issue": "Backend creates an HTTP client per Supabase request; pooler session reads use per-worker bounded connections",
+      "impact": "TLS/network overhead and serverless concurrency limits need tracing after CPU recovery",
+      "action": "No new caching of auth/entitlements. Plan lifecycle-managed HTTP pooling with serverless lifecycle and auth-isolation tests"
+    }
+  ],
+  "changesImplementedLocally": [
+    "20261125194447_nonretryable_workspace_conflicts.sql: replace only manual business-conflict error classification in current production function definitions; no table/data changes; grants preserved.",
+    "20261125194641_avoid_unchanged_quota_timezone_writes.sql: skip unchanged timezone validation/update while retaining quota locks and counters.",
+    "Web summary/streak effects refresh after subsequent local revisions, without duplicating their mount query.",
+    "Hidden clean editor skips idle sync reads; hidden dirty editor continues saving.",
+    "Chrome extension paused/ended session checkpoint does not create a redundant outbox revision. Alarm still flushes pending rows.",
+    "Added bounded read-only snapshot SQL, counter comparison script and optional 60-second provider-metrics scrape example. No monitoring service or paid infrastructure provisioned."
+  ],
+  "measuredBeforeAfter": {
+    "scope": "Local controlled tests only; production after measurements do not exist until deployment.",
+    "quotaIdenticalReads": {
+      "environment": "local PGlite PostgreSQL, synthetic account, 100 identical reads before/after",
+      "before": {
+        "calls": 100,
+        "elapsedMs": 2806.81,
+        "assignmentUpdates": 100
+      },
+      "after": {
+        "calls": 100,
+        "elapsedMs": 76.9,
+        "assignmentUpdates": 0
+      },
+      "assignmentWriteReductionPercent": 100,
+      "productionCpuChange": "not measured; migration not applied"
+    },
+    "hiddenEditor": "After: 0 workspace document/folder/history reads in 31 hidden paused seconds; hidden pending draft still persisted. Before fixed interval behavior implies up to two sync passes in that interval; before request count was not separately benchmarked.",
+    "extension": "After: 10 paused checkpoints leave progressVersion and timer unchanged. Before code unconditionally called setState; count reduction estimated, not a separate production benchmark.",
+    "cpu": "No production CPU reduction claimed. Target below 50\u201360% must be checked in host metrics under comparable workloads after first hotfix.",
+    "requestVolume": "No claim of measured production HTTP request reduction. Internal rollback rate and external API request counts are different signals."
+  },
+  "testing": [
+    "Production frontend build and targeted lint passed.",
+    "45 frontend unit tests across 9 files passed.",
+    "70 isolated backend workspace/AI/context/quota tests passed; 2 existing Starlette/httpx deprecation warnings.",
+    "PostgreSQL project/context suite passed with conflict migration applied twice; stale document/project saves raise PT409; ownership, entitlement boundaries and mutation replay retained.",
+    "Quota PostgreSQL benchmark passed with migration replay; unchanged timezone writes 100 -> 0; limits/resets unchanged; invalid timezone rejection and pending-reservation timezone protection retained.",
+    "Extension real-worker/local-network integration passed: outbox, offline sync, deterministic IDs, midnight rollover, pause/resume timing, account isolation, AI project scope; new idle checkpoint assertion passed.",
+    "Full isolated workspace browser suite passed: auth isolation, autosave/reopen, typed/pasted counts, formatting, conflicts, sources/profile, AI consent, import/export, focus, offline reconnect, Free/Pro/Lifetime gates, EN/ES and 320\u20131440px.",
+    "Session/completion browser suite passed: pause persistence, resume-on-typing, first-word credit, completion, failed saves, offline conflict recovery, responsive layout.",
+    "Autosave/navigation suite passed: overlapping mutations drain, failed saves block departure, latest document reopens intact.",
+    "Hidden-editor controlled-clock test passed: no clean idle reads while durable pending writes still sync.",
+    "Existing real PostgreSQL reward and progress-reporting suites passed: idempotent awards, frozen goals, document completions, cross-account protection, DST/midnight and overlapping active time."
+  ],
+  "notTestedOrNotCompleted": [
+    "Recoverable production backup/base restore window not confirmed by tools.",
+    "Production database/app/extension rollout not performed. Installed Chrome extensions require a separate extension release; website deploy alone does not update them.",
+    "No live write load testing, customer-account access, or production fault injection performed.",
+    "No native device performance tests or mobile binary release performed.",
+    "No end-to-end 100k-user capacity guarantee; no full production before/after CPU comparison yet.",
+    "Continuous monitoring configuration not activated; metrics endpoint requires securely supplied credentials or dashboard access."
+  ],
+  "architectureAudit": {
+    "editor": "Body changes persist locally in IndexedDB; cloud save debounced 1 second with 15-second sync fallback. Session clock checkpoints every 10 seconds. CAS, local recovery, mutation acknowledgement and explicit conflict resolution preserved. First batch does not lengthen save windows. Provenance word counts/JSON serialization still scan document content and should be profiled on long/image-heavy documents before any incremental rewrite.",
+    "extension": "Persistent metadata-only outbox batches to /progress/sessions after 2.5-second scheduling and minute alarms. Acknowledgements delete exact sent revisions only. Active writing tracking retained; paused redundant snapshots addressed.",
+    "frontend": "Query keys generally include owner, plan and timezone; React Query handles in-flight sharing. Several 15/30-second queries and duplicate focus paths remain; do not replace auth checks with a shared stale cache. Home/library/progress requests audited for scope.",
+    "backend": "User Data API requests forward verified access token, keeping RLS authoritative. Sensitive service RPCs owner-bound. Session reads require existing transaction pooler port 6543 with 2 local slots per process; this is not a global connection limit. Background ingestion and billing jobs retained.",
+    "realtime": "No database Realtime channel subscriptions found in web/extension/native source paths inspected. Native auth/local repository subscriptions have cleanup; they are not Postgres Realtime subscriptions.",
+    "security": "Policies and grants unchanged by staged code. Existing owner-gated authenticated SECURITY DEFINER advisories and leaked-password-protection warning remain; no keys or customer writing included in report.",
+    "dataGrowth": "No data purged, historical stats reset, subscriptions modified, or plan upgrades requested. Static reward artwork is served by website/CDN and is not one database query per badge."
+  },
+  "rollbackAndRollout": [
+    "Confirm a recent successful customer-recoverable backup and recovery window in Supabase Database \u2192 Backups; ideally perform an isolated restore drill. Recent WAL archival alone is insufficient proof.",
+    "Review captured rollback-conflict-functions.sql and rollback-quota-timezone.sql against current function definitions immediately before release; migrations use short lock_timeout and transactional CREATE OR REPLACE.",
+    "Release ONLY the conflict SQLSTATE correction first. Capture a snapshot immediately before and 60 seconds after, compare deltas without resetting statistics, and inspect actual CPU/error charts. Expect active retry workers to exit with ordinary HTTP 409; do not discard local drafts or auto-overwrite remote documents.",
+    "If an old in-flight transaction does not exit, inspect the exact worker first; no blanket cancellation/restart is authorized or performed by this work.",
+    "Verify create/edit/save/reopen/conflict handling and account isolation in staging or a dedicated account. Only then release the unchanged-timezone migration and application idle/deduplication changes in separate steps.",
+    "Keep valid conflict semantics when rolling back unrelated application optimizations. Blindly restoring 40001 can restart the incident. Captured SQL restoration is an emergency reference, requiring controlled change review.",
+    "Application rollback: redeploy prior known-good website commit 37166e99bccc19f9f96312fcc9e1deb8d73a8e2b; extension rollback: distribute prior reviewed bundle. Durable outbox schema has not changed.",
+    "Do not enable a paid branch, upgrade compute, change security policies or deploy a monitoring vendor without approval."
+  ],
+  "scalability": {
+    "type": "Planning model, not measured system capacity",
+    "assumptions": "Illustrative 1% of registered users simultaneously active; 0.5\u20131.0 authenticated API requests/second per active client including periodic reads/writes, excluding AI/large imports. Replace with measured route rates after incident recovery. Registered count alone is not concurrency.",
+    "scenarios": [
+      {
+        "registered": 100,
+        "illustrativeConcurrent": 1,
+        "illustrativeApiRps": [
+          0.5,
+          1
+        ]
+      },
+      {
+        "registered": 1000,
+        "illustrativeConcurrent": 10,
+        "illustrativeApiRps": [
+          5.0,
+          10
+        ]
+      },
+      {
+        "registered": 10000,
+        "illustrativeConcurrent": 100,
+        "illustrativeApiRps": [
+          50.0,
+          100
+        ]
+      },
+      {
+        "registered": 100000,
+        "illustrativeConcurrent": 1000,
+        "illustrativeApiRps": [
+          500.0,
+          1000
+        ]
+      }
+    ],
+    "limitations": [
+      "60 configured database connections; current compute class/CPU/memory time series unavailable. Cannot translate registered users into a supported capacity number.",
+      "At 100k registered/1k active users this model implies 500\u20131000 API requests/second; current small project has not been load-tested for that and should not be claimed ready.",
+      "RLS init plans, owner/time indexes selected from real plans, event-driven daily summaries/rewards, native N+1 reads, payload sizes and per-worker connection pressure need staged benchmarks before large expansion.",
+      "Use Little\u2019s Law with measured database service time and operations/request to estimate busy connections. Model burst rates and cold starts separately.",
+      "Run stepped synthetic 1/10/100 concurrent-client tests on an isolated local/staging deployment after verifying data recovery; do not replay live customer writing."
+    ]
+  },
+  "sources": [
+    "https://supabase.com/docs/guides/observability/inspect",
+    "https://supabase.com/docs/guides/observability/metrics",
+    "https://supabase.com/docs/guides/database/debugging-performance",
+    "https://docs.postgrest.org/en/v14/references/errors.html",
+    "https://github.com/nikita-volkov/hasql-transaction/blob/master/src/library/Hasql/Transaction/Private/Sessions.hs"
+  ],
+  "nextRequiredInput": "Latest successful recoverable Supabase backup time and whether point-in-time recovery is enabled. Connected Supabase tools do not expose that status."
+}

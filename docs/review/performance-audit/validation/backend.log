@@ -1,0 +1,161 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0 -- /tmp/unoword-venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace/unoword/backend
+configfile: pytest.ini
+plugins: asyncio-1.4.0, xdist-3.8.0, anyio-4.16.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+created: 2/2 workers
+2 workers [70 items]
+
+scheduling tests via LoadScopeScheduling
+
+tests/test_workspace_ai.py::test_three_directions_use_current_profile_and_authorized_context
+tests/test_workspace.py::test_completion_preserves_saved_writing_and_uses_revision_checks
+[gw1] [  1%] PASSED tests/test_workspace_ai.py::test_three_directions_use_current_profile_and_authorized_context
+tests/test_workspace_ai.py::test_quota_stops_model_before_a_third_call
+[gw1] [  2%] PASSED tests/test_workspace_ai.py::test_quota_stops_model_before_a_third_call
+tests/test_workspace_ai.py::test_provider_failure_releases_reservation_and_hides_private_error
+[gw1] [  4%] PASSED tests/test_workspace_ai.py::test_provider_failure_releases_reservation_and_hides_private_error
+tests/test_workspace_ai.py::test_guidance_only_returns_questions_not_replacements
+[gw1] [  5%] PASSED tests/test_workspace_ai.py::test_guidance_only_returns_questions_not_replacements
+tests/test_workspace_ai.py::test_editor_and_guidance_use_remaining_words
+[gw1] [  7%] PASSED tests/test_workspace_ai.py::test_editor_and_guidance_use_remaining_words
+tests/test_workspace_ai.py::test_rejected_coaching_retries_once_without_extra_credit
+[gw1] [  8%] PASSED tests/test_workspace_ai.py::test_rejected_coaching_retries_once_without_extra_credit
+tests/test_workspace_ai.py::test_repeated_rejected_coaching_never_saves_or_charges
+[gw1] [ 10%] PASSED tests/test_workspace_ai.py::test_repeated_rejected_coaching_never_saves_or_charges
+tests/test_project_context.py::test_scope_uses_account_active_only_when_project_is_omitted
+[gw1] [ 11%] PASSED tests/test_project_context.py::test_scope_uses_account_active_only_when_project_is_omitted
+tests/test_project_context.py::test_text_free_modes_do_not_fetch_any_library_content[none]
+[gw1] [ 12%] PASSED tests/test_project_context.py::test_text_free_modes_do_not_fetch_any_library_content[none]
+tests/test_project_context.py::test_text_free_modes_do_not_fetch_any_library_content[profile_only]
+[gw1] [ 14%] PASSED tests/test_project_context.py::test_text_free_modes_do_not_fetch_any_library_content[profile_only]
+tests/test_project_context.py::test_scoped_retrieval_passes_only_authorized_ids
+[gw1] [ 15%] PASSED tests/test_project_context.py::test_scoped_retrieval_passes_only_authorized_ids
+tests/test_project_context.py::test_guided_profile_preserves_custom_answers_and_legacy_fields
+[gw1] [ 17%] PASSED tests/test_project_context.py::test_guided_profile_preserves_custom_answers_and_legacy_fields
+tests/test_project_context.py::test_project_routes_validate_owner_and_answer_choices
+[gw1] [ 18%] PASSED tests/test_project_context.py::test_project_routes_validate_owner_and_answer_choices
+tests/test_project_context.py::test_new_resource_uploads_reject_account_changes_before_processing
+[gw1] [ 20%] PASSED tests/test_project_context.py::test_new_resource_uploads_reject_account_changes_before_processing
+tests/test_ai_quota.py::test_surfaces_share_last_suggestion_slot_and_guidance_is_independent
+[gw0] [ 21%] PASSED tests/test_workspace.py::test_completion_preserves_saved_writing_and_uses_revision_checks
+tests/test_workspace.py::test_completion_requires_owner_pro_origin_and_trusted_timestamp
+[gw1] [ 22%] PASSED tests/test_ai_quota.py::test_surfaces_share_last_suggestion_slot_and_guidance_is_independent
+tests/test_ai_quota.py::test_idempotent_retry_replays_result_without_second_model_or_credit
+[gw1] [ 24%] PASSED tests/test_ai_quota.py::test_idempotent_retry_replays_result_without_second_model_or_credit
+tests/test_ai_quota.py::test_failure_and_cancellation_release_slots
+[gw1] [ 25%] PASSED tests/test_ai_quota.py::test_failure_and_cancellation_release_slots
+tests/test_ai_quota.py::test_deadline_releases_before_lease_expires
+[gw0] [ 27%] PASSED tests/test_workspace.py::test_completion_requires_owner_pro_origin_and_trusted_timestamp
+[gw1] [ 28%] PASSED tests/test_ai_quota.py::test_deadline_releases_before_lease_expires
+tests/test_ai_quota.py::test_database_failure_fails_closed_without_private_detail[ai_coach_reserve]
+tests/test_workspace.py::test_document_context_targets_are_validated_and_older_clients_do_not_clear_them
+[gw1] [ 30%] PASSED tests/test_ai_quota.py::test_database_failure_fails_closed_without_private_detail[ai_coach_reserve]
+tests/test_ai_quota.py::test_database_failure_fails_closed_without_private_detail[ai_coach_complete]
+[gw1] [ 31%] PASSED tests/test_ai_quota.py::test_database_failure_fails_closed_without_private_detail[ai_coach_complete]
+tests/test_ai_quota.py::test_provider_failure_does_not_erase_recorded_model_cost
+[gw1] [ 32%] PASSED tests/test_ai_quota.py::test_provider_failure_does_not_erase_recorded_model_cost
+[gw0] [ 34%] PASSED tests/test_workspace.py::test_document_context_targets_are_validated_and_older_clients_do_not_clear_them
+tests/test_workspace.py::test_activity_persists_paused_clock_without_changing_session_identity
+[gw0] [ 35%] PASSED tests/test_workspace.py::test_activity_persists_paused_clock_without_changing_session_identity
+tests/test_workspace.py::test_empty_trash_requires_confirmation_and_keeps_other_documents
+[gw0] [ 37%] PASSED tests/test_workspace.py::test_empty_trash_requires_confirmation_and_keeps_other_documents
+tests/test_workspace.py::test_monthly_and_lifetime_share_completion_and_trash_access[stripe]
+[gw0] [ 38%] PASSED tests/test_workspace.py::test_monthly_and_lifetime_share_completion_and_trash_access[stripe]
+tests/test_workspace.py::test_monthly_and_lifetime_share_completion_and_trash_access[stripe_lifetime]
+[gw0] [ 40%] PASSED tests/test_workspace.py::test_monthly_and_lifetime_share_completion_and_trash_access[stripe_lifetime]
+tests/test_workspace.py::test_save_retry_and_conflict_never_lose_revision
+[gw0] [ 41%] PASSED tests/test_workspace.py::test_save_retry_and_conflict_never_lose_revision
+tests/test_workspace.py::test_csrf_rejected_without_data_call[headers0]
+[gw0] [ 42%] PASSED tests/test_workspace.py::test_csrf_rejected_without_data_call[headers0]
+tests/test_workspace.py::test_csrf_rejected_without_data_call[headers1]
+[gw0] [ 44%] PASSED tests/test_workspace.py::test_csrf_rejected_without_data_call[headers1]
+tests/test_workspace.py::test_account_swap_and_unknown_owner_fields_rejected
+[gw0] [ 45%] PASSED tests/test_workspace.py::test_account_swap_and_unknown_owner_fields_rejected
+tests/test_workspace.py::test_private_reads_always_have_owner_predicate
+[gw0] [ 47%] PASSED tests/test_workspace.py::test_private_reads_always_have_owner_predicate
+tests/test_workspace.py::test_signed_out_cannot_read_or_write
+[gw0] [ 48%] PASSED tests/test_workspace.py::test_signed_out_cannot_read_or_write
+tests/test_workspace.py::test_unsafe_attributes_removed_and_private_validation_not_reflected
+[gw0] [ 50%] PASSED tests/test_workspace.py::test_unsafe_attributes_removed_and_private_validation_not_reflected
+tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content0]
+[gw0] [ 51%] PASSED tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content0]
+tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content1]
+[gw0] [ 52%] PASSED tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content1]
+tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content2]
+[gw0] [ 54%] PASSED tests/test_workspace.py::test_unsupported_json_rejected_without_writes[content2]
+tests/test_workspace.py::test_activity_is_metadata_only_and_validates_document
+[gw0] [ 55%] PASSED tests/test_workspace.py::test_activity_is_metadata_only_and_validates_document
+tests/test_workspace.py::test_real_docx_pdf_exports_and_docx_import
+[gw0] [ 57%] PASSED tests/test_workspace.py::test_real_docx_pdf_exports_and_docx_import
+tests/test_workspace.py::test_portable_formats_preserve_links_lists_and_safe_inline_styles
+[gw0] [ 58%] PASSED tests/test_workspace.py::test_portable_formats_preserve_links_lists_and_safe_inline_styles
+tests/test_workspace.py::test_import_rejects_invalid_archive_or_unsupported_file
+[gw0] [ 60%] PASSED tests/test_workspace.py::test_import_rejects_invalid_archive_or_unsupported_file
+tests/test_workspace.py::test_ai_requires_server_entitlement_and_explicit_consent
+[gw0] [ 61%] PASSED tests/test_workspace.py::test_ai_requires_server_entitlement_and_explicit_consent
+tests/test_workspace.py::test_assistant_never_runs_for_changed_owner_or_missing_selection
+[gw0] [ 62%] PASSED tests/test_workspace.py::test_assistant_never_runs_for_changed_owner_or_missing_selection
+tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[None]
+[gw0] [ 64%] PASSED tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[None]
+tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement1]
+[gw0] [ 65%] PASSED tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement1]
+tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement2]
+[gw0] [ 67%] PASSED tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement2]
+tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement3]
+[gw0] [ 68%] PASSED tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement3]
+tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement4]
+[gw0] [ 70%] PASSED tests/test_workspace.py::test_non_pro_cannot_use_workspace_but_keeps_statistics[entitlement4]
+tests/test_workspace.py::test_active_pro_and_trial_can_open_workspace[active]
+[gw0] [ 71%] PASSED tests/test_workspace.py::test_active_pro_and_trial_can_open_workspace[active]
+tests/test_workspace.py::test_active_pro_and_trial_can_open_workspace[trialing]
+[gw0] [ 72%] PASSED tests/test_workspace.py::test_active_pro_and_trial_can_open_workspace[trialing]
+tests/test_workspace.py::test_folder_sync_retry_is_idempotent_and_owner_scoped
+[gw0] [ 74%] PASSED tests/test_workspace.py::test_folder_sync_retry_is_idempotent_and_owner_scoped
+tests/test_workspace.py::test_subtitle_roundtrip_counts_legacy_save_clear_and_completion
+[gw0] [ 75%] PASSED tests/test_workspace.py::test_subtitle_roundtrip_counts_legacy_save_clear_and_completion
+tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab]
+[gw0] [ 77%] PASSED tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab]
+tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[subtitle1]
+[gw0] [ 78%] PASSED tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[subtitle1]
+tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[123]
+[gw0] [ 80%] PASSED tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[123]
+tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[\x00]
+[gw0] [ 81%] PASSED tests/test_workspace.py::test_invalid_subtitle_is_rejected_without_writes[\x00]
+tests/test_workspace.py::test_subtitle_exports_plain_safe_text_and_docx_metadata
+[gw0] [ 82%] PASSED tests/test_workspace.py::test_subtitle_exports_plain_safe_text_and_docx_metadata
+tests/test_workspace.py::test_embedded_images_save_private_metadata_and_do_not_count_alt_text
+[gw0] [ 84%] PASSED tests/test_workspace.py::test_embedded_images_save_private_metadata_and_do_not_count_alt_text
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[https://example.com/tracker.png]
+[gw0] [ 85%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[https://example.com/tracker.png]
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[file:///etc/passwd]
+[gw0] [ 87%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[file:///etc/passwd]
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[javascript:alert(1)]
+[gw0] [ 88%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[javascript:alert(1)]
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/svg+xml;base64,PHN2Zz48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ+PC9zdmc+]
+[gw0] [ 90%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/svg+xml;base64,PHN2Zz48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ+PC9zdmc+]
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/png;base64,PGh0bWw+bm90IGFuIGltYWdlPC9odG1sPg==]
+[gw0] [ 91%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/png;base64,PGh0bWw+bm90IGFuIGltYWdlPC9odG1sPg==]
+tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ... [long synthetic fixture name omitted] ... AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+[gw0] [ 92%] PASSED tests/test_workspace.py::test_untrusted_or_oversized_images_are_rejected_without_writes[data:image/png;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ... [long synthetic fixture name omitted] ... AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+tests/test_workspace.py::test_images_reject_spoofed_mime_and_oversized_dimensions
+[gw0] [ 94%] PASSED tests/test_workspace.py::test_images_reject_spoofed_mime_and_oversized_dimensions
+tests/test_workspace.py::test_embedded_images_export_docx_pdf_and_import_docx
+[gw0] [ 95%] PASSED tests/test_workspace.py::test_embedded_images_export_docx_pdf_and_import_docx
+tests/test_workspace.py::test_image_exports_preserve_palette_transparency_and_photo_orientation
+[gw0] [ 97%] PASSED tests/test_workspace.py::test_image_exports_preserve_palette_transparency_and_photo_orientation
+tests/test_workspace.py::test_portable_docx_import_notes_and_export_are_isolated_from_storage
+[gw0] [ 98%] PASSED tests/test_workspace.py::test_portable_docx_import_notes_and_export_are_isolated_from_storage
+tests/test_workspace.py::test_malformed_docx_xml_returns_controlled_import_error
+[gw0] [100%] PASSED tests/test_workspace.py::test_malformed_docx_xml_returns_controlled_import_error
+
+=============================== warnings summary ===============================
+../../../tmp/unoword-venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+../../../tmp/unoword-venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /tmp/unoword-venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 70 passed, 2 warnings in 3.89s ========================

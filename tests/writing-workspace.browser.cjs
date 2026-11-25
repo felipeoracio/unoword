@@ -179,6 +179,23 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.PERFORMANCE_IDLE_ONLY==='1'){
+   let clockInstalled=false;const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;if(clockInstalled)await page.clock.runFor(250);await new Promise(r=>setTimeout(r,50));}throw Error('Performance fixture did not settle');};
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();
+   await until(()=>[...activity.values()].some(a=>a.timer?.status==='paused'));
+   await page.waitForFunction(()=>document.querySelector('.uw-editor-save')?.textContent.includes('All changes saved'));
+   await page.clock.install();clockInstalled=true;
+   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'hidden'});document.dispatchEvent(new Event('visibilitychange'));});
+   const reads=()=>requests.filter(r=>r.method==='GET' && ['/workspace/documents','/workspace/folders','/workspace/activity'].includes(r.key)).length;
+   const before=reads();await page.clock.runFor(31000);const idleReads=reads()-before;
+   assert.equal(idleReads,0,'A clean hidden paused editor does not poll document/folder/history indexes');
+   await canvas.evaluate(el=>el.editor.chain().setTextSelection(1).insertContent('Durable hidden draft ').run());
+   await page.clock.runFor(3000);
+   await until(()=>documents.get(saved.id)?.plain_text.includes('Durable hidden draft'));
+   assert.equal(documents.get(saved.id).plain_text.includes('Durable hidden draft'),true,'Hidden pending writes still sync');
+   assert.deepEqual(errors,[]);
+   console.log('PASS editor idle optimization: zero workspace index reads over 31 hidden paused seconds; pending hidden draft still persists.');return;
+  }
   if(process.env.AI_CONTEXT_SIMPLIFIED_ONLY==='1'||process.env.PROJECT_SWITCH_ONLY==='1'||process.env.PROJECTS_ONLY==='1'){
    await require('./helpers/document-ai-context-flow.cjs')({page,canvas,documents,activity,requests,errors,projectFixture,owner,setFailSave:value=>failSave=value});return;
   }

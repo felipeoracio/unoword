@@ -65,8 +65,13 @@ export function useAccountWriting(
     refetchOnReconnect: true,
   });
   const { refetch } = query;
+  const observedRevision = useRef({ owner, revision });
   useEffect(() => {
-    if (!owner || !navigator.onLine) return;
+    const previous = observedRevision.current;
+    observedRevision.current = { owner, revision };
+    // The query already reads on mount/account change. Refresh only after a
+    // subsequent local revision, preserving the existing edit debounce.
+    if (previous.owner !== owner || previous.revision === revision || !owner || !navigator.onLine) return;
     const timer = setTimeout(() => void refetch(), 1500);
     return () => clearTimeout(timer);
   }, [revision, owner, refetch]);

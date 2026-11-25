@@ -1,0 +1,2 @@
+PASS quota: unchanged timezone writes 100 -> 0; limits/resets preserved; invalid timezone rejected; real timezone changes preserved; pending credit blocks timezone switching.
+{"environment":"local PGlite PostgreSQL, synthetic account, 100 identical reads before/after","before":{"calls":100,"elapsedMs":2806.81,"assignmentUpdates":100},"after":{"calls":100,"elapsedMs":76.9,"assignmentUpdates":0},"assignmentWriteReductionPercent":100,"productionCpuChange":"not measured; migration not applied"}

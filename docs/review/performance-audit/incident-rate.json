@@ -1,0 +1,17 @@
+{
+  "samples": [
+    {
+      "captured_at": "2026-11-25T19:40:51.574247+00:00",
+      "xact_commit": 781602,
+      "xact_rollback": 83816309
+    },
+    {
+      "captured_at": "2026-11-25T19:42:11.716680+00:00",
+      "xact_commit": 781837,
+      "xact_rollback": 83862394
+    }
+  ],
+  "seconds": 80.142433,
+  "rollbacksPerSecond": 575.0386939213588,
+  "note": "Database transactions, not separate external API requests or a CPU utilization measurement."
+}

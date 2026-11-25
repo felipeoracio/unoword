@@ -251,6 +251,11 @@ const root = path.resolve(__dirname, "..");
   workerNow+=25*60000;await evaluate('pauseOrResumeSession("paused")');
   assert.equal(storage.wc_state.timer.status,'paused');
   const pausedSnapshot=structuredClone(storage.wc_state);
+  const pausedVersion=storage.wc_state.progressVersion;
+  for(let minute=0;minute<10;minute++){workerNow+=60000;await evaluate('checkpointWritingSession()');}
+  assert.equal(storage.wc_state.progressVersion,pausedVersion,'Idle paused checkpoints create no redundant outbox revisions');
+  assert.deepEqual(storage.wc_state.timer,pausedSnapshot.timer,'Skipping idle checkpoints preserves the paused clock');
+  workerNow-=10*60000;
   workerNow+=10*60000;await evaluate('applyDelta({kind:"typed",words:500})');
   assert.equal(storage.wc_state.typedWords,12,'Paused input never accumulates tracked words');
   storage.wc_state=structuredClone(pausedSnapshot); // persisted worker/browser restoration

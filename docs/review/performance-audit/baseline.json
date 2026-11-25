@@ -1,0 +1,487 @@
+{
+  "jobs": [
+    {
+      "jobid": 1,
+      "active": true,
+      "jobname": "unoword-source-processing",
+      "schedule": "* * * * *"
+    },
+    {
+      "jobid": 3,
+      "active": true,
+      "jobname": "unoword-substack-sync",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  "tables": [
+    {
+      "bytes": 23650304,
+      "relname": "job_run_details",
+      "idx_scan": 0,
+      "seq_scan": 2,
+      "n_dead_tup": 0,
+      "n_live_tup": 45324,
+      "schemaname": "cron"
+    },
+    {
+      "bytes": 2400256,
+      "relname": "ai_document_chunks",
+      "idx_scan": 5,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 122,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 2195456,
+      "relname": "writing_documents",
+      "idx_scan": 84062043,
+      "seq_scan": 2627,
+      "n_dead_tup": 15,
+      "n_live_tup": 24,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 1662976,
+      "relname": "ai_memories",
+      "idx_scan": 1701,
+      "seq_scan": 14,
+      "n_dead_tup": 0,
+      "n_live_tup": 39,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 696320,
+      "relname": "ai_suggestions",
+      "idx_scan": 5,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 223,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 491520,
+      "relname": "objects",
+      "idx_scan": 0,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 5,
+      "schemaname": "storage"
+    },
+    {
+      "bytes": 425984,
+      "relname": "ai_writing_chunks",
+      "idx_scan": 0,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 17,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 385024,
+      "relname": "_http_response",
+      "idx_scan": 34731,
+      "seq_scan": 46,
+      "n_dead_tup": 134,
+      "n_live_tup": 432,
+      "schemaname": "net"
+    },
+    {
+      "bytes": 303104,
+      "relname": "users",
+      "idx_scan": 5084,
+      "seq_scan": 8,
+      "n_dead_tup": 1,
+      "n_live_tup": 32,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 212992,
+      "relname": "refresh_tokens",
+      "idx_scan": 173,
+      "seq_scan": 0,
+      "n_dead_tup": 4,
+      "n_live_tup": 220,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 196608,
+      "relname": "ai_documents",
+      "idx_scan": 25,
+      "seq_scan": 65590,
+      "n_dead_tup": 0,
+      "n_live_tup": 33,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 180224,
+      "relname": "admin_audit_log",
+      "idx_scan": 0,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 479,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 172032,
+      "relname": "sessions",
+      "idx_scan": 5133,
+      "seq_scan": 0,
+      "n_dead_tup": 1,
+      "n_live_tup": 103,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 155648,
+      "relname": "one_time_tokens",
+      "idx_scan": 0,
+      "seq_scan": 1,
+      "n_dead_tup": 0,
+      "n_live_tup": 0,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 131072,
+      "relname": "ai_response_cache",
+      "idx_scan": 1,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 1,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 131072,
+      "relname": "schema_migrations",
+      "idx_scan": 2,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 2,
+      "schemaname": "supabase_migrations"
+    },
+    {
+      "bytes": 122880,
+      "relname": "writing_activity",
+      "idx_scan": 3916,
+      "seq_scan": 31768,
+      "n_dead_tup": 0,
+      "n_live_tup": 41,
+      "schemaname": "public"
+    },
+    {
+      "bytes": 122880,
+      "relname": "identities",
+      "idx_scan": 4987,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 33,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 122880,
+      "relname": "mfa_amr_claims",
+      "idx_scan": 5015,
+      "seq_scan": 0,
+      "n_dead_tup": 0,
+      "n_live_tup": 103,
+      "schemaname": "auth"
+    },
+    {
+      "bytes": 114688,
+      "relname": "substack_email_verifications",
+      "idx_scan": 210,
+      "seq_scan": 2622,
+      "n_dead_tup": 0,
+      "n_live_tup": 1,
+      "schemaname": "public"
+    }
+  ],
+  "database": {
+    "blks_hit": 643796069,
+    "blks_read": 8577,
+    "deadlocks": 0,
+    "temp_bytes": 0,
+    "numbackends": 17,
+    "xact_commit": 782434,
+    "xact_rollback": 84056286
+  },
+  "captured_at": "2026-11-25T19:47:59.50391+00:00",
+  "connections": [
+    {
+      "n": 1,
+      "state": "idle",
+      "wait_event_type": "Extension",
+      "application_name": "pg_net 0.20.4"
+    },
+    {
+      "n": 5,
+      "state": null,
+      "wait_event_type": "Activity",
+      "application_name": ""
+    },
+    {
+      "n": 1,
+      "state": null,
+      "wait_event_type": "Extension",
+      "application_name": "pg_cron scheduler"
+    },
+    {
+      "n": 1,
+      "state": null,
+      "wait_event_type": "IO",
+      "application_name": ""
+    },
+    {
+      "n": 2,
+      "state": "active",
+      "wait_event_type": null,
+      "application_name": "PostgREST 14.5"
+    },
+    {
+      "n": 1,
+      "state": "idle in transaction (aborted)",
+      "wait_event_type": "Client",
+      "application_name": "PostgREST 14.5"
+    },
+    {
+      "n": 5,
+      "state": "idle",
+      "wait_event_type": "Client",
+      "application_name": "PostgREST 14.5"
+    },
+    {
+      "n": 1,
+      "state": "idle",
+      "wait_event_type": "Client",
+      "application_name": "Supavisor (auth_query)"
+    },
+    {
+      "n": 1,
+      "state": "idle",
+      "wait_event_type": "Client",
+      "application_name": "Supavisor"
+    },
+    {
+      "n": 1,
+      "state": "active",
+      "wait_event_type": null,
+      "application_name": "mgmt-api"
+    },
+    {
+      "n": 3,
+      "state": "idle",
+      "wait_event_type": "Client",
+      "application_name": ""
+    },
+    {
+      "n": 1,
+      "state": "idle",
+      "wait_event_type": "Client",
+      "application_name": "postgres_exporter"
+    }
+  ],
+  "stats_reset": "2026-11-16T17:24:24.80283+00:00",
+  "database_bytes": 50203795,
+  "top_statements": [
+    {
+      "rows": 84068968,
+      "calls": 84068968,
+      "query": "select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('request.method', $6, true), set_config('request.path', $7, true), set_config('request.headers', $8, true), set_config('request.cookies', $9, true)",
+      "mean_exec_time": 0.0264784507060864,
+      "shared_blks_hit": 4001,
+      "total_exec_time": 2226016.02509862,
+      "shared_blks_read": 0,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 1201,
+      "calls": 1201,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_user\", \"p_timezone\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_user\" uuid, \"p_timezone\" text) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"ai_coach_state\"(\"p_user\" := pgrst_body.\"p_user\", \"p_timezone\" := pgrst_body.\"p_timezone\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"ai_coach_state\".* FROM \"pgrst_source\" AS \"ai_coach_state\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 398.210942218152,
+      "shared_blks_hit": 150750,
+      "total_exec_time": 478251.341604001,
+      "shared_blks_read": 14,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 13103,
+      "calls": 13103,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_user\", \"p_token\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_user\" uuid, \"p_token\" uuid) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"ai_ingest_claim\"(\"p_user\" := pgrst_body.\"p_user\", \"p_token\" := pgrst_body.\"p_token\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"ai_ingest_claim\".* FROM \"pgrst_source\" AS \"ai_ingest_claim\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 10.1742726525223,
+      "shared_blks_hit": 17002329,
+      "total_exec_time": 133313.494565999,
+      "shared_blks_read": 21,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 15724,
+      "calls": 15724,
+      "query": "select net.http_get(\r\n        url:=$1,\r\n        headers:=jsonb_build_object($2,$3||(\r\n          select decrypted_secret from vault.decrypted_secrets\r\n          where name=$4 limit $5)),\r\n        timeout_milliseconds:=$6\r\n      )",
+      "mean_exec_time": 7.93316994492495,
+      "shared_blks_hit": 2106399,
+      "total_exec_time": 124741.164214,
+      "shared_blks_read": 8,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 1829,
+      "calls": 1829,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_data\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_data\" jsonb) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"workspace_save_activity\"(\"p_data\" := pgrst_body.\"p_data\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"workspace_save_activity\".* FROM \"pgrst_source\" AS \"workspace_save_activity\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 33.0790709486058,
+      "shared_blks_hit": 147540,
+      "total_exec_time": 60501.620765,
+      "shared_blks_read": 3,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 3210,
+      "calls": 3210,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_user\", \"p_timezone\", \"p_date\", \"p_unlimited\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_user\" uuid, \"p_timezone\" text, \"p_date\" date, \"p_unlimited\" boolean) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"writing_account_summary\"(\"p_user\" := pgrst_body.\"p_user\", \"p_timezone\" := pgrst_body.\"p_timezone\", \"p_date\" := pgrst_body.\"p_date\", \"p_unlimited\" := pgrst_body.\"p_unlimited\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"writing_account_summary\".* FROM \"pgrst_source\" AS \"writing_account_summary\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 15.2224641738318,
+      "shared_blks_hit": 271948,
+      "total_exec_time": 48864.109998,
+      "shared_blks_read": 1,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 1854,
+      "calls": 1854,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_id\", \"p_revision\", \"p_mutation\", \"p_data\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_id\" uuid, \"p_revision\" integer, \"p_mutation\" uuid, \"p_data\" jsonb) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"workspace_save_document\"(\"p_id\" := pgrst_body.\"p_id\", \"p_revision\" := pgrst_body.\"p_revision\", \"p_mutation\" := pgrst_body.\"p_mutation\", \"p_data\" := pgrst_body.\"p_data\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"workspace_save_document\".* FROM \"pgrst_source\" AS \"workspace_save_document\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 21.8666687820928,
+      "shared_blks_hit": 152009,
+      "total_exec_time": 40540.803922,
+      "shared_blks_read": 84,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 15724,
+      "calls": 15724,
+      "query": "insert into cron.job_run_details (jobid, runid, database, username, command, status) values ($1,$2,$3,$4,$5,$6)",
+      "mean_exec_time": 1.62821756575934,
+      "shared_blks_hit": 49709,
+      "total_exec_time": 25602.0930039999,
+      "shared_blks_read": 4,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 2287,
+      "calls": 2287,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"writing_activity\".* FROM \"public\".\"writing_activity\" WHERE  \"public\".\"writing_activity\".\"user_id\" = $1 AND  \"public\".\"writing_activity\".\"source\" = $2  ORDER BY \"public\".\"writing_activity\".\"started_at\" DESC , \"public\".\"writing_activity\".\"id\" ASC  LIMIT $3 OFFSET $4 )  SELECT $5::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), $6) AS body, nullif(current_setting($7, $8), $9) AS response_headers, nullif(current_setting($10, $11), $12) AS response_status, $13 AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+      "mean_exec_time": 10.2583994779187,
+      "shared_blks_hit": 432118,
+      "total_exec_time": 23460.959606,
+      "shared_blks_read": 1,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 93852,
+      "calls": 396,
+      "query": "SELECT t.oid, t.typname, t.typsend, t.typreceive, t.typoutput, t.typinput,\n       coalesce(d.typelem, t.typelem), coalesce(r.rngsubtype, $1), ARRAY (\n  SELECT a.atttypid\n  FROM pg_attribute AS a\n  WHERE a.attrelid = t.typrelid AND a.attnum > $2 AND NOT a.attisdropped\n  ORDER BY a.attnum\n)\n\nFROM pg_type AS t\nLEFT JOIN pg_type AS d ON t.typbasetype = d.oid\nLEFT JOIN pg_range AS r ON r.rngtypid = t.oid OR r.rngmultitypid = t.oid OR (t.typbasetype <> $3 AND r.rngtypid = t.typbasetype)\nWHERE (t.typrelid = $4)\nAND (t.typelem = $5 OR NOT EXISTS (SELECT $6 FROM pg_catalog.pg_type s WHERE s.typrelid != $7 AND s.oid = t.typelem))",
+      "mean_exec_time": 54.445055489899,
+      "shared_blks_hit": 1084212,
+      "total_exec_time": 21560.241974,
+      "shared_blks_read": 36,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 2157,
+      "calls": 2157,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT \"public\".\"workspace_project_state\"() pgrst_scalar) pgrst_call) SELECT $3::bigint AS total_result_set, $4 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$5, $6) AS body, nullif(current_setting($7, $8), $9) AS response_headers, nullif(current_setting($10, $11), $12) AS response_status, $13 AS response_inserted FROM (SELECT \"workspace_project_state\".* FROM \"pgrst_source\" AS \"workspace_project_state\"   LIMIT $1 OFFSET $2) _postgrest_t",
+      "mean_exec_time": 9.07476959527121,
+      "shared_blks_hit": 137611,
+      "total_exec_time": 19574.278017,
+      "shared_blks_read": 13,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 1696,
+      "calls": 1696,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT \"public\".\"workspace_resource_catalog\"() pgrst_scalar) pgrst_call) SELECT $3::bigint AS total_result_set, $4 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$5, $6) AS body, nullif(current_setting($7, $8), $9) AS response_headers, nullif(current_setting($10, $11), $12) AS response_status, $13 AS response_inserted FROM (SELECT \"workspace_resource_catalog\".* FROM \"pgrst_source\" AS \"workspace_resource_catalog\"   LIMIT $1 OFFSET $2) _postgrest_t",
+      "mean_exec_time": 8.30061418337265,
+      "shared_blks_hit": 175299,
+      "total_exec_time": 14077.841655,
+      "shared_blks_read": 12,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 15724,
+      "calls": 34417,
+      "query": "WITH        rows AS (          SELECT id          FROM net.http_request_queue          ORDER BY id          LIMIT $1        )        DELETE FROM net.http_request_queue q        USING rows WHERE q.id = rows.id        RETURNING q.id, q.method, q.url, timeout_milliseconds, array(select key || $2 || value from jsonb_each_text(q.headers)), q.body",
+      "mean_exec_time": 0.39545873821077,
+      "shared_blks_hit": 90031,
+      "total_exec_time": 13610.503393,
+      "shared_blks_read": 0,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 15292,
+      "calls": 34417,
+      "query": "WITH        rows AS (          SELECT ctid          FROM net._http_response          WHERE created < now() - $1          ORDER BY created          LIMIT $2        )        DELETE FROM net._http_response r        USING rows WHERE r.ctid = rows.ctid",
+      "mean_exec_time": 0.372670637417554,
+      "shared_blks_hit": 133500,
+      "total_exec_time": 12826.205328,
+      "shared_blks_read": 0,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 382,
+      "calls": 382,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_user\", \"p_paid\", \"p_language\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_user\" uuid, \"p_paid\" boolean, \"p_language\" text) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"writing_rewards\"(\"p_user\" := pgrst_body.\"p_user\", \"p_paid\" := pgrst_body.\"p_paid\", \"p_language\" := pgrst_body.\"p_language\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"writing_rewards\".* FROM \"pgrst_source\" AS \"writing_rewards\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 31.2492550863874,
+      "shared_blks_hit": 195033,
+      "total_exec_time": 11937.215443,
+      "shared_blks_read": 34,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 2287,
+      "calls": 2287,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"writing_folders\".* FROM \"public\".\"writing_folders\" WHERE  \"public\".\"writing_folders\".\"user_id\" = $1  ORDER BY \"public\".\"writing_folders\".\"name\" ASC  LIMIT $2 OFFSET $3 )  SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), $5) AS body, nullif(current_setting($6, $7), $8) AS response_headers, nullif(current_setting($9, $10), $11) AS response_status, $12 AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+      "mean_exec_time": 4.57188086663752,
+      "shared_blks_hit": 136064,
+      "total_exec_time": 10455.891542,
+      "shared_blks_read": 2,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 883,
+      "calls": 883,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"writing_activity\".* FROM \"public\".\"writing_activity\" WHERE  \"public\".\"writing_activity\".\"user_id\" = $1  ORDER BY \"public\".\"writing_activity\".\"started_at\" DESC , \"public\".\"writing_activity\".\"id\" ASC  LIMIT $2 OFFSET $3 )  SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), $5) AS body, nullif(current_setting($6, $7), $8) AS response_headers, nullif(current_setting($9, $10), $11) AS response_status, $12 AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+      "mean_exec_time": 11.6320654303511,
+      "shared_blks_hit": 142940,
+      "total_exec_time": 10271.113775,
+      "shared_blks_read": 0,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 2621,
+      "calls": 2621,
+      "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_account\", \"p_live\", \"p_token\", \"p_event\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_account\" text, \"p_live\" boolean, \"p_token\" uuid, \"p_event\" text) LIMIT $4) pgrst_body , LATERAL (SELECT \"public\".\"substack_event_claim\"(\"p_account\" := pgrst_body.\"p_account\", \"p_live\" := pgrst_body.\"p_live\", \"p_token\" := pgrst_body.\"p_token\", \"p_event\" := pgrst_body.\"p_event\") pgrst_scalar) pgrst_call) SELECT $5::bigint AS total_result_set, $6 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->$7, $8) AS body, nullif(current_setting($9, $10), $11) AS response_headers, nullif(current_setting($12, $13), $14) AS response_status, $15 AS response_inserted FROM (SELECT \"substack_event_claim\".* FROM \"pgrst_source\" AS \"substack_event_claim\"   LIMIT $2 OFFSET $3) _postgrest_t",
+      "mean_exec_time": 3.81317679091949,
+      "shared_blks_hit": 931362,
+      "total_exec_time": 9994.33636900001,
+      "shared_blks_read": 3,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 485,
+      "calls": 485,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"writing_documents\".\"id\", \"public\".\"writing_documents\".\"user_id\", \"public\".\"writing_documents\".\"title\", \"public\".\"writing_documents\".\"folder_id\", \"public\".\"writing_documents\".\"favorite\", \"public\".\"writing_documents\".\"status\", \"public\".\"writing_documents\".\"completion_status\", \"public\".\"writing_documents\".\"completed_at\", \"public\".\"writing_documents\".\"ai_allowed\", \"public\".\"writing_documents\".\"ai_context_all_projects\", \"public\".\"writing_documents\".\"ai_context_project_ids\", \"public\".\"writing_documents\".\"revision\", \"public\".\"writing_documents\".\"mutation_id\", \"public\".\"writing_documents\".\"created_at\", \"public\".\"writing_documents\".\"updated_at\" FROM \"public\".\"writing_documents\" WHERE  \"public\".\"writing_documents\".\"user_id\" = $1  ORDER BY \"public\".\"writing_documents\".\"updated_at\" DESC , \"public\".\"writing_documents\".\"id\" ASC  LIMIT $2 OFFSET $3 )  SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), $5) AS body, nullif(current_setting($6, $7), $8) AS response_headers, nullif(current_setting($9, $10), $11) AS response_status, $12 AS response_inserted FROM ( SELECT * FROM pgrst_source ) _postgrest_t",
+      "mean_exec_time": 17.4556424927835,
+      "shared_blks_hit": 68300,
+      "total_exec_time": 8465.98660900001,
+      "shared_blks_read": 0,
+      "temp_blks_written": 0
+    },
+    {
+      "rows": 2621,
+      "calls": 2621,
+      "query": "WITH pgrst_source AS (UPDATE \"public\".\"substack_integration\" SET \"last_worker_at\" = \"pgrst_body\".\"last_worker_at\" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"last_worker_at\" FROM json_to_record(pgrst_payload.json_data) AS _(\"last_worker_at\" timestamp with time zone) ) pgrst_body  WHERE  \"public\".\"substack_integration\".\"account_id\" = $2 AND  \"public\".\"substack_integration\".\"livemode\" = $3 RETURNING $4) SELECT $5 AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, $6::text AS body, nullif(current_setting($7, $8), $9) AS response_headers, nullif(current_setting($10, $11), $12) AS response_status, $13 AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t",
+      "mean_exec_time": 3.21737889355208,
+      "shared_blks_hit": 23397,
+      "total_exec_time": 8432.75007999999,
+      "shared_blks_read": 4,
+      "temp_blks_written": 0
+    }
+  ],
+  "max_connections": "60"
+}

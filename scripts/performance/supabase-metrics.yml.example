@@ -1,0 +1,13 @@
+# Optional configuration only: no collector, account, paid service or schedule
+# is created. Supabase's official guidance recommends one scrape per minute.
+scrape_configs:
+  - job_name: unoword-supabase
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    scheme: https
+    metrics_path: /customer/v1/privileged/metrics
+    basic_auth:
+      username: service_role
+      password_file: /run/secrets/unoword-supabase-metrics-key
+    static_configs:
+      - targets: [jvcbpnmtnjhftpukgppw.supabase.co]

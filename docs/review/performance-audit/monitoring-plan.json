@@ -1,0 +1,51 @@
+{
+  "status": "Configuration prepared only; no paid service or continuous monitoring installed",
+  "scrapeSeconds": 60,
+  "source": "https://supabase.com/docs/guides/observability/metrics",
+  "rules": [
+    {
+      "signal": "CPU",
+      "warning": "Above 70% for 10 minutes",
+      "critical": "Above 85% for 5 minutes",
+      "source": "Supabase host metrics or built-in dashboard",
+      "target": "50\u201360% sustained under comparable load"
+    },
+    {
+      "signal": "Memory available",
+      "warning": "Below 15% for 10 minutes",
+      "source": "Host metrics; not inferable from database cache hits alone"
+    },
+    {
+      "signal": "Database connections",
+      "warning": "Above 70% of max_connections for 5 minutes",
+      "critical": "Above 85% for 5 minutes"
+    },
+    {
+      "signal": "Transaction rollback rate",
+      "warning": "Above 10/s for 5 minutes, investigate errors and serialization retries",
+      "baseline": "Roughly 500\u2013575/s during incident samples"
+    },
+    {
+      "signal": "API volume and error ratio",
+      "source": "Existing Vercel/Supabase observability by route/status; count completed requests separately from internal database retries",
+      "warning": "Sustained 5xx >1% or abrupt 3x baseline traffic"
+    },
+    {
+      "signal": "Latency",
+      "source": "API p50/p95 and pg_stat_statements counter deltas",
+      "warning": "p95 >1 second for ordinary saves/reads for 10 minutes, excluding long imports and model calls"
+    },
+    {
+      "signal": "Storage",
+      "source": "Daily database size snapshot and built-in storage charts",
+      "warning": "20% growth day-over-day or >80% plan allocation"
+    },
+    {
+      "signal": "Backups",
+      "source": "Database \u2192 Backups; daily successful restore point and periodic isolated restore drill",
+      "warning": "No recent successful recoverable backup"
+    }
+  ],
+  "privacy": "No document text, account emails, tokens or source content in telemetry. Keep metrics credentials in existing secret storage.",
+  "overhead": "Use existing provider exporters. No per-user polling or table-wide scans added for monitoring. Avoid frequent advisor runs and EXPLAIN ANALYZE on live write functions."
+}

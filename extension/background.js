@@ -1351,6 +1351,9 @@ async function writingDeviceId(){
 async function checkpointWritingSession(){
  const state=await getState();
  if(!state.active || !state.ownerId)return;
+ // Paused clocks do not change. Keep the alarm's outbox flush, but avoid
+ // creating a new identical revision and cloud write every idle minute.
+ if(state.timer && state.timer.status!=='active')return;
  const deadline=(state.lastActivityAt || state.startedAt)+300000;
  const timer=state.timer?.status==='active' && Date.now()>deadline
   ? self.WCSessionClock.transition(self.WCSessionClock.forSession(state),'paused',deadline):state.timer;

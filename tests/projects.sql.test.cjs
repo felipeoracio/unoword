@@ -12,6 +12,7 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  for(const name of ['20260930160000_link_sources.sql','20261001000000_knowledge_pipeline.sql','20261023010000_writing_workspace.sql','20261023020000_writing_workspace_pro.sql','20261028010000_shared_ai_quota.sql','20261028040000_verified_streak_presentation.sql','20261029010000_session_pause_document_completion.sql','20261030010000_unified_account_writing_sync.sql'])await db.exec(migration(name));
  const sql=migration('20261109010000_multi_project_workspace.sql');await db.exec(sql);await db.exec(sql);
  const contextSql=migration('20261123224404_document_ai_context_sharing.sql');await db.exec(contextSql);await db.exec(contextSql);
+ const conflictSql=migration('20261125194447_nonretryable_workspace_conflicts.sql');await db.exec(conflictSql);await db.exec(conflictSql);
  const a=uuid(),b=uuid(),free=uuid(),pa=uuid(),pb=uuid(),foreign=uuid(),da=uuid(),dbid=uuid(),ra=uuid(),rb=uuid(),shared=uuid(),disabled=uuid(),foreignSource=uuid();
  await db.query('insert into auth.users values($1),($2),($3)',[a,b,free]);
  await db.query("insert into ai_entitlements(user_id,plan,status,daily_request_limit) values($1,'pro','active',10),($2,'pro','active',10),($3,'free','active',0)",[a,b,free]);
@@ -27,7 +28,7 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  await identity(a);const mutation=uuid();let one=await project(pa,0,mutation,'My Memoir');
  assert.equal(one.revision,1);assert.equal((await project(pa,0,mutation,'My Memoir')).revision,1);
  await project(pb,0,uuid(),'My Novel');
- await assert.rejects(project(pa,0,uuid(),'Stale device'),/project_revision_conflict/);
+ await assert.rejects(project(pa,0,uuid(),'Stale device'),e=>e.code==='PT409' && /project_revision_conflict/.test(e.message));
  assert.equal((await db.query('select * from writing_projects')).rows.length,2);
  let version=await rpc('workspace_assign_resource','source',ra,[pa],0,uuid());
  await rpc('workspace_assign_resource','source',rb,[pb],0,uuid());
@@ -70,6 +71,7 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
   const data=Object.fromEntries(['title','content','plain_text','folder_id','favorite','status','completion_status','ai_allowed'].map(key=>[key,current[key]]));
   return rpc('workspace_save_document',da,current.revision,uuid(),JSON.stringify({...data,...patch}));
  }
+ await assert.rejects(rpc('workspace_save_document',da,999,uuid(),'{}'),e=>e.code==='PT409' && /revision_conflict/.test(e.message));
  await assert.rejects(rpc('workspace_document_context_target',a,da,pa),/permission denied/,'internal target resolver is not a public RPC');
  let permission=await contextSave({ai_context_project_ids:[pb],ai_context_all_projects:false});
  assert.deepEqual(permission.ai_context_project_ids,[pb]);

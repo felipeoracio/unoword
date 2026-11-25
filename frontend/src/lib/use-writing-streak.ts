@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { apiGet } from "./api";
 export type StreakDisplay = {
   longestStreak?: number;
@@ -36,8 +36,11 @@ export function useWritingStreak(
     refetchOnReconnect: true,
   });
   const { refetch } = query;
+  const observedRevision = useRef({ owner, revision });
   useEffect(() => {
-    if (!owner || !navigator.onLine) return;
+    const previous = observedRevision.current;
+    observedRevision.current = { owner, revision };
+    if (previous.owner !== owner || previous.revision === revision || !owner || !navigator.onLine) return;
     const timer = setTimeout(() => void refetch(), 1000);
     return () => clearTimeout(timer);
   }, [revision, owner, refetch]);
