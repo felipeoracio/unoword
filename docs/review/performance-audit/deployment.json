@@ -1,0 +1,106 @@
+{
+  "url": "https://unoword.app",
+  "deployment": "dpl_8qNEfbHehjr3VbNoyasgsMzkP1pM",
+  "commit": "7c41be7748e4bef992ce1c7dc618a43f162b5ac1",
+  "target": "production",
+  "status": "READY",
+  "framework": "Vercel Services: Vite frontend and FastAPI backend",
+  "buildDurationSeconds": 57.144,
+  "databaseMigrations": [
+    "20261125203959_nonretryable_workspace_conflicts",
+    "20261125204739_avoid_unchanged_quota_timezone_writes"
+  ],
+  "databaseVerification": "Six conflict functions retain PT409; quota unchanged-timezone guard present. Original owners/security modes/search paths/grants preserved. Scoped restore/reapply drills preserved synthetic data checksums.",
+  "webChanges": [
+    "Skip duplicate initial summary/streak reads",
+    "Skip clean hidden workspace polling while preserving pending-write synchronization"
+  ],
+  "extension": {
+    "version": "0.24.4",
+    "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819",
+    "file": "unoword-extension.zip"
+  },
+  "extensionDistribution": "Verified website download only; no Chrome Web Store submission. Existing unpacked installations must be updated/reloaded.",
+  "publicChecks": [
+    {
+      "path": "/api/health/ready",
+      "status": 200,
+      "seconds": 0.596,
+      "result": {
+        "status": "ready",
+        "checks": {
+          "session_database": "ok",
+          "data_api": "ok"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/google",
+      "status": 200,
+      "seconds": 0.455,
+      "result": {
+        "enabled": true
+      }
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "seconds": 0.483,
+      "result": {
+        "detail": "Authentication required"
+      }
+    },
+    {
+      "path": "/editor",
+      "status": 200,
+      "seconds": 0.475
+    },
+    {
+      "path": "/library",
+      "status": 200,
+      "seconds": 0.293
+    },
+    {
+      "path": "/settings",
+      "status": 200,
+      "seconds": 0.167
+    },
+    {
+      "path": "/downloads/release.json",
+      "status": 200,
+      "seconds": 0.288,
+      "result": {
+        "version": "0.24.4",
+        "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819",
+        "file": "unoword-extension.zip"
+      }
+    },
+    {
+      "path": "/downloads/unoword-extension.zip",
+      "status": 200,
+      "seconds": 0.24,
+      "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819"
+    }
+  ],
+  "deployedBrowser": {
+    "status": "passed",
+    "idleSeconds": 31,
+    "hiddenWorkspaceIndexReads": 0,
+    "unexpectedMutations": 0,
+    "consoleErrors": [],
+    "limit": "Actual deployed frontend; all API traffic intercepted and non-GET denied. No customer data accessed. Disposable Chromium ignores managed-proxy CA errors; public HTTPS probes verify using system trust."
+  },
+  "observability": {
+    "runtimeErrorScan": "No error/fatal groups in five-minute deployment-scoped Vercel scan.",
+    "securityAdvisors": "Unchanged: 32 informational RLS/no-policy notices, 12 authenticated SECURITY DEFINER warnings, leaked-password-protection warning.",
+    "drains": "Not assessed or changed",
+    "monitoring": "Point-in-time checks; optional 60-second metrics configuration prepared, not activated.",
+    "hostCpuPercent": "Not directly measured; verify sustained trend in Supabase dashboard."
+  },
+  "limits": [
+    "No production customer account was used for browser verification; all API traffic intercepted and mutations denied.",
+    "No full provider backup/PITR restore window was verified. Database changes were restricted to reversible function definitions with object-scoped backup/restore drills.",
+    "No table/schema redesign, historical-data rewrites, security-policy removal, paid infrastructure or pricing changes.",
+    "Native app performance changes and event-driven rewards cache remain future work."
+  ]
+}

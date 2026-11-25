@@ -1,6 +1,6 @@
 {
   "title": "UnoWord performance audit and staged optimization report",
-  "status": "Critical retry-loop correction applied and observed in production. Smaller optimization batch remains staged; full backup/PITR and host CPU target still require verification.",
+  "status": "First performance optimization batch deployed to production: conflict retry correction, unchanged-timezone guard, web idle/deduplication changes and extension 0.24.4 website download. Host CPU target and full backup/PITR remain unverified.",
   "rootCause": {
     "severity": "Critical",
     "finding": "Business revision conflicts are raised with SQLSTATE 40001 in workspace RPC functions. That code requests transaction retry; the Hasql transaction driver retries it. A stale document revision cannot resolve by retrying the same mutation.",
@@ -41,7 +41,7 @@
       "priority": "P1",
       "issue": "ai_coach_state validates and rewrites an unchanged timezone during usage polling",
       "impact": "Historical successful usage RPC mean 396.526ms over 1,193 calls; latency includes contention and is not pure CPU time",
-      "action": "Tested guard skips unchanged timezone lookup/update; quota locking and limits retained"
+      "action": "Applied to production after scope-specific backup/restore verification. Quota/reset semantics and original privileges retained."
     },
     {
       "priority": "P1 at growth",
@@ -53,19 +53,19 @@
       "priority": "P2",
       "issue": "Summary/streak hooks make a second delayed fetch on mount without a local revision change",
       "impact": "One extra summary or streak request per mount; reduction estimated from execution path, not a production request comparison",
-      "action": "Staged revision-aware effect; initial/account-change query remains authoritative"
+      "action": "Deployed revision-aware mount effect; normal initial/account-change reads retained."
     },
     {
       "priority": "P2",
       "issue": "Clean hidden editor rereads indexes/history on fixed interval",
       "impact": "Unnecessary idle traffic; previously up to 4 idle sync passes/minute, each doing identity verification plus index/folder/history reads",
-      "action": "Staged hidden-and-clean guard; pending writes, focus/reconnect refresh and local durability retained"
+      "action": "Deployed; read-only production frontend test verifies zero hidden clean index polls. Existing local integration verifies hidden pending drafts still save."
     },
     {
       "priority": "P2",
       "issue": "Paused Chrome extension clock generates new metadata revision each alarm checkpoint",
       "impact": "Identical checkpoints can produce up to 60 avoidable writes/hour per paused active extension session",
-      "action": "Staged paused/ended checkpoint guard; alarm still flushes pending outbox"
+      "action": "Packaged and deployed as extension 0.24.4 website download. Existing unpacked installations need update/reload."
     },
     {
       "priority": "P2 at growth",
@@ -92,32 +92,24 @@
       "action": "No new caching of auth/entitlements. Plan lifecycle-managed HTTP pooling with serverless lifecycle and auth-isolation tests"
     }
   ],
-  "changesImplementedLocally": [
-    "20261125194447_nonretryable_workspace_conflicts.sql: replace only manual business-conflict error classification in current production function definitions; no table/data changes; grants preserved.",
-    "20261125194641_avoid_unchanged_quota_timezone_writes.sql: skip unchanged timezone validation/update while retaining quota locks and counters.",
-    "Web summary/streak effects refresh after subsequent local revisions, without duplicating their mount query.",
-    "Hidden clean editor skips idle sync reads; hidden dirty editor continues saving.",
-    "Chrome extension paused/ended session checkpoint does not create a redundant outbox revision. Alarm still flushes pending rows.",
-    "Added bounded read-only snapshot SQL, counter comparison script and optional 60-second provider-metrics scrape example. No monitoring service or paid infrastructure provisioned."
-  ],
   "measuredBeforeAfter": {
     "scope": "Includes observed production transaction-rate windows for the conflict fix, plus controlled local tests for the still-staged quota/idle optimizations.",
     "quotaIdenticalReads": {
       "environment": "local PGlite PostgreSQL, synthetic account, 100 identical reads before/after",
       "before": {
         "calls": 100,
-        "elapsedMs": 2806.81,
+        "elapsedMs": 1370.3,
         "assignmentUpdates": 100
       },
       "after": {
         "calls": 100,
-        "elapsedMs": 76.9,
+        "elapsedMs": 89.18,
         "assignmentUpdates": 0
       },
       "assignmentWriteReductionPercent": 100,
-      "productionCpuChange": "not measured; migration not applied"
+      "productionCpuChange": "Not measured by this local benchmark"
     },
-    "hiddenEditor": "After: 0 workspace document/folder/history reads in 31 hidden paused seconds; hidden pending draft still persisted. Before fixed interval behavior implies up to two sync passes in that interval; before request count was not separately benchmarked.",
+    "hiddenEditor": "Local pending-write test passed. Deployed frontend with isolated read-only APIs also generated 0 workspace index reads over 31 hidden idle seconds. No production workload-wide HTTP volume reduction claimed.",
     "extension": "After: 10 paused checkpoints leave progressVersion and timer unchanged. Before code unconditionally called setState; count reduction estimated, not a separate production benchmark.",
     "cpu": "Host CPU change not measured; internal rollback storm has stopped in observed windows. Verify sustained CPU in Supabase host metrics.",
     "requestVolume": "No claim of measured production HTTP request reduction. Internal rollback rate and external API request counts are different signals.",
@@ -139,13 +131,8 @@
       "health": "/api/health/ready HTTP 200 with session_database and data_api OK; /api/auth/google HTTP 200, enabled.",
       "postChangeErrorWindow": "One-minute PostgreSQL/edge log sample after fix: 0 revision_conflict messages.",
       "notMeasured": "Host CPU and memory percentage time series remain inaccessible through connected tools; no claim of reaching the 50\u201360% sustained CPU target.",
-      "stillStaged": [
-        "Unchanged quota timezone guard",
-        "Summary/streak mount deduplication",
-        "Hidden clean editor polling guard",
-        "Paused extension checkpoint guard"
-      ],
-      "fullBackupStatus": "Provider backup schedule, restore window, PITR and full restore readiness remain unverified. Hosting database secret is protected; its value was not retrieved. No full dump was created. Broader database/architecture changes remain gated on this.",
+      "stillStaged": [],
+      "fullBackupStatus": "Full provider backup/PITR remains unverified. Both database function corrections used fresh object-scoped backups and isolated restore/reapply drills. No stored table data changed.",
       "longerFollowup": {
         "windowSeconds": 230.70984,
         "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
@@ -163,7 +150,8 @@
         "deadlocks": "Not captured in these snapshots",
         "databaseGrowthBytes": "Not captured in these snapshots",
         "workerState": "All four observed API connections remained idle."
-      }
+      },
+      "additionalRelease": "Quota guard and web optimizations now deployed; extension optimization available in website download 0.24.4, requiring local update/reload for unpacked installations."
     }
   },
   "testing": [
@@ -177,7 +165,8 @@
     "Session/completion browser suite passed: pause persistence, resume-on-typing, first-word credit, completion, failed saves, offline conflict recovery, responsive layout.",
     "Autosave/navigation suite passed: overlapping mutations drain, failed saves block departure, latest document reopens intact.",
     "Hidden-editor controlled-clock test passed: no clean idle reads while durable pending writes still sync.",
-    "Existing real PostgreSQL reward and progress-reporting suites passed: idempotent awards, frozen goals, document completions, cross-account protection, DST/midnight and overlapping active time."
+    "Existing real PostgreSQL reward and progress-reporting suites passed: idempotent awards, frozen goals, document completions, cross-account protection, DST/midnight and overlapping active time.",
+    "Deployed read-only browser test passed: actual production frontend, 31-second controlled hidden interval, 0 index reads, 0 attempted mutations, 0 console errors; all private APIs intercepted."
   ],
   "notTestedOrNotCompleted": [
     "Recoverable production backup/base restore window not confirmed by tools.",
@@ -185,7 +174,7 @@
     "No native device performance tests or mobile binary release performed.",
     "No end-to-end 100k-user capacity guarantee; no full production before/after CPU comparison yet.",
     "Continuous monitoring configuration not activated; metrics endpoint requires securely supplied credentials or dashboard access.",
-    "Only the function-level conflict correction was applied. Quota migration, app/extension optimizations and mobile changes have not been rolled out."
+    "Chrome Web Store distribution/automatic installed-extension updates were not performed; website download is verified."
   ],
   "architectureAudit": {
     "editor": "Body changes persist locally in IndexedDB; cloud save debounced 1 second with 15-second sync fallback. Session clock checkpoints every 10 seconds. CAS, local recovery, mutation acknowledgement and explicit conflict resolution preserved. First batch does not lengthen save windows. Provenance word counts/JSON serialization still scan document content and should be profiled on long/image-heavy documents before any incremental rewrite.",
@@ -197,6 +186,7 @@
     "dataGrowth": "No data purged, historical stats reset, subscriptions modified, or plan upgrades requested. Static reward artwork is served by website/CDN and is not one database query per badge."
   },
   "rollbackAndRollout": [
+    "Approved first batch is now deployed. Refer to deployment.json for exact website commit, migration versions and extension checksum. The prior rollout plan below is retained as change-control history.",
     "The conflict correction is applied. Its object-scoped restore drill and fresh definition snapshot were verified first. This does not establish a full provider database backup; keep that requirement for broader changes.",
     "Confirm a recent successful customer-recoverable backup and recovery window in Supabase Database \u2192 Backups; ideally perform an isolated restore drill. Recent WAL archival alone is insufficient proof.",
     "Review captured rollback-conflict-functions.sql and rollback-quota-timezone.sql against current function definitions immediately before release; migrations use short lock_timeout and transactional CREATE OR REPLACE.",
@@ -259,7 +249,7 @@
     "https://docs.postgrest.org/en/v14/references/errors.html",
     "https://github.com/nikita-volkov/hasql-transaction/blob/master/src/library/Hasql/Transaction/Private/Sessions.hs"
   ],
-  "nextRequiredInput": "Confirm a full recoverable backup/PITR window before broader database changes, and inspect the Supabase CPU trend to verify sustained resource headroom after mitigation.",
+  "nextRequiredInput": "Verify the Supabase CPU trend and full backup/PITR restore window before later data/architecture work. No further deployment approval needed for this completed batch.",
   "productionMitigation": {
     "status": "Applied to the existing production database; no application deployment or user-data migration was needed.",
     "migration": "20261125203959_nonretryable_workspace_conflicts",
@@ -278,13 +268,8 @@
     "health": "/api/health/ready HTTP 200 with session_database and data_api OK; /api/auth/google HTTP 200, enabled.",
     "postChangeErrorWindow": "One-minute PostgreSQL/edge log sample after fix: 0 revision_conflict messages.",
     "notMeasured": "Host CPU and memory percentage time series remain inaccessible through connected tools; no claim of reaching the 50\u201360% sustained CPU target.",
-    "stillStaged": [
-      "Unchanged quota timezone guard",
-      "Summary/streak mount deduplication",
-      "Hidden clean editor polling guard",
-      "Paused extension checkpoint guard"
-    ],
-    "fullBackupStatus": "Provider backup schedule, restore window, PITR and full restore readiness remain unverified. Hosting database secret is protected; its value was not retrieved. No full dump was created. Broader database/architecture changes remain gated on this.",
+    "stillStaged": [],
+    "fullBackupStatus": "Full provider backup/PITR remains unverified. Both database function corrections used fresh object-scoped backups and isolated restore/reapply drills. No stored table data changed.",
     "longerFollowup": {
       "windowSeconds": 230.70984,
       "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
@@ -302,6 +287,121 @@
       "deadlocks": "Not captured in these snapshots",
       "databaseGrowthBytes": "Not captured in these snapshots",
       "workerState": "All four observed API connections remained idle."
-    }
-  }
+    },
+    "additionalRelease": "Quota guard and web optimizations now deployed; extension optimization available in website download 0.24.4, requiring local update/reload for unpacked installations."
+  },
+  "applicationRelease": {
+    "url": "https://unoword.app",
+    "deployment": "dpl_8qNEfbHehjr3VbNoyasgsMzkP1pM",
+    "commit": "7c41be7748e4bef992ce1c7dc618a43f162b5ac1",
+    "target": "production",
+    "status": "READY",
+    "framework": "Vercel Services: Vite frontend and FastAPI backend",
+    "buildDurationSeconds": 57.144,
+    "databaseMigrations": [
+      "20261125203959_nonretryable_workspace_conflicts",
+      "20261125204739_avoid_unchanged_quota_timezone_writes"
+    ],
+    "databaseVerification": "Six conflict functions retain PT409; quota unchanged-timezone guard present. Original owners/security modes/search paths/grants preserved. Scoped restore/reapply drills preserved synthetic data checksums.",
+    "webChanges": [
+      "Skip duplicate initial summary/streak reads",
+      "Skip clean hidden workspace polling while preserving pending-write synchronization"
+    ],
+    "extension": {
+      "version": "0.24.4",
+      "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819",
+      "file": "unoword-extension.zip"
+    },
+    "extensionDistribution": "Verified website download only; no Chrome Web Store submission. Existing unpacked installations must be updated/reloaded.",
+    "publicChecks": [
+      {
+        "path": "/api/health/ready",
+        "status": 200,
+        "seconds": 0.596,
+        "result": {
+          "status": "ready",
+          "checks": {
+            "session_database": "ok",
+            "data_api": "ok"
+          }
+        }
+      },
+      {
+        "path": "/api/auth/google",
+        "status": 200,
+        "seconds": 0.455,
+        "result": {
+          "enabled": true
+        }
+      },
+      {
+        "path": "/api/auth/me",
+        "status": 401,
+        "seconds": 0.483,
+        "result": {
+          "detail": "Authentication required"
+        }
+      },
+      {
+        "path": "/editor",
+        "status": 200,
+        "seconds": 0.475
+      },
+      {
+        "path": "/library",
+        "status": 200,
+        "seconds": 0.293
+      },
+      {
+        "path": "/settings",
+        "status": 200,
+        "seconds": 0.167
+      },
+      {
+        "path": "/downloads/release.json",
+        "status": 200,
+        "seconds": 0.288,
+        "result": {
+          "version": "0.24.4",
+          "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819",
+          "file": "unoword-extension.zip"
+        }
+      },
+      {
+        "path": "/downloads/unoword-extension.zip",
+        "status": 200,
+        "seconds": 0.24,
+        "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819"
+      }
+    ],
+    "deployedBrowser": {
+      "status": "passed",
+      "idleSeconds": 31,
+      "hiddenWorkspaceIndexReads": 0,
+      "unexpectedMutations": 0,
+      "consoleErrors": [],
+      "limit": "Actual deployed frontend; all API traffic intercepted and non-GET denied. No customer data accessed. Disposable Chromium ignores managed-proxy CA errors; public HTTPS probes verify using system trust."
+    },
+    "observability": {
+      "runtimeErrorScan": "No error/fatal groups in five-minute deployment-scoped Vercel scan.",
+      "securityAdvisors": "Unchanged: 32 informational RLS/no-policy notices, 12 authenticated SECURITY DEFINER warnings, leaked-password-protection warning.",
+      "drains": "Not assessed or changed",
+      "monitoring": "Point-in-time checks; optional 60-second metrics configuration prepared, not activated.",
+      "hostCpuPercent": "Not directly measured; verify sustained trend in Supabase dashboard."
+    },
+    "limits": [
+      "No production customer account was used for browser verification; all API traffic intercepted and mutations denied.",
+      "No full provider backup/PITR restore window was verified. Database changes were restricted to reversible function definitions with object-scoped backup/restore drills.",
+      "No table/schema redesign, historical-data rewrites, security-policy removal, paid infrastructure or pricing changes.",
+      "Native app performance changes and event-driven rewards cache remain future work."
+    ]
+  },
+  "changesImplemented": [
+    "20261125194447_nonretryable_workspace_conflicts.sql: replace only manual business-conflict error classification in current production function definitions; no table/data changes; grants preserved.",
+    "20261125194641_avoid_unchanged_quota_timezone_writes.sql: skip unchanged timezone validation/update while retaining quota locks and counters.",
+    "Web summary/streak effects refresh after subsequent local revisions, without duplicating their mount query.",
+    "Hidden clean editor skips idle sync reads; hidden dirty editor continues saving.",
+    "Chrome extension paused/ended session checkpoint does not create a redundant outbox revision. Alarm still flushes pending rows.",
+    "Added bounded read-only snapshot SQL, counter comparison script and optional 60-second provider-metrics scrape example. No monitoring service or paid infrastructure provisioned."
+  ]
 }
