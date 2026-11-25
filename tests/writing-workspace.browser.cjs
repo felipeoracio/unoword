@@ -365,12 +365,15 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    const sessionId=paused.id,activeMs=paused.timer.active_ms,typed=paused.typed_words;await snap('session-paused-desktop');await checkA11y();
    await page.reload();await page.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
    assert.equal([...activity.values()].find(a=>a.id===sessionId).timer.active_ms,activeMs,'Refresh does not restart paused time');
-   // The project restoration gate deliberately keeps the loaded editor read-only
-   // until its workspace is ready, even when the paused-session label is visible.
    await page.waitForFunction(()=>document.querySelector('.uw-writing-canvas')?.getAttribute('contenteditable')==='true');
-   await canvas.fill('Words added while paused stay in the document but not session progress.');
-   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved'));
-   assert.equal(activity.get(sessionId).typed_words,typed);
+   await canvas.click();await canvas.press('ControlOrMeta+End');
+   await canvas.pressSequentially(' Resuming now.');
+   await page.getByRole('button',{name:'Pause Session',exact:true}).waitFor();
+   await until(()=>activity.get(sessionId)?.timer?.status==='active' && activity.get(sessionId).typed_words===typed+2);
+   assert.equal([...activity.values()].filter(a=>a.document_id===saved.id).length,1,'Typing resumes the original session');
+   assert.ok(activity.get(sessionId).timer.active_ms>=activeMs,'Previously active time is retained');
+   await page.getByRole('button',{name:'Pause Session',exact:true}).click();
+   await until(()=>activity.get(sessionId)?.timer?.status==='paused');
    const reopened=await context.newPage();await reopened.goto(origin+'/editor');
    await reopened.getByRole('button',{name:'Resume Session',exact:true}).waitFor();
    assert.equal(await reopened.getByRole('textbox',{name:'Rename document'}).inputValue(),'The practice of paying attention');
@@ -455,7 +458,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`No overflow at ${width}`);}
    assert.equal(requests.filter(r=>r.key==='/workspace/assistant').length,0);
    assert.deepEqual(errors,[]);
-   console.log('PASS editor sessions/completion: persistent pause, new-tab restore, same identity, paused input excluded, end while paused, independent document lifecycle, pending-save failure/retry, confirmed completion, fresh reopening, manual read-only reopen/revert, status filters, preserved content, responsive 320–1440px; Empty Trash confirmation/cancel/offline guard; unrelated documents/history preserved; divergent offline draft recovery; no AI calls.');
+   console.log('PASS editor sessions/completion: persistent pause, new-tab restore, same identity, typing resumes paused session with first-word credit, end while paused, independent document lifecycle, pending-save failure/retry, confirmed completion, fresh reopening, manual read-only reopen/revert, status filters, preserved content, responsive 320–1440px; Empty Trash confirmation/cancel/offline guard; unrelated documents/history preserved; divergent offline draft recovery; no AI calls.');
    return;
   }
 

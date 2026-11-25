@@ -734,6 +734,16 @@ export default function WritingEditor() {
 
   // Extensions are installed once. Read the latest identity/session functions
   // rather than retaining the render from before authentication completed.
+  const resumeOnTypingRef = useRef<(kind: string) => void>(() => {});
+  resumeOnTypingRef.current = kind => {
+    const document = draftRef.current;
+    if (document?.status === "active" && document.completion_status !== "completed" &&
+        session.current?.document_id === document.id && session.current.timer?.status === "paused" &&
+        ["insertText", "insertCompositionText", "insertFromComposition", "insertReplacementText", "insertParagraph", "insertLineBreak"].includes(kind)) {
+      // Resume before the transaction so its first typed word receives credit.
+      changeSessionStatus("active");
+    }
+  };
   const sessionCreditRef = useRef<() => Credit | null>(() => null);
   sessionCreditRef.current = () => {
     const document = draftRef.current;
@@ -791,6 +801,7 @@ export default function WritingEditor() {
           openingMotion.current?.cancel();
           openingMotion.current = null;
           inputKind.current = (event as InputEvent).inputType || "insertText";
+          resumeOnTypingRef.current(inputKind.current);
           return false;
         },
         paste: () => {
