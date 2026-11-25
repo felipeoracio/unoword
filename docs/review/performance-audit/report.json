@@ -1,6 +1,6 @@
 {
   "title": "UnoWord performance audit and staged optimization report",
-  "status": "Production audit complete and first controlled optimization batch tested locally. Nothing applied or deployed; recoverable backup confirmation is pending. Full post-release CPU validation and later scalability work remain outstanding.",
+  "status": "Critical retry-loop correction applied and observed in production. Smaller optimization batch remains staged; full backup/PITR and host CPU target still require verification.",
   "rootCause": {
     "severity": "Critical",
     "finding": "Business revision conflicts are raised with SQLSTATE 40001 in workspace RPC functions. That code requests transaction retry; the Hasql transaction driver retries it. A stale document revision cannot resolve by retrying the same mutation.",
@@ -12,7 +12,7 @@
       "writing_documents index scans track the failed attempts despite only 24 document rows.",
       "Recent completed API logs showed mainly scheduled ingestion/Substack activity; failed database transactions are not recorded as successful statement executions."
     ],
-    "fix": "Return custom SQLSTATE PT409 for expected business conflicts in six existing functions (seven raise sites). Preserve successful saves, mutation replay, ownership, row locks, RLS, and revision checks. Genuine PostgreSQL serialization failures remain retryable."
+    "fix": "Return custom SQLSTATE PT409 for expected business conflicts in six existing functions (seven raise sites). Preserve successful saves, mutation replay, ownership, row locks, RLS, and revision checks. Genuine PostgreSQL serialization failures remain retryable. This narrow correction is now applied in production."
   },
   "baseline": {
     "reportedCpu": "User reported a Supabase notification above 80%; direct CPU/memory/compute-size time series is not exposed by connected tools. Sustained CPU percentage has not been independently measured.",
@@ -35,7 +35,7 @@
       "priority": "P0",
       "issue": "Retryable business-conflict SQLSTATE causes persistent internal save retry storm",
       "impact": "Dominant observed live incident; can consume compute with almost no genuine traffic",
-      "action": "Tested nonretryable-conflict migration, pending backup/release gate"
+      "action": "Applied to production after verifying an object-scoped function backup and restore drill; observed rollback rate reduced >99.99% in sampled windows."
     },
     {
       "priority": "P1",
@@ -101,7 +101,7 @@
     "Added bounded read-only snapshot SQL, counter comparison script and optional 60-second provider-metrics scrape example. No monitoring service or paid infrastructure provisioned."
   ],
   "measuredBeforeAfter": {
-    "scope": "Local controlled tests only; production after measurements do not exist until deployment.",
+    "scope": "Includes observed production transaction-rate windows for the conflict fix, plus controlled local tests for the still-staged quota/idle optimizations.",
     "quotaIdenticalReads": {
       "environment": "local PGlite PostgreSQL, synthetic account, 100 identical reads before/after",
       "before": {
@@ -119,8 +119,52 @@
     },
     "hiddenEditor": "After: 0 workspace document/folder/history reads in 31 hidden paused seconds; hidden pending draft still persisted. Before fixed interval behavior implies up to two sync passes in that interval; before request count was not separately benchmarked.",
     "extension": "After: 10 paused checkpoints leave progressVersion and timer unchanged. Before code unconditionally called setState; count reduction estimated, not a separate production benchmark.",
-    "cpu": "No production CPU reduction claimed. Target below 50\u201360% must be checked in host metrics under comparable workloads after first hotfix.",
-    "requestVolume": "No claim of measured production HTTP request reduction. Internal rollback rate and external API request counts are different signals."
+    "cpu": "Host CPU change not measured; internal rollback storm has stopped in observed windows. Verify sustained CPU in Supabase host metrics.",
+    "requestVolume": "No claim of measured production HTTP request reduction. Internal rollback rate and external API request counts are different signals.",
+    "productionRetryLoop": {
+      "status": "Applied to the existing production database; no application deployment or user-data migration was needed.",
+      "migration": "20261125203959_nonretryable_workspace_conflicts",
+      "sourceMigration": "supabase/migrations/20261125194447_nonretryable_workspace_conflicts.sql",
+      "scope": "Six existing function definitions, seven expected business-conflict raises changed from 40001 to PT409. No tables/data rewritten; no stored writing or historical counters changed.",
+      "recoverySafeguard": "Fresh production function definitions/owners/security metadata captured; isolated PostgreSQL restore/reapply drill passed with document/activity/project checksums unchanged. This is an object-scoped recoverable backup, NOT a full database or storage backup.",
+      "preflight": "Hashes guarded the reviewed production function definitions; migration aborts if code has changed. Transactional execution and 2-second lock_timeout.",
+      "securityVerification": "All six owners, grants, definer/invoker flags and search paths unchanged. Advisory counts unchanged: 32 RLS/no-policy informational notices, 12 owner-gated authenticated definer warnings, leaked-password protection warning.",
+      "observedBeforeRollbackRatePerSecond": 575.0386939213588,
+      "observedAfterRollbackRatePerSecond": 0.0392,
+      "postChangeWindowSeconds": 76.625797,
+      "postChangeRollbacks": 3,
+      "observedRollbackRateReductionPercent": 99.9931830674328,
+      "comparisonLimits": "Naturally occurring production traffic, not a controlled load test. Rollback rate is a database transaction metric and not a host CPU percentage or external HTTP request count.",
+      "workerState": "All four observed PostgREST connections idle after fix; previously active save retry workers no longer observed.",
+      "health": "/api/health/ready HTTP 200 with session_database and data_api OK; /api/auth/google HTTP 200, enabled.",
+      "postChangeErrorWindow": "One-minute PostgreSQL/edge log sample after fix: 0 revision_conflict messages.",
+      "notMeasured": "Host CPU and memory percentage time series remain inaccessible through connected tools; no claim of reaching the 50\u201360% sustained CPU target.",
+      "stillStaged": [
+        "Unchanged quota timezone guard",
+        "Summary/streak mount deduplication",
+        "Hidden clean editor polling guard",
+        "Paused extension checkpoint guard"
+      ],
+      "fullBackupStatus": "Provider backup schedule, restore window, PITR and full restore readiness remain unverified. Hosting database secret is protected; its value was not retrieved. No full dump was created. Broader database/architecture changes remain gated on this.",
+      "longerFollowup": {
+        "windowSeconds": 230.70984,
+        "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
+        "xact_commit": {
+          "delta": 289,
+          "perSecond": 1.2527
+        },
+        "xact_rollback": {
+          "delta": 5,
+          "perSecond": 0.0217
+        },
+        "blks_hit": "Not captured in these snapshots",
+        "blks_read": "Not captured in these snapshots",
+        "temp_bytes": "Not captured in these snapshots",
+        "deadlocks": "Not captured in these snapshots",
+        "databaseGrowthBytes": "Not captured in these snapshots",
+        "workerState": "All four observed API connections remained idle."
+      }
+    }
   },
   "testing": [
     "Production frontend build and targeted lint passed.",
@@ -137,11 +181,11 @@
   ],
   "notTestedOrNotCompleted": [
     "Recoverable production backup/base restore window not confirmed by tools.",
-    "Production database/app/extension rollout not performed. Installed Chrome extensions require a separate extension release; website deploy alone does not update them.",
     "No live write load testing, customer-account access, or production fault injection performed.",
     "No native device performance tests or mobile binary release performed.",
     "No end-to-end 100k-user capacity guarantee; no full production before/after CPU comparison yet.",
-    "Continuous monitoring configuration not activated; metrics endpoint requires securely supplied credentials or dashboard access."
+    "Continuous monitoring configuration not activated; metrics endpoint requires securely supplied credentials or dashboard access.",
+    "Only the function-level conflict correction was applied. Quota migration, app/extension optimizations and mobile changes have not been rolled out."
   ],
   "architectureAudit": {
     "editor": "Body changes persist locally in IndexedDB; cloud save debounced 1 second with 15-second sync fallback. Session clock checkpoints every 10 seconds. CAS, local recovery, mutation acknowledgement and explicit conflict resolution preserved. First batch does not lengthen save windows. Provenance word counts/JSON serialization still scan document content and should be profiled on long/image-heavy documents before any incremental rewrite.",
@@ -153,6 +197,7 @@
     "dataGrowth": "No data purged, historical stats reset, subscriptions modified, or plan upgrades requested. Static reward artwork is served by website/CDN and is not one database query per badge."
   },
   "rollbackAndRollout": [
+    "The conflict correction is applied. Its object-scoped restore drill and fresh definition snapshot were verified first. This does not establish a full provider database backup; keep that requirement for broader changes.",
     "Confirm a recent successful customer-recoverable backup and recovery window in Supabase Database \u2192 Backups; ideally perform an isolated restore drill. Recent WAL archival alone is insufficient proof.",
     "Review captured rollback-conflict-functions.sql and rollback-quota-timezone.sql against current function definitions immediately before release; migrations use short lock_timeout and transactional CREATE OR REPLACE.",
     "Release ONLY the conflict SQLSTATE correction first. Capture a snapshot immediately before and 60 seconds after, compare deltas without resetting statistics, and inspect actual CPU/error charts. Expect active retry workers to exit with ordinary HTTP 409; do not discard local drafts or auto-overwrite remote documents.",
@@ -214,5 +259,49 @@
     "https://docs.postgrest.org/en/v14/references/errors.html",
     "https://github.com/nikita-volkov/hasql-transaction/blob/master/src/library/Hasql/Transaction/Private/Sessions.hs"
   ],
-  "nextRequiredInput": "Latest successful recoverable Supabase backup time and whether point-in-time recovery is enabled. Connected Supabase tools do not expose that status."
+  "nextRequiredInput": "Confirm a full recoverable backup/PITR window before broader database changes, and inspect the Supabase CPU trend to verify sustained resource headroom after mitigation.",
+  "productionMitigation": {
+    "status": "Applied to the existing production database; no application deployment or user-data migration was needed.",
+    "migration": "20261125203959_nonretryable_workspace_conflicts",
+    "sourceMigration": "supabase/migrations/20261125194447_nonretryable_workspace_conflicts.sql",
+    "scope": "Six existing function definitions, seven expected business-conflict raises changed from 40001 to PT409. No tables/data rewritten; no stored writing or historical counters changed.",
+    "recoverySafeguard": "Fresh production function definitions/owners/security metadata captured; isolated PostgreSQL restore/reapply drill passed with document/activity/project checksums unchanged. This is an object-scoped recoverable backup, NOT a full database or storage backup.",
+    "preflight": "Hashes guarded the reviewed production function definitions; migration aborts if code has changed. Transactional execution and 2-second lock_timeout.",
+    "securityVerification": "All six owners, grants, definer/invoker flags and search paths unchanged. Advisory counts unchanged: 32 RLS/no-policy informational notices, 12 owner-gated authenticated definer warnings, leaked-password protection warning.",
+    "observedBeforeRollbackRatePerSecond": 575.0386939213588,
+    "observedAfterRollbackRatePerSecond": 0.0392,
+    "postChangeWindowSeconds": 76.625797,
+    "postChangeRollbacks": 3,
+    "observedRollbackRateReductionPercent": 99.9931830674328,
+    "comparisonLimits": "Naturally occurring production traffic, not a controlled load test. Rollback rate is a database transaction metric and not a host CPU percentage or external HTTP request count.",
+    "workerState": "All four observed PostgREST connections idle after fix; previously active save retry workers no longer observed.",
+    "health": "/api/health/ready HTTP 200 with session_database and data_api OK; /api/auth/google HTTP 200, enabled.",
+    "postChangeErrorWindow": "One-minute PostgreSQL/edge log sample after fix: 0 revision_conflict messages.",
+    "notMeasured": "Host CPU and memory percentage time series remain inaccessible through connected tools; no claim of reaching the 50\u201360% sustained CPU target.",
+    "stillStaged": [
+      "Unchanged quota timezone guard",
+      "Summary/streak mount deduplication",
+      "Hidden clean editor polling guard",
+      "Paused extension checkpoint guard"
+    ],
+    "fullBackupStatus": "Provider backup schedule, restore window, PITR and full restore readiness remain unverified. Hosting database secret is protected; its value was not retrieved. No full dump was created. Broader database/architecture changes remain gated on this.",
+    "longerFollowup": {
+      "windowSeconds": 230.70984,
+      "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
+      "xact_commit": {
+        "delta": 289,
+        "perSecond": 1.2527
+      },
+      "xact_rollback": {
+        "delta": 5,
+        "perSecond": 0.0217
+      },
+      "blks_hit": "Not captured in these snapshots",
+      "blks_read": "Not captured in these snapshots",
+      "temp_bytes": "Not captured in these snapshots",
+      "deadlocks": "Not captured in these snapshots",
+      "databaseGrowthBytes": "Not captured in these snapshots",
+      "workerState": "All four observed API connections remained idle."
+    }
+  }
 }

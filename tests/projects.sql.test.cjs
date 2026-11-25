@@ -125,5 +125,19 @@ const {PGlite}=require(root+'/@electric-sql/pglite'),{vector}=require(root+'/@el
  await db.exec('set role anon');await assert.rejects(db.query('select * from writing_projects'),/permission denied/);
  await assert.rejects(rpc('workspace_project_state'),/permission denied/);
  console.log('PASS projects SQL: repeatable additive migration; Pro/RLS and cross-account isolation; project/assignment/preference CAS; shared resources without copies; five scoped modes before text; scoped search; immutable account counts; guided-answer preservation; archive/delete fallbacks and preserved writing.');
+ await db.exec('reset role');await db.exec(conflictSql);
+ const names=['workspace_assign_resource','workspace_save_profile_answer','workspace_delete_project','workspace_save_project','workspace_select_project','workspace_save_document'];
+ const metadata=async()=>(await db.query("select proname,prosrc,prosecdef,proconfig,proacl::text privileges from pg_proc where pronamespace='public'::regnamespace and proname=any($1) order by proname",[names])).rows;
+ const checksum=async()=>(await db.query("select jsonb_build_object('documents',(select md5(coalesce(jsonb_agg(to_jsonb(d) order by id)::text,'')) from writing_documents d),'activity',(select md5(coalesce(jsonb_agg(to_jsonb(a) order by id)::text,'')) from writing_activity a),'projects',(select md5(coalesce(jsonb_agg(to_jsonb(p) order by id)::text,'')) from writing_projects p)) result")).rows[0].result;
+ const fixed=await metadata(),dataBefore=await checksum();
+ await db.exec(fs.readFileSync('docs/review/performance-audit/rollback-conflict-functions.sql','utf8'));
+ const restored=await metadata();assert.equal(restored.length,6);
+ for(let i=0;i<fixed.length;i++){
+   assert.equal(restored[i].prosrc.replace(/\r\n/g,'\n'),fixed[i].prosrc.replace(/errcode='PT409'/g,"errcode='40001'").replace(/\r\n/g,'\n'));
+   for(const key of ['proname','prosecdef','proconfig','privileges'])assert.deepEqual(restored[i][key],fixed[i][key],key);
+ }
+ assert.deepEqual(await checksum(),dataBefore,'Function restoration changes no document, activity or project records');
+ await db.exec(conflictSql);assert.deepEqual(await metadata(),fixed);assert.deepEqual(await checksum(),dataBefore);
+ console.log('PASS scoped backup restore drill: 6 function bodies/security/grants restored and fix reapplied; document/activity/project checksums unchanged.');
  await db.close();
 })().catch(error=>{console.error(error);process.exitCode=1});

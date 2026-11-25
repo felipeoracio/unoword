@@ -1,0 +1,17 @@
+{
+  "windowSeconds": 76.625797,
+  "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
+  "xact_commit": {
+    "delta": 76,
+    "perSecond": 0.9918
+  },
+  "xact_rollback": {
+    "delta": 3,
+    "perSecond": 0.0392
+  },
+  "blks_hit": "Not captured in these snapshots",
+  "blks_read": "Not captured in these snapshots",
+  "temp_bytes": "Not captured in these snapshots",
+  "deadlocks": "Not captured in these snapshots",
+  "databaseGrowthBytes": "Not captured in these snapshots"
+}

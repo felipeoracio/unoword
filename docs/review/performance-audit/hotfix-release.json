@@ -1,0 +1,44 @@
+{
+  "status": "Applied to the existing production database; no application deployment or user-data migration was needed.",
+  "migration": "20261125203959_nonretryable_workspace_conflicts",
+  "sourceMigration": "supabase/migrations/20261125194447_nonretryable_workspace_conflicts.sql",
+  "scope": "Six existing function definitions, seven expected business-conflict raises changed from 40001 to PT409. No tables/data rewritten; no stored writing or historical counters changed.",
+  "recoverySafeguard": "Fresh production function definitions/owners/security metadata captured; isolated PostgreSQL restore/reapply drill passed with document/activity/project checksums unchanged. This is an object-scoped recoverable backup, NOT a full database or storage backup.",
+  "preflight": "Hashes guarded the reviewed production function definitions; migration aborts if code has changed. Transactional execution and 2-second lock_timeout.",
+  "securityVerification": "All six owners, grants, definer/invoker flags and search paths unchanged. Advisory counts unchanged: 32 RLS/no-policy informational notices, 12 owner-gated authenticated definer warnings, leaked-password protection warning.",
+  "observedBeforeRollbackRatePerSecond": 575.0386939213588,
+  "observedAfterRollbackRatePerSecond": 0.0392,
+  "postChangeWindowSeconds": 76.625797,
+  "postChangeRollbacks": 3,
+  "observedRollbackRateReductionPercent": 99.9931830674328,
+  "comparisonLimits": "Naturally occurring production traffic, not a controlled load test. Rollback rate is a database transaction metric and not a host CPU percentage or external HTTP request count.",
+  "workerState": "All four observed PostgREST connections idle after fix; previously active save retry workers no longer observed.",
+  "health": "/api/health/ready HTTP 200 with session_database and data_api OK; /api/auth/google HTTP 200, enabled.",
+  "postChangeErrorWindow": "One-minute PostgreSQL/edge log sample after fix: 0 revision_conflict messages.",
+  "notMeasured": "Host CPU and memory percentage time series remain inaccessible through connected tools; no claim of reaching the 50\u201360% sustained CPU target.",
+  "stillStaged": [
+    "Unchanged quota timezone guard",
+    "Summary/streak mount deduplication",
+    "Hidden clean editor polling guard",
+    "Paused extension checkpoint guard"
+  ],
+  "fullBackupStatus": "Provider backup schedule, restore window, PITR and full restore readiness remain unverified. Hosting database secret is protected; its value was not retrieved. No full dump was created. Broader database/architecture changes remain gated on this.",
+  "longerFollowup": {
+    "windowSeconds": 230.70984,
+    "productionCpuPercent": "Requires Supabase host metrics; SQL duration is not CPU utilization.",
+    "xact_commit": {
+      "delta": 289,
+      "perSecond": 1.2527
+    },
+    "xact_rollback": {
+      "delta": 5,
+      "perSecond": 0.0217
+    },
+    "blks_hit": "Not captured in these snapshots",
+    "blks_read": "Not captured in these snapshots",
+    "temp_bytes": "Not captured in these snapshots",
+    "deadlocks": "Not captured in these snapshots",
+    "databaseGrowthBytes": "Not captured in these snapshots",
+    "workerState": "All four observed API connections remained idle."
+  }
+}

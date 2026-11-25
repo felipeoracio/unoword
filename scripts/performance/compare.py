@@ -13,8 +13,11 @@ seconds=(datetime.fromisoformat(b['captured_at'])-datetime.fromisoformat(a['capt
 assert seconds>0
 result={'windowSeconds':seconds,'productionCpuPercent':'Requires Supabase host metrics; SQL duration is not CPU utilization.'}
 for key in ['xact_commit','xact_rollback','blks_hit','blks_read','temp_bytes','deadlocks']:
+    if key not in a['database'] or key not in b['database']:
+        result[key]='Not captured in these snapshots'
+        continue
     delta=b['database'][key]-a['database'][key]
     assert delta>=0,f'{key} reset: use a new baseline'
     result[key]={'delta':delta,'perSecond':round(delta/seconds,4)}
-result['databaseGrowthBytes']=b['database_bytes']-a['database_bytes']
+result['databaseGrowthBytes']=(b['database_bytes']-a['database_bytes']) if 'database_bytes' in a and 'database_bytes' in b else 'Not captured in these snapshots'
 print(json.dumps(result,indent=2))

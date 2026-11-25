@@ -1,0 +1,15 @@
+{
+  "database": {
+    "numbackends": 13,
+    "xact_commit": 789090,
+    "xact_rollback": 85815426
+  },
+  "api_workers": [
+    {
+      "n": 4,
+      "state": "idle"
+    }
+  ],
+  "captured_at": "2026-11-25T20:44:12.296522+00:00",
+  "stats_reset": "2026-11-16T17:24:24.80283+00:00"
+}
