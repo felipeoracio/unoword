@@ -1,0 +1,11 @@
+{
+  "change": "Guided Writing Session moved into Writing Assistant, above Quick Prompt. Removed from document canvas.",
+  "state": "validated; release pending",
+  "mobile": "Start writing closes assistant and focuses existing editor; synchronous plan persistence keeps the session binding on panel unmount.",
+  "checks": [
+    "Production build passed",
+    "Targeted oxlint and git diff check passed",
+    "Full guided editor/browser and accessibility flow passed after relocation",
+    "Focused mobile keyboard handoff and panel-reopen progress test passed"
+  ]
+}

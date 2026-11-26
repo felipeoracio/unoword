@@ -17,3 +17,9 @@
 
 @media(prefers-reduced-motion:no-preference){.uw-guided-session[open] > .uw-guided-content,.uw-guided-direction { animation:uno-guided-reveal var(--uno-motion-feedback,160ms) var(--uno-motion-state-ease,ease); }}
 @keyframes uno-guided-reveal { from { opacity:.96; } to { opacity:1; } }
+
+.uw-editor-assistant > .uw-guided-session { width:100%; min-width:0; max-width:100%; box-sizing:border-box; margin:0 0 20px; }
+.uw-editor-assistant .uw-guided-session > summary { padding:12px; }
+.uw-editor-assistant .uw-guided-content { padding-inline:12px; }
+.uw-editor-assistant .uw-guided-fields label { flex-basis:100%; }
+.uw-editor-assistant .uw-guided-actions button { flex:1 1 100%; }

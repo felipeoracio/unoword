@@ -2518,17 +2518,6 @@ export default function WritingEditor() {
                 </section>
               )}
               <div className="uw-editor-paper-scroll" inert={documentBusy}>
-                {ws.user?.ai_access && <GuidedWritingSession key={`${userId}:${activeDocument.id}`} owner={userId!} documentId={activeDocument.id}
-                  currentSession={session.current} sessions={ws.activities.filter(row=>row.document_id===activeDocument.id)} language={language} focus={focus}
-                  disabled={documentBusy || ws.completionBusy || activeDocument.status!=="active" || activeDocument.completion_status==="completed"}
-                  aiDisabled={!ws.online || aiBusy || contextSaving || !projects.ready || aiProjectLinkPending}
-                  contextKey={JSON.stringify([suggestionProject,contextScope,selectedResources,activeDocument.ai_allowed,activeDocument.ai_context_all_projects,activeDocument.ai_context_project_ids])}
-                  contextLabel={`${projects.state?.projects.find(p=>p.id===suggestionProject)?.name || (language==='es'?'Escritura general':'General writing')} · ${(language==='es'?{current_project:'Proyecto actual',selected_resources:'Recursos seleccionados',all_projects:'Todos los proyectos',profile_only:'Solo perfil de escritura',none:'Sin contexto de biblioteca'}:{current_project:'Current Project',selected_resources:'Selected Resources',all_projects:'All Projects',profile_only:'Writing Profile Only',none:'No Library Context'})[contextScope]}`}
-                  onGenerate={generateGuided}
-                  onStart={()=>{if(session.current?.timer?.status!=="ended")changeSessionStatus("ended");startEditorSession();return session.current?.document_id===activeDocument.id?session.current.id:null;}}
-                  onStatus={(id,status)=>{if(session.current?.id===id && session.current.document_id===activeDocument.id)changeSessionStatus(status);}}
-                  onFocus={()=>editor?.commands.focus()}
-                  onReview={()=>{setRight(true);document.querySelector<HTMLDetailsElement>('[data-ai-context-options]')?.setAttribute('open','');}} />}
                 <article className="uw-editor-paper" ref={revealPaper} style={typographyStyle(activeDocument?.content.attrs?.typography)}>
                   <div className="uw-editor-heading-field">
                     <textarea
@@ -2998,6 +2987,17 @@ export default function WritingEditor() {
                 <X size={17} />
               </button>
             </div>
+            {ws.user?.ai_access && activeDocument && <GuidedWritingSession key={`${userId}:${activeDocument.id}`} owner={userId!} documentId={activeDocument.id}
+              currentSession={session.current} sessions={ws.activities.filter(row=>row.document_id===activeDocument.id)} language={language} focus={focus}
+              disabled={documentBusy || ws.completionBusy || activeDocument.status!=="active" || activeDocument.completion_status==="completed"}
+              aiDisabled={!ws.online || aiBusy || contextSaving || !projects.ready || aiProjectLinkPending}
+              contextKey={JSON.stringify([suggestionProject,contextScope,selectedResources,activeDocument.ai_allowed,activeDocument.ai_context_all_projects,activeDocument.ai_context_project_ids])}
+              contextLabel={`${projects.state?.projects.find(p=>p.id===suggestionProject)?.name || (language==='es'?'Escritura general':'General writing')} · ${(language==='es'?{current_project:'Proyecto actual',selected_resources:'Recursos seleccionados',all_projects:'Todos los proyectos',profile_only:'Solo perfil de escritura',none:'Sin contexto de biblioteca'}:{current_project:'Current Project',selected_resources:'Selected Resources',all_projects:'All Projects',profile_only:'Writing Profile Only',none:'No Library Context'})[contextScope]}`}
+              onGenerate={generateGuided}
+              onStart={()=>{if(session.current?.timer?.status!=="ended")changeSessionStatus("ended");startEditorSession();return session.current?.document_id===activeDocument.id?session.current.id:null;}}
+              onStatus={(id,status)=>{if(session.current?.id===id && session.current.document_id===activeDocument.id)changeSessionStatus(status);}}
+              onFocus={()=>{if(compact)setRight(false);editor?.commands.focus();}}
+              onReview={()=>{setRight(true);document.querySelector<HTMLDetailsElement>('[data-ai-context-options]')?.setAttribute('open','');}} />}
             <div data-tour="prompt" className="uw-editor-prompt">
               <p className="uw-editor-eyebrow">
                 {t("Quick Prompt")} <span>FREE + PRO</span>
