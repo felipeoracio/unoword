@@ -1,0 +1,61 @@
+[
+  {
+    "path": "/api/health/ready",
+    "status": 200,
+    "seconds": 0.253,
+    "result": {
+      "status": "ready",
+      "checks": {
+        "session_database": "ok",
+        "data_api": "ok"
+      }
+    }
+  },
+  {
+    "path": "/api/auth/google",
+    "status": 200,
+    "seconds": 0.475,
+    "result": {
+      "enabled": true
+    }
+  },
+  {
+    "path": "/api/auth/me",
+    "status": 401,
+    "seconds": 0.153,
+    "result": {
+      "detail": "Authentication required"
+    }
+  },
+  {
+    "path": "/editor",
+    "status": 200,
+    "seconds": 0.247
+  },
+  {
+    "path": "/library",
+    "status": 200,
+    "seconds": 0.309
+  },
+  {
+    "path": "/settings",
+    "status": 200,
+    "seconds": 0.218
+  },
+  {
+    "path": "/downloads/release.json",
+    "status": 200,
+    "seconds": 0.161,
+    "result": {
+      "version": "0.24.4",
+      "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819",
+      "file": "unoword-extension.zip"
+    }
+  },
+  {
+    "path": "/downloads/unoword-extension.zip",
+    "status": 200,
+    "seconds": 0.179,
+    "sha256": "c2d06a641f0aacf11cac091c3879f7f388ea071fa72ce4ddb495a53d0bea0819"
+  }
+]

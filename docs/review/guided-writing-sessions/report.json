@@ -1,7 +1,7 @@
 {
   "feature": "Guided Writing Sessions",
   "date": "2026-11-26",
-  "status": "Implementation and local validation complete; deployment pending",
+  "status": "Deployed to production; public and deployed-editor read-only checks passed",
   "implemented": [
     "Pro web editor panel, collapsed by default; desktop, tablet and mobile",
     "Presets 100, 250, 500, 750, 1000, 1500 and validated custom 1\u201310000",
@@ -27,7 +27,8 @@
     "frontend": "4 shared foundation unit tests passed; TypeScript and production build passed; targeted oxlint passed.",
     "browser": "Built real editor operated with isolated HTTP fixtures and real Tiptap/IndexedDB. Guided flow covers typing, original-content deletion, pasted text, undo/redo, pause/typing resume, early finish, refresh, next session, overshoot, AI failure fallback/retry recovery, Focus identity, empty draft, document switching, all intentions, goal recall, 320/390/768/1440px, dark mode, Spanish and reduced motion.",
     "regressions": "Autosave navigation, AI-project/context, canonical session/completion/draft-recovery regressions passed. Session suite also ran WCAG checks.",
-    "privacy": "Synthetic test account/content only; no production customer data or paid model calls."
+    "privacy": "Synthetic test account/content only; no production customer data or paid model calls.",
+    "production": "Vercel READY with unoword.app alias on exact feature commit. Public /api/health/ready, Google auth, signed-out auth protection, editor/library/settings and unchanged extension download passed. Actual deployed editor with all API traffic intercepted passed panel/goal/consent checks; no unexpected mutations, hidden idle index reads or console errors."
   },
   "limitations": [
     "Guidance plan/goal binding recovery is browser-local; canonical writing/activity use existing cross-device sync. A second device does not reconstruct the guided breakdown.",
@@ -62,5 +63,20 @@
     "shared/guided-writing.ts",
     "tests/guided-writing.browser.cjs",
     "tests/helpers/guided-session-flow.cjs"
-  ]
+  ],
+  "reproduce_validation": {
+    "build": "npm --prefix frontend run build",
+    "backend": "UNOWORD_RUN_LIVE_TESTS=0 python -m pytest backend/tests/test_guided_writing.py backend/tests/test_workspace_ai.py backend/tests/test_workspace.py backend/tests/test_project_context.py backend/tests/test_ai_quota.py -q",
+    "unit": "cd frontend && npx vitest run tests/guided-writing.test.ts",
+    "browser": "PLAYWRIGHT_MODULE=/absolute/path/to/playwright CHROMIUM_EXECUTABLE=/usr/bin/chromium AXE_SCRIPT=/absolute/path/to/axe.min.js node tests/guided-writing.browser.cjs",
+    "browser_boundaries": "The browser script serves frontend/dist locally and intercepts every API request with private test fixtures. UI and editing are real; model outputs and server persistence are deterministic fixtures. Do not point this script at authenticated customer data."
+  },
+  "deployment": {
+    "id": "dpl_G8o4weYHTKKLHuWk7eKRK9RR9spE",
+    "state": "READY",
+    "url": "https://unoword.app",
+    "sha": "ef17e153e995b8333ddfe3ecfb1451894ccf2d56",
+    "branch": "feat/guided-writing-sessions",
+    "database_migrations": 0
+  }
 }
