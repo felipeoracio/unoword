@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "guidedPanel": true,
+  "insideWritingAssistant": true,
+  "documentCanvasClear": true,
+  "goalValidation": true,
+  "explicitConsentRequired": true,
+  "idleSeconds": 31,
+  "hiddenWorkspaceIndexReads": 0,
+  "unexpectedMutations": 0,
+  "consoleErrors": [],
+  "limit": "Actual deployed frontend; all API traffic intercepted and non-GET denied. No customer data accessed. Disposable Chromium ignores managed-proxy CA errors; public HTTPS probes verify using system trust."
+}
