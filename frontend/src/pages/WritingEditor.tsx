@@ -1,3 +1,5 @@
+import GuidedWritingSession, { type GuidedGeneration } from "@/components/GuidedWritingSession";
+import { validGuidedDirection } from "../../../shared/guided-writing";
 import { resetDocumentHistory } from "@/lib/document-history";
 import { reconcileSavedDocument } from "@/lib/document-sync";
 import DocumentImportReview from "@/components/DocumentImportReview";
@@ -1387,8 +1389,50 @@ export default function WritingEditor() {
   const seconds = Math.floor(sessionTime.active_ms / 1000);
   const conflict = activeDocument && ws.conflicts[activeDocument.id];
 
+  const guidedInFlight = useRef(false);
+  const guidedRetry = useRef<{ key: string; id: string } | null>(null);
+  async function generateGuided(requested: GuidedGeneration) {
+    if (!ws.user?.ai_access || !activeDocument || !editor || aiBusy || guidedInFlight.current || documentBusy || contextSaving || !projects.ready || aiProjectLinkPending) throw Error("Wait for the editor and AI context to finish loading.");
+    guidedInFlight.current = true;setAiBusy(true);
+    const request = ++aiRequest.current, owner = ws.user.id, id = activeDocument.id;
+    try {
+      if (!(await ws.flushWrites()) || !(await projects.flush())) throw Error("Save and sync your writing before using AI. Manual sessions remain available.");
+      if (request !== aiRequest.current || ownerRef.current !== owner || draftRef.current?.id !== id) throw Error("The document or AI context changed. Please try again.");
+      const share = sharesCurrentDraft(contextScope, selectedResources, id) && documentContextIncludesProject(draftRef.current!, suggestionProject, projects.ids("document", id));
+      const parts: string[] = [];
+      if (requested.adaptive && share && session.current?.document_id === id) editor.state.doc.descendants(node => {
+        if (node.isBlock) parts.push("\n");
+        if (node.isText && node.marks.some(mark => mark.type.name === "sessionCredit" && mark.attrs.session === session.current?.id && mark.attrs.kind === "typed")) parts.push(node.text || "");
+      });
+      const { adaptive, ...guided } = requested;
+      const payload = { expected_user_id: owner, document_id: id, project_id: suggestionProject, context_scope: contextScope, selected_resources: selectedResources,
+        action: adaptive ? "session_continue" : "session_direction", consent: true, language,
+        current_text: share ? editor.getText({blockSeparator:"\n"}).slice(-6000) : "",
+        guided_session: { ...guided, session_text: share ? parts.join("").slice(-4000) : "" } };
+      const digest = await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(payload)));
+      const key = Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
+      const recoveryKey = `uno-guided-request:${owner}:${id}`;
+      if (guidedRetry.current?.key !== key) {
+        let saved: {key:string;id:string}|null = null;
+        try { saved = JSON.parse(localStorage.getItem(recoveryKey)||"null"); } catch { /* A corrupt recovery token cannot be reused. */ }
+        guidedRetry.current = saved?.key===key && typeof saved.id==='string' ? saved : {key,id:crypto.randomUUID()};
+      }
+      // Persist only a fingerprint and idempotency token, never document text.
+      localStorage.setItem(recoveryKey,JSON.stringify(guidedRetry.current));
+      if (request !== aiRequest.current || ownerRef.current !== owner || draftRef.current?.id !== id) throw Error("The document or AI context changed. Please try again.");
+      const result = await apiPost<{items:AssistantItem[]}>("/workspace/assistant", {...payload,request_id:guidedRetry.current.id});
+      if (request !== aiRequest.current || ownerRef.current !== owner || draftRef.current?.id !== id) throw Error("The document or AI context changed. Please try again.");
+      const item = result.items[0];
+      if (!item || !validGuidedDirection(item.guided_direction)) throw Error("The writing direction could not be validated. You can still write manually.");
+      // Keep the last token until the next distinct request. A crash before
+      // the panel persists its result can replay without consuming credit twice.
+      guidedRetry.current = null;
+      return {title:item.title,text:item.text,guided_direction:item.guided_direction};
+    } catch (error) { throw Error(editorError(error)); }
+    finally { guidedInFlight.current = false;if(request === aiRequest.current)setAiBusy(false);if(ownerRef.current===owner)void aiUsage.refetch(); }
+  }
   async function generate() {
-    if (!ws.user || !activeDocument || !editor || !consent || aiBusy || documentBusy || contextSaving || !projects.ready || aiProjectLinkPending) return;
+    if (!ws.user || !activeDocument || !editor || !consent || aiBusy || guidedInFlight.current || documentBusy || contextSaving || !projects.ready || aiProjectLinkPending) return;
     const request = ++aiRequest.current;
     const owner = ws.user.id,
       id = activeDocument.id;
@@ -2474,6 +2518,17 @@ export default function WritingEditor() {
                 </section>
               )}
               <div className="uw-editor-paper-scroll" inert={documentBusy}>
+                {ws.user?.ai_access && <GuidedWritingSession key={`${userId}:${activeDocument.id}`} owner={userId!} documentId={activeDocument.id}
+                  currentSession={session.current} sessions={ws.activities.filter(row=>row.document_id===activeDocument.id)} language={language} focus={focus}
+                  disabled={documentBusy || ws.completionBusy || activeDocument.status!=="active" || activeDocument.completion_status==="completed"}
+                  aiDisabled={!ws.online || aiBusy || contextSaving || !projects.ready || aiProjectLinkPending}
+                  contextKey={JSON.stringify([suggestionProject,contextScope,selectedResources,activeDocument.ai_allowed,activeDocument.ai_context_all_projects,activeDocument.ai_context_project_ids])}
+                  contextLabel={`${projects.state?.projects.find(p=>p.id===suggestionProject)?.name || (language==='es'?'Escritura general':'General writing')} · ${(language==='es'?{current_project:'Proyecto actual',selected_resources:'Recursos seleccionados',all_projects:'Todos los proyectos',profile_only:'Solo perfil de escritura',none:'Sin contexto de biblioteca'}:{current_project:'Current Project',selected_resources:'Selected Resources',all_projects:'All Projects',profile_only:'Writing Profile Only',none:'No Library Context'})[contextScope]}`}
+                  onGenerate={generateGuided}
+                  onStart={()=>{if(session.current?.timer?.status!=="ended")changeSessionStatus("ended");startEditorSession();return session.current?.document_id===activeDocument.id?session.current.id:null;}}
+                  onStatus={(id,status)=>{if(session.current?.id===id && session.current.document_id===activeDocument.id)changeSessionStatus(status);}}
+                  onFocus={()=>editor?.commands.focus()}
+                  onReview={()=>{setRight(true);document.querySelector<HTMLDetailsElement>('[data-ai-context-options]')?.setAttribute('open','');}} />}
                 <article className="uw-editor-paper" ref={revealPaper} style={typographyStyle(activeDocument?.content.attrs?.typography)}>
                   <div className="uw-editor-heading-field">
                     <textarea

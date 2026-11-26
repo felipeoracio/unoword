@@ -1,0 +1,2 @@
+PASS navigation drains overlapping autosaves; latest writing reopens intact; clean navigation stays available
+PASS real editor departure: failed save blocks navigation, slow writes finish before route changes, intact draft and session attribution.

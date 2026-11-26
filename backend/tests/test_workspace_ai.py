@@ -266,3 +266,57 @@ async def test_repeated_rejected_coaching_never_saves_or_charges(
     assert not any(c[0] == 'saved' for c in system.calls)
     assert len([c for c in quota_store.calls if c[0] == 'rpc/ai_coach_cost']) == 2
     assert any(c[0] == 'rpc/ai_coach_mark_request' for c in quota_store.calls)
+
+@pytest.mark.parametrize('goal,headings,allocations',[(100,['Detail','Meaning'],[60,40]),(500,['Scene','Experience','Response','Reflection'],[100,200,100,100]),(1000,['Circumstances','Experience','Conflict','Outcome','Reflection'],[150,250,250,200,150])])
+async def test_guided_directions_use_session_scope(system,quota_store,goal,headings,allocations):
+    import json
+    from models.guided_writing import GuidedSession
+    system.payload.action='session_direction';system.payload.guided_session=GuidedSession(goal=goal,intention='expand')
+    async def model(context,instruction,language,schema):
+        assert f'Exactly {goal} words remain' in instruction
+        assert 'word_allocations' in schema['properties']['items']['items']['required']
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({'items':[{'title':'A meaningful detail','text':'Explore how one detail reveals a change in perspective. What makes it significant?','outline':headings,'word_allocations':allocations,'source_ids':[]}]})))],usage=SimpleNamespace(prompt_tokens=50,completion_tokens=50))
+    system.provider.generate_workspace=model;result=await workspace_ai.generate_assistance(system.payload,system.user)
+    assert len(result['items'])==1
+    d=result['items'][0]['guided_direction'];assert d['goal']==goal and sum(s['words'] for s in d['sections'])==goal
+    assert 'writing_task' not in result['items'][0]
+    assert quota_store.rows[0]['feature']=='suggestion'
+
+async def test_guided_adaptive_uses_remaining_words_and_guidance_allowance(system,quota_store):
+    import json
+    from models.guided_writing import GuidedSession
+    system.payload.action='session_continue';system.payload.guided_session=GuidedSession(goal=500,written_words=350,intention='continue',original_direction='Explore a turning point.',session_text='A new realization in this session.')
+    async def model(context,instruction,language,schema):
+        assert 'Exactly 150 words remain' in instruction and '350 session words' in instruction
+        assert 'UNTRUSTED GUIDED SESSION CONTEXT' in context
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({'items':[{'title':'Lasting impact','text':'Consider what you understood differently afterward. Which detail shows that shift?','outline':['Impact','Reflection'],'word_allocations':[100,50],'source_ids':[]}]})))],usage=SimpleNamespace(prompt_tokens=50,completion_tokens=50))
+    system.provider.generate_workspace=model;result=await workspace_ai.generate_assistance(system.payload,system.user)
+    assert result['items'][0]['guided_direction']['target_words']==150 and quota_store.rows[0]['feature']=='guidance'
+
+async def test_invalid_guided_allocation_retries_but_never_charges_or_saves(system,quota_store):
+    import json
+    from models.guided_writing import GuidedSession
+    system.payload.action='session_direction';system.payload.guided_session=GuidedSession(goal=100);attempts=[]
+    async def model(*args):
+        attempts.append(1)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({'items':[{'title':'A detail','text':'Explore one meaningful detail.','outline':['Detail'],'word_allocations':[99],'source_ids':[]}]})))],usage=SimpleNamespace(prompt_tokens=50,completion_tokens=50))
+    system.provider.generate_workspace=model
+    with pytest.raises(HTTPException) as e:await workspace_ai.generate_assistance(system.payload,system.user)
+    assert e.value.status_code==502 and len(attempts)==2 and quota_store.rows==[]
+    assert not any(c[0]=='saved' for c in system.calls)
+
+async def test_guided_adaptive_cannot_transmit_unauthorized_draft_or_session_text(system,monkeypatch):
+    import json
+    from models.guided_writing import GuidedSession
+    from lib import projects
+    system.payload.action='session_continue';system.payload.current_text='FORBIDDEN CURRENT DRAFT';system.payload.guided_session=GuidedSession(goal=500,written_words=350,session_text='FORBIDDEN SESSION TEXT')
+    original_scope=projects.resolve_scope
+    async def scope(user,payload):
+        await original_scope(user,payload)
+        return {'scope':'profile_only','project_id':None,'project':None,'profile_enabled':True,'source_ids':[],'document_ids':[],'request_document_ids':[],'memory_ids':[],'session_ids':[],'suggestion_ids':[],'feedback_ids':[],'resource_count':0}
+    monkeypatch.setattr(projects,'resolve_scope',scope)
+    async def model(context,instruction,language,schema):
+        assert 'FORBIDDEN CURRENT DRAFT' not in context and 'FORBIDDEN SESSION TEXT' not in context
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({'items':[{'title':'A meaningful question','text':'Consider one unresolved question. What could you explore?','outline':['Question','Reflection'],'word_allocations':[100,50],'source_ids':[]}]})))],usage=SimpleNamespace(prompt_tokens=50,completion_tokens=50))
+    system.provider.generate_workspace=model
+    assert (await workspace_ai.generate_assistance(system.payload,system.user))['items'][0]['guided_direction']['target_words']==150

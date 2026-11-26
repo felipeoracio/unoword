@@ -1,0 +1,12 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:39:48). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/unoword/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  01:04:14
+   Duration  286ms (transform 61ms, setup 0ms, import 73ms, tests 5ms, environment 0ms)
+

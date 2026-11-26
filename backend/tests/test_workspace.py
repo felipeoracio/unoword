@@ -514,7 +514,8 @@ def test_import_rejects_invalid_archive_or_unsupported_file(fixture):
         )
 
 
-def test_ai_requires_server_entitlement_and_explicit_consent(fixture, monkeypatch):
+@pytest.mark.parametrize("action", ["next", "session_direction", "session_continue"])
+def test_ai_requires_server_entitlement_and_explicit_consent(fixture, monkeypatch, action):
     client, _, calls = fixture
     doc = str(uuid4())
     client.put(f"/api/workspace/documents/{doc}", json=payload(), headers=ORIGIN)
@@ -522,7 +523,8 @@ def test_ai_requires_server_entitlement_and_explicit_consent(fixture, monkeypatc
     body = {
         "expected_user_id": OWNER,
         "document_id": doc,
-        "action": "next",
+        "action": action,
+        **({"guided_session":{"goal":500}} if action.startswith("session_") else {}),
         "current_text": "private words",
     }
     assert (

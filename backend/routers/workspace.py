@@ -11,6 +11,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from lib.auth import AuthenticatedUser, require_user
+from models.guided_writing import GuidedSession
 from models.writing_goal import WritingProgress
 from models.projects import ProjectContextFields
 from lib.ai_access import require_ai_user, get_entitlement, entitlement_is_active
@@ -468,9 +469,10 @@ async def source_permission(
 
 
 class Assistance(Owned, ProjectContextFields):
+    guided_session: GuidedSession | None = None
     writing_progress: WritingProgress | None = None
     document_id: UUID
-    action: Literal["next", "guidance", "continue", "block", "brainstorm", "organization", "research", "feedback"]
+    action: Literal["next", "guidance", "continue", "block", "brainstorm", "organization", "research", "feedback", "session_direction", "session_continue"]
     request_id: UUID | None = None
     consent: bool = False
     current_text: str = Field(default="", max_length=200000)
@@ -487,6 +489,8 @@ async def assistant(
         raise HTTPException(422, "document_ai_consent_required")
     if not await rows("writing_documents", user, id=f"eq.{payload.document_id}", select="id", limit="1"):
         raise HTTPException(404, "document_not_found")
+    if payload.action in {'session_direction','session_continue'} and payload.guided_session is None:
+        raise HTTPException(422, 'guided_session_required')
     # Older extension/editor clients may still send continue; it now means guidance.
     if payload.action == "continue":
         payload = payload.model_copy(update={"action": "guidance"})

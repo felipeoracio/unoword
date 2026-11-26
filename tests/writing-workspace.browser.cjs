@@ -113,14 +113,15 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
    }
    else if(key==='/workspace/assistant'){
     assert.equal(pro,true);assert.equal(body.consent,true);assert.equal(body.expected_user_id,currentOwner);
-    const guidance=['guidance','organization','research','feedback'].includes(body.action);if(guidance&&!legacy)guidanceRemaining--;else{aiUsed++;monthlyRemaining--;}
+    const guidance=['guidance','organization','research','feedback','session_continue'].includes(body.action);if(guidance&&!legacy)guidanceRemaining--;else{aiUsed++;monthlyRemaining--;}
     value={items:Array.from({length:guidance?1:3},(_,i)=>({title:['The quiet value of practice','How small gardens teach patience','What we learn by paying attention'][i],text:'Consider a detail grounded in your interests in craft and community. What could you explore next?'}))};
+    if(body.guided_session){const g=body.guided_session,target=Math.max(0,g.goal-g.written_words);const sections=target<150?['Detail','Meaning']:target<750?['Scene','Experience','Reflection']:['Circumstances','Experience','Conflict','Outcome','Reflection'];const count=Math.min(target,sections.length),titles=sections.slice(0,count);const chunks=titles.map((_,i)=>Math.floor(target/count)+(i<target%count?1:0));value={items:[{title:g.intention==='perspective'?'A different perspective':'A meaningful moment',text:body.action==='session_continue'?`Consider the lasting impact in your remaining ${target} words. What changed?`:`Explore one meaningful experience with a scope of ${target} words. What could you notice?`,guided_direction:{goal:g.goal,target_words:target,intention:g.intention,sections:titles.map((title,i)=>({title,words:chunks[i]}))}}]};}
     for(const [index,item] of value.items.entries()){
-     const p=body.writing_progress,remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
+     const p=body.writing_progress||{daily_goal:250,words_written_today:0},remaining=Math.max(0,p.daily_goal-p.words_written_today),target=Math.min(2000,remaining);
      const sizes=[10,25,25,25].map(percent=>Math.floor(target*percent/100));sizes.push(target-sizes.reduce((a,b)=>a+b,0));
      item.id='task-'+requests.filter(r=>r.key==='/workspace/assistant').length+'-'+index;
      if(polishNetwork.evidence&&body.current_text)item.inspired_by=[{kind:'editor_document',source_id:body.document_id,title:'Sample reference'}];
-     item.writing_task={...p,remaining_words:remaining,target_words:target,goal_reached:remaining===0,outline:target>=750?['Opening','Observation','Questions','Perspective','Conclusion'].map((title,i)=>({title,words:sizes[i]})):[]};
+     if(!body.guided_session)item.writing_task={...p,remaining_words:remaining,target_words:target,goal_reached:remaining===0,outline:target>=750?['Opening','Observation','Questions','Perspective','Conclusion'].map((title,i)=>({title,words:sizes[i]})):[]};
     }
    }else throw Error('Unexpected fixture endpoint '+method+' '+key);
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(value)});
@@ -179,6 +180,7 @@ const sorted=value=>Array.isArray(value)?value.map(sorted):value&&typeof value==
   await canvas.fill('One small moment can become a meaningful story.');
   await page.waitForFunction(()=>document.querySelector('.uw-editor-save').textContent.includes('All changes saved')).catch(async error=>{console.error('Save state:',await page.locator('.uw-editor-save').textContent(),'Notices:',await page.locator('.uw-editor-notice').allTextContents(),'Recent calls:',requests.slice(-8), 'DBs:', await page.evaluate(()=>new Promise(resolve=>{const r=indexedDB.open('uno-word-writing',1);r.onsuccess=()=>{const q=r.result.transaction('records').objectStore('records').getAll();q.onsuccess=()=>resolve(q.result.map(e=>({key:e.key,updated:e.value.updated_at,mutation:e.value.mutation_id,title:e.value.title,text:e.value.plain_text})))}})));throw error;});
   let saved=[...documents.values()][0];assert.ok(saved.plain_text.includes('meaningful story'));
+  if(process.env.GUIDED_SESSION_ONLY==='1'){await require('./helpers/guided-session-flow.cjs')({page,canvas,documents,activity,requests,errors,owner,setFailAI:value=>polishNetwork.failAI=value});return;}
   if(process.env.PERFORMANCE_IDLE_ONLY==='1'){
    let clockInstalled=false;const until=async fn=>{for(let i=0;i<120;i++){if(fn())return;if(clockInstalled)await page.clock.runFor(250);await new Promise(r=>setTimeout(r,50));}throw Error('Performance fixture did not settle');};
    await page.getByRole('button',{name:'Pause Session',exact:true}).click();

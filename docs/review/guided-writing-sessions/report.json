@@ -1,0 +1,66 @@
+{
+  "feature": "Guided Writing Sessions",
+  "date": "2026-11-26",
+  "status": "Implementation and local validation complete; deployment pending",
+  "implemented": [
+    "Pro web editor panel, collapsed by default; desktop, tablet and mobile",
+    "Presets 100, 250, 500, 750, 1000, 1500 and validated custom 1\u201310000",
+    "Last selected goal and owner/document-scoped plan recovery on this browser",
+    "Five intentions, authorized project/draft/profile context, explicit request consent",
+    "One coaching direction with 1\u20135 validated allocations summing exactly to the remaining goal",
+    "Manual start, continue, pause, typing auto-resume, finish early, start another, gentle completion",
+    "Session typed words, remaining words, percentage and minimal progress",
+    "Explicit Help me continue with original direction and at most 4000 characters of permitted current-session typed text",
+    "Idempotent retries, including reload recovery; stale context/document responses discarded",
+    "Existing Focus Mode/editor instance, autosave and activity ledger retained"
+  ],
+  "architecture": {
+    "editor": "Existing Tiptap with SessionCredit provenance marks. No generated text insertion or editor replacement.",
+    "progress": "Reads canonical activity typed_words; no second activity ledger or incremental credit counter. Existing activity API records sessions once. Daily and project goals unchanged.",
+    "persistence": "LocalStorage stores versioned owner/document-scoped guidance plan and last goal. Existing IndexedDB/autosave persist document and canonical activity. Retry cache contains only SHA-256 fingerprint and UUID, no draft text.",
+    "ai": "Existing /workspace/assistant, context resolver, provider, coaching policy, bounded validation retry, and AIRequest quota/idempotency transaction. No additional polling or typing-triggered AI.",
+    "subscription": "Existing backend require_ai_user, expected owner, document ownership, explicit consent and project scope guards. session_direction uses suggestions; session_continue uses Writing Guidance. No quota/pricing changes.",
+    "database_changes": "None. Existing Supabase project, RLS, activity and document persistence retained."
+  },
+  "validation": {
+    "backend": "95 selected tests passed: strict goals, goal-dependent scope, exact remaining allocations, malformed-output retry, context exclusion, quota category and Free/consent denial plus existing workspace/context/quota regressions.",
+    "frontend": "4 shared foundation unit tests passed; TypeScript and production build passed; targeted oxlint passed.",
+    "browser": "Built real editor operated with isolated HTTP fixtures and real Tiptap/IndexedDB. Guided flow covers typing, original-content deletion, pasted text, undo/redo, pause/typing resume, early finish, refresh, next session, overshoot, AI failure fallback/retry recovery, Focus identity, empty draft, document switching, all intentions, goal recall, 320/390/768/1440px, dark mode, Spanish and reduced motion.",
+    "regressions": "Autosave navigation, AI-project/context, canonical session/completion/draft-recovery regressions passed. Session suite also ran WCAG checks.",
+    "privacy": "Synthetic test account/content only; no production customer data or paid model calls."
+  },
+  "limitations": [
+    "Guidance plan/goal binding recovery is browser-local; canonical writing/activity use existing cross-device sync. A second device does not reconstruct the guided breakdown.",
+    "New interface is in the responsive web editor. Native application/extension standalone editors retain existing features; they do not receive duplicated guided-session controls in this release.",
+    "Provider request structures, coaching validation and dynamic scope verified with deterministic provider fixtures. Live paid-model personalization quality was not tested and is not claimed.",
+    "Manual sessions require the existing Pro web editor, but do not require consent or a successful AI request.",
+    "Clearing browser site data removes guidance plans, not cloud documents or historical statistics."
+  ],
+  "rollback": [
+    "Restore previous Vercel deployment dpl_8qNEfbHehjr3VbNoyasgsMzkP1pM (7c41be7748e4bef992ce1c7dc618a43f162b5ac1). No SQL rollback necessary.",
+    "Guidance cache keys are ignored by the previous app; existing document schema and activity remain compatible."
+  ],
+  "future": [
+    "Consider optional server-stored guidance plans for cross-device recovery with explicit retention rules.",
+    "Evaluate live coaching output quality on consenting dedicated demo accounts across goals/genres before tuning prompts.",
+    "Consider native-client entry points after matching their session-credit and packaging tests."
+  ],
+  "modified_and_added_files": [
+    "backend/lib/workspace_ai.py",
+    "backend/routers/workspace.py",
+    "backend/tests/test_workspace.py",
+    "backend/tests/test_workspace_ai.py",
+    "frontend/src/lib/writing.ts",
+    "frontend/src/pages/WritingEditor.tsx",
+    "tests/writing-workspace.browser.cjs",
+    "backend/lib/guided_writing.py",
+    "backend/models/guided_writing.py",
+    "backend/tests/test_guided_writing.py",
+    "frontend/src/components/GuidedWritingSession.tsx",
+    "frontend/src/styles/guided-writing.css",
+    "frontend/tests/guided-writing.test.ts",
+    "shared/guided-writing.ts",
+    "tests/guided-writing.browser.cjs",
+    "tests/helpers/guided-session-flow.cjs"
+  ]
+}

@@ -15,9 +15,13 @@ from models.ai import AISuggestionRequest
 from lib.writing_goal import task_budget, budget_context, with_outline
 from lib.coach_policy import validate_coaching, validate_heading
 
+from lib.guided_writing import session_budget, session_instruction, session_context, validated_direction
+
 logger = logging.getLogger(__name__)
 
 ACTIONS = {
+    "session_direction": "Offer one personalized writing direction for this session.",
+    "session_continue": "Offer one meaningful next direction for the remaining session goal.",
     "next": "Return exactly three DISTINCT personalized writing directions, each grounded in the author’s interests. Do not repeat earlier ideas.",
     "guidance": "Offer one concise coaching direction with three guiding questions or structural steps for what the author could explore next. Never supply a sentence, paragraph, sample or replacement for their writing.",
     "block": "Offer three specific, open-ended questions or creative prompts that help this writer move forward.",
@@ -31,7 +35,12 @@ ACTIONS = {
 async def generate_assistance(payload, user):
     if payload.action not in ACTIONS and payload.action != "continue":
         raise HTTPException(422, "unsupported_coach_action")
-    task_budget(getattr(payload, "writing_progress", None))
+    guided = getattr(payload, "guided_session", None)
+    if payload.action in {"session_direction", "session_continue"}:
+        if guided is None: raise HTTPException(422, "guided_session_required")
+        session_budget(guided)
+    else:
+        task_budget(getattr(payload, "writing_progress", None))
     provider = get_suggestion_provider()
     if isinstance(provider, MockSuggestionProvider):
         raise HTTPException(503, "ai_provider_unavailable")
@@ -40,7 +49,7 @@ async def generate_assistance(payload, user):
         request_type="workspace_assistant",
         payload=payload,
         feature=(
-            "guidance" if payload.action in {"guidance", "continue", "organization", "research", "feedback"} else "suggestion"
+            "guidance" if payload.action in {"guidance", "continue", "organization", "research", "feedback", "session_continue"} else "suggestion"
         ),
     ) as quota:
         if quota.replay is not None:
@@ -73,9 +82,12 @@ async def _generate_assistance(payload, user, provider, quota):
     if current: context += '\nCurrent document (one-request consent):\n' + current[-10000:]
     if selected: context += '\nSelected passage:\n' + selected
     count = 3 if payload.action in {"next", "brainstorm", "block"} else 1
-    task = task_budget(getattr(payload, "writing_progress", None))
+    guided = getattr(payload, "guided_session", None) if payload.action in {"session_direction", "session_continue"} else None
+    task = None if guided is not None else task_budget(getattr(payload, "writing_progress", None))
     if task is not None:
         context += budget_context(task)
+    if guided is not None:
+        context += session_context(guided, request_text(scope, payload.document_id, guided.session_text))
     # One provider request returns three directions and consumes one shared AI
     # request, matching the plan's request-based usage allowance.
     try:
@@ -106,6 +118,10 @@ async def _generate_assistance(payload, user, provider, quota):
             "required": ["items"],
             "additionalProperties": False,
         }
+        if guided is not None:
+            shape = schema['properties']['items']['items']
+            shape['properties']['word_allocations'] = {'type':'array','items':{'type':'integer','minimum':1,'maximum':session_budget(guided)},'minItems':1,'maxItems':5}
+            shape['required'].append('word_allocations')
         instruction = (
             ACTIONS["guidance" if payload.action == "continue" else payload.action]
             + " For this editor request, use the supplied items schema instead of "
@@ -115,6 +131,8 @@ async def _generate_assistance(payload, user, provider, quota):
             "with a direct question or coaching action such as Explore or Consider. "
             "Never include sample prose, quoted narration or replacement writing. Include source_ids only for labeled evidence actually used; use an empty list for general guidance."
         )
+        if guided is not None:
+            instruction += " " + session_instruction(guided, not bool(current), payload.action == 'session_continue')
         # Structured JSON can still contain non-coaching prose or invalid topic
         # labels. Retry that boundary once before saving anything, within the
         # same reservation. Each actual provider call keeps its cost telemetry;
@@ -137,6 +155,8 @@ async def _generate_assistance(payload, user, provider, quota):
                         or item.get("replacement")
                     ):
                         raise ValueError("invalid_assistant_response")
+                    if guided is not None:
+                        item['guided_direction'] = validated_direction(item, guided)
                     validate_heading(item["title"])
                     validate_coaching(item["text"])
                     for heading in item.get("outline", []):

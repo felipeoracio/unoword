@@ -165,6 +165,7 @@ export function documentToReopen(
   );
 }
 export type AssistantItem = {
+  guided_direction?: import("../../../shared/guided-writing").GuidedDirection;
   inspired_by?: {source_id:string; title:string; kind:string}[];
   writing_task?: WritingTask;
   id?: string;
